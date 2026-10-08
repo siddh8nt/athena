@@ -1,0 +1,13 @@
+# gcloud run deploy --source uploads this context; same rules as .dockerignore.
+.env
+.env.*
+!.env.example
+.cache
+node_modules
+.next
+.git
+.claude
+*.log
+tests
+scripts/spike
+docs

@@ -1,0 +1,33 @@
+# secrets
+.env
+.env.*
+!.env.example
+
+# deps and build
+node_modules/
+.next/
+out/
+build/
+coverage/
+*.tsbuildinfo
+next-env.d.ts
+
+# local data (Qloo responses must never be committed)
+/data/*.db
+/data/*.db-*
+/.cache/
+
+# test output
+/test-results/
+/playwright-report/
+
+# os / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Generated: MapLibre worker copied from node_modules
+/public/maplibre/
+
+.claude/settings.local.json

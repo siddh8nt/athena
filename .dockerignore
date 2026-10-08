@@ -1,0 +1,13 @@
+# Never ship secrets, caches or local tooling in the image.
+.env
+.env.*
+!.env.example
+.cache
+node_modules
+.next
+.git
+.claude
+*.log
+tests
+scripts/spike
+docs

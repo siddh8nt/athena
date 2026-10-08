@@ -1,0 +1,296 @@
+brand,category,venue,address,city,state,zip,metro,type,is_chain,lat,lon,source_url,date_collected
+Juniper Ridge,G3,Ark Coffeehaus,4448 Tilly Mill Rd Ste G,Atlanta,GA,30055,Atlanta,,no,33.92555583,-84.28291381,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Take Heart,1211 E. 11th St,Austin,TX,78702,Austin,,no,30.26849591,-97.72661601,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Tiny Grocer,1718 S. Congress Ave.,Austin,TX,78704,Austin,,no,30.24644956,-97.75116016,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Tiny Grocer,4300 Speedway Suite 101,Austin,TX,78751,Austin,,no,30.30704900,-97.72993700,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Central Market,4001 N. Lamar Blvd,Austin,TX,78756,Austin,,yes,30.30824966,-97.73971601,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Central Market,4477 S. Lamar Blvd,Austin,TX,78745,Austin,,yes,30.23024953,-97.79961602,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,2652 Lake Austin Blvd.,Austin,TX,78703,Austin,,yes,30.28364962,-97.77581602,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,1000 E 41st St,Austin,TX,78751,Austin,,yes,30.30044964,-97.71961601,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,2508 E Riverside,Austin,TX,78741,Austin,,yes,30.23582300,-97.72262400,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,1801 E. 51st St,Austin,TX,78723,Austin,,yes,30.30294965,-97.69916007,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,701 Capital of Texas Highway,Westlake Hills,TX,78746,Austin,,yes,30.29234963,-97.82501603,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,Attn: 8801 South Congress Ave,Austin,TX,78745,Austin,,yes,30.16963400,-97.78712200,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,10710 Research Blvd Suite 200,Austin,TX,78759,Austin,,yes,30.39854981,-97.74721601,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,5800 A West Slaughter Lane,Austin,TX,78749,Austin,,yes,30.20094948,-97.87601604,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,12407 Mopac Expwy. N.,Austin,TX,78758,Austin,,yes,30.41846721,-97.70421229,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,7301 N FM 620,Austin,TX,78726,Austin,,yes,30.40459300,-97.85165400,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,12400 State Hwy 71,Bee Cave,TX,78738,Austin,,yes,30.30365100,-97.93332500,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,11521 North FM 620,Austin,TX,78750,Austin,,yes,30.45354990,-97.82521603,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,12021 W. US 290,Austin,TX,78737,Austin,,yes,30.20794949,-97.97181605,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,2000 South Ranch Rd 620,Lakeway,TX,78734,Austin,,yes,30.34474972,-97.96841605,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,14028 N. US HWY 183,Austin,TX,78717,Austin,,yes,30.47634993,-97.80241602,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,1700 E Palm Valley Blvd,Round Rock,TX,78664,Austin,,yes,30.51945000,-97.65871600,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,170 East Whitestone,Cedar Park,TX,78613,Austin,,yes,30.52225001,-97.82831603,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,5000 Gattis School Rd,Hutto,TX,78634,Austin,,yes,30.50251600,-97.58327400,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,5401 S. FM 1626,Kyle,TX,78640,Austin,,yes,30.01674918,-97.86281603,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,598 E. HWY US 290,Dripping Springs,TX,78620,Austin,,yes,30.18957495,-98.08138161,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,651 N. US Hwy 183,Leander,TX,78641,Austin,,yes,30.58295011,-97.85871603,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Natural Grocers - Austin,"4615 N. Lamar Blvd., Suite 304",Austin,TX,78751,Austin,,yes,30.31534967,-97.73416013,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Natural Grocers - Austin Arbor,10515 N Mo-Pac Exp Bldg L,Austin,TX,78759,Austin,,yes,30.38694979,-97.73391601,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Natural Grocers - Cedar Park,"1335 E Whitestone Blvd, Ste G-17",Cedar Park,TX,78613,Austin,,yes,30.52654200,-97.81387400,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,David’s Natural Market,871 Annapolis Road,Gambrills,MD,21054,Baltimore,,no,39.06664007,-76.66911256,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Nest,5809 Clarksville Square Drive,Clarksville,MD,21029,Baltimore,,no,39.21306425,-76.93901261,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Mom's Organic Market,711 West 40th Street,Baltimore,MD,21211,Baltimore,,yes,39.33626445,-76.63021256,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Mom's Organic Market,20 W Ridgely Road,Lutherville,MD,21093,Baltimore,,yes,39.43076460,-76.62321255,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Cambridge Naturals,23 White Street,Cambridge,MA,02140,Boston,,no,42.38966945,-71.11881165,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Filomena Demarco Jewelry,One Bow Mkt Wy #24,Somerville,MA,2143,Boston,,no,42.38086944,-71.09641165,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Roost & Company,143 Washington Street,Salem,MA,1970,Boston,,no,42.52066967,-70.89521162,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,The Estuary,"lower level, 74 Martin St",Essex,MA,1929,Boston,,no,42.62966984,-70.78511597,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Earth Fare,12235 N. Community House Rd.,Charlotte,NC,28277,Charlotte,,yes,35.06895746,-80.84101324,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Earth Fare,8882 Christenbury Pkwy,Concord,NC,28027,Charlotte,,yes,35.37636692,-80.73245714,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Earth Fare,2351 Len Patterson Rd. Suite 103,Fort Mill,SC,29708,Charlotte,,yes,35.04038700,-80.98483500,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Earth Fare,725 Cherry Rd,Rock Hill,SC,29732,Charlotte,,yes,34.94545725,-81.02781328,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Neighborly,1554 North Milwaukee Avenue,Chicago,IL,60622,Chicago,,no,41.90958800,-87.67673700,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Raw Cutting Room,2020 W 119th St,Chicago,IL,60643,Chicago,,no,41.67754683,-87.67150144,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Mama's Acupuncture,3015 State St #117C,Dallas,TX,75204,Dallas-Fort Worth,,no,32.79915374,-96.79731586,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Sunflower Shoppe,5817 Curzon Ave,Fort Worth,TX,76107,Dallas-Fort Worth,,no,32.72985362,-97.41061596,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Central Market,1425 E. Southlake Blvd,Southlake,TX,76092,Dallas-Fort Worth,,yes,32.93885397,-97.13131591,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Central Market,320 Coit Rd,Plano,TX,75075,Dallas-Fort Worth,,yes,33.00415400,-96.76751300,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,"6001 Preston Rd, Suite 100",Plano,TX,75093,Dallas-Fort Worth,,yes,33.05535416,-96.79661586,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,4800 Main Street,Frisco,TX,75033,Dallas-Fort Worth,,yes,33.15515432,-96.84571587,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,575 East Exchange Pkwy,Allen,TX,75002,Dallas-Fort Worth,,yes,33.11715426,-96.65271584,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,8700 Eldorado Pwky,McKinney,TX,75070,Dallas-Fort Worth,,yes,33.17615436,-96.72821585,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,165 NW John Jones Dr,Burleson,TX,76028,Dallas-Fort Worth,,yes,32.52059100,-97.35209300,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,800 N Hwy 77,Waxahachie,TX,75165,Dallas-Fort Worth,,yes,32.41193800,-96.84020100,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Natural Grocers - Casa Linda,9440 Garland Rd Ste 150 Casa Linda Plaza,Dallas,TX,75218,Dallas-Fort Worth,,yes,32.83205379,-96.70161584,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Natural Grocers - Denton,110 W University Dr,Denton,TX,76201,Dallas-Fort Worth,,yes,33.23154447,-97.13215914,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Natural Grocers - Fort Worth,"2501 W. 7th St., Suite 115",Fort Worth,TX,76107,Dallas-Fort Worth,,yes,32.75065366,-97.35315950,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Natural Grocers - Hurst,759 Grapevine Hwy,Hurst,TX,76054,Dallas-Fort Worth,,yes,32.85825383,-97.18241592,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Natural Grocers - Keller,1501 Keller Pkwy,Keller,TX,76248,Dallas-Fort Worth,,yes,32.93505396,-97.21815928,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Natural Grocers - Preston Forest,11661 Preston Rd Suite 224,Dallas,TX,75230,Dallas-Fort Worth,,yes,32.90853917,-96.80541586,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Natural Grocers - Richardson,677 W Campbell Rd Suite 100,Richardson,TX,75080,Dallas-Fort Worth,,yes,32.97705403,-96.74281585,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Beet & Yarrow Floral Design,3330 Brighton Blvd #205,Denver,CO,80216,Denver,,no,39.76862200,-104.98118600,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Leevers Locavore,2630 W 38th Ave,Denver,CO,80211,Denver,,no,39.76896516,-105.01991721,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Native Botanicals,4810 Lima Street,Denver,CO,80547,Denver,,no,39.78456518,-104.85611718,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Topo Designs,"2500 Larimer Street, Unit 102",Denver,CO,80205,Denver,,no,39.75766514,-104.98611720,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Natural Grocers - Arapahoe,11753 E Arapahoe Rd,Centennial,CO,80112,Denver,,yes,39.59556487,-104.85291718,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Natural Grocers - Boulder,2685 Pearl St,Boulder,CO,80302,Denver,,yes,40.02265573,-105.26017246,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Natural Grocers - Brighton,903 S. 8th Ave.,Brighton,CO,80601,Denver,,yes,39.97166549,-104.81321717,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Natural Grocers - Castle Rock,4510 Trail Boss Dr,Castle Rock,CO,80104,Denver,,yes,39.40764565,-104.85917180,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Natural Grocers - Cherry Knolls,6774 S University Blvd,Centennial,CO,80122,Denver,,yes,39.59376487,-104.95881720,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Natural Grocers - Colorado & Evans,2053 S Colorado Blvd,Denver,CO,80222,Denver,,yes,39.67916501,-104.94241719,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Natural Grocers - Conifer,27101 Main St,Conifer,CO,80433,Denver,,yes,39.52986477,-105.30481725,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Natural Grocers - Control Tower,3165 N. Central Park Blvd.,Denver,CO,80238,Denver,,yes,39.76126514,-104.89111719,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Natural Grocers - Downtown (RiNo),3757 N Brighton Blvd,Denver,CO,80216,Denver,,yes,39.77296516,-104.97617199,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Natural Grocers - East Denver,4500 E Alameda Ave,Denver,CO,80246,Denver,,yes,39.71096506,-104.93531719,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Natural Grocers - Evergreen,1291 Bergen Pkwy,Evergreen,CO,80439,Denver,,yes,39.69216503,-105.36071726,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Natural Grocers - Golden,2401 Ford St,Golden,CO,80401,Denver,,yes,39.74700300,-105.20898500,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Natural Grocers - Green Mountain,12612 W Alameda Pkwy,Lakewood,CO,80228,Denver,,yes,39.70232600,-105.13815300,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Natural Grocers - Green Valley Ranch,18471 Green Valley Ranch Blvd,Denver,CO,80249,Denver,,yes,39.78436518,-104.77281717,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Natural Grocers - Highlands Ranch,9315 Dorchester St. Ste.#100,Highlands Ranch,CO,80129,Denver,,yes,39.54664793,-105.00172033,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Natural Grocers - Kipling & Coal Mine,6475 S Kipling Way,Littleton,CO,80123,Denver,,yes,39.55698648,-105.11044172,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Natural Grocers - Lafayette,100 W South Boulder Road,Lafayette,CO,80026,Denver,,yes,39.98665514,-105.09117218,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Natural Grocers - Mission Trace,3333 S Wadsworth Blvd,Lakewood,CO,80227,Denver,,yes,39.65666497,-105.08317217,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Natural Grocers - Northglenn,11465 Washington St,Northglenn,CO,80233,Denver,,yes,39.90568000,-104.97855300,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Natural Grocers - Northwest,7745 N Wadsworth Blvd,Arvada,CO,80003,Denver,,yes,39.83806527,-105.08301722,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Natural Grocers - Parker,11402 S Parker Rd,Parker,CO,80134,Denver,,yes,39.50956473,-104.76231716,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Natural Grocers - S. Broadway,368 S. Broadway,Denver,CO,80209,Denver,,yes,39.70966506,-104.98721720,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Natural Grocers - South Aurora,3440 S Tower Rd,Aurora,CO,80013,Denver,,yes,39.65416497,-104.77217166,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Natural Grocers - Tennyson & 38th,3825 Tennyson St,Denver,CO,80212,Denver,,yes,39.76986516,-105.04461721,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Natural Grocers - West Colfax,9030 W Colfax Ave,Lakewood,CO,80215,Denver,,yes,39.73976511,-105.09817219,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Natural Grocers - Wheat Ridge,4900 Kipling St,Wheat Ridge,CO,80033,Denver,,yes,39.78606519,-105.10881722,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Boston Tea Room,1220 Woodward Heights Boulevard,Ferndale,MI,48220,Detroit,,no,42.46786958,-83.12451362,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,City Bird,460 W Canfield,Detroit,MI,48201,Detroit,,no,42.35174694,-83.06567136,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,West Bloomfield Market,6565 Orchard Lake Road,West Bloomfield,MI,48322,Detroit,,no,42.54196970,-83.35871366,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Plum Market,3675 W Maple Rd,Bloomfield,MI,48301,Detroit,,yes,42.54416970,-83.26313642,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Central Market,3815 Westheimer,Houston,TX,77027,Houston,,yes,29.74104873,-95.44415638,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,3663 Washington Ave,Houston,TX,77007,Houston,,yes,29.76854877,-95.39601563,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,1701 West Alabama Street,Houston,TX,77098,Houston,,yes,29.73804872,-95.40215631,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,2300 N Shepherd Dr,Houston,TX,77008,Houston,,yes,29.80744884,-95.40891563,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,5225 A Buffalo Speedway,Houston,TX,77005,Houston,,yes,29.72694870,-95.42701563,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,5895 San Felipe RD,Houston,TX,77057,Houston,,yes,29.74794874,-95.48521564,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,5106 Bissonnet St,Bellaire,TX,77401,Houston,,yes,29.70734867,-95.46991564,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,9710 Katy Fwy,Houston,TX,77055,Houston,,yes,29.78748804,-95.53241565,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,9828 Blackhawk Blvd,Houston,TX,77075,Houston,,yes,29.60167400,-95.24939600,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,11815 Westheimer Rd,Houston,TX,77077,Houston,,yes,29.73514872,-95.58731566,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,2805 Business Center Dr,Pearland,TX,77584,Houston,,yes,29.55924843,-95.39031563,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,2710 Pearland Parkway,Pearland,TX,77581,Houston,,yes,29.55814843,-95.26501561,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,12680 West Lake Houston Pkwy,Atascosita,TX,77044,Houston,,yes,29.92294903,-95.19691560,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,3501 Clear Lake City Blvd,Houston,TX,77059,Houston,,yes,29.60581300,-95.12724200,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,8900 Hwy 6,Missouri City,TX,77459,Houston,,yes,29.53686500,-95.53656400,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,18611 Eastfield Dr,Webster,TX,78641,Houston,,yes,29.55264842,-95.14891559,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,7310 Louetta Rd,Spring,TX,77379,Houston,,yes,30.02234919,-95.52731565,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,10919 Louetta Rd,Houston,TX,77070,Houston,,yes,29.99656400,-95.57738800,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,7405 FM 1960 East,Humble,TX,77346,Houston,,yes,29.99864500,-95.16474900,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,10161 W Grand Pkwy S,Richmond,TX,77407,Houston,,yes,29.65994859,-95.71331568,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,2121 FM 2920,Spring,TX,77388,Houston,,yes,30.06864926,-95.44971564,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,1621 Mason Rd.,Katy,TX,77450,Houston,,yes,29.76315488,-95.74441157,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,19529 Northpark Dr,Kingwood,TX,77339,Houston,,yes,30.06874926,-95.25191561,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,24224 NORTHWEST FREEWAY,Cypress,TX,77429,Houston,,yes,29.95749000,-95.67322400,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,4517 Kingwood Dr,Kingwood,TX,77345,Houston,,yes,30.05304924,-95.18371559,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,19900 Southwest Fwy,Sugarland,TX,77479,Houston,,yes,29.56504844,-95.68515677,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,3540 Rayford Rd,Spring,TX,77386,Houston,,yes,30.10816600,-95.38773100,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,6711 South Fry Road,Katy,TX,77494,Houston,,yes,29.71267000,-95.77586100,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,2755 East League City Pkwy,League City,TX,77573,Houston,,yes,29.50564834,-95.03881557,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,23500 Circle Oak Pkwy,Richmond,TX,77469,Houston,,yes,29.55184842,-95.74751569,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,28520 Tomball Pkwy,Tomball,TX,77375,Houston,,yes,30.08871700,-95.63162300,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,28550 Hwy 290,Cypress,TX,77433,Houston,,yes,29.99224100,-95.74483000,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,9595 Six Pines Drive,The Woodlands,TX,77380,Houston,,yes,30.16384942,-95.46431564,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,26500 Kuykendahl Rd,Spring,TX,77389,Houston,,yes,30.14477900,-95.54958900,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,10777 Kuykendahl Rd,The Woodlands,TX,77382,Houston,,yes,30.17904945,-95.53831565,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,3601 FM 1488,The Woodlands,TX,77384,Houston,,yes,30.22594952,-95.51961565,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Blomst Los Angeles,1346 Opechee Way,Glendale,CA,91208,Los Angeles,,no,34.18185600,-118.23861937,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Canyon Gourmet,120 S Topanga Canyon Blvd Suite 110,Topanga,CA,90290,Los Angeles,,no,34.08965585,-118.60361943,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Coopportunity,8770 Washington blvd ste C,Culver CIty,CA,90232,Los Angeles,,no,34.02835575,-118.38561940,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,daydream surf shop,864 W 16th St,Newport Beach,CA,92663,Los Angeles,,no,33.63267000,-117.93424900,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Deus Ex Machina,1001 Venice Blvd,Venice,CA,90291,Los Angeles,,no,33.99435570,-118.45291941,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Fun by Brooke Rodd,1740 A Ocean Park Blvd,Santa Monica,CA,90405,Los Angeles,,no,34.01295573,-118.46551941,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Gym Tonic,3249 S. La Cienega Blvd.,Los Angeles,CA,90016,Los Angeles,,no,34.02893000,-118.37415000,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Lassen's Natural Foods,1631 W Sunset Blvd,Los Angeles,CA,90026,Los Angeles,,no,34.07785583,-118.25781938,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Lassen's Natural Foods,2080 Hillhurst Ave,Los Angeles,CA,90027,Los Angeles,,no,34.10975589,-118.28701938,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Lassens Natural Foods,710 S La Brea,Los Angeles,CA,90036,Los Angeles,,no,34.06155581,-118.34391939,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Liberate Emporium,1765 Hillhurst Avenue,Los Angeles,CA,90027,Los Angeles,,no,34.10325587,-118.28761938,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,LuckyScent,1212 Chestnut Street,Burbank,CA,91506,Los Angeles,,no,34.17998560,-118.32358194,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Meleek DBA Chambord,1205 South Pacific Coast Highway,Redondo Beach,CA,90277-4905,Los Angeles,,no,33.82457300,-118.38565300,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Meleek DBA Chambord,1205 S. Pacific Coast Hwy,Redondo Beach,CA,90277,Los Angeles,,no,33.82435542,-118.38570194,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Prelude & Dawn,5627 N Figueroa Street,Los Angeles,CA,90042,Los Angeles,,no,34.10955589,-118.19341936,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Prism Boutique,406 Termino Ave.,Long Beach,CA,90814,Los Angeles,,no,33.77255332,-118.14571936,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Rainbow Acres,13208 W Washington Blvd,Los Angeles,CA,90066,Los Angeles,,no,33.99355695,-118.44171941,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Simone LeBlanc,2950 Madera Rd,Simi Valley,CA,93065,Los Angeles,,no,34.28795618,-118.78821946,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Terrah Center,3029 Sequit Drive,Malibu,CA,90265,Los Angeles,,no,34.04315578,-118.74100195,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,the Store at the Garland Hotel,4222 Vineland Ave.,North Hollywood,CA,91602,Los Angeles,,no,34.14525594,-118.36941939,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,The Wild Plum Holistic Spa & Yoga Center,3335 W Sunset Blvd,Los Angeles,CA,90026,Los Angeles,,no,34.08745585,-118.27519378,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,virgil normal,4157 Normal Ave,Los Angeles,CA,90029,Los Angeles,,no,34.08675585,-118.28641938,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,BOXFOX,3355 West El Segundo Boulevard,Hawthorne,CA,90250,Los Angeles,,yes,33.91675557,-118.33271939,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,BOXFOX,"3421 El Segundo, Blvd",Hawthorne,CA,90250,Los Angeles,,yes,33.91705557,-118.33396194,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,BOXFOX,3355B WEST,Hawthorne,CA,90250,Los Angeles,,yes,33.90929556,-118.33285194,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Erewhon,4121 Santa Monica Blvd,Los Angeles,CA,90029,Los Angeles,,yes,34.09225586,-118.28221938,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Erewhon,7660 Beverly Blvd,Los Angeles,CA,90036,Los Angeles,,yes,34.07555829,-118.35681939,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Erewhon,9300 Culver Blvd Suite 101,Culver City,CA,90232,Los Angeles,,yes,34.02445575,-118.39341940,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Erewhon,339 N Beverly Drive,Beverly Hills,CA,90210,Los Angeles,,yes,34.06925582,-118.40141940,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Erewhon,475 South Lake Avenue,Pasadena,CA,91101,Los Angeles,,yes,34.13755593,-118.13271935,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Erewhon,12833 Ventura Blvd Suite105,Studio City,CA,91604,Los Angeles,,yes,34.14506200,-118.41247000,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Erewhon,585 Venice Blvd,Venice,CA,90291,Los Angeles,,yes,33.98965569,-118.46221941,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Erewhon,2800 Wilshire Blvd,Santa Monica,CA,90403,Los Angeles,,yes,34.03755577,-118.47521941,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Erewhon,15285 W. Sunset Blvd.,Pacific Palisades,CA,90272,Los Angeles,,yes,34.04700000,-118.52509000,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Erewhon,26767 Agoura Road,Calabasas,CA,91302,Los Angeles,,yes,34.14085594,-118.70719449,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Life Extension Nutrition Center,900 N. Federal Highway,Fort Lauderdale,FL,33304,Miami,,no,26.13542821,-80.13671313,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Plum Market,17801 Biscayne Boulevard,Aventura,FL,33160,Miami,,yes,25.94054250,-80.14801313,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Grandfather's Spirit,4219 Cedar Avenue South,Minneapolis,MN,55407,Minneapolis,,no,44.92673607,-93.24691528,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Hampden Park Co-op,928 Raymond Ave,St. Paul,MN,55114,Minneapolis,,no,44.96901000,-93.19754500,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Lakewinds Natural Foods,17501 Minnetonka Blvd,Minnetonka,MN,55345,Minneapolis,,no,44.94107363,-93.50081532,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Lakewinds Natural Foods,435 Pond Promenade,Chanhassen,MN,55317,Minneapolis,,no,44.85727349,-93.53181532,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Seward Community,317 E 38th St,Minneapolis,MN,55409,Minneapolis,,no,44.93390600,-93.27205700,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Seward Community Co-op,2823 E Franklin Ave,Minneapolis,MN,55406,Minneapolis,,no,44.96247367,-93.23031527,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Spiral Food Co-op,1250 South Frontage Rd,Hastings,MN,55033,Minneapolis,,no,44.73897330,-92.87615217,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Tao Natural Foods,2200 Hennepin Ave S,Minneapolis,MN,55405,Minneapolis,,no,44.96077366,-93.29331529,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Valley Natural Foods,13750 Co Rd 11,Burnsville,MN,55337,Minneapolis,,no,44.75458800,-93.24920400,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Wedge Community Co-Op,2105 Lyndale Ave South,Minneapolis,MN,55405,Minneapolis,,no,44.96127366,-93.28761528,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Blok Hill,107 7th Ave #A,Brooklyn,NY,11215,New York,,no,40.67390200,-73.97568000,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,"Bowne & Co., Stationers",211 Water St,New York,NY,10038,New York,,no,40.70740667,-74.00343121,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Cote a Coast,350 Bowery,New York,NY,10012,New York,,no,40.72676673,-73.99201212,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Driggs Mercantile,551 Driggs Ave,Brooklyn,NY,11211,New York,,no,40.71708400,-73.95622100,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Magpie,488 Amsterdam Ave,New York,NY,10024,New York,,no,40.78616682,-73.97631212,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Maxwell Gift & Grocery,406 Marcus Garvey Blvd,Brooklyn,NY,11216,New York,,no,40.68296665,-73.93821211,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Natural Frontier Market,1102 Cortelyou Road,Brooklyn,NY,11218,New York,,no,40.63946658,-73.96771212,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Neergard's Pharmacy,120 7th Ave,Brooklyn,NY,11215,New York,,no,40.67366664,-73.97612120,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Nepenthes,307 W 38th Street,New York,NY,10018,New York,,no,40.75526677,-73.99211212,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Sunac Natural Market,440 Union Ave,Brooklyn,NY,11211,New York,,no,40.71363700,-73.95139800,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,WantedDesign,"268 36th Street, ground floor",Brooklyn,NY,11232,New York,,no,40.65596661,-74.00741213,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Westerly Natural Market,911 8th Ave,New York,NY,10019,New York,,no,40.76506679,-73.98441212,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Franklin and Poe,1817 Frankford Ave.,Philadelphia,PA,19125,Philadelphia,,no,39.97716550,-75.13131231,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Koffee Korner Inc,15 S Jackson St,Media,PA,19063,Philadelphia,,no,39.91836540,-75.38912352,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Lionville Natural Pharmacy,200 E Uwchlan Ave.,Exton,PA,19341,Philadelphia,,no,40.06246564,-75.65121239,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Moon + Arrow,742 South 4th Street,Philadelphia,PA,19147,Philadelphia,,no,39.93946544,-75.14991231,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,My Eco Toys,2124 County Line Road,Huntingdon Valley,PA,19006,Philadelphia,,no,40.16956581,-75.07331230,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,My Eco Toys,926 Second Street Pike,Richboro,PA,19006,Philadelphia,,no,40.21226588,-75.01111229,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Organnons Natural Market,591 Durham Road,Wrightown,PA,18940,Philadelphia,,no,40.26806598,-74.98621229,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Shop Vintage Alley,7 Taylor Ave,Doylestown,PA,18901,Philadelphia,,no,40.30866042,-75.12938123,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Totem Brand Co.,535 South Street,Philadelphia,PA,19147,Philadelphia,,no,39.94216544,-75.15212313,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Mom's Organic Market,34 South 11th Street,Philadelphia,PA,19107,Philadelphia,,yes,39.95089200,-75.15904800,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Mom's Organic Market,925 Easton Rd,Abington,PA,19001,Philadelphia,,yes,40.11765728,-75.13601231,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Healthy Habit Health Foods,6029 N. 7th St.,Phoenix,AZ,85014,Phoenix,,no,33.52425400,-112.06484000,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Tangled Root Botanicals,7123 N 58th Ave,Glendale,AZ,85301,Phoenix,,no,33.54075495,-112.18341838,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Natural Grocers - Chandler,5805 W. Ray Rd,Chandler,AZ,85226,Phoenix,,yes,33.31935459,-111.94118341,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Natural Grocers - Gilbert (Baseline),2151 E Baseline Rd,Gilbert,AZ,85234,Phoenix,,yes,33.37845469,-111.78531831,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Natural Grocers - Gilbert (Val Vista),1625 E Williams Field Rd,Gilbert,AZ,85295,Phoenix,,yes,33.30615200,-111.75486100,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Natural Grocers - Phoenix,655 W. Indian School Rd,Phoenix,AZ,85013,Phoenix,,yes,33.49465488,-112.08318364,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Natural Grocers - Scottsdale Road,13802 N Scottsdale Rd Unit 110,Scottsdale,AZ,85254,Phoenix,,yes,33.61315507,-111.92721834,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,"300 W Olmos Dr,",San Antonio,TX,78212,San Antonio,,yes,29.47048284,-98.49616138,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,999 East Basse Rd Suite 150,San Antonio,TX,78209,San Antonio,,yes,29.49824833,-98.46841613,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,5914 Distribution,San Antonio,TX,78219,San Antonio,,yes,29.48102483,-98.39107161,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,9900 Wurzbach Rd,San Antonio,TX,78230,San Antonio,,yes,29.53167700,-98.56012900,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,8503 NW Military Hwy,San Antonio,TX,78230,San Antonio,,yes,29.55284842,-98.53411614,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,"12777 IH 10 West,",San Antonio,TX,78230,San Antonio,,yes,29.56194843,-98.58801615,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,7951 Guilbeau Rd.,San Antonio,TX,78250,San Antonio,,yes,29.51994837,-98.64401616,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,17238 Bulverde Rd,San Antonio,TX,78247,San Antonio,,yes,29.59504849,-98.41751612,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,10718 Potranco,San Antonio,TX,78251,San Antonio,,yes,29.43354822,-98.70351617,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,1150 NW Loop 1604,San Antonio,TX,78248,San Antonio,,yes,29.60624851,-98.51051614,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,910 Kitty Hawk Road,San Antonio,TX,78148,San Antonio,,yes,29.54594841,-98.31171611,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,9238 North Loop 1604 W Acc Rd,San Antonio,TX,78250,San Antonio,,yes,29.55434842,-98.66271616,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,20935 U.S. Hwy 281 N,San Antonio,TX,78258,San Antonio,,yes,29.21965479,-98.46182161,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,12125 Alamo Ranch Pkwy,San Antonio,TX,78253,San Antonio,,yes,29.48573200,-98.73202800,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,17460 I-35 N,Schertz,TX,78154,San Antonio,,yes,29.59684849,-98.27716102,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,"850 FM 1103, Suite 100",Cibolo,TX,78108,San Antonio,,yes,29.56948446,-98.23116094,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,HEB,24165 W IH 10,San Antonio,TX,78256,San Antonio,,yes,29.66424860,-98.63351616,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Natural Grocers - San Antonio,13310 NW Military HWY,San Antonio,TX,78231,San Antonio,,yes,29.56444844,-98.53721614,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Natural Grocers - San Antonio (AH),6514 N New Braunfels Ave,San Antonio,TX,78209,San Antonio,,yes,29.49124832,-98.45861613,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Alameda Natural Grocery,1650 Park St,Alameda,CA,94501,San Francisco Bay,,no,37.76776188,-122.23942003,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Atomic Garden,5453 College Ave,Oakland,CA,94618,San Francisco Bay,,no,37.84126200,-122.25162003,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Berkeley Bowl,920 Heinz Ave,Berkeley,CA,94710,San Francisco Bay,,no,37.85362018,-122.28992004,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Berkeley Bowl,2020 Oregon St,Berkeley,CA,94703,San Francisco Bay,,no,37.85706202,-122.26722003,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Breathe Together Yoga,14107-H WINCHESTER BOULEVARD,Los Gatos,CA,95032,San Francisco Bay,,no,37.26246105,-121.96261998,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Cheese Plus,2001 Polk St,San Francisco,CA,94109,San Francisco Bay,,no,37.79526192,-122.42182006,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Flowerland Nursery,1330 Solano Ave,Albany,CA,94706,San Francisco Bay,,no,37.89049700,-122.29142700,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Foggy Notion,124 Clement St,San Francisco,CA,94118,San Francisco Bay,,no,37.78336190,-122.46062006,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Garden Nest,105 Orinda Way,Orinda,CA,94563,San Francisco Bay,,no,37.88576207,-122.19282002,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Glow Bungalow,3027 Fillmore St Unit c,San Francisco,CA,94122,San Francisco Bay,,no,37.79746193,-122.43572006,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Golden Gate National Parks Conservancy,1 Muir Woods Road,Mill Valley,CA,94941,San Francisco Bay,,no,37.89346208,-122.57282008,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Good Earth Natural Foods,201 Flamingo Rd.,Mill Valley,CA,94941,San Francisco Bay,,no,37.88076206,-122.52562007,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Good Earth Natural Foods,720 Center Blvd.,Fairfax,CA,94930,San Francisco Bay,,no,37.98628100,-122.58320300,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Hook House,763 Bridgeway,Sausalito,CA,4153247033,San Francisco Bay,,no,37.85676202,-122.48042007,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Indigo Yoga,1512B Palos Verdes Mall,Walnut Creek,CA,94597,San Francisco Bay,,no,37.92496214,-122.08672000,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Life,604 A HAIGHT ST,San Francisco,CA,94117,San Francisco Bay,,no,37.77206189,-122.43242006,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Nugget Market,5627 Paradise Dr,Corte Madera,CA,94925,San Francisco Bay,,no,37.91894900,-122.50761700,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Nugget Market,470 Ignacio Blvd,Novato,CA,94949,San Francisco Bay,,no,38.06746237,-122.54292008,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Other Avenues,3930 Judah Street,San Francisco,CA,94122,San Francisco Bay,,no,37.76066187,-122.50432007,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Perch,654 Chenery Street,San Francisco,CA,94131,San Francisco Bay,,no,37.73466182,-122.43322006,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Pump Espresso Bar / Garageland Marketpla,6825 Sir Francis Drake Blvd,Lagunitas-Forest Knolls,CA,94933,San Francisco Bay,,no,38.01562284,-122.68702010,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Rainbow Grocery Co-Op,1745 Folsom St,San Francisco,CA,94103,San Francisco Bay,,no,37.76926188,-122.41472006,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Sausalito Books by the Bay,100 Bay Street,Sausalito,CA,94965,San Francisco Bay,,no,37.85776203,-122.48012007,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Sincerely San Francisco,"862 Haight Street, Apt 3",San Francisco,CA,94117,San Francisco Bay,,no,37.77124619,-122.43622006,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,The Epicurean Trader,2200 Jerrold Ave,San Francisco,CA,94124,San Francisco Bay,,no,37.74566184,-122.39902005,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,The Gardener,1836 Fourth Street,Berkeley,CA,94710,San Francisco Bay,,no,37.86921100,-122.30065900,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,The Herban Garden,15 Bolinas Road,Fairfax,CA,94930,San Francisco Bay,,no,37.98676224,-122.58882008,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,UC Botanical Garden,200 Centennial Dr,Berkeley,CA,94720,San Francisco Bay,,no,37.87518457,-122.23872718,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Village Market,"One Ferry Building, Ferry Bldg #29",San Francisco,CA,94111,San Francisco Bay,,no,37.79556192,-122.39342005,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Warming Hut Park Store,983 Marine Dr,San Francisco,CA,94129,San Francisco Bay,,no,37.80836195,-122.47062007,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Waterlilies,3935 Piedmont Avenue,Oakland,CA,94611,San Francisco Bay,,no,37.82526197,-122.25422003,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,New Leaf Market,150 San Mateo Rd,Half Moon Bay,CA,94019,San Francisco Bay,,yes,37.46916139,-122.43212006,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,ASHER GOODS,7325 166th Avenue Northeast,Redmond,WA,98052,Seattle,,no,47.67017810,-122.12002001,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Central Coop,4502 N. Pearl Street,Tacoma,WA,98407,Seattle,,no,47.29016500,-122.51668700,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Cone & Steiner General,532 19th Avenue East,Seattle,WA,98104,Seattle,,no,47.62407803,-122.30712004,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,East West Books & Gifts,110 3rd Ave N STE 102,Edmonds,WA,98020,Seattle,,no,47.81177833,-122.37892005,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,East West Bookshop,110 3rd Avenue North,Edmonds,WA,98020,Seattle,,no,47.81177833,-122.37892005,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Natural Pantry,3815 West Valley Hwy N,Auburn,WA,98001,Seattle,,no,47.34237757,-122.25172003,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Ravenna Gardens,6554 5th PL S,Seattle,WA,98108,Seattle,,no,47.54450779,-122.32713200,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Sfingiday,513 N 36th St suite a,Seattle,WA,98103,Seattle,,no,47.65137807,-122.35182005,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Vashon Thriftway,9740 SW Bank Road,Vashon Island,WA,98070,Seattle,,no,47.44827774,-122.45942006,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Central Market,15505 Westminster Way North,Shoreline,WA,98133,Seattle,,yes,47.74278222,-122.34992005,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Central Market,15605 Main St,Mill Creek,WA,98012,Seattle,,yes,47.85637841,-122.21952002,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Central Market,20148 10th Ave NE,Poulsbo,WA,98370,Seattle,,yes,47.74627823,-122.63642009,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Metropolitan Market,2755 77TH AVE SE,Mercer Island,WA,98040,Seattle,,yes,47.58577964,-122.23592003,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Metropolitan Market,2320 42nd Ave SW,Seattle,WA,98116,Seattle,,yes,47.58217796,-122.38482005,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Metropolitan Market,100 MERCER ST,Seattle,WA,98109,Seattle,,yes,47.62517803,-122.35432005,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Metropolitan Market,5250 40th Ave NE,Seattle,WA,98105,Seattle,,yes,47.66825600,-122.28360400,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Metropolitan Market,10611 NE 68TH STREET,Kirkland,WA,98033,Seattle,,yes,47.66587810,-122.19712002,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Metropolitan Market,3830 34th West,Seattle,WA,98199,Seattle,,yes,47.65527808,-122.40020054,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Metropolitan Market,301 228th Ave SE,Sammamish,WA,98074,Seattle,,yes,47.60587800,-122.03591999,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Metropolitan Market,8532 15th Ave NW,Seattle,WA,98117,Seattle,,yes,47.69167814,-122.37612005,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Metropolitan Market,2420 N Proctor St.,Tacoma,WA,98406,Seattle,,yes,47.26957745,-122.48972007,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Metropolitan Market,5010 Point Fosdick Dr,Gig Harbor,WA,98335,Seattle,,yes,47.30367750,-122.58120084,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,PCC Natural,3610 S. Edmunds St,Seattle,WA,98118,Seattle,,yes,47.55884400,-122.28689000,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,PCC Natural,1810 12th Ave NW,Issaquah,WA,98027,Seattle,,yes,47.55177908,-122.05592000,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,PCC Natural,450 NE 71st St.,Seattle,WA,98115,Seattle,,yes,47.68027812,-122.32322004,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,PCC Natural,9803 Edmonds Way,Edmonds,WA,98020,Seattle,,yes,47.79157830,-122.36602005,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Nutrition Stop,4101 Mexico Rd. STE K,St. Peters,MO,63376,St. Louis,,no,38.79056355,-90.57281484,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,emilias apothecary of dunedin,350 Main St A,Dunedin,FL,34698,Tampa,,no,28.01224590,-82.78891356,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Dawson's Market,225 N Washington St,Rockville,MD,20850,Washington DC,,no,39.08646404,-77.15251264,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Roots Market,16800 Georgia Avenue,Olney,MD,20832,Washington DC,,no,39.13186411,-77.07151263,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Salt & Sundry,327 S St NE,Washington,DC,20002,Washington DC,,no,38.91363756,-77.00091262,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Teak & Twine,8001 Forbes Pl # 200,Springfield,VA,22151,Washington DC,,no,38.80756358,-77.21961265,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Mom's Organic Market,1901 N Veitch St.,Arlington,VA,22201,Washington DC,,yes,38.89646373,-77.08601263,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Mom's Organic Market,1501 New York Ave. NE,Washington,DC,20002,Washington DC,,yes,38.91606376,-76.98331261,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Mom's Organic Market,3831 Mt. Vernon Ave.,Alexandria,VA,22305,Washington DC,,yes,38.84096364,-77.06261263,https://juniperridge.com/pages/store-locator,2026-10-08
+Juniper Ridge,G3,Mom's Organic Market,5566 Randolph Road,Rockville,MD,20852,Washington DC,,yes,39.05304000,-77.11225900,https://juniperridge.com/pages/store-locator,2026-10-08

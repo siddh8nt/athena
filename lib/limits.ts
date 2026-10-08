@@ -35,6 +35,16 @@ export const LIMITS = {
     if (!total.ok) return { ok: false as const, message: "Athena has planned its 60 live brands for today. The demo brands are ready to explore, and live plans reopen tomorrow." };
     return { ok: true as const };
   },
+  /** Brief canvas turns (§14.5): 30 per IP per hour, so one founder can finish several briefs. */
+  brief(ip: string) {
+    const t = take(`brief:${ip}`, 30, HOUR);
+    return t.ok ? { ok: true as const } : { ok: false as const, message: `That's a lot of messages in an hour. Try again in about ${t.retryInMin} minutes, or explore the demo brands meanwhile.` };
+  },
+  /** Re-runs after an inline answer (§6.2.2): 20 per IP per hour, separate from new plans. */
+  rerun(ip: string) {
+    const t = take(`rerun:${ip}`, 20, HOUR);
+    return t.ok ? { ok: true as const } : { ok: false as const, message: "I'll keep your answer and use it on your next plan." };
+  },
   /** 10 new Without Qloo runs a day in total (cached comparisons don't count). */
   comparison() {
     const t = take("compare:all", 10, DAY);

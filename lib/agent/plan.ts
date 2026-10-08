@@ -1,7 +1,7 @@
 import type { QlooClient } from "@/lib/qloo/client";
 import type { QlooEntity } from "@/lib/qloo/types";
 import { resolveAll, resolveBrand } from "@/lib/methods/resolve";
-import { chainNames, norm } from "@/lib/methods/names";
+import { chainNames, nameSim, norm } from "@/lib/methods/names";
 import { CATEGORIES, VENUE_LABELS, VENUE_TAGS, buildPlaybook, type Block, type CategoryId, type Motion, type PlaybookConfig, type Tier, type VenueType } from "@/lib/playbook/config";
 import { metroById, metroFor } from "@/lib/playbook/metros";
 import type { DemoBrand } from "@/lib/playbook/demo";
@@ -27,7 +27,20 @@ export type ReadCard = {
   pipelineStages: string[];
 };
 
+/** An inline question during the run (§6.2.2): asked only when the brief left the gap, never awaited. */
+export type InlineQuestion = {
+  id: "where_sold" | "is_this_you" | "swap_comparables";
+  text: string;
+  why: string;
+  /** What Athena assumed and kept going with. */
+  assumed: string;
+  options?: { id: string; label: string; hint?: string }[];
+  /** What an answer re-runs: blocks, plus the Read card. */
+  reruns: (Block | "card")[];
+};
+
 export type PlanEvent =
+  | { type: "question"; question: InlineQuestion }
   | { type: "event"; event: AgentEvent }
   | { type: "card"; card: ReadCard; meta: BlockMeta }
   | { type: "block"; block: Block; meta: BlockMeta; data: unknown }
@@ -72,6 +85,9 @@ type PlanSpec = {
   targetMetro?: string;
   names: Map<string, string>;
 };
+
+/** Which blocks, and whether the card, a run sends; absent means everything (§6.2.2 re-runs). */
+export type RunScope = (Block | "card")[] | undefined;
 
 const channelLabels = (pb: PlaybookConfig) =>
   pb.placeChannels.map((urn) => VENUE_LABELS[(Object.keys(VENUE_TAGS) as VenueType[]).find((k) => VENUE_TAGS[k] === urn)!]).filter(Boolean);
@@ -134,20 +150,43 @@ async function prepareDemo(brand: DemoBrand, qloo: QlooClient, deps: PlanDeps, e
 async function prepareCustom(input: BrandInput, qloo: QlooClient, deps: PlanDeps, emit: Emit): Promise<PlanSpec | { outOfScope: string }> {
   const intake = deps.intake;
   emit({ tool: "resolve", why: `Finding ${input.name} in Qloo`, status: "running", callIds: [], summary: "searching brands" });
-  const [own, site] = await Promise.all([
+  let [own, site] = await Promise.all([
     resolveBrand(qloo, input.name).catch(() => undefined),
     input.websites?.length && intake
       ? (emit({ tool: "read_website", why: `Reading ${input.websites.join(", ")}`, status: "running", callIds: [], summary: "Gemini is reading the pages" }), intake.readWebsite(input.websites))
       : Promise.resolve(undefined),
   ]);
-  emit({ tool: "resolve", why: `Finding ${input.name} in Qloo`, status: own?.entity ? "ok" : "empty", callIds: own ? [own.callId] : [], summary: own?.entity ? `found: ${own.entity.name}` : "not in Qloo; I'll use comparable brands" });
+  // "Is this you?" (§6.2.2): the founder's answer wins; else an exact match; else, when several Qloo brands are
+  // plausible, the best one is assumed and the question goes to the rail.
+  const plausible = (own?.options ?? []).filter((e) => nameSim(e.name, input.name) >= 0.8);
+  const answered = input.answers?.brandId;
+  let ownEntity: QlooEntity | undefined = answered === null ? undefined : answered ? (own?.options.find((e) => e.entity_id === answered) ?? own?.entity) : own?.entity;
+  if (answered === undefined && plausible.length > 1) {
+    ownEntity ??= plausible[0];
+    const hint = (e: QlooEntity) => (typeof e.disambiguation === "string" ? e.disambiguation : typeof e.properties?.short_description === "string" ? e.properties.short_description : undefined)?.slice(0, 80);
+    deps.send({
+      type: "question",
+      question: {
+        id: "is_this_you",
+        text: "Is this you?",
+        why: `Qloo has ${plausible.length} brands that could be ${input.name}`,
+        assumed: ownEntity.name,
+        options: [...plausible.map((e) => ({ id: e.entity_id, label: e.name, hint: hint(e) })), { id: "none", label: "None of these" }],
+        reruns: ["card", "markets", "partners", "message", "moments"],
+      },
+    });
+  }
+  if (own) own = { ...own, entity: ownEntity };
+  emit({ tool: "resolve", why: `Finding ${input.name} in Qloo`, status: own?.entity ? "ok" : "empty", callIds: own ? [own.callId] : [], summary: own?.entity ? `found: ${own.entity.name}` : "not in Qloo yet, which is normal for a young brand; I'll use brands like you" });
   if (site) emit({ tool: "read_website", why: "Read the website", status: "ok", callIds: [], summary: [site.description, site.products.length ? `products: ${site.products.join(", ")}` : "", site.stockists.length ? `${site.stockists.length} stockists listed` : ""].filter(Boolean).join(" · ") });
 
   // Accounts: pasted list first, then any the website lists.
-  let rows: Row[] = [];
-  if (input.accountsText?.trim() && intake) {
+  // Rows already read from the brief's files come first; pasted text (or a "Where are you sold?" answer) is parsed.
+  let rows: Row[] = (input.rows ?? []).filter((r) => r.name).slice(0, 200);
+  const pasted = [input.accountsText, input.answers?.whereSold].filter((t) => t?.trim()).join("\n");
+  if (pasted && intake) {
     emit({ tool: "parse_accounts", why: "Reading your list of accounts", status: "running", callIds: [], summary: "turning it into rows" });
-    rows = await intake.parseAccounts(input.accountsText).catch(() => []);
+    rows = [...rows, ...(await intake.parseAccounts(pasted).catch(() => []))].slice(0, 200);
     emit({ tool: "parse_accounts", why: "Read your list", status: rows.length ? "ok" : "empty", callIds: [], summary: `${rows.length} venues` });
   }
   if (!rows.length && site?.stockists.length) rows = site.stockists;
@@ -170,17 +209,31 @@ async function prepareCustom(input: BrandInput, qloo: QlooClient, deps: PlanDeps
   const meanPrice = prices.length ? prices.reduce((a, b) => a + b, 0) / prices.length : undefined;
   const qlooTier = own?.entity?.properties?.price_tier;
   const evidenceTier: Tier | undefined = qlooTier ? (["mass", "mainstream", "premium", "luxury"] as Tier[])[Math.min(3, Math.max(0, qlooTier - 1))] : meanPrice ? (meanPrice < 1.75 ? "mass" : meanPrice < 2.4 ? "mainstream" : meanPrice < 3.2 ? "premium" : "luxury") : undefined;
-  const tier = evidenceTier ?? cls?.tier ?? site?.tier ?? "mainstream";
-  // Motions: venue accounts imply venue or retail growth (§7.2 step 4).
-  const motions = cls?.motions.length ? cls.motions : cat.motions;
+  const tier = evidenceTier ?? input.tierHint ?? cls?.tier ?? site?.tier ?? "mainstream";
+  // Motions: the founder's answer from the brief, else the classifier's, else the category's.
+  const motions = input.motions?.length ? input.motions : cls?.motions.length ? cls.motions : cat.motions;
+  // "Where are you sold?" (§6.2.2): no stockists from the brief or the site, and the brand grows through venues or shops.
+  if (!rows.length && input.answers?.whereSold === undefined && motions.some((m) => m === "venue" || m === "retail")) {
+    deps.send({
+      type: "question",
+      question: {
+        id: "where_sold",
+        text: "Where are you sold? Paste anything.",
+        why: "Your stockists are the strongest signal of who buys you",
+        assumed: "No accounts yet; planning from your brand and brands like you",
+        reruns: ["card", "places"],
+      },
+    });
+  }
   emit({ tool: "classify_business", why: "Read the business", status: "ok", callIds: [], summary: `${cat.name}, ${tier}; grows through ${motions.join(" and ").replace(/_/g, " ")}${cls?.why ? ` (${cls.why})` : ""}` });
 
   // Comparables: the user's; else, when Qloo lacks the brand, the LLM's suggestions that exist in Qloo; else the
   // agent picks from a pool of Qloo brands in the category (anchors and their peers), so there's always a signal.
-  let comparables = await resolveNames(qloo, (input.comparables?.length ? input.comparables : own?.entity ? [] : (cls?.comparables ?? [])).slice(0, 6), emit, input.comparables?.length ? "Adding your comparable brands" : "Checking which suggested comparable brands Qloo knows");
+  const given = input.answers?.comparables ?? input.answers?.pinnedComparables ?? input.comparables ?? [];
+  let comparables = await resolveNames(qloo, (given.length ? given : own?.entity ? [] : (cls?.comparables ?? [])).slice(0, 6), emit, given.length ? "Adding your comparable brands" : "Checking which suggested comparable brands Qloo knows");
   // When Qloo lacks the brand, always let the agent choose the closest 3 from the full pool (8 Oct, Graza: the
   // LLM's two resolvable suggestions were drinks brands; the pool also held Brightland, a closer match).
-  if (!input.comparables?.length && !own?.entity) {
+  if (!given.length && !own?.entity) {
     emit({ tool: "resolve", why: "Building a pool of Qloo brands in your category", status: "running", callIds: [], summary: CATEGORY_ANCHORS[category as CategoryId].join(", ") });
     const anchors = await resolveNames(qloo, CATEGORY_ANCHORS[category as CategoryId], () => undefined, "");
     const peers = anchors.length
@@ -191,6 +244,21 @@ async function prepareCustom(input: BrandInput, qloo: QlooClient, deps: PlanDeps
     const chosen = pool.filter((e) => picked.includes(e.name));
     comparables = (chosen.length ? chosen : [...comparables, ...anchors]).slice(0, 3);
     emit({ tool: "resolve", why: "Chose comparable brands from Qloo for the taste signal", status: comparables.length ? "ok" : "empty", callIds: [], summary: comparables.map((c) => c.name).join(", ") || "none" });
+    // "Swap any comparable brands?" (§6.2.2): Athena chose them, so the founder can change them.
+    if (comparables.length) {
+      const chosen = new Set(comparables.map((c) => c.name));
+      deps.send({
+        type: "question",
+        question: {
+          id: "swap_comparables",
+          text: "Swap any comparable brands?",
+          why: "I picked brands whose customers look like yours",
+          assumed: comparables.map((c) => c.name).join(", "),
+          options: [...comparables.map((c) => ({ id: c.name, label: c.name, hint: "chosen" })), ...pool.filter((e) => !chosen.has(e.name)).slice(0, 6).map((e) => ({ id: e.name, label: e.name }))],
+          reruns: ["card", "markets", "places", "partners", "message", "moments"],
+        },
+      });
+    }
   }
   const competitors = await resolveNames(qloo, (input.competitors?.length ? input.competitors : (site?.competitors ?? [])).slice(0, 3), emit, "Finding your competitors in Qloo");
 
@@ -200,7 +268,7 @@ async function prepareCustom(input: BrandInput, qloo: QlooClient, deps: PlanDeps
   return {
     slug: `custom-${norm(input.name).replace(/ /g, "-").slice(0, 40)}`,
     brandName: own?.entity?.name ?? input.name,
-    whatYouSell: site?.products.length ? site.products.slice(0, 3).join(", ") : input.description?.slice(0, 80) || cat.name,
+    whatYouSell: site?.products.length ? site.products.slice(0, 3).join(", ") : input.description?.split(". ")[0].slice(0, 80) || cat.name,
     category: category as CategoryId,
     tier,
     tierEvidence: qlooTier ? `Qloo price tier ${qlooTier} of 4` : meanPrice ? `Your accounts average price level ${meanPrice.toFixed(1)} of 4` : undefined,
@@ -219,7 +287,7 @@ async function prepareCustom(input: BrandInput, qloo: QlooClient, deps: PlanDeps
 }
 
 /** Runs the plan for a prepared business: the Read card, then every block, streamed and isolated. */
-async function runPlan(spec: PlanSpec, deps: PlanDeps, qloo: QlooClient, emit: Emit, started: number, count: () => number): Promise<void> {
+async function runPlan(spec: PlanSpec, deps: PlanDeps, qloo: QlooClient, emit: Emit, started: number, count: () => number, scope?: RunScope): Promise<void> {
   const signal = { accounts: spec.accounts, wins: [], declines: [], brand: spec.own?.entity_id, comparables: spec.comparables.map((c) => c.entity_id), tags: [] };
   if (!signal.accounts.length && !signal.brand && !signal.comparables.length) {
     emit({ tool: "plan", why: `I need a little more about ${spec.brandName} to read its taste`, status: "needs_input", callIds: [], summary: "add a website, a few accounts or two brands like yours" });
@@ -271,7 +339,7 @@ async function runPlan(spec: PlanSpec, deps: PlanDeps, qloo: QlooClient, emit: E
       { label: "Target city", value: metroById(pb.targetMetro).name },
     ],
   };
-  deps.send({ type: "card", card, meta: fp.meta });
+  if (!scope || scope.includes("card")) deps.send({ type: "card", card, meta: fp.meta });
 
   // Blocks run concurrently and stream as soon as their own calls return (§14.9). Message waits for
   // Partners, because its default competitors come from the mutual-fit peer set (§9.16).
@@ -305,7 +373,7 @@ async function runPlan(spec: PlanSpec, deps: PlanDeps, qloo: QlooClient, emit: E
   };
   // Every block gets one retry; if it still fails, its last good result is shown under a dated label (§14.2).
   // Nothing reaches the screen as an error, and the plan always finishes.
-  const runs = pb.blocks.map(async (b) => {
+  const runs = pb.blocks.filter((b) => !scope || scope.includes(b)).map(async (b) => {
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
         const r = await runBlock(b, attempt);
@@ -345,7 +413,7 @@ export async function runDemoPlan(brand: DemoBrand, deps: PlanDeps): Promise<voi
 }
 
 /** Any brand (M10, §6.2): the agent reads the business first, then runs the same blocks. */
-export async function runCustomPlan(input: BrandInput, deps: PlanDeps): Promise<void> {
+export async function runCustomPlan(input: BrandInput, deps: PlanDeps, scope?: RunScope): Promise<void> {
   const h = harness(deps);
   const prepared = await prepareCustom(input, h.qloo, deps, h.emit).catch((err) => {
     console.error("prepareCustom failed", err);
@@ -361,5 +429,5 @@ export async function runCustomPlan(input: BrandInput, deps: PlanDeps): Promise<
     deps.send({ type: "done", qlooCalls: h.count(), ms: Date.now() - h.started });
     return;
   }
-  await runPlan(prepared, deps, h.qloo, h.emit, h.started, h.count);
+  await runPlan(prepared, deps, h.qloo, h.emit, h.started, h.count, scope);
 }

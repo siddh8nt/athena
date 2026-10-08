@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useReducer } from "react";
-import type { PlanEvent, ReadCard } from "@/lib/agent/plan";
+import type { InlineQuestion, PlanEvent, ReadCard } from "@/lib/agent/plan";
 import type { AgentEvent, BlockMeta } from "@/lib/blocks/types";
 import type { Block } from "@/lib/playbook/config";
 
@@ -12,6 +12,8 @@ export type PlanState = {
   cardMeta?: BlockMeta;
   blocks: Partial<Record<Block, { meta: BlockMeta; data: unknown }>>;
   rail: AgentEvent[];
+  /** Inline questions from the run (§6.2.2), one per id, newest kept. */
+  questions: InlineQuestion[];
   qlooCalls?: number;
   ms?: number;
 };
@@ -19,14 +21,21 @@ export type PlanState = {
 /** A demo brand by slug, or any brand from the intake card (M10). */
 export type PlanSource =
   | { kind: "demo"; slug: string }
-  | { kind: "custom"; input: Record<string, unknown>; id: number };
+  | { kind: "custom"; input: Record<string, unknown>; id: number; scope?: (Block | "card")[] };
 
-type Action = { type: "reset"; key: string } | { type: "event"; e: PlanEvent };
+type Action = { type: "reset"; key: string; scope?: (Block | "card")[] } | { type: "event"; e: PlanEvent };
 
 function reducer(s: PlanState, a: Action): PlanState {
-  if (a.type === "reset") return { key: a.key, status: "loading", blocks: {}, rail: [] };
+  if (a.type === "reset") {
+    if (!a.scope) return { key: a.key, status: "loading", blocks: {}, rail: [], questions: [] };
+    // A re-run after an inline answer: keep everything it doesn't touch, and clear what it rebuilds.
+    const blocks = { ...s.blocks };
+    for (const b of a.scope) if (b !== "card") delete blocks[b];
+    return { ...s, key: a.key, status: "streaming", blocks };
+  }
   const e = a.e;
   if (e.type === "event") return { ...s, status: "streaming", rail: [...s.rail, e.event] };
+  if (e.type === "question") return { ...s, questions: [...s.questions.filter((q) => q.id !== e.question.id), e.question] };
   if (e.type === "card") return { ...s, status: "streaming", card: e.card, cardMeta: e.meta };
   if (e.type === "block") return { ...s, blocks: { ...s.blocks, [e.block]: { meta: e.meta, data: e.data } } };
   if (e.type === "done") return { ...s, status: "done", qlooCalls: e.qlooCalls, ms: e.ms };
@@ -38,9 +47,9 @@ const keyOf = (src: PlanSource) => (src.kind === "demo" ? `demo:${src.slug}` : `
 /** Streams /api/plan as server-sent events and folds them into state. Drops reconnect quietly (up to 5 times). */
 export function usePlan(source: PlanSource): PlanState {
   const key = keyOf(source);
-  const [state, dispatch] = useReducer(reducer, { key, status: "loading", blocks: {}, rail: [] });
+  const [state, dispatch] = useReducer(reducer, { key, status: "loading", blocks: {}, rail: [], questions: [] });
   useEffect(() => {
-    dispatch({ type: "reset", key });
+    dispatch({ type: "reset", key, scope: source.kind === "custom" ? source.scope : undefined });
     const abort = new AbortController();
     let finished = false;
     const run = async (tries: number): Promise<void> => {
@@ -48,7 +57,7 @@ export function usePlan(source: PlanSource): PlanState {
         const res = await fetch(source.kind === "demo" ? `/api/plan/${source.slug}` : "/api/plan", {
           method: source.kind === "demo" ? "GET" : "POST",
           headers: source.kind === "custom" ? { "Content-Type": "application/json" } : undefined,
-          body: source.kind === "custom" ? JSON.stringify(source.input) : undefined,
+          body: source.kind === "custom" ? JSON.stringify({ ...source.input, scope: source.scope }) : undefined,
           signal: abort.signal,
         });
         if (!res.body) throw new Error("no stream");

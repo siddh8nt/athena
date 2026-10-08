@@ -1,6 +1,7 @@
 import type { QlooClient } from "@/lib/qloo/client";
 import type { QlooEntity } from "@/lib/qloo/types";
 import { accept, cleanVenue, nameSim, norm, type Row } from "./names";
+import { metroFor } from "@/lib/playbook/metros";
 
 export type Resolved =
   | { status: "matched"; row: Row; entity: QlooEntity; sim: number; dist?: number; callIds: string[] }
@@ -25,6 +26,18 @@ export async function resolveVenue(qloo: QlooClient, row: Row): Promise<Resolved
       if (verdict.ok) seen.set(e.entity_id, { e, sim: verdict.sim, dist: verdict.dist });
     }
     if (seen.size) break;
+  }
+  // City only (a pasted list or a screenshot, §9.22): search the metro and accept only a single exact-name venue.
+  // Several exact matches (a chain) stay unresolved rather than guess a location.
+  if (!attempts.length && row.city) {
+    const metro = metroFor(row.city);
+    if (metro) {
+      const res = await qloo.search({ query: name, types: "urn:entity:place", "filter.location": `${metro.center[0].toFixed(6)},${metro.center[1].toFixed(6)}`, "filter.radius": 25, take: 5 });
+      callIds.push(res.call.id);
+      const exact = res.entities.filter((e) => nameSim(cleanVenue(e.name), name) >= 0.99);
+      if (exact.length === 1) return { status: "matched", row, entity: exact[0], sim: 1, callIds };
+      if (exact.length > 1) return { status: "ambiguous", row, options: exact.slice(0, 3), callIds };
+    }
   }
   if (!seen.size) return { status: "unresolved", row, callIds };
   const best = [...seen.values()].sort((a, b) => b.sim - a.sim || (a.dist ?? 1e9) - (b.dist ?? 1e9));

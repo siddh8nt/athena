@@ -17,6 +17,15 @@ export type BrandInput = {
   comparables?: string[];
   competitors?: string[];
   city?: string;
+  /** Stockists already turned into rows (from the brief's files, §9.22); used before accountsText. */
+  rows?: Row[];
+  /** How customers get it, from the brief (§6.2.1); overrides the classifier's motions. */
+  motions?: Motion[];
+  /** The founder's stated price tier; evidence still wins (§7.2). */
+  tierHint?: Tier;
+  /** Answers to inline questions (§6.2.2). `brandId: null` means "No, that's not us". `pinnedComparables` keeps
+   *  Athena's earlier pick on a re-run, so blocks already on screen and re-run blocks rest on the same brands. */
+  answers?: { brandId?: string | null; comparables?: string[]; whereSold?: string; pinnedComparables?: string[] };
 };
 
 export type WebsiteRead = {

@@ -87,6 +87,8 @@ export async function generate(opts: {
   model: "flash" | "pro";
   system?: string;
   prompt: string;
+  /** Native files sent alongside the prompt (PDF, PNG/JPEG/WebP), base64-encoded (§9.22). */
+  files?: { mime: string; base64: string }[];
   grounding?: boolean;
   /** Adds the URL context tool (a search tool, so it combines with googleSearch). */
   urlContext?: boolean;
@@ -104,7 +106,7 @@ export async function generate(opts: {
   const urlFor = (model: string) => `https://${host}/v1/projects/${cfg.project}/locations/${cfg.location}/publishers/google/models/${model}:generateContent`;
   const body = {
     ...(opts.system ? { systemInstruction: { parts: [{ text: opts.system }] } } : {}),
-    contents: [{ role: "user", parts: [{ text: opts.prompt }] }],
+    contents: [{ role: "user", parts: [...(opts.files ?? []).map((f) => ({ inlineData: { mimeType: f.mime, data: f.base64 } })), { text: opts.prompt }] }],
     ...(opts.grounding || opts.urlContext ? { tools: [...(opts.grounding ? [{ googleSearch: {} }] : []), ...(opts.urlContext ? [{ urlContext: {} }] : [])] } : {}),
     generationConfig: {
       maxOutputTokens: opts.maxOutputTokens ?? 4096,

@@ -6,7 +6,7 @@
 
 | | |
 |---|---|
-| Version | 2.12 · 9 Oct 2026 |
+| Version | 2.14 · 9 Oct 2026 |
 | Owners | Siddhant, Jaiaditya |
 | Event | Qloo Agentic Hackathon, "Agents, but with taste." |
 | Deadline | 31 Oct 2026, 9:15 AM IST (30 Oct, 11:45 PM ET). **We submit on 28 Oct.** |
@@ -24,6 +24,8 @@
 | New in v2.10 | **Without Qloo runs live on Places** (§9.9): Gemini 3.1 Pro with Google Search, streamed, every venue checked in Qloo. **The landing line now leads with dead picks and taste fit** (§2.2), because the first live comparison (Brightland, LA, 8 Oct) showed the chatbot's picks were *less* often among Qloo's most popular 5% than Athena's (27% vs 35%); results in §10.2. |
 | New in v2.11 | **Without Qloo is on Places only** (§9.9, §10.2). On Partners, Message and Moments the comparison had no outside check: taste fit there is scored by Qloo itself, themes can't be scored at all, and Athena's festival dates also come from Gemini with Search. Places stays, framed as an illustration; the ranking check (§10.3) is the independent test. **"Dead picks" becomes "couldn't verify"**: a chatbot venue Qloo can't match within 40 miles may still exist. **Every block header carries one quiet line saying how it was ranked** (§13.1), beside "Built from n Qloo calls", so Qloo is visibly the engine of each block without a slogan. |
 | New in v2.12 | **Podcasts get "Who listens", based on Qloo Insights** (§9.6): with each of the top 5 podcasts as the signal, Qloo gives the listeners' skew, the brands and TV they love, the brands they share with your crowd (the bridge rule, §9.8) and how they rank you among brands like you. Tested live on Brightland's podcasts on 8 Oct. **Apple Podcasts replaces Podcast Index** (§9.19): keyed by the Apple ID Qloo returns, no key needed; it gives the real episode count (Qloo's `episode_count` was "15" for every podcast), the latest episode date, the genre, and from the show's RSS feed its website and contact email. **Public audience numbers on request** (§9.6): Gemini with Search names figures and their pages; Athena opens every page and keeps a figure only if the page shows the number within 200 characters of the show's name (sponsor pages: only the show's own), because on 9 Oct Gemini returned no grounding sources for these answers and invented two of its URLs. **Gemini 429s** (§12.8): every call goes through one gate with backoff, spacing and a Pro-to-Flash fallback. **Streaming fix** (§12.8): the final streamed event, which carries the answer's end and its sources, was being dropped. |
+| New in v2.13 | **Try your own brand becomes a conversation, not a form** (§6.2). It opens on a brief canvas: one text box (required) plus optional files of any common kind (images, PDF, Excel/CSV, PowerPoint, Word). Athena turns everything into one structured brand brief (§9.22), shows what it understood, fills the required facts from Qloo or the website where it can and asks for a one-tap confirmation, and asks follow-up questions only for what it still can't find. While the plan runs, it asks up to three inline questions only when the brief left a gap, never waiting: it assumes a default, keeps going, and re-runs only what an answer changes. |
+| New in v2.14 | **A landing page and a way in** (§2.2). `/` is now a landing page: a hero that says what Athena does, the six parts of the plan, how it works, and one **Start planning** button. It leads to `/start`, where the visitor picks **Try your own brand** (which opens the brief canvas, §6.2) or one of the three demo brands (which opens its workspace). The workspace moves to `/<brand>`. |
 
 **How to read this document**
 
@@ -97,9 +99,19 @@ A judge who gives it two minutes leaves convinced. A judge who gives it ten find
 8. **No dead ends.** Weak results show the agent recovering, in the rail. If Qloo or the LLM is down, the brand's last live run fills in, labelled with its time.
 9. **One screen.** Versatility comes from the agent reordering the six blocks, never from a new screen.
 
-### 2.2 The landing page is the app
+### 2.2 The landing page, the way in, and the workspace
 
-The page opens straight onto the workspace (§13.1), with the hero brand loading. Around it:
+**Landing page (`/`).** Says what Athena does before asking anything of the visitor:
+
+- **Hero:** eyebrow "The taste-led growth agent for consumer startups"; headline "Grow where your customers already are."; one paragraph on what Athena reads (what customers love) and what it returns (which city next, which venues to pitch, who to partner with, what to say, when to show up); **Start planning →** (primary) and **How it works** (the Method page).
+- **A quiet data line:** "Taste data from Qloo, read and written up with Gemini. Every ranking shows the calls behind it." (understated, §13.9).
+- **One plan, six parts:** one card each for Read, Markets, Places, Partners, Message and Moments, one sentence each.
+- **How it works:** three steps (tell Athena about your brand; watch the plan build; act on it) and a second **Start planning →**.
+- **Footer** as below.
+
+**The way in (`/start`).** "Where do you want to start?": a highlighted **Try your own brand** card, which opens the workspace with the brief canvas already open (§6.2), and one card per demo brand (name, description, what it shows), each opening that brand's workspace.
+
+**The workspace (`/<brand>`)** (§13.1), with the brand loading. Around it:
 
 - **Title:** "Athena: the taste-led growth agent for consumer startups"
 - **Subtitle:** "Plans your growth from 1 to n: where to grow, which venues, who to partner with, what to say and when to show up."
@@ -125,7 +137,7 @@ The page opens straight onto the workspace (§13.1), with the hero brand loading
 | M7 | **Moments** | Opens **Moments** | "Your crowd's #2 artist plays Chicago on [date] at [venue] (Ticketmaster)." "Andersonville Midsommarfest, [date] (Web source)." Ordered by taste rank, each with its date and source. | A dated plan, and Live Nation's own data used well. |
 | M8 | **It acts and learns** | Clicks **Draft** on a venue, **Plan a day**, then marks a pick won and another declined | A draft that opens with a bridge: "Crowds like yours and ours both over-index on [Brand X] and [Brand Y]." An 8-stop route with a Google Maps link and a calendar file. The re-rank runs: similar venues move with a reason ("they resemble your declines: takeaway-only"). | A complete job, and a loop that learns. |
 | M9 | **Same agent, other businesses** | Switches to Timeleft, then Master & Dynamic | The card reads each differently and the tabs reorder: Timeleft opens on Markets (launch order) and Moments; Master & Dynamic opens on Partners. | Versatility comes from the agent's decision, not a menu. |
-| M10 | **Your brand** | Clicks **Try your own brand**, and types a name or pastes a website | Any consumer company. From a website, the card fills itself in (§9.20). The plan streams in, block by block, with a Tuned or Beta badge. | Judges use it on brands they care about. |
+| M10 | **Your brand** | Clicks **Try your own brand**, describes the brand in their own words and drops in anything they have (a deck, a stockist sheet, a screenshot of a store list, a link) | Athena reads it all, shows a "What I understood" brief, confirms what it inferred with one tap and asks only for what's still missing (§6.2). Then the plan streams in, block by block, with a Tuned or Beta badge, while Athena narrates each step and asks at most three skippable questions inline. | Judges use it on brands they care about, from whatever they have on hand. |
 
 ### 2.4 The "Try this" card
 
@@ -286,20 +298,46 @@ The page opens straight onto the workspace (§13.1), with the hero brand loading
 
 ### 6.2 Try your own brand (M10)
 
-1. **Input:** the brand name (required). Optional:
-   - a website URL (up to 3 URLs: home page, about page, store-locator page);
-   - a one-line description;
-   - accounts, as pasted text, a CSV, or an image of a list;
-   - comparable brands;
-   - up to 3 competitors;
-   - a target city.
-2. **Read the website (if given):** Gemini with the URL context tool reads the pages (§9.20) and proposes the category, tier, products and, if the pages list them, stockists. Athena's own server never fetches the URL.
-3. **Parse:** the LLM turns pasted text or an image into rows (name, address, city), and the user sees the table before anything runs.
-4. **Resolve:** accounts are matched to Qloo places, and brands, comparables and competitors to Qloo brands (§9.1). Ambiguous matches become choice chips, with at most 3 questions, asked together. Accounts Qloo doesn't have are looked up in Overture so they still appear on the map, labelled "not in Qloo" (§9.19).
-5. **Read card:** the card shows the category, tier, stage, how the business grows, the channels, the partner types, the competitors and the taste signal, with a Tuned or Beta badge, plus *Looks right* and *Edit*. If there are no accounts and Qloo doesn't have the brand, the agent suggests 3 comparable brands for the user to confirm.
-6. **Blocks:** they stream in, in the recipe's order, each as soon as its calls return.
-7. **Without Qloo:** available on Places, capped (§14.5).
-8. **Pipeline:** kept in an anonymous session for 7 days.
+#### 6.2.1 Phase 1: the brief (before any Qloo call)
+
+1. **The canvas.** A chat-style panel, not a form. Athena's opening message: *"Tell me about your brand: what it is, what you sell, and how people buy it. Drop in anything else you have: a deck, a stockist list, a spreadsheet, screenshots, your website."*
+   - **Text is required.** Everything else is optional.
+   - **Attachments:** drag-and-drop, paste (including pasted screenshots) or a file picker. Accepted: images (PNG, JPEG, WebP), PDF, plain text, CSV, Excel (.xlsx), PowerPoint (.pptx), Word (.docx). URLs typed in the text are picked up as websites (§9.20).
+   - Each attachment shows as a chip with a status line ("Reading 4 slides…", "Found 38 stockists") and can be removed.
+2. **Ingest.** Every input becomes one **brand brief** (§9.22). Athena shows it as a "What I understood" card, each field labelled with where it came from ("from your deck, slide 3", "from stockists.xlsx", "from your message").
+3. **Follow-up questions until the brief is complete.** A fixed checklist (code, not the LLM) decides what's missing. Gemini only phrases the question in the conversation's tone. Required before the plan can start:
+
+   | Required fact | Why Athena needs it | Example question |
+   |---|---|---|
+   | **Brand name** | Qloo lookup, drafts | "What's the brand called?" |
+   | **What it sells** (product or service, in a phrase) | Category (§7.3), comparable brands | "What exactly do you sell? A product, an app, a service?" |
+   | **How customers get it** (in shops or venues, online only, through an app in cities, through partnerships) | Motions and recipe (§7.6) | "Where do people buy it today: in shops and cafés, online, or somewhere else?" |
+   | **Where in the US it's active, or wants to be** (a city or "nowhere yet") | Home metro, target metro | "Which US city are you strongest in, or launching in first?" |
+
+   - **Infer first, then confirm.** Before asking about a missing required fact, Athena tries to fill it from the Qloo brand entity (`properties.description`, `products`, `use_occasions`, tags), and from the website if one was given. If it finds a likely answer, the question becomes a one-tap confirmation: *"Looks like you sell canned water, mostly in shops and bars. Right?"* (**Yes** / **Not quite**). An open question is asked only when nothing could be inferred.
+   - Questions arrive **one at a time**, each answerable in free text or a file.
+   - Each question has a **"Not sure, make your best guess"** reply. Athena then fills the field itself and labels it **Agent · guessed**, shown on the brief and editable.
+   - At most **4 follow-up turns.** After that, missing fields are guessed and labelled.
+   - Out-of-scope businesses (§4.3) get the one-line reason and the demo cards, as today.
+4. **Start.** When the checklist passes, Athena says what it will do ("I'll find you in Qloo, match your 38 stockists, and pick brands like you") and a **Build my plan** button appears. The founder can keep adding context, or start.
+
+**Optional facts** never block the start. If missing, they are handled in Phase 2: stockists or accounts, the Qloo brand match, comparable brands, competitors (≤ 3), price tier (evidence first, §7.2), stage.
+
+#### 6.2.2 Phase 2: the run (assume, keep going, let them correct)
+
+1. **Athena narrates each step** in the rail: reading the site; finding the brand in Qloo (if it isn't there: "that's normal for a young brand; I'll use brands like you"); matching stockists to Qloo places; choosing comparable brands.
+2. **Up to three inline questions**, shown as chips in the rail. Each appears **only when the brief left that gap**, whether or not Qloo knows the brand. Athena **never waits**: it uses the default, keeps going, and an answer re-runs only the blocks that depend on it.
+
+   | Question | Asked when | Default if ignored | An answer re-runs |
+   |---|---|---|---|
+   | **Where are you sold? Paste anything.** | No stockists in the brief, none on the website, and the motions include venue or retail | No accounts; brand plus comparables | Places, Read card, stage |
+   | **Is this you?** (Yes / No / Skip) | Qloo returns more than one plausible brand, and the brief didn't settle it | The best-fitting candidate | Markets, Partners, Message, Moments |
+   | **Swap any comparable brands?** (chips) | The founder named no comparables, so Athena chose them | Athena's choice | Every block that uses comparables |
+
+3. **The plan streams in block by block**, each as soon as its calls return, in the recipe's order.
+4. **"Built from" panel:** one line on what the plan rests on ("Brand in Qloo · 22 of 38 stockists matched · 3 brands like you"). Every guessed or defaulted item is marked, and clicking it reopens that question.
+5. **Without Qloo** on Places, capped (§14.5), as before.
+6. **Pipeline:** kept in an anonymous session for 7 days. The brief is kept with it, so a returning founder doesn't start over.
 
 ### 6.3 Signal by stage
 
@@ -505,9 +543,9 @@ P0 is the demo path. Every requirement has a test.
 
 | ID | Requirement | Moment | P | Done when |
 |---|---|---|---|---|
-| F1 | The landing page is the workspace: title, subtitle, the computed comparison line, the brand switcher with the three demo brands, *Try your own brand*, the "Try this" card, and a footer with the disclaimer and data attributions | Landing | P0 | The hero's first card line appears ≤ 3 s after load; every demo-brand block appears ≤ 5 s after load from the warm cache |
+| F1 | A landing page (`/`) with the hero, the six parts and **Start planning**, leading to `/start` (Try your own brand or a demo brand), §2.2. The workspace (`/<brand>`) has the title, subtitle, the computed comparison line, the brand switcher with the three demo brands, *Try your own brand*, the "Try this" card, and a footer with the disclaimer and data attributions | Landing | P0 | The landing page and `/start` render without any API call; the workspace's first card line appears ≤ 3 s after load; every demo-brand block appears ≤ 5 s after load from the warm cache |
 | F2 | The "Try this" card: five items pointing at real buttons, ticks, a highlight that never presses, deep links | M1–M9 | P0 | A first-time user following it reaches the Without Qloo comparison ≤ 60 s after arriving; each deep link opens the right state |
-| F3 | Intake: name (required); optional website URLs (≤ 3), description, accounts (text, CSV or an image of a list), comparable brands, competitors (≤ 3), target city | M10 | P0 | 20 lines pasted from a real store locator parse into ≥ 18 correct rows; a screenshot of a 20-row list parses into ≥ 16 correct rows; a website alone yields the right category and tier for ≥ 8 of 10 test brands; a name alone produces a plan |
+| F3 | Brief canvas (required facts inferred from Qloo or the website first, and confirmed with one tap): required text plus optional attachments (images, PDF, TXT, CSV, XLSX, PPTX, DOCX, URLs), turned into one brand brief (§9.22); follow-up questions until the four required facts are known; up to three inline questions during the run, each defaulted and never blocking | M10 | P0 | A brand in Qloo, given only its name and city, reaches **Build my plan** with ≤ 2 taps and no typed follow-up; a one-sentence description plus follow-ups produces a plan; a 20-row store-list screenshot yields ≥ 16 correct stockists; a 40-row XLSX yields ≥ 38; a pitch-deck PPTX yields the right category and tier for ≥ 8 of 10 test brands; the checklist test proves the plan can't start with a required fact empty unless it's labelled guessed; no inline question ever blocks the stream |
 | F4 | Resolution of venues and brands, with ambiguity chips (§9.1) | M1, M10 | P0 | ≥ 95% precision on a hand-labelled set of 40 venues and 20 brands (venue precision measured on 8 Oct: 24 of 25 certain, 1 likely); ambiguous matches are never picked automatically |
 | F5 | The "How I read your business" card: what you sell and the tier, how you grow, channels, taste signal, competitors, stage, a Tuned or Beta badge; *Looks right* and *Edit*; evidence overrides the LLM; out-of-scope businesses get a reason | M1, M9 | P0 | Every line shows evidence; an edit re-runs the blocks that depend on it; 10 test businesses across goods, tech and apps get the expected motions |
 | F6 | Recipe engine: motions → blocks through one `PlaybookConfig`; the six blocks render in recipe order on one screen | M1, M9 | P0 | The three demo brands render three different block orders, with no screen built for one recipe only |
@@ -854,6 +892,57 @@ Enrichments attach facts to Qloo results or fill Qloo gaps. They never change an
 - **Label:** "AI-generated mood board (Imagen) from your crowd's taste themes."
 - **Caps:** 20 images a day in total ($0.40 a day at most); demo brands' boards are generated once and cached.
 
+
+### 9.22 Ingesting brand context
+
+**Goal:** many messy inputs in, one typed brief out. Everything downstream (`prepareCustom`, the blocks) reads only the brief.
+
+```ts
+type Sourced<T> = { value: T; source: { kind: "message" | "file" | "website" | "agent_guess"; ref?: string } };
+
+type BrandBrief = {
+  name?: Sourced<string>;
+  sells?: Sourced<string>;                 // what it sells, ≤ 160 chars
+  howBought?: Sourced<Motion[]>;           // maps to motions (§7.1)
+  activeCity?: Sourced<string>;            // a US city, or "none yet"
+  websites: Sourced<string>[];             // ≤ 3, checked as in §9.20
+  stockists: Sourced<{ name: string; address?: string; city?: string }>[]; // ≤ 200
+  comparables: Sourced<string>[];          // ≤ 5
+  competitors: Sourced<string>[];          // ≤ 3
+  tierHint?: Sourced<Tier>;
+  stageHint?: Sourced<"prelaunch" | "early" | "scaling">;
+  notes: Sourced<string>[];                // anything else useful, ≤ 10 short lines
+};
+```
+
+**One route per file type**, chosen so Gemini only ever sees formats it reads natively. Vertex reads PDF, plain text and PNG/JPEG/WebP images natively, up to 15 MB per file (Vertex docs, checked 9 Oct). Office files are not native, so Athena extracts them first:
+
+| Input | How Athena reads it | What reaches Gemini |
+|---|---|---|
+| Message text | As-is | Text |
+| Image, pasted screenshot | Native | The image |
+| PDF | Native | The PDF |
+| TXT, CSV | Read as text on the server | Text; CSV keeps its header row |
+| XLSX | Parsed on the server into CSV, one block per sheet, ≤ 2,000 rows a sheet | Text |
+| PPTX | Unzipped on the server; slide text and speaker notes in slide order; embedded images ≥ 200 px kept (≤ 10 a deck) | Text, plus those images |
+| DOCX | Unzipped on the server; paragraph and table text | Text |
+| URL | Never fetched by Athena's server; read by the URL context tool (§9.20) | Gemini reads it |
+
+**Two steps, so tables are never paraphrased:**
+
+1. **Rows first, in code.** Any CSV, XLSX sheet or DOCX table that has a name-like column and an address- or city-like column is treated as a stockist list and turned into rows by column matching in code, not by the LLM. Only lists it can't match by column (screenshots, PDFs, free text) go through `parseAccounts`.
+2. **Then one Gemini Flash call** with all remaining text and images returns the brief as JSON (structured output, schema above), each field with its `source.ref`. Content is data, never instructions, as in §9.20.
+
+**Merging across turns:** each new message or file re-runs only step 1 and 2 for the new input, then merges into the brief. A field the founder typed always beats one read from a file, which always beats a guess. Conflicts ("your deck says premium, your sheet's stockists average price level 1.6") are shown, not resolved silently; evidence rules from §7.2 still apply.
+
+**Mapping to today's code:** the brief converts to the existing `BrandInput` (`lib/agent/intake.ts`), so Phase 2 reuses `prepareCustom` with three changes: it accepts pre-parsed stockists, it emits inline questions with defaults instead of stopping on `needs_input`, and it accepts answers (confirmed brand ID, swapped comparables, added stockists) on a re-run.
+
+**Open items:**
+
+- **[VERIFY]** Parsing libraries for XLSX, PPTX and DOCX: pick ones that run in Node with no native binaries (for Cloud Run), and check their licences and versions before adding.
+- **[VERIFY]** Gemini's per-request limit on images when a deck has many; the cap of 10 above is a guess until tested.
+- **[DECISION]** Whether Phase 1's follow-ups use Flash (fast, cheap) or Pro. Default: Flash.
+
 ---
 
 ## 10. Evidence and proof
@@ -1193,17 +1282,18 @@ At most 24 tool calls, 3 recovery steps and 3 questions per plan; at most 60 Qlo
 
 ### 13.2 Screens
 
-- **Workspace** (this is the landing page)
+- **Landing page** (`/`) and **Start** (`/start`): §2.2
+- **Workspace** (`/<brand>`)
 - **Venue drawer** and **partner drawer**
 - **Trace drawer**
 - **Pipeline board**
 - **Actions tray:** drafts and route
-- **Try-your-own intake:** one card with name, website URLs, city, comparable brands, competitors, and a paste or upload area
 - **Message view:** theme chips, reference rows (TV, film, music, books), positioning cards, the audience-skew chart and the interest chips with their fixed label, hooks and content ideas, the mood board (P1)
 - **Moments view:** a list ordered by Qloo taste rank, each item with its rank, date, source label and outbound link; a **Soonest first** toggle
 - **Method page**
 - **Sources page**
 - **What we don't know**
+- **Brief canvas** (own brand, Phase 1): a chat panel on the left, the live "What I understood" card on the right (stacked on phones). It switches to the normal workspace (§13.1) when the plan starts; the conversation stays available from the rail.
 
 ### 13.3 Partner cards
 
@@ -1349,6 +1439,8 @@ type RankingCheck = { brand: string; metroA: string; metroB: string; aucAthena: 
 - **Key:** in production it lives only in Secret Manager; in development, only in `.env`. Logs and the trace redact it.
 - **Spend:** Cloud Run's maximum instances is 3, and budget alerts fire at $50, $150 and $250 (§14.8). If spend passes $250, the LLM caps are lowered and the app leans on the labelled fallback.
 - **Input:** Athena's server never fetches URLs users supply. Website reading goes only through the Vertex URL context tool, after the URL checks in §9.20.
+- **Uploads:** ≤ 10 files per brief, ≤ 15 MB each, ≤ 40 MB in total. The type is checked from the file's bytes, not its name. Files are processed in memory and never stored; only the brief is kept with the session. Macros and embedded objects in Office files are ignored.
+- **Follow-ups:** ≤ 4 follow-up turns and ≤ 6 Gemini ingestion calls per brief; they count toward the own-brand cap.
 - **Sessions:** anonymous and deleted after 7 days. No accounts, no personal data.
 
 ### 14.6 Repo layout

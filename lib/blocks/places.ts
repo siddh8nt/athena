@@ -1,4 +1,5 @@
 import { results } from "@/lib/qloo/client";
+import { locationParams } from "@/lib/places/location";
 import type { QlooEntity } from "@/lib/qloo/types";
 import { cleanVenue, isChainName, norm } from "@/lib/methods/names";
 import { metroById } from "@/lib/playbook/metros";
@@ -63,7 +64,7 @@ export function places(ctx: BlockContext, opts: { fingerprint: TagChip[]; chainN
     const res = await qloo.insights({
       "filter.type": "urn:entity:place",
       "signal.interests.entities": signalIds(pb.signal, pb.stage),
-      "filter.location.query": metro.query,
+      ...(await locationParams(metro)),
       "filter.tags": pb.placeChannels,
       "operator.filter.tags": "union",
       "filter.exclude.entities": pb.exclude.slice(0, 50),

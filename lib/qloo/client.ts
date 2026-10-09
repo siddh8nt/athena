@@ -196,6 +196,8 @@ export type QlooClientOptions = {
 export type Weighted = { id: string; weight: number };
 
 export type CallOptions = { priority?: Priority };
+/** Longest query string sent as a GET. */
+const MAX_GET = 6000;
 
 export class QlooClient {
   readonly mode: "live" | "fixture";
@@ -303,6 +305,14 @@ export class QlooClient {
     if (this.weights && ids.some((id) => (this.weights!.get(id) ?? 1) !== 1)) {
       const { ["signal.interests.entities"]: _, ...rest } = params;
       return this.insightsWeighted(rest, ids.map((id) => ({ id, weight: this.weights!.get(id) ?? 1 })), opts);
+    }
+    // A long request (a region's outline, §9.3) goes as a POST body; URLs over ~8 KB fail. Verified 10 Oct.
+    const query = toQuery(params);
+    if (new URLSearchParams(query).toString().length > MAX_GET) {
+      const body: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(params)) if (!(v === undefined || v === "" || (Array.isArray(v) && v.length === 0))) body[k] = v;
+      const res = await this.fetch("/v2/insights", query, `POST ${cacheKey("/v2/insights", query)}`, () => this.transport.post("/v2/insights", body), opts);
+      return { ...res, results: results(res) };
     }
     const res = await this.get("/v2/insights", params, opts);
     return { ...res, results: results(res) };

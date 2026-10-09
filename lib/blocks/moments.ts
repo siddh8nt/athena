@@ -1,4 +1,5 @@
 import { results } from "@/lib/qloo/client";
+import { locationParams } from "@/lib/places/location";
 import { percentiles } from "@/lib/methods/rank";
 import { metroById, type Metro } from "@/lib/playbook/metros";
 import { blockSignal } from "@/lib/playbook/config";
@@ -58,9 +59,10 @@ export function moments(
   return withCalls(ctx, "moments", async ({ pb, qloo, emit }) => {
     const metro = metroById(pb.targetMetro);
     const signal = blockSignal(pb, "moments");
+    const where = await locationParams(metro);
     const [artistRes, festRes] = await Promise.all([
       qloo.insights({ "filter.type": "urn:entity:artist", "signal.interests.entities": signal, take: 15 }),
-      qloo.insights({ "filter.type": "urn:entity:place", "signal.interests.entities": signal, "filter.tags": "urn:tag:genre:place:festival", "filter.location.query": metro.query, take: 10 }),
+      qloo.insights({ "filter.type": "urn:entity:place", "signal.interests.entities": signal, "filter.tags": "urn:tag:genre:place:festival", ...where, take: 10 }),
     ]);
     const artists = (results(artistRes).entities ?? []).slice(0, 10);
     const festivals = results(festRes).entities ?? [];

@@ -72,8 +72,13 @@ function pinsGeoJSON(pins: MapPin[]): FeatureCollection {
 const css = (name: string, fallback: string) =>
   typeof window === "undefined" ? fallback : getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
 
+/** Wider than a metro (about 1.5° of longitude): fit the whole area instead of the city zoom. */
+const wide = (b?: [number, number, number, number]) => !!b && b[2] - b[0] > 1.5;
+
 export function MapView(props: {
   center: [number, number];
+  /** The area's box (minLon, minLat, maxLon, maxLat). A place wider than a metro (a state, a region) is fitted whole. */
+  bbox?: [number, number, number, number];
   cells: HeatmapCell[];
   pins: MapPin[];
   selectedId?: string;
@@ -96,6 +101,7 @@ export function MapView(props: {
       style: STYLE,
       center: [latest.current.center[1], latest.current.center[0]],
       zoom: 10.5,
+      ...(wide(latest.current.bbox) ? { bounds: latest.current.bbox, fitBoundsOptions: { padding: 24 } } : {}),
       attributionControl: { compact: true },
     });
     m.addControl(new ml.NavigationControl({ showCompass: false }), "top-right");
@@ -163,8 +169,9 @@ export function MapView(props: {
 
   useEffect(() => {
     const reduce = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    map.current?.flyTo({ center: [props.center[1], props.center[0]], zoom: 10.5, duration: reduce ? 0 : 1200 });
-  }, [props.center[0], props.center[1]]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (wide(props.bbox)) map.current?.fitBounds(props.bbox!, { padding: 24, duration: reduce ? 0 : 1200 });
+    else map.current?.flyTo({ center: [props.center[1], props.center[0]], zoom: 10.5, duration: reduce ? 0 : 1200 });
+  }, [props.center[0], props.center[1], props.bbox?.join()]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const p = props.pins.find((x) => x.id === props.selectedId);

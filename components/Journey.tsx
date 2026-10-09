@@ -12,6 +12,7 @@ import { briefToInput } from "@/lib/brief/to-input";
 import type { BrandBrief } from "@/lib/brief/types";
 import { GROWTH, MAX_PICKS, STOP_LABELS, blockedReason, decisionsFor, labelFor, motionsFor, orderFor, spreadNote, stopsFor, suggest, type Channel, type GrowthType, type StopId } from "@/lib/journey/growth";
 import { crowdIdForStop, crowdSignal } from "@/lib/journey/weights";
+import type { PlaceOption, Resolution } from "@/lib/places/resolve";
 import { emptyJourney, type CrowdCard, type CrowdsEvent, type Journey as JourneyState, type Reaction } from "@/lib/journey/types";
 import { packBySlug } from "@/lib/journey/packs";
 import { takeFor } from "@/lib/journey/takes";
@@ -450,6 +451,9 @@ function Dock(props: {
 }) {
   const { j, setJ, brief, turn, busy } = props;
   const [city, setCity] = useState("");
+  // A typed place that fits several real ones ("Portland") waits here for the founder's pick (§9.3).
+  const [placeOptions, setPlaceOptions] = useState<PlaceOption[] | null>(null);
+  const [placing, setPlacing] = useState(false);
   // Athena pre-selects from its guess; once the founder changes a pick, the picks are theirs.
   const touched = useRef(false);
   const guess = j.channel ?? brief.channel?.value;
@@ -553,11 +557,33 @@ function Dock(props: {
   }
   if (j.stop === "where") {
     const m = props.stopData.where as MarketsData | undefined;
-    // A pick from the list passes its metro id, so the city's centre comes along; a typed city goes as text (§9.3).
-    const set = (id: string, name: string) => {
+    // A pick from the list passes its metro id. A typed place (any state, county, city, neighbourhood, zip or region)
+    // is resolved first; Athena asks when it fits several places or can't be placed, and never guesses (§9.3).
+    const set = (id: string, name: string, note = "") => {
+      setPlaceOptions(null);
       setJ((x) => ({ ...x, city: id }));
-      props.say(`${name} it is. Everything next is ranked for that city.`);
+      props.say(`${note}${name} it is. Everything next is ranked for that area.`);
       props.onNext();
+    };
+    const place = async (text: string) => {
+      setPlacing(true);
+      try {
+        const r = (await fetch("/api/place", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text }) }).then((x) => x.json())) as Resolution;
+        if (r.status === "ok") {
+          setCity("");
+          set(r.id, r.label, r.read && r.read.length > 1 ? `I read “${text}” as ${r.read.join(", ")}. ` : "");
+        } else if (r.status === "ask") {
+          setPlaceOptions(r.options);
+          props.say(r.question);
+        } else {
+          setPlaceOptions(null);
+          props.say(r.question);
+        }
+      } catch {
+        props.say(`Which city, county, state or zip code is “${text}”?`);
+      } finally {
+        setPlacing(false);
+      }
     };
     return (
       <div className="dock">
@@ -575,12 +601,21 @@ function Dock(props: {
               className="inline-city"
               onSubmit={(e) => {
                 e.preventDefault();
-                if (city.trim()) set(city.trim(), city.trim());
+                if (city.trim()) void place(city.trim());
               }}
             >
-              <input value={city} onChange={(e) => setCity(e.target.value)} placeholder="Or type a US city" maxLength={60} />
-              <button type="submit" disabled={!city.trim()}>Use it</button>
+              <input value={city} onChange={(e) => setCity(e.target.value)} placeholder="Or type any US place: a city, state, zip, neighbourhood…" maxLength={80} />
+              <button type="submit" disabled={!city.trim() || placing}>{placing ? "Finding it…" : "Use it"}</button>
             </form>
+            {placeOptions && (
+              <div className="replies" role="group" aria-label="Which place">
+                {placeOptions.map((o) => (
+                  <button key={o.id} type="button" onClick={() => set(o.id, o.label)} title={o.detail}>
+                    {o.label} <small className="muted">{o.detail}</small>
+                  </button>
+                ))}
+              </div>
+            )}
           </>
         ) : (
           <p className="small muted">Ranking cities for your crowd…</p>
@@ -813,7 +848,7 @@ function StopRunner({ stop, block, input, brandName, onData }: { stop: StopId; b
       return (
         <section className="card stop-block">
           <div className="stop-map">
-            <MapView center={m.target.center} cells={m.heatmap.cells} pins={[]} onSelect={none} />
+            <MapView center={m.target.center} bbox={m.target.bbox} cells={m.heatmap.cells} pins={[]} onSelect={none} />
           </div>
           <MarketsView data={m} meta={b.meta} onTrace={none} />
         </section>

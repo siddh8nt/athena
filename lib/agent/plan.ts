@@ -3,7 +3,8 @@ import type { QlooEntity } from "@/lib/qloo/types";
 import { resolveAll, resolveBrand } from "@/lib/methods/resolve";
 import { chainNames, nameSim, norm } from "@/lib/methods/names";
 import { CATEGORIES, VENUE_LABELS, VENUE_TAGS, buildPlaybook, type Block, type CategoryId, type Motion, type PlaybookConfig, type Tier, type VenueType } from "@/lib/playbook/config";
-import { US_CENTER, isMetroId, metroById, metroIdFor } from "@/lib/playbook/metros";
+import { US_CENTER, isMetroId, metroById, metroFor, metroIdFor } from "@/lib/playbook/metros";
+import { resolveTyped } from "@/lib/places/location";
 import type { DemoBrand } from "@/lib/playbook/demo";
 import type { Row } from "@/lib/methods/names";
 import { fingerprint } from "@/lib/blocks/fingerprint";
@@ -426,10 +427,19 @@ export async function runDemoPlan(brand: DemoBrand, deps: PlanDeps): Promise<voi
 }
 
 /**
- * A typed city outside the named metros has no known centre; one place lookup in Qloo gives it one, so maps and
- * Ticketmaster (which searches by coordinates) land in the right place (§9.3, v3.0). Never throws.
+ * A typed location becomes a place Athena can search (§9.3): named metros and resolved places pass through; free
+ * text ("Ohio", "Austin TX", "Bay Area") is resolved from local data, taking the biggest match when a name is shared
+ * (the journey's Where stop asks instead). Last resort: one place lookup in Qloo for a centre. Never throws.
  */
-async function placeCity(qloo: QlooClient, id: string): Promise<string> {
+async function placeCity(qloo: QlooClient, raw: string): Promise<string> {
+  if (raw.startsWith("p~") || (isMetroId(raw) && metroById(raw).center !== US_CENTER)) return raw;
+  const text = isMetroId(raw) ? metroById(raw).name : raw;
+  const named = metroFor(text);
+  if (named) return named.id;
+  const resolved = await resolveTyped(text).catch(() => undefined);
+  if (resolved?.status === "ok") return resolved.id;
+  if (resolved?.status === "ask" && resolved.options[0]) return resolved.options[0].id;
+  const id = metroIdFor(text);
   const m = metroById(id);
   if (m.center !== US_CENTER) return id;
   const r = await qloo.insights({ "filter.type": "urn:entity:place", "filter.location.query": m.query, "filter.geocode.country_code": "US", take: 1 }).catch(() => undefined);
@@ -460,7 +470,7 @@ export async function runCustomPlan(input: BrandInput, deps: PlanDeps, scope?: R
     if (prepared.size > 200) prepared.delete(prepared.keys().next().value!);
     prepared.set(key, { at: Date.now(), spec: ready });
   }
-  const prepared_ = ready && !("outOfScope" in ready) && input.city ? { ...ready, names: new Map(ready.names), targetMetro: await placeCity(h.qloo, isMetroId(input.city) ? input.city : metroIdFor(input.city)) } : ready && !("outOfScope" in ready) ? { ...ready, names: new Map(ready.names) } : ready;
+  const prepared_ = ready && !("outOfScope" in ready) && input.city ? { ...ready, names: new Map(ready.names), targetMetro: await placeCity(h.qloo, input.city) } : ready && !("outOfScope" in ready) ? { ...ready, names: new Map(ready.names) } : ready;
   if (!prepared_) {
     h.emit({ tool: "plan", why: `I couldn't read ${input.name} this time`, status: "needs_input", callIds: [], summary: "add a website or two brands like yours and try again" });
     deps.send({ type: "done", qlooCalls: h.count(), ms: Date.now() - h.started });

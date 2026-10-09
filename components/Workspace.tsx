@@ -247,7 +247,7 @@ export function Workspace({ slug, brands, custom: fromJourney, onBack }: { slug:
       )}
 
       <main className="stage">
-        <MapView center={center} cells={markets?.heatmap.cells ?? []} pins={pins} selectedId={selected} onSelect={(id) => { setTab("places"); setSelected(id); }} />
+        <MapView center={center} bbox={markets?.target.bbox} cells={markets?.heatmap.cells ?? []} pins={pins} selectedId={selected} onSelect={(id) => { setTab("places"); setSelected(id); }} />
 
         <aside className="panel" aria-live="polite">
           <div className="tabs" role="tablist">

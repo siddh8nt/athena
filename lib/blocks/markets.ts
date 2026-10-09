@@ -4,6 +4,7 @@ import { US_CENTER, metroById, metroIdFor, type Metro } from "@/lib/playbook/met
 import { blockSignal } from "@/lib/playbook/config";
 import { isChainName } from "@/lib/methods/names";
 import { withCalls } from "./run";
+import { locationParams } from "@/lib/places/location";
 import type { BlockContext, Enriched } from "./types";
 
 export type MarketRow = {
@@ -83,7 +84,7 @@ export function markets(ctx: BlockContext, enrich: MarketsEnrichers = {}) {
     }
 
     let target = metroById(pb.targetMetro);
-    const heat = await qloo.insights({ "filter.type": "urn:heatmap", "filter.location.query": target.query, "signal.interests.entities": signal });
+    const heat = await qloo.insights({ "filter.type": "urn:heatmap", ...(await locationParams(target)), "signal.interests.entities": signal });
     const cells = results(heat).heatmap ?? [];
     // A typed city with no known centre: centre the map on where its taste is strongest.
     if (target.center === US_CENTER && cells.length) {

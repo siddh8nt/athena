@@ -16,6 +16,14 @@ export type Metro = {
   cbsa: string;
   center: [number, number]; // lat, lon
   bbox: [number, number, number, number]; // minLon, minLat, maxLon, maxLat (for map fly-to and Overture)
+  /**
+   * A place the founder typed (lib/places): the area Qloo searches, as parts that are each an outline key from
+   * data/outlines.json ("o:OH", "o:CA|Alameda County") or a box ("b:minLon,minLat,maxLon,maxLat"). Qloo's own
+   * text lookup isn't used for these: on 10 Oct it sent "Bay Area" to Hong Kong and "Orange County" to Orlando.
+   */
+  area?: string[];
+  /** "region" names towns on the heatmap; "local" names neighbourhoods (§9.4). */
+  scale?: "region" | "local";
 };
 
 const m = (
@@ -89,10 +97,34 @@ export function metroIdFor(name: string, at?: [number, number]): string {
   return `q~${encodeURIComponent(cleanMetroName(name))}${at ? `~${at[0].toFixed(3)},${at[1].toFixed(3)}` : ""}`;
 }
 
+/** A typed place's id (lib/places): label, box, scale and area parts, so it rebuilds anywhere without the data files. */
+export function placeId(p: { label: string; bbox: [number, number, number, number]; scale: "region" | "local"; area: string[] }): string {
+  return `p~${encodeURIComponent(p.label)}~${p.bbox.map((v) => v.toFixed(3)).join(",")}~${p.scale}~${p.area.map(encodeURIComponent).join(";")}`;
+}
+
 /** Any metro by id: a named one, or one rebuilt from its self-describing id. */
 export function metroById(id: string): Metro {
   const named = METROS.find((x) => x.id === id);
   if (named) return named;
+  if (id.startsWith("p~")) {
+    const [, rawLabel, rawBox, scale, rawArea] = id.split("~");
+    const bbox = (rawBox ?? "").split(",").map(Number);
+    if (!rawLabel || bbox.length !== 4 || !bbox.every(Number.isFinite)) throw new Error(`unknown place ${id}`);
+    const name = decodeURIComponent(rawLabel);
+    const b = bbox as [number, number, number, number];
+    return {
+      id,
+      name,
+      query: name,
+      excludeQuery: name,
+      aliases: [name],
+      cbsa: "",
+      center: [(b[1] + b[3]) / 2, (b[0] + b[2]) / 2],
+      bbox: b,
+      area: (rawArea ?? "").split(";").filter(Boolean).map(decodeURIComponent),
+      scale: scale === "region" ? "region" : "local",
+    };
+  }
   const [tag, rawName, at] = id.split("~");
   if (tag !== "q" || !rawName) throw new Error(`unknown metro ${id}`);
   const name = decodeURIComponent(rawName);

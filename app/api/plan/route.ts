@@ -38,7 +38,8 @@ export async function POST(req: Request) {
     accountsText: clip(body.accountsText, 20_000),
     comparables: list(body.comparables, 5),
     competitors: list(body.competitors, 3),
-    city: clip(body.city, 60),
+    // A typed place's id carries its area (§9.3), so it can be long; plain city names stay short.
+    city: typeof body.city === "string" && body.city.startsWith("p~") ? clip(body.city, 8000) : clip(body.city, 60),
     rows,
     motions: (Array.isArray(body.motions) ? body.motions : []).map((m) => oneOf(m, MOTIONS)).filter((m): m is Motion => !!m),
     tierHint: oneOf(body.tierHint, TIERS) as Tier | undefined,

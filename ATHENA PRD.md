@@ -6,7 +6,7 @@
 
 | | |
 |---|---|
-| Version | 3.1 · 10 Oct 2026 |
+| Version | 3.2 · 10 Oct 2026 |
 | Owners | Siddhant, Jaiaditya |
 | Event | Qloo Agentic Hackathon, "Agents, but with taste." |
 | Deadline | 31 Oct 2026, 9:15 AM IST (30 Oct, 11:45 PM ET). **We submit on 28 Oct.** |
@@ -28,6 +28,7 @@
 | New in v2.14 | **A landing page and a way in** (§2.2). `/` is now a landing page: a hero that says what Athena does, the six parts of the plan, how it works, and one **Start planning** button. It leads to `/start`, where the visitor picks **Try your own brand** (which opens the brief canvas, §6.2) or one of the three demo brands (which opens its workspace). The workspace moves to `/<brand>`. |
 | New in v3.0 | **The taste model is the centrepiece, and the whole product is a journey.** (1) **Intake asks about the product, not the customer** (§6.2): what it is, price, what it's made of, how it looks, when it's used, where it's sold. Athena turns those traits into Qloo signal itself. (2) **Online or offline** is asked (with Athena's guess) and shapes the options. (3) **Growth types replace motions as the founder's choice** (§7.8): Deepen, New city, New crowd, Borrow a crowd, Show up, Online, Own location; up to 3. (4) **A taste graph built from Qloo affinities splits the brand's crowd into 2–3 crowds** (§9.23), each with its own cities, loves, partners and audience skew; the founder's reactions re-weight it. (5) **City is no longer a required input:** it's an output of the crowd, asked only when a growth type needs it. (6) **The plan is a step-by-step journey** (§13.1–13.2): each stop is a decision with options, waits for the founder, and carries choices forward. (7) **The dashboard is the advanced view** and where the pipeline is worked (§13.2). (8) **Demos become context packs** (§7.7): ready-made material that judges drop in and watch run live: three real brands built only from public material (Brightland for the offline path, Starface for the online path, Fishwife for a brand Qloo doesn't know), nothing fictional; (11) **Retail step-up** (§9.25): Deepen also ranks the bigger retailers that fit the crowd and that the brand isn't in yet; the real-brand demo workspaces and the "Try this" card are removed. (9) **Responsible-use rules updated** (§3.2, §9.17, §15): creators can be partners in their professional role, like podcasts; the Online stop suggests allowed audience interests and, when clear, the age and gender skew as ad audiences *to test*; sensitive audience types stay banned and no private individual is ever a target. (10) **Qloo's limits measured** (10 Oct): 5 calls a second and 10,000 a month on our key; one shared pacer holds the per-second limit (§14.9). Weighted signals and person entities tested live (§11.1, Q21–Q25). |
 | New in v3.1 | **What the first build changed** (10 Oct). (1) **No blind guessing** (§6.2.1): the channel comes only from the founder's words or a cited source; "Not sure" now means "look it up for me", and missing facts are researched or asked, never guessed. (2) **Any US metro** everywhere, with self-describing metro ids and Census matched by metro name (§9.3). (3) **Seed:** tags join only when fewer than 2 lookalikes are found, and first-ring calls are capped at 15 s (§9.23). (4) **Next retailers:** curated pools per category; Qloo's own retail picks only for general goods (§9.25). (5) **Message drops sensitive themes** (§9.15). (6) **Speed:** Who listens on the top 3 podcasts, Partners streams as its calls land, and the journey prefetches the next stop (§14.9). (7) A journey counts once against the own-brand cap (§14.5). |
+| New in v3.2 | **Crowd reactions now change the plan** (§9.23 step 7): the chosen crowd leads at weight 3, a "Partly" crowd's top 6 entities join at 1.5, a "Not us" crowd's top 8 are excluded from every ranking, and unreacted crowds stay out. **New crowd plus other picks asks one question at the Crowd stop** (§7.8): do the other picks target the current crowd or the new one? |
 
 **How to read this document**
 
@@ -546,7 +547,7 @@ The founder picks **up to 3** growth types. Motions (§7.1) stay inside the code
 - **The channel answer orders the cards and sets the ⭐ suggestions. Nothing is hidden:** an online brand can pick "Get into stores".
 - **For online brands, a city means where to focus ads and pop-ups**, and Places shows pop-up and event venues, not stockists.
 - **Prerequisites** grey an option out, with the reason: Deepen needs a home presence (stockists or a home city); Own location needs a physical product or service.
-- **Combinations that need one decision:** Deepen + New city → "Which city comes first?" (the plan covers both); New crowd + another type → for each other type, the current crowd or the new one ("Collab to reach the new crowd").
+- **Combinations that need one decision:** Deepen + New city → "Which city comes first?" (the plan covers both); New crowd + another type → for each other type, the current crowd or the new one ("Collab to reach the new crowd"). **Built (v3.2):** one question at the Crowd stop for all the other picks, answered before the journey moves on. "New": every stop follows the new crowd. "Current": stops only New crowd asked for follow the new crowd; every other stop follows the crowd marked "That's us", or else the main one. With New crowd picked, "That's us" marks today's customers and doesn't move the plan off the new crowd.
 - **More than 3:** Athena says in plain words that the plan would spread too thin for a young brand; it doesn't block.
 - **The founder can change growth types at any time;** the journey re-routes and keeps decisions already made.
 
@@ -997,6 +998,7 @@ type BrandBrief = {
 6. **Main and adjacent.** The crowd closest to the seed is the **main crowd**; the others are **adjacent crowds**, which power New crowd.
 7. **The founder's reaction refines it, by weighting.** The signal is sent as weighted entities (`POST /v2/insights`, `signal.interests.entities: [{id, weight}]`). "That's us" raises that crowd's weight, "Partly" leaves it, "Not us" drops it to zero and moves its entities to `filter.exclude.entities`. Starting weights **[DECISION; tune]**: That's us 3, Partly 1.5, the rest 1.
    - *Verified 10 Oct* (Liquid Death + Glossier as the signal, top 10 brands): equal weights matched the plain GET exactly (10 of 10). Liquid Death at 1.5× → 2 of 10 from its own list; 2× → 2; 3× → 5; 5× → 7; 20× → 9. **The shift is gradual**, so weights nudge a plan without flipping it.
+   - **Built (v3.2):** the chosen crowd's entities weigh 3; a "Partly" crowd's top 6 join at 1.5; a "Not us" crowd never joins and its top 8 go to the exclude list; crowds without a reaction stay out, so the plan keeps its focus. With no "Partly" crowd every weight is equal, so the request is the plain GET and hits the same cache. Weights apply to every block and stop through one weighted Qloo client; blocks don't change. *Verified live 10 Oct* (Starface, Partners): the weighted POSTs returned results, and on Next retailers the order shifted gently (Target and Williams-Sonoma up a place or two), as the weight test predicted.
    - Per-entity weights need the POST body with `id` keys (`entity` keys return HTTP 400). The single-number GET form isn't used.
 
 ### 9.24 Online (v3.0)
@@ -1982,7 +1984,7 @@ The headings mirror the judging criteria, so both people and automated screeners
 18. **Signal per block:** **brand entity plus comparables for Markets, Partners, Message and Moments; accounts for Places and the Read card** (decided 8 Oct, §7.5). From v3.0, the chosen crowd's weighted entities replace brand-plus-comparables after the Crowd stop.
 19. **Pacing:** **step by step**, each stop waits for the founder (decided 10 Oct).
 20. **Growth types:** **up to 3**, Athena pre-selects 1–2 (decided 10 Oct, §7.8).
-21. **Crowds:** **2–3, Louvain first, graph ≤ 40 calls; reaction weights That's us 3, Partly 1.5, rest 1** (§9.23).
+21. **Crowds:** **2–3, Louvain first, graph ≤ 40 calls; reaction weights: chosen crowd 3, Partly 1.5, Not us excluded, unreacted crowds left out** (v3.2) (§9.23).
 22. **Editing an earlier stop:** **later stops re-run automatically**, with a "what moved" note.
 23. **Background calls while the founder reads:** **≤ 5 per stop** (§14.9).
 24. **Without Qloo:** **Places only** (v2.11's reason holds).

@@ -1,7 +1,8 @@
 import { results, type QlooClient } from "@/lib/qloo/client";
-import { ALLOWED_AUDIENCE_TYPES, AUDIENCE_LABEL, isAllowedAudienceName, POSITIONING_TYPES, isAllowedTag, tagType } from "@/lib/methods/allowlist";
+import { AUDIENCE_LABEL, isAllowedTheme, isAllowedAudienceName, POSITIONING_TYPES, isAllowedTag, tagType } from "@/lib/methods/allowlist";
 import { percentiles, positioning } from "@/lib/methods/rank";
 import { blockSignal } from "@/lib/playbook/config";
+import { allowedAudienceIndex } from "@/lib/methods/audiences";
 import { withCalls } from "./run";
 import type { BlockContext, TagChip } from "./types";
 import type { HookEvidence, Hooks } from "@/lib/agent/hooks";
@@ -25,19 +26,6 @@ export type MessageData = {
 
 const REF_KINDS: Reference["kind"][] = ["tv_show", "movie", "artist", "book"];
 
-/** Audience id → type, from the four allow-listed types only (cached forever by the client). */
-async function allowedAudienceIndex(qloo: QlooClient): Promise<Map<string, string>> {
-  const index = new Map<string, string>();
-  await Promise.all(
-    ALLOWED_AUDIENCE_TYPES.map(async (type) => {
-      const res = await qloo.get("/v2/audiences", { "filter.audience.types": type, take: 50 });
-      const r = res.body?.results;
-      const list = Array.isArray(r) ? r : (r?.audiences ?? []);
-      for (const a of list) index.set(a.entity_id, type);
-    }),
-  );
-  return index;
-}
 
 async function topTags(qloo: QlooClient, signal: string | string[]) {
   const res = await qloo.insights({ "filter.type": "urn:tag", "signal.interests.entities": signal, "filter.tag.types": [...POSITIONING_TYPES], take: 15 });
@@ -96,7 +84,7 @@ export function message(
       ...REF_KINDS.map((k) => qloo.insights({ "filter.type": `urn:entity:${k}`, "signal.interests.entities": signal, "filter.popularity.max": 0.99, take: 5 })),
     ]);
 
-    const themes: TagChip[] = (results(themeRes).tags ?? []).slice(0, 6).map((t, i) => ({ id: t.id ?? t.tag_id ?? t.name, name: t.name, type: tagType(t), rank: i + 1, callId: themeRes.call.id }));
+    const themes: TagChip[] = (results(themeRes).tags ?? []).filter((t) => isAllowedTheme(t.name)).slice(0, 6).map((t, i) => ({ id: t.id ?? t.tag_id ?? t.name, name: t.name, type: tagType(t), rank: i + 1, callId: themeRes.call.id }));
     const styleTags = opts.fingerprint.filter((t) => /aesthetic|emotional_tone|personal_style|design/.test(t.type)).slice(0, 4);
     const references: Reference[] = refRes.flatMap((res, k) =>
       (results(res).entities ?? []).slice(0, 3).map((e, i) => ({ kind: REF_KINDS[k], id: e.entity_id, name: e.name, rank: i + 1, callId: res.call.id })),

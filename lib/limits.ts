@@ -10,6 +10,8 @@ type Bucket = { hits: number[] };
 const buckets = new Map<string, Bucket>();
 
 function take(key: string, limit: number, windowMs: number): { ok: boolean; retryInMin: number } {
+  // Local development only (set in .env.local, never in production): testing shouldn't use up the caps.
+  if (process.env.ATHENA_NO_LIMITS === "1" && process.env.NODE_ENV !== "production") return { ok: true, retryInMin: 0 };
   const now = Date.now();
   const b = buckets.get(key) ?? { hits: [] };
   b.hits = b.hits.filter((t) => now - t < windowMs);

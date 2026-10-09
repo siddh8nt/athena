@@ -12,7 +12,7 @@ const list = (v: unknown, n: number) =>
   (Array.isArray(v) ? v : typeof v === "string" ? v.split(/[,\n]/) : []).map((x) => clip(x, 120)).filter((x): x is string => !!x).slice(0, n);
 const oneOf = <T extends string>(v: unknown, all: readonly T[]) => (all.includes(v as T) ? (v as T) : undefined);
 
-const MOTIONS = ["venue", "retail", "city_launch", "partnership", "location_opening"] as const;
+const MOTIONS = ["venue", "retail", "city_launch", "partnership", "location_opening", "online"] as const;
 const TIERS = ["mass", "mainstream", "premium", "luxury"] as const;
 const SCOPE = ["card", "markets", "places", "partners", "message", "moments", "act"] as const;
 
@@ -45,10 +45,18 @@ export async function POST(req: Request) {
       pinnedComparables: Array.isArray(a.pinnedComparables) ? list(a.pinnedComparables, 5) : undefined,
     },
   };
+  const crowd = body.crowd as { name?: unknown; signal?: unknown } | undefined;
+  const signal = (Array.isArray(crowd?.signal) ? crowd!.signal : [])
+    .map((s) => s as { id?: unknown; name?: unknown })
+    .filter((s) => typeof s.id === "string" && typeof s.name === "string")
+    .slice(0, 12)
+    .map((s) => ({ id: (s.id as string).slice(0, 80), name: (s.name as string).slice(0, 120) }));
+  if (signal.length) input.crowd = { name: clip(crowd?.name, 80) ?? "Your crowd", signal };
   // A re-run after an inline answer sends only the blocks the answer changes (§6.2.2).
   const scope: RunScope = Array.isArray(body.scope) ? body.scope.map((s) => oneOf(s, SCOPE)).filter((s): s is Block | "card" => !!s) : undefined;
   const ip = clientIp(req);
-  const cap = scope ? LIMITS.rerun(ip) : LIMITS.ownBrand(ip);
+  // A journey counts once, when its crowds are built (/api/crowds); its stops and its dashboard are re-runs.
+  const cap = scope || input.crowd ? LIMITS.rerun(ip) : LIMITS.ownBrand(ip);
   if (!cap.ok) {
     // Past a cap: a friendly note in the Read tab, never an error (§14.5).
     return planStream(async (send) => {

@@ -146,7 +146,14 @@ function reasonChips(e: QlooEntity, callId: string, names: Map<string, string>, 
 }
 
 /** Partners (§9.6): collab brands and podcasts, with mutual fit for the top brands and "Who listens" for the top podcasts. */
-export function partners(ctx: BlockContext, opts: { fingerprint: TagChip[]; websites?: (cards: PartnerCard[]) => Promise<void>; podcastDetails?: (cards: PartnerCard[]) => Promise<void> } = { fingerprint: [] }) {
+/** Podcasts that get "Who listens" (5 Qloo calls each). 10 Oct: 3, down from 5, to keep Partners fast. */
+export const WHO_LISTENS_TOP = 3;
+
+/**
+ * Partners (§9.6): collab brands and podcasts, with mutual fit for the top brands and "Who listens" for the top podcasts.
+ * `early` gets the lists as soon as the first three calls return, then again as each slower part lands (v3.0 speed).
+ */
+export function partners(ctx: BlockContext, opts: { fingerprint: TagChip[]; websites?: (cards: PartnerCard[]) => Promise<void>; podcastDetails?: (cards: PartnerCard[]) => Promise<void>; early?: (data: PartnersData) => void } = { fingerprint: [] }) {
   return withCalls(ctx, "partners", async ({ pb, qloo, names, emit }) => {
     const signal = blockSignal(pb, "partners");
     const own = pb.signal.brand ? await lookupEntity(qloo, pb.signal.brand) : undefined;
@@ -202,6 +209,9 @@ export function partners(ctx: BlockContext, opts: { fingerprint: TagChip[]; webs
 
     const peers = peerRes ? (results(peerRes).entities ?? []).slice(0, 14).map((e) => ({ id: e.entity_id, name: e.name })) : [];
     const peerSet = pb.signal.brand ? [pb.signal.brand, ...peers.map((p) => p.id)] : [];
+    const ownBrand = own ? { id: own.entity_id, priceTier: ownTier, narrowGenre: narrow } : undefined;
+    const snapshot = (): PartnersData => ({ brands: [...brands], podcasts: [...podcasts], peerSet, peers, ownBrand });
+    opts.early?.(snapshot());
     emit({
       tool: "rank_partners",
       why: "Finding brands and podcasts your crowd over-indexes on, within reach",
@@ -209,33 +219,37 @@ export function partners(ctx: BlockContext, opts: { fingerprint: TagChip[]; webs
       callIds: [brandRes.call.id, ...(podRes ? [podRes.call.id] : []), ...(peerRes ? [peerRes.call.id] : [])],
       summary: `${brands.length} brands, ${podcasts.length} podcasts`,
     });
-    // Mutual fit (§9.6) for the top 6 brands: one reverse call each, in parallel. Needs the brand in Qloo.
-    if (pb.signal.brand && peerSet.length >= 5 && brands.length) {
+    // The slower parts run side by side, and each one updates the lists as it lands (v3.0 speed).
+    const mutualFit = async () => {
+      // Mutual fit (§9.6) for the top 6 brands: one reverse call each, in parallel. Needs the brand in Qloo.
+      if (!(pb.signal.brand && peerSet.length >= 5 && brands.length)) return;
       emit({ tool: "mutual_fit", why: "Checking the other side: how much each partner's crowd likes you", status: "running", callIds: [], summary: `top ${Math.min(6, brands.length)} brands` });
       const scored = await Promise.all(brands.slice(0, 6).map((c) => reverseFit(qloo, c, pb.signal.brand!, peerSet).catch(() => c)));
-      scored.forEach((c, i) => (brands[i] = c));
+      scored.forEach((c, i) => (brands[i] = { ...brands[i], pReverse: c.pReverse, mutual: c.mutual, reverseRank: c.reverseRank }));
       const both = scored.filter((c) => c.mutual !== undefined && c.mutual >= 0.7).length;
       emit({ tool: "mutual_fit", why: "Scored partners from both sides", status: "ok", callIds: scored.flatMap((c) => (c.reverseRank ? [c.reverseRank.callId] : [])), summary: `${both} of ${scored.length} fit strongly both ways` });
-    }
-    // Who listens (top 5 podcasts): Qloo insights with each show as the signal, in parallel.
-    if (podcasts.length) {
-      const top = podcasts.slice(0, 5);
+      opts.early?.(snapshot());
+    };
+    const whoListens = async () => {
+      // Who listens (top podcasts): Qloo insights with each show as the signal, in parallel.
+      if (!podcasts.length) return;
+      const top = podcasts.slice(0, WHO_LISTENS_TOP);
       emit({ tool: "who_listens", why: "Reading each podcast's audience: who listens and what they love", status: "running", callIds: [], summary: `top ${top.length} podcasts` });
-      const heard = await Promise.all(
-        top.map((c) => listenersOf(qloo, c.id, { signal, ownBrand: pb.signal.brand, exclude: pb.competitors, peerSet }).catch(() => undefined)),
-      );
+      const heard = await Promise.all(top.map((c) => listenersOf(qloo, c.id, { signal, ownBrand: pb.signal.brand, exclude: pb.competitors, peerSet }).catch(() => undefined)));
       heard.forEach((l, i) => l && (podcasts[i].listeners = l));
       const ok = heard.filter(Boolean).length;
       emit({ tool: "who_listens", why: "Read each podcast's audience", status: ok ? "ok" : "thin", callIds: heard.flatMap((l) => l?.callIds ?? []), summary: `${ok} of ${top.length} podcasts profiled` });
-    }
+      opts.early?.(snapshot());
+    };
     // Official websites from Wikidata and podcast details from Apple (§9.19); enrichments never change the order.
-    await Promise.all([
-      opts.websites ? opts.websites(brands).catch(() => undefined) : undefined,
-      opts.podcastDetails ? opts.podcastDetails(podcasts).catch(() => undefined) : undefined,
-    ]);
+    const enrich = async () => {
+      await Promise.all([opts.websites ? opts.websites(brands).catch(() => undefined) : undefined, opts.podcastDetails ? opts.podcastDetails(podcasts).catch(() => undefined) : undefined]);
+      opts.early?.(snapshot());
+    };
+    await Promise.all([mutualFit(), whoListens(), enrich()]);
     const total = brands.length + podcasts.length;
     return {
-      data: { brands, podcasts, peerSet, peers, ownBrand: own ? { id: own.entity_id, priceTier: ownTier, narrowGenre: narrow } : undefined } satisfies PartnersData,
+      data: snapshot(),
       status: total === 0 ? "empty" : total < 8 ? "thin" : "ok",
       thinReason: total < 8 ? `only ${total} partners matched` : undefined,
     };

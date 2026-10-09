@@ -1,13 +1,13 @@
 // Playbook = Category × Tier × Stage × Motions → one PlaybookConfig (PRD §7.1–7.6).
 
-export type Motion = "venue" | "retail" | "city_launch" | "partnership" | "location_opening";
+export type Motion = "venue" | "retail" | "city_launch" | "partnership" | "location_opening" | "online";
 export type Block = "markets" | "places" | "partners" | "message" | "moments" | "act";
 export type Tier = "mass" | "mainstream" | "premium" | "luxury";
 export type Stage = "prelaunch" | "early" | "scaling";
 export type CategoryId =
   | "G1" | "G2" | "G3" | "G4" | "G5" | "G6" | "G7" | "G8"
   | "T1" | "T2" | "T3" | "A1" | "A2" | "A3" | "A4" | "L1";
-export type RecipeId = "R1" | "R2" | "R3" | "R4";
+export type RecipeId = "R1" | "R2" | "R3" | "R4" | "R5";
 export type DraftKind = "venue_pitch" | "buyer_pitch" | "event_inquiry" | "collab_inquiry" | "sponsorship_inquiry";
 
 const P = "urn:tag:genre:place:";
@@ -105,12 +105,15 @@ export const RECIPES: Record<RecipeId, { motions: Motion[]; blocks: Block[]; dra
   R2: { motions: ["city_launch"], blocks: ["markets", "places", "moments", "partners", "message", "act"], drafts: ["event_inquiry", "collab_inquiry"], stages: ["Target", "Contacted", "Booked", "Hosted", "Rebooked"] },
   R3: { motions: ["partnership"], blocks: ["partners", "message", "moments", "markets", "places", "act"], drafts: ["collab_inquiry", "sponsorship_inquiry"], stages: ["Target", "Contacted", "In talks", "Live", "Renewed"] },
   R4: { motions: ["location_opening"], blocks: ["markets", "places", "act"], drafts: [], stages: ["Shortlisted", "Visited", "Chosen"] },
+  // v3.0 (§7.6): online brands. The Online stop (§9.24) sits outside the six blocks; the blocks it leans on are these.
+  R5: { motions: ["online"], blocks: ["partners", "message", "moments", "act"], drafts: ["collab_inquiry", "sponsorship_inquiry"], stages: ["Target", "Contacted", "In talks", "Live", "Renewed"] },
 };
 
 export function recipeFor(motion: Motion): RecipeId {
   if (motion === "venue" || motion === "retail") return "R1";
   if (motion === "city_launch") return "R2";
   if (motion === "partnership") return "R3";
+  if (motion === "online") return "R5";
   return "R4";
 }
 
@@ -139,6 +142,8 @@ export type Signal = {
   brand?: string;
   comparables: string[];
   tags: string[];
+  /** v3.0: the crowd the founder chose (§9.23 step 7). It replaces the brand and comparables wherever they'd be used. */
+  crowd?: string[];
 };
 
 export type PlaybookConfig = {
@@ -173,6 +178,7 @@ export type SignalPolicy = "accounts-only" | "brand-led";
 const BRAND_LED_BLOCKS = new Set(["markets", "partners", "message", "moments"]);
 
 export function blockSignal(pb: PlaybookConfig, block: string): string[] {
+  if (pb.signal.crowd?.length && BRAND_LED_BLOCKS.has(block)) return pb.signal.crowd.slice(0, 50);
   if (pb.signalPolicy === "brand-led" && pb.signal.brand && BRAND_LED_BLOCKS.has(block)) {
     return [pb.signal.brand, ...pb.signal.comparables].slice(0, 50);
   }
@@ -181,7 +187,7 @@ export function blockSignal(pb: PlaybookConfig, block: string): string[] {
 
 /** The entity IDs that make up the signal for this stage (§7.5), capped at 50. */
 export function signalIds(s: Signal, stage: Stage): string[] {
-  const brandSide = [s.brand, ...s.comparables].filter(Boolean) as string[];
+  const brandSide = (s.crowd?.length ? s.crowd : [s.brand, ...s.comparables]).filter(Boolean) as string[];
   const ids = stage === "scaling" ? [...s.accounts, ...s.wins] : [...s.accounts, ...s.wins, ...brandSide];
   return [...new Set(ids.length ? ids : brandSide)].slice(0, 50);
 }

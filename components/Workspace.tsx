@@ -4,9 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { usePlan, type PlanSource } from "./usePlan";
-import { BriefCanvas } from "./BriefCanvas";
 import { InlineQuestions, BuiltFrom, type Answers } from "./InlineQuestions";
-import { briefToInput } from "@/lib/brief/to-input";
 import type { BrandBrief } from "@/lib/brief/types";
 import type { InlineQuestion } from "@/lib/agent/plan";
 import { ActView, type Moved } from "./Act";
@@ -29,9 +27,15 @@ export type BrandTab = { slug: string; name: string; blurb: string };
 
 const TAB_LABEL: Record<Block | "read", string> = { read: "Read", markets: "Markets", places: "Places", partners: "Partners", message: "Message", moments: "Moments", act: "Actions" };
 
-export function Workspace({ slug, brands }: { slug: string; brands: BrandTab[] }) {
-  const [custom, setCustom] = useState<{ name: string; runId: number; brief: BrandBrief; answers: Answers; answered: string[]; source: PlanSource } | null>(null);
-  const [intakeOpen, setIntakeOpen] = useState(false);
+/**
+ * The workspace: a demo brand's plan, or (v3.0) the dashboard for a journey's plan, the advanced view with
+ * everything on one screen (§13.2). `custom` is the journey's input: the brief, the chosen crowd, city and growth.
+ */
+export function Workspace({ slug, brands, custom: fromJourney, onBack }: { slug: string; brands: BrandTab[]; custom?: { brief: BrandBrief; input: Record<string, unknown> }; onBack?: () => void }) {
+  const [custom, setCustom] = useState<{ name: string; runId: number; brief: BrandBrief; answers: Answers; answered: string[]; source: PlanSource } | null>(() =>
+    fromJourney ? { name: (fromJourney.brief.name?.value ?? "Your brand").trim(), runId: 1, brief: fromJourney.brief, answers: {}, answered: [], source: { kind: "custom", input: fromJourney.input, id: 1 } } : null,
+  );
+  const intake = () => (window.location.href = "/plan");
   const source: PlanSource = custom?.source ?? { kind: "demo", slug };
   const plan = usePlan(source);
   const activeKey = custom ? custom.source : null;
@@ -60,8 +64,8 @@ export function Workspace({ slug, brands }: { slug: string; brands: BrandTab[] }
     }
     // Deep links: /brightland?try=compare opens that item (§2.4).
     const params = new URLSearchParams(window.location.search);
-    // From /start: "Try your own brand" opens the brief canvas straight away.
-    if (params.get("own") === "1") setIntakeOpen(true);
+    // Older links: "Try your own brand" now lives in the journey.
+    if (params.get("own") === "1") intake();
     const k = params.get("try") as TryKey | null;
     if (k && TRY_ITEMS.some((i) => i.key === k)) pickTry(k);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -100,7 +104,9 @@ export function Workspace({ slug, brands }: { slug: string; brands: BrandTab[] }
     setPlacesOrder([]);
     setMovedNotes([]);
   }, [slug, activeKey]);
-  useEffect(() => setCustom(null), [slug]);
+  useEffect(() => {
+    if (!fromJourney) setCustom(null);
+  }, [slug, fromJourney]);
   useEffect(() => {
     if (slug !== firstSlug || custom) tick("switch");
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -153,7 +159,7 @@ export function Workspace({ slug, brands }: { slug: string; brands: BrandTab[] }
       // Keep Athena's comparable pick fixed so a re-run doesn't drift from the blocks already on screen.
       const swap = plan.questions.find((x) => x.id === "swap_comparables");
       const answers = { ...(swap && !c.answers.pinnedComparables ? { pinnedComparables: swap.assumed.split(", ") } : {}), ...c.answers, ...a };
-      return { ...c, answers, answered: [...c.answered, q.id], source: { kind: "custom", input: { ...briefToInput(c.brief), answers }, id: Date.now(), scope: q.reruns } };
+      return { ...c, answers, answered: [...c.answered, q.id], source: { kind: "custom", input: { ...(c.source.kind === "custom" ? c.source.input : {}), answers }, id: Date.now(), scope: q.reruns } };
     });
   const openQuestions = custom ? plan.questions.filter((q) => !custom.answered.includes(q.id)) : [];
   const openTrace = (b: Block | "read") => {
@@ -166,12 +172,12 @@ export function Workspace({ slug, brands }: { slug: string; brands: BrandTab[] }
       if (plan.card)
         return (
           <>
-            {custom && <BuiltFrom card={plan.card} brief={custom.brief} questions={openQuestions} onReopenBrief={() => setIntakeOpen(true)} onOpenQuestions={() => document.querySelector(".inline-qs")?.scrollIntoView({ behavior: "smooth" })} />}
+            {custom && <BuiltFrom card={plan.card} brief={custom.brief} questions={openQuestions} onReopenBrief={() => (onBack ? onBack() : intake())} onOpenQuestions={() => document.querySelector(".inline-qs")?.scrollIntoView({ behavior: "smooth" })} />}
             <ReadView card={plan.card} meta={plan.cardMeta} onTrace={() => openTrace("read")} />
           </>
         );
       const asks = plan.status === "done" ? plan.rail.filter((e) => e.status === "needs_input") : [];
-      if (asks.length) return <section className="block"><h2>One more thing</h2>{asks.map((e, i) => <p key={i}>{e.why}: {e.summary}.</p>)}<button className="primary" onClick={() => setIntakeOpen(true)}>Add details</button></section>;
+      if (asks.length) return <section className="block"><h2>One more thing</h2>{asks.map((e, i) => <p key={i}>{e.why}: {e.summary}.</p>)}<button className="primary" onClick={() => (onBack ? onBack() : intake())}>Add details</button></section>;
       return <ReadingNow steps={plan.rail} />;
     }
     const b = plan.blocks[tab];
@@ -229,7 +235,7 @@ export function Workspace({ slug, brands }: { slug: string; brands: BrandTab[] }
           )}
         </nav>
         <div className="top-actions">
-          <button className="primary" onClick={() => setIntakeOpen(true)}>Try your own brand</button>
+          {onBack ? <button onClick={onBack}>← Back to the journey</button> : <Link className="button primary" href="/plan">Try your own brand</Link>}
           <button onClick={() => setTrace({ title: "All blocks", calls: [...(plan.cardMeta?.calls ?? []), ...Object.values(plan.blocks).flatMap((x) => x?.meta.calls ?? [])] })}>Trace</button>
         </div>
       </header>
@@ -275,7 +281,7 @@ export function Workspace({ slug, brands }: { slug: string; brands: BrandTab[] }
             setTryOpen(!tryOpen);
             saveTry(tryDone, !tryOpen);
           }}
-          onOwnBrand={() => setIntakeOpen(true)}
+          onOwnBrand={intake}
         />
 
         <div className={`rail ${railOpen ? "open" : ""}`}>
@@ -308,18 +314,6 @@ export function Workspace({ slug, brands }: { slug: string; brands: BrandTab[] }
             ))}
           </ol>
         </div>
-      )}
-
-      {intakeOpen && (
-        <BriefCanvas
-          initial={custom?.brief}
-          onClose={() => setIntakeOpen(false)}
-          onStart={(brief) => {
-            setIntakeOpen(false);
-            const id = Date.now();
-            setCustom({ name: (brief.name?.value ?? "Your brand").trim(), runId: id, brief, answers: {}, answered: [], source: { kind: "custom", input: { ...briefToInput(brief) }, id } });
-          }}
-        />
       )}
 
       <footer className="foot">

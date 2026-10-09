@@ -3,7 +3,7 @@ import type { QlooEntity } from "@/lib/qloo/types";
 import { resolveAll, resolveBrand } from "@/lib/methods/resolve";
 import { chainNames, nameSim, norm } from "@/lib/methods/names";
 import { CATEGORIES, VENUE_LABELS, VENUE_TAGS, buildPlaybook, type Block, type CategoryId, type Motion, type PlaybookConfig, type Tier, type VenueType } from "@/lib/playbook/config";
-import { metroById, metroFor } from "@/lib/playbook/metros";
+import { US_CENTER, isMetroId, metroById, metroIdFor } from "@/lib/playbook/metros";
 import type { DemoBrand } from "@/lib/playbook/demo";
 import type { Row } from "@/lib/methods/names";
 import { fingerprint } from "@/lib/blocks/fingerprint";
@@ -108,7 +108,8 @@ async function resolveAccounts(qloo: QlooClient, rows: Row[], emit: Emit, label:
   const matched = resolved.flatMap((r) => (r.status === "matched" && !r.entity.properties?.is_closed ? [r.entity] : []));
   const counts = new Map<string, number>();
   for (const e of matched) {
-    const m = metroFor(e.properties?.geocode?.metro)?.id;
+    const raw = e.properties?.geocode?.metro;
+    const m = raw ? metroIdFor(raw, e.location ? [e.location.lat, e.location.lon] : undefined) : undefined;
     if (m) counts.set(m, (counts.get(m) ?? 0) + 1);
   }
   const home = [...counts].sort((a, b) => b[1] - a[1])[0]?.[0];
@@ -264,7 +265,7 @@ async function prepareCustom(input: BrandInput, qloo: QlooClient, deps: PlanDeps
 
   const names = new Map<string, string>();
   for (const e of [...acc.matched, ...(own?.entity ? [own.entity] : []), ...comparables, ...competitors]) names.set(e.entity_id, e.name);
-  const city = input.city ? metroFor(input.city)?.id : undefined;
+  const city = input.city ? (isMetroId(input.city) ? input.city : metroIdFor(input.city)) : undefined;
   return {
     slug: `custom-${norm(input.name).replace(/ /g, "-").slice(0, 40)}`,
     brandName: own?.entity?.name ?? input.name,
@@ -287,8 +288,9 @@ async function prepareCustom(input: BrandInput, qloo: QlooClient, deps: PlanDeps
 }
 
 /** Runs the plan for a prepared business: the Read card, then every block, streamed and isolated. */
-async function runPlan(spec: PlanSpec, deps: PlanDeps, qloo: QlooClient, emit: Emit, started: number, count: () => number, scope?: RunScope): Promise<void> {
-  const signal = { accounts: spec.accounts, wins: [], declines: [], brand: spec.own?.entity_id, comparables: spec.comparables.map((c) => c.entity_id), tags: [] };
+async function runPlan(spec: PlanSpec, deps: PlanDeps, qloo: QlooClient, emit: Emit, started: number, count: () => number, scope?: RunScope, crowd?: BrandInput["crowd"]): Promise<void> {
+  const signal = { accounts: spec.accounts, wins: [], declines: [], brand: spec.own?.entity_id, comparables: spec.comparables.map((c) => c.entity_id), tags: [], crowd: crowd?.signal.map((s) => s.id) };
+  for (const s of crowd?.signal ?? []) spec.names.set(s.id, s.name);
   if (!signal.accounts.length && !signal.brand && !signal.comparables.length) {
     emit({ tool: "plan", why: `I need a little more about ${spec.brandName} to read its taste`, status: "needs_input", callIds: [], summary: "add a website, a few accounts or two brands like yours" });
     deps.send({ type: "done", qlooCalls: count(), ms: Date.now() - started });
@@ -329,7 +331,9 @@ async function runPlan(spec: PlanSpec, deps: PlanDeps, qloo: QlooClient, emit: E
       { label: "Channels I'll look at", value: channelLabels(pb).join(", ") },
       {
         label: "Taste signal",
-        value: spec.accounts.length ? `Your ${spec.accounts.length} ${spec.accountsLabel ?? ""} accounts in Qloo`.replace("  ", " ") : [spec.own?.name, ...spec.comparables.map((c) => c.name)].filter(Boolean).join(" + "),
+        value: crowd
+          ? `${crowd.name}: ${crowd.signal.slice(0, 4).map((s) => s.name).join(", ")}`
+          : spec.accounts.length ? `Your ${spec.accounts.length} ${spec.accountsLabel ?? ""} accounts in Qloo`.replace("  ", " ") : [spec.own?.name, ...spec.comparables.map((c) => c.name)].filter(Boolean).join(" + "),
         evidence: spec.rows.length ? `${spec.accounts.length} of ${spec.rows.length} accounts matched` : undefined,
       },
       ...(spec.competitors.length ? [{ label: "Competitors", value: spec.competitors.map((c) => c.name).join(", ") }] : []),
@@ -343,7 +347,14 @@ async function runPlan(spec: PlanSpec, deps: PlanDeps, qloo: QlooClient, emit: E
 
   // Blocks run concurrently and stream as soon as their own calls return (§14.9). Message waits for
   // Partners, because its default competitors come from the mutual-fit peer set (§9.16).
-  const partnersRun = pb.blocks.includes("partners") ? partners(ctx, { fingerprint: fp.data, websites: deps.enrich?.websites, podcastDetails: deps.enrich?.podcastDetails }) : undefined;
+  // Partners streams its lists as soon as the first calls return, then updates as mutual fit and "Who listens" land.
+  const partnersCalls: BlockMeta["calls"] = [];
+  const partnersEarly = !scope || scope.includes("partners")
+    ? (data: unknown) => deps.send({ type: "block", block: "partners", meta: { block: "partners", status: "ok", calls: [...partnersCalls], ms: Date.now() - started }, data })
+    : undefined;
+  const partnersRun = pb.blocks.includes("partners")
+    ? partners({ ...ctx, qloo: ctx.qloo.withLog((c) => partnersCalls.push(c)) }, { fingerprint: fp.data, websites: deps.enrich?.websites, podcastDetails: deps.enrich?.podcastDetails, early: partnersEarly })
+    : undefined;
   partnersRun?.catch(() => undefined); // handled where it's awaited; avoids an unhandled rejection
   const runBlock = async (b: Block, attempt: number): Promise<{ meta: BlockMeta; data: unknown } | undefined> => {
     switch (b) {
@@ -412,22 +423,51 @@ export async function runDemoPlan(brand: DemoBrand, deps: PlanDeps): Promise<voi
   await runPlan(spec, deps, h.qloo, h.emit, h.started, h.count);
 }
 
+/**
+ * A typed city outside the named metros has no known centre; one place lookup in Qloo gives it one, so maps and
+ * Ticketmaster (which searches by coordinates) land in the right place (§9.3, v3.0). Never throws.
+ */
+async function placeCity(qloo: QlooClient, id: string): Promise<string> {
+  const m = metroById(id);
+  if (m.center !== US_CENTER) return id;
+  const r = await qloo.insights({ "filter.type": "urn:entity:place", "filter.location.query": m.query, "filter.geocode.country_code": "US", take: 1 }).catch(() => undefined);
+  const e = r?.results.entities?.[0];
+  return e?.location ? metroIdFor(m.name, [e.location.lat, e.location.lon]) : id;
+}
+
+/**
+ * The journey runs one stop at a time (§6.2.2), so the business read (website, classification, resolution) is kept
+ * for an hour per brand input and reused by each stop's run. Per instance; another instance just reads it again.
+ */
+const PREPARED_TTL = 60 * 60 * 1000;
+const prepared = new Map<string, { at: number; spec: PlanSpec | { outOfScope: string } }>();
+const preparedKey = (input: BrandInput) => JSON.stringify({ ...input, crowd: undefined, city: undefined });
+
 /** Any brand (M10, §6.2): the agent reads the business first, then runs the same blocks. */
 export async function runCustomPlan(input: BrandInput, deps: PlanDeps, scope?: RunScope): Promise<void> {
   const h = harness(deps);
-  const prepared = await prepareCustom(input, h.qloo, deps, h.emit).catch((err) => {
+  const key = preparedKey(input);
+  const hit = prepared.get(key);
+  let ready = hit && Date.now() - hit.at < PREPARED_TTL ? hit.spec : undefined;
+  if (ready) h.emit({ tool: "plan", why: `Picking up ${input.name} where we left off`, status: "ok", callIds: [], summary: "the business read is ready" });
+  ready ??= await prepareCustom(input, h.qloo, deps, h.emit).catch((err) => {
     console.error("prepareCustom failed", err);
     return undefined;
   });
-  if (!prepared) {
+  if (ready) {
+    if (prepared.size > 200) prepared.delete(prepared.keys().next().value!);
+    prepared.set(key, { at: Date.now(), spec: ready });
+  }
+  const prepared_ = ready && !("outOfScope" in ready) && input.city ? { ...ready, names: new Map(ready.names), targetMetro: await placeCity(h.qloo, isMetroId(input.city) ? input.city : metroIdFor(input.city)) } : ready && !("outOfScope" in ready) ? { ...ready, names: new Map(ready.names) } : ready;
+  if (!prepared_) {
     h.emit({ tool: "plan", why: `I couldn't read ${input.name} this time`, status: "needs_input", callIds: [], summary: "add a website or two brands like yours and try again" });
     deps.send({ type: "done", qlooCalls: h.count(), ms: Date.now() - h.started });
     return;
   }
-  if ("outOfScope" in prepared) {
-    h.emit({ tool: "classify_business", why: "Out of scope", status: "needs_input", callIds: [], summary: prepared.outOfScope });
+  if ("outOfScope" in prepared_) {
+    h.emit({ tool: "classify_business", why: "Out of scope", status: "needs_input", callIds: [], summary: prepared_.outOfScope });
     deps.send({ type: "done", qlooCalls: h.count(), ms: Date.now() - h.started });
     return;
   }
-  await runPlan(prepared, deps, h.qloo, h.emit, h.started, h.count, scope);
+  await runPlan(prepared_, deps, h.qloo, h.emit, h.started, h.count, scope, input.crowd);
 }

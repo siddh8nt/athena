@@ -21,18 +21,20 @@ export type VenuePick = {
   contact: { phone?: Enriched<string>; website?: Enriched<string> };
 };
 
-export type PlacesData = { picks: VenuePick[]; pool: string[]; metroId: string; page: number; hasMore: boolean; signal: string[]; channels: string[] };
+/** `fromCrowd`: ranked against the crowd the founder chose (§9.23), not their own accounts, so reasons say so. */
+export type PlacesData = { picks: VenuePick[]; pool: string[]; metroId: string; page: number; hasMore: boolean; signal: string[]; channels: string[]; fromCrowd?: boolean };
 
 const PRICE_RANGE: Record<Tier, [number, number]> = { mass: [1, 2], mainstream: [1, 3], premium: [2, 4], luxury: [3, 4] };
 
 /** Template reasons from Qloo fields, never LLM text (§9.5). */
-export function reasonsFor(e: QlooEntity, callId: string, names: Map<string, string>, fingerprint: TagChip[], tier: Tier): Evidence[] {
+export function reasonsFor(e: QlooEntity, callId: string, names: Map<string, string>, fingerprint: TagChip[], tier: Tier, fromCrowd = false): Evidence[] {
   const out: Evidence[] = [];
   const contributors = (e.query?.explainability?.["signal.interests.entities"] ?? [])
     .filter((c) => c.score >= 0.1 || out.length === 0)
     .filter((c) => names.has(c.entity_id))
     .slice(0, 2);
-  if (contributors.length) out.push({ kind: "contribution", label: `Like your ${contributors.map((c) => names.get(c.entity_id)).join(" and ")}`, callId });
+  const who = contributors.map((c) => names.get(c.entity_id)).join(" and ");
+  if (contributors.length) out.push({ kind: "contribution", label: fromCrowd ? `Loved by fans of ${who}` : `Like your ${who}`, callId });
   const fp = new Set(fingerprint.map((t) => t.id));
   const shared = (e.tags ?? []).filter((t) => fp.has(t.id ?? t.tag_id ?? "")).slice(0, 2);
   if (shared.length) out.push({ kind: "tag", label: `Shared: ${shared.map((t) => t.name).join(", ")}`, callId });
@@ -54,6 +56,8 @@ export function isPickable(e: QlooEntity, chainSet: Set<string>): boolean {
 /** Places (§9.5): ranked venues in the target metro; chains and closed venues removed; first 20 shown. */
 export function places(ctx: BlockContext, opts: { fingerprint: TagChip[]; chainNames?: Set<string>; page?: number } = { fingerprint: [] }) {
   return withCalls(ctx, "places", async ({ pb, qloo, names, emit }) => {
+    // Places keeps the founder's own accounts when there are any (§7.5); otherwise the chosen crowd is the signal.
+    const fromCrowd = !!pb.signal.crowd?.length && !pb.signal.accounts.length && !pb.signal.wins.length;
     const metro = metroById(pb.targetMetro);
     const page = opts.page ?? 1;
     const res = await qloo.insights({
@@ -87,7 +91,7 @@ export function places(ctx: BlockContext, opts: { fingerprint: TagChip[]; chainN
           lon: e.location?.lon,
           priceLevel: e.properties?.price_level,
           popularity: e.popularity,
-          reasons: reasonsFor(withRank, res.call.id, names, opts.fingerprint, pb.tier),
+          reasons: reasonsFor(withRank, res.call.id, names, opts.fingerprint, pb.tier, fromCrowd),
           tags: (e.tags ?? []).filter((t) => !(t.type ?? "").includes("customer_identity")).slice(0, 6).map((t) => ({ id: t.id ?? t.tag_id ?? t.name, name: t.name })),
           contact: {
             phone: e.properties?.phone ? { value: e.properties.phone, source: "Qloo" as const, callId: res.call.id } : undefined,
@@ -111,6 +115,7 @@ export function places(ctx: BlockContext, opts: { fingerprint: TagChip[]; chainN
         page,
         hasMore: all.length >= 50,
         signal: signalIds(pb.signal, pb.stage),
+        fromCrowd,
         channels: pb.placeChannels.map((u) => VENUE_LABELS[(Object.keys(VENUE_TAGS) as VenueType[]).find((k) => VENUE_TAGS[k] === u)!]).filter(Boolean),
       } satisfies PlacesData,
       status: picks.length === 0 ? "empty" : thin ? "thin" : "ok",

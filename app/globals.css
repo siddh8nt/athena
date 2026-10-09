@@ -272,6 +272,39 @@ a.button.primary { background: var(--accent); color: var(--on-accent); border-co
 .msg-you { background: var(--accent-soft); align-self: flex-end; }
 .msg-files { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
 .typing { color: var(--muted); }
+/* The brief chat feels alive: messages rise in, the reply streams with a caret, steps tick off, facts light up. */
+.msgs > li { animation: rise 0.25s ease-out both; }
+@keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.streaming::after { content: ""; display: inline-block; width: 7px; height: 1.05em; margin-left: 2px; vertical-align: -2px; background: var(--accent); animation: blink 1s steps(2) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+.trail { align-self: flex-start; max-width: 86%; font-size: 13px; color: var(--muted); }
+.trail ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.trail li { display: flex; align-items: center; gap: 8px; animation: rise 0.2s ease-out both; }
+.tick { color: var(--accent); font-size: 12px; width: 14px; text-align: center; }
+.spin { width: 12px; height: 12px; margin: 0 1px; border-radius: 50%; border: 2px solid var(--line); border-top-color: var(--accent); animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.shimmer-text { background: linear-gradient(90deg, var(--muted) 30%, var(--fg, #fff) 50%, var(--muted) 70%); background-size: 200% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: shimmer 1.6s linear infinite; }
+@keyframes shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+.trail-summary { background: none; border: 0; padding: 0; color: var(--muted); font: inherit; cursor: pointer; }
+.trail-summary:hover { color: var(--accent); }
+.trail-sources { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.source-chip { font-size: 11px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); text-decoration: none; animation: pop 0.3s ease-out both; }
+.source-chip:hover { color: var(--accent); border-color: var(--accent); }
+@keyframes pop { from { opacity: 0; transform: scale(0.85); } to { opacity: 1; transform: none; } }
+.fact-in { animation: fact-in 0.9s ease-out; border-radius: 4px; }
+@keyframes fact-in { from { background: var(--accent-soft); } to { background: transparent; } }
+.shimmer-bar { display: block; height: 12px; width: 70%; margin-top: 4px; border-radius: 4px; background: linear-gradient(90deg, var(--line) 25%, var(--accent-soft) 50%, var(--line) 75%); background-size: 200% 100%; animation: shimmer 1.4s linear infinite; }
+.taste-card { align-self: stretch; border: 1px solid var(--accent-soft); background: linear-gradient(180deg, var(--accent-soft), transparent 70%); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+.taste-card p { margin: 0; }
+.taste-head { font-weight: 600; }
+.taste-loves { display: flex; flex-wrap: wrap; gap: 6px; }
+.love { padding: 4px 10px; border-radius: 999px; background: var(--bg); border: 1px solid var(--line); font-size: 13px; animation: pop 0.3s ease-out both; }
+.love small { color: var(--muted); margin-left: 2px; }
+.taste-tags { font-size: 12px; color: var(--muted); }
+.taste-cities .replies { margin-top: 6px; }
+.taste-foot { font-size: 11px; color: var(--muted); }
+@media (prefers-reduced-motion: reduce) { .love { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .msgs > li, .trail li, .source-chip, .fact-in { animation: none; } .spin, .shimmer-bar, .shimmer-text, .streaming::after { animation-duration: 0s; } }
 .replies { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 16px 10px; }
 .inline-q .replies { padding: 6px 0 0; }
 .composer { border-top: 1px solid var(--line); padding: 10px 16px 14px; display: flex; flex-direction: column; gap: 8px; }
@@ -288,6 +321,11 @@ a.button.primary { background: var(--accent); color: var(--on-accent); border-co
 .src { color: var(--muted); font-size: 11px; }
 .src-agent_guess { color: var(--thin); }
 .src-qloo, .src-inferred, .src-website { color: var(--accent); }
+.understood .src { align-self: flex-start; margin-top: 2px; }
+.understood .src-web { background: var(--accent-soft); color: var(--accent); }
+.research summary { cursor: pointer; color: var(--muted); }
+.research ul { margin: 4px 0 0; padding-left: 16px; }
+.research a { color: var(--accent); }
 .notes { padding-left: 16px; }
 .file-chips { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 4px; font-size: 12px; }
 .file-chips .busy { opacity: 0.7; }
@@ -347,3 +385,79 @@ a.button.big { padding: 11px 20px; font-size: 15px; font-weight: 600; }
   .landing-top { padding: 12px 16px; }
 }
 @media (prefers-reduced-motion: reduce) { .choice { transition: none; } .choice:hover { transform: none; } }
+
+/* ---- The journey (v3.0, §13.1–13.2): conversation left, canvas right, progress rail on top ---- */
+.journey { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr; grid-template-areas: "top" "main"; height: 100vh; height: 100dvh; overflow: hidden; background: var(--bg); }
+.journey.dragging { outline: 2px dashed var(--accent); outline-offset: -6px; }
+.journey-loading { background: var(--bg); }
+.journey-top { gap: 14px; }
+.journey-top .top-actions { margin-left: auto; display: flex; gap: 10px; align-items: center; }
+.progress { list-style: none; margin: 0; padding: 0; display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
+.progress li { display: flex; align-items: center; }
+.progress li + li::before { content: ""; width: 14px; height: 1px; background: var(--line); margin-right: 4px; }
+.progress button { border: 0; background: none; padding: 4px 6px; font-size: 13px; color: var(--muted); display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; }
+.progress button:disabled { opacity: 1; cursor: default; }
+.progress .dot { width: 20px; height: 20px; border-radius: 50%; display: inline-grid; place-items: center; font-size: 11px; border: 1px solid var(--line); background: var(--surface); }
+.progress li.done button { color: var(--fg); }
+.progress li.done .dot { background: var(--accent-soft); color: var(--accent); border-color: var(--accent-soft); }
+.progress li.now button { color: var(--fg); font-weight: 600; }
+.progress li.now .dot { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+.journey-main { grid-area: main; display: grid; grid-template-columns: minmax(340px, 0.9fr) minmax(0, 1.4fr); min-height: 0; }
+.journey-main .chat { background: var(--surface); }
+.journey-canvas { overflow-y: auto; padding: 18px; display: flex; flex-direction: column; gap: 16px; min-height: 0; }
+.journey-canvas > div, .journey-canvas > section { scroll-margin-top: 12px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; animation: rise 0.3s ease-out both; }
+.card h3 { margin: 0 0 8px; }
+.card .steps.live-steps li::before { content: none; }
+.live-steps li { display: flex; align-items: center; gap: 8px; padding-left: 0; }
+.understood.card { background: var(--surface); }
+.stop-block { padding: 0; overflow: hidden; }
+.stop-block .block { border: 0; }
+.stop-map { height: 260px; border-bottom: 1px solid var(--line); }
+.stop-map .map { min-height: 260px; }
+.go-card { border-color: var(--accent); }
+
+.dock { padding: 4px 16px 10px; display: flex; flex-direction: column; gap: 10px; }
+.dock .replies { padding: 0; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; align-self: flex-start; }
+.seg button { border: 0; border-radius: 0; padding: 6px 14px; background: var(--surface); }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button.on { background: var(--accent); color: var(--on-accent); }
+.seg small { opacity: 0.8; }
+.growth-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.growth { text-align: left; display: flex; flex-direction: column; gap: 3px; padding: 9px 11px; border-radius: 10px; animation: pop 0.25s ease-out both; }
+.growth span { font-size: 12px; color: var(--muted); }
+.growth.on { border-color: var(--accent); background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }
+.thin-note { color: var(--thin); }
+.inline-city { display: flex; gap: 6px; }
+.inline-city input { flex: 1; font: inherit; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--fg); }
+
+.crowds { display: flex; flex-direction: column; gap: 10px; }
+.card-head h3 { margin: 0 0 2px; }
+.crowd-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.crowd { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 10px; animation: rise 0.35s ease-out both; transition: border-color 0.2s, opacity 0.2s; }
+.crowd:nth-child(2) { animation-delay: 80ms; }
+.crowd:nth-child(3) { animation-delay: 160ms; }
+.crowd h4 { margin: 0; font-size: 17px; }
+.crowd p { margin: 0; }
+.crowd.chosen { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.crowd.dimmed { opacity: 0.55; }
+.crowd-tag { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+.react { display: flex; gap: 6px; }
+.react button { flex: 1; padding: 5px 8px; font-size: 13px; }
+.react button.on { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+.chosen-note { color: var(--accent); }
+
+@media (max-width: 900px) {
+  .journey { height: auto; min-height: 100dvh; overflow: visible; }
+  .journey-main { grid-template-columns: 1fr; }
+  .journey-main .chat { border-right: 0; border-bottom: 1px solid var(--line); max-height: 75dvh; }
+  .journey-canvas { overflow: visible; padding: 16px; }
+  .progress button { font-size: 12px; padding: 3px 4px; }
+}
+@media (prefers-reduced-motion: reduce) { .card, .crowd, .growth { animation: none; } }
+.rank-list { list-style: none; margin: 8px 0; padding: 0; display: flex; flex-direction: column; }
+.rank-list li { display: flex; align-items: baseline; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--line); }
+.rank-list .rank { width: 20px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.rank-list .grow { flex: 1; }
+.card h4 { margin: 12px 0 4px; font-size: 14px; }

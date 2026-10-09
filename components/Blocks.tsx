@@ -48,7 +48,7 @@ function Chips({ items }: { items: Evidence[] }) {
 export function ReadView({ card, meta, onTrace }: { card: ReadCard; meta?: BlockMeta; onTrace: () => void }) {
   return (
     <section className="block">
-      <BlockHeader title="How I read your business" meta={meta} onTrace={onTrace} method="The taste your accounts' crowds have in common." />
+      <BlockHeader title="How I read your business" meta={meta} onTrace={onTrace} method={card.lines.some((l) => l.label === "Taste signal" && l.value.includes(":")) ? "The taste of the crowd you chose, from Qloo." : "The taste your accounts' crowds have in common."} />
       <p className={`badge badge-${card.status}`}>{card.status === "tuned" ? "Tuned ✓" : "Beta: not tuned yet; results may be thinner"}</p>
       <dl className="card-lines">
         {card.lines.map((l) => (
@@ -330,7 +330,7 @@ export function PlacesView({ data, meta, selectedId, onSelect, onTrace, compare,
   const [without, setWithout] = useState(false);
   return (
     <section className="block">
-      <BlockHeader title="Which venues to approach" meta={meta} onTrace={onTrace} method={`Ranked by how closely each venue's crowd matches your accounts' taste, in ${metroById(data.metroId).name}.`} />
+      <BlockHeader title="Which venues to approach" meta={meta} onTrace={onTrace} method={`Ranked by how closely each venue's crowd matches ${data.fromCrowd ? "your crowd's" : "your accounts'"} taste, in ${metroById(data.metroId).name}.`} />
       {compare && (
         <div className="flip" role="group" aria-label="Compare with a chatbot">
           <button className={!without ? "active" : ""} aria-pressed={!without} onClick={() => { setWithout(false); onCompare?.(null); }}>With Qloo</button>

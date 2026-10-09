@@ -4,27 +4,29 @@ import { parseCsv, tableToStockists } from "@/lib/brief/rows";
 
 const msg = { kind: "message" as const };
 
-describe("checklist (§6.2.1)", () => {
-  it("blocks the start until all four facts are known", () => {
-    expect(missingRequired(emptyBrief())).toEqual(["name", "sells", "howBought", "activeCity"]);
+describe("checklist (§6.2.1, v3.0)", () => {
+  it("the conversation needs only the name and the product; city and channel never block it", () => {
+    expect(missingRequired(emptyBrief())).toEqual(["name", "sells"]);
   });
 
-  it("an unconfirmed Qloo inference still blocks; a tap on Yes or a guess unblocks", () => {
+  it("researched and guessed values count; the founder corrects them in words, not taps", () => {
     const b: BrandBrief = {
       ...emptyBrief(),
       name: { value: "Liquid Death", source: msg },
-      sells: { value: "canned water", source: { kind: "qloo" } },
-      howBought: { value: ["retail"], source: { kind: "agent_guess" } },
-      activeCity: { value: "Los Angeles", source: { kind: "website" }, confirmed: true },
     };
     expect(missingRequired(b)).toEqual(["sells"]);
-    expect(ready({ ...b, sells: { ...b.sells!, confirmed: true } })).toBe(true);
+    expect(ready({ ...b, sells: { value: "canned water", source: { kind: "web", ref: "liquiddeath.com" } } })).toBe(true);
   });
 
   it("empty values count as missing", () => {
-    const b = { ...emptyBrief(), name: { value: "  ", source: msg }, howBought: { value: [], source: msg } };
-    expect(missingRequired(b)).toContain("name");
-    expect(missingRequired(b)).toContain("howBought");
+    const b = { ...emptyBrief(), name: { value: "  ", source: msg }, sells: { value: "", source: msg } };
+    expect(missingRequired(b)).toEqual(["name", "sells"]);
+  });
+
+  it("keeps the channel guess and the product traits through a merge", () => {
+    const { brief } = mergeBrief(emptyBrief(), { channel: { value: "online", source: { kind: "inferred" } }, traits: ["tinned fish", "premium"] });
+    expect(brief.channel?.value).toBe("online");
+    expect(mergeBrief(brief, { traits: [] }).brief.traits).toEqual(["tinned fish", "premium"]);
   });
 });
 
@@ -113,38 +115,14 @@ describe("file routes (§9.22)", () => {
   });
 });
 
-import { applyGuesses, confirm, nextTurn, closeIfOutOfTurns } from "@/lib/brief/conversation";
+import { isRepeat } from "@/lib/brief/conversation";
 import { briefToInput } from "@/lib/brief/to-input";
 
-describe("conversation (§6.2.1)", () => {
-  // F3: a brand in Qloo, given only its name and city, reaches Build my plan with ≤ 2 taps.
-  it("a Qloo brand with name and city needs only one-tap confirmations", () => {
-    let b: BrandBrief = {
-      ...emptyBrief(),
-      name: { value: "Liquid Death", source: msg },
-      activeCity: { value: "Los Angeles", source: msg },
-      sells: { value: "canned water", source: { kind: "qloo" } },
-      howBought: { value: ["retail", "venue"], source: { kind: "qloo" } },
-    };
-    let taps = 0;
-    for (let t = nextTurn(b); !t.ready; t = nextTurn(b)) {
-      expect(t.replies.map((r) => r.id)).toContain("yes");
-      b = confirm(b, t.fact!);
-      taps++;
-    }
-    expect(taps).toBeLessThanOrEqual(2);
-  });
-
-  it("asks an open question, with a guess option, when nothing was inferred", () => {
-    const t = nextTurn({ ...emptyBrief(), name: { value: "Graza", source: msg } });
-    expect(t.fact).toBe("sells");
-    expect(t.replies.map((r) => r.id)).toEqual(["guess"]);
-  });
-
-  it("guesses are labelled, and after the last turn every gap is guessed", () => {
-    const g = applyGuesses({ ...emptyBrief(), guesses: { activeCity: "Austin" } }, ["activeCity"]);
-    expect(g.activeCity).toEqual({ value: "Austin", source: { kind: "agent_guess" } });
-    expect(ready(closeIfOutOfTurns({ ...emptyBrief(), turns: 5 }))).toBe(true);
+describe("conversation guardrails (§6.2.1)", () => {
+  it("spots a rephrased repeat question, and lets a new one through", () => {
+    const asked = ["Where do people buy it today: in shops and cafés, online, or somewhere else?"];
+    expect(isRepeat("So where do people mostly buy it today: shops, cafés or online?", asked)).toBe(true);
+    expect(isRepeat("Which US city are you focused on first?", asked)).toBe(false);
   });
 
   it("maps the brief to the plan's input, stockists as rows", () => {

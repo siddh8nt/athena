@@ -1,6 +1,6 @@
 import { results } from "@/lib/qloo/client";
 import type { HeatmapCell, QlooEntity } from "@/lib/qloo/types";
-import { metroById, metroFor, type Metro } from "@/lib/playbook/metros";
+import { US_CENTER, metroById, metroIdFor, type Metro } from "@/lib/playbook/metros";
 import { blockSignal } from "@/lib/playbook/config";
 import { isChainName } from "@/lib/methods/names";
 import { withCalls } from "./run";
@@ -55,9 +55,13 @@ export function markets(ctx: BlockContext, enrich: MarketsEnrichers = {}) {
     // Qloo returns venues grouped by metro, ranked by each metro's best venue; first appearance = rank.
     const byMetro = new Map<string, QlooEntity[]>();
     for (const e of results(res).entities ?? []) {
-      const metro = metroFor(e.properties?.geocode?.metro);
-      if (!metro || metro.id === home?.id) continue; // only the 25 metros; never the home metro
-      byMetro.set(metro.id, [...(byMetro.get(metro.id) ?? []), e]);
+      const raw = e.properties?.geocode?.metro;
+      if (!raw) continue;
+      // Any US metro (§9.3, v3.0); the first venue Qloo returns there gives an unnamed metro its centre.
+      const id = metroIdFor(raw, e.location ? [e.location.lat, e.location.lon] : undefined);
+      const known = [...byMetro.keys()].find((k) => metroById(k).name === metroById(id).name);
+      if (id === home?.id || (home && metroById(id).name === home.name)) continue; // never the home metro
+      byMetro.set(known ?? id, [...(byMetro.get(known ?? id) ?? []), e]);
     }
     const metros: MarketRow[] = [...byMetro].map(([metroId, all], i) => {
       const venues = all.filter((v) => !isChainName(v.name));
@@ -78,9 +82,15 @@ export function markets(ctx: BlockContext, enrich: MarketsEnrichers = {}) {
       await Promise.all(metros.map(async (row) => (row.census = await enrich.census!(metroById(row.metroId)).catch(() => undefined))));
     }
 
-    const target = metroById(pb.targetMetro);
+    let target = metroById(pb.targetMetro);
     const heat = await qloo.insights({ "filter.type": "urn:heatmap", "filter.location.query": target.query, "signal.interests.entities": signal });
     const cells = results(heat).heatmap ?? [];
+    // A typed city with no known centre: centre the map on where its taste is strongest.
+    if (target.center === US_CENTER && cells.length) {
+      const top = [...cells].sort((a, b) => b.query.affinity_rank - a.query.affinity_rank).slice(0, Math.max(5, Math.ceil(cells.length / 5)));
+      const c: [number, number] = [top.reduce((s, x) => s + x.location.latitude, 0) / top.length, top.reduce((s, x) => s + x.location.longitude, 0) / top.length];
+      target = metroById(metroIdFor(target.name, c));
+    }
     emit({ tool: "map_taste", why: `Mapping where the taste concentrates in ${target.name}`, status: cells.length ? "ok" : "empty", callIds: [heat.call.id], summary: `${cells.length} cells` });
     const neighbourhoods = enrich.neighbourhoods ? await enrich.neighbourhoods(target, cells).catch(() => null) : null;
 

@@ -1,6 +1,8 @@
-// The 25 metros Athena shows (PRD §9.3): the same 25 used for the stockist lists in proof/stockists.
-// `qloo` is the name Qloo's geocode.metro uses where seen on 8 Oct (New York City, Los Angeles, Chicago,
-// Dallas, San Francisco…); the others are best guesses matched by alias. CBSA codes verified against the Census API on 8 Oct (S20: 25 of 25).
+// Metros (PRD §9.3, v3.0): ANY US metro. The 25 named here are only the ones with checked details (display name,
+// Qloo's spelling, CBSA code, centre), collected on 8 Oct with the stockist lists in proof/stockists; they are not a
+// limit. Any other metro Qloo returns, or any city a founder types, gets a self-describing id ("q~Bozeman~45.680,-111.040")
+// so every part of the app can rebuild it without shared state. `qloo` is the name Qloo's geocode.metro uses where
+// seen on 8 Oct (New York City, Los Angeles, Chicago, Dallas, San Francisco…). CBSA codes verified on 8 Oct (S20).
 
 export type Metro = {
   id: string;
@@ -67,13 +69,45 @@ const key = (s: string) => s.toLowerCase().replace(/[^a-z]/g, "");
 const BY_ALIAS = new Map<string, Metro>();
 for (const metro of METROS) for (const a of metro.aliases) BY_ALIAS.set(key(a), metro);
 
-/** Maps a Qloo geocode.metro (or a city name) to one of the 25 metros, or undefined. */
+/** Maps a Qloo geocode.metro (or a city name) to one of the named metros, or undefined. */
 export function metroFor(name: string | undefined): Metro | undefined {
   return name ? BY_ALIAS.get(key(name)) : undefined;
 }
 
+/** The middle of the contiguous US: a placeholder centre until a metro's own is known. */
+export const US_CENTER: [number, number] = [39.5, -98.35];
+
+/** "Bozeman Metro Area" → "Bozeman". */
+export function cleanMetroName(name: string): string {
+  return name.replace(/\s+(metropolitan|metro|micropolitan)(\s+(statistical\s+)?area)?$/i, "").replace(/\s+area$/i, "").trim();
+}
+
+/** A metro's id: the named one's, else a self-describing id carrying its name and, when known, its centre. */
+export function metroIdFor(name: string, at?: [number, number]): string {
+  const known = metroFor(name) ?? metroFor(cleanMetroName(name));
+  if (known) return known.id;
+  return `q~${encodeURIComponent(cleanMetroName(name))}${at ? `~${at[0].toFixed(3)},${at[1].toFixed(3)}` : ""}`;
+}
+
+/** Any metro by id: a named one, or one rebuilt from its self-describing id. */
 export function metroById(id: string): Metro {
-  const metro = METROS.find((x) => x.id === id);
-  if (!metro) throw new Error(`unknown metro ${id}`);
-  return metro;
+  const named = METROS.find((x) => x.id === id);
+  if (named) return named;
+  const [tag, rawName, at] = id.split("~");
+  if (tag !== "q" || !rawName) throw new Error(`unknown metro ${id}`);
+  const name = decodeURIComponent(rawName);
+  const ll = at?.split(",").map(Number);
+  const center: [number, number] = ll && ll.length === 2 && ll.every(Number.isFinite) ? [ll[0], ll[1]] : US_CENTER;
+  const metro = m(id, name, name, [], "", center, ll ? 0.45 : 12);
+  return { ...metro, excludeQuery: name };
+}
+
+/** Does this id name a metro Athena can rebuild? */
+export function isMetroId(id: string): boolean {
+  try {
+    metroById(id);
+    return true;
+  } catch {
+    return false;
+  }
 }

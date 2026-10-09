@@ -16,6 +16,8 @@ export function llmConfig() {
     location: process.env.GOOGLE_CLOUD_LOCATION ?? "global",
     flash: process.env.GEMINI_FLASH_MODEL ?? "gemini-3.8-flash",
     pro: process.env.GEMINI_PRO_MODEL ?? "gemini-3.1-pro-preview",
+    // For replies a person waits on. 9 Oct: 1.0-1.8 s for a short answer vs 2.8-20 s for 3.8 Flash at busy times.
+    lite: process.env.GEMINI_LITE_MODEL ?? "gemini-3.1-flash-lite",
   };
 }
 
@@ -30,13 +32,14 @@ export function llmConfigured(): boolean {
 // backoff inside the caller's time budget, and moves a Pro call to Flash (higher limits per tier) when Pro
 // stays busy. Provisioned Throughput is the only hard guarantee and costs far more than the credit.
 
-const MAX_IN_FLIGHT = { pro: 4, flash: 6 }; // Moments runs 4 festival lookups at once
+type Tier = "pro" | "flash" | "lite";
+const MAX_IN_FLIGHT: Record<Tier, number> = { pro: 4, flash: 6, lite: 6 }; // Moments runs 4 festival lookups at once
 const MIN_GAP_MS = 300;
-const inFlight = { pro: 0, flash: 0 };
-const waiting: { pro: (() => void)[]; flash: (() => void)[] } = { pro: [], flash: [] };
+const inFlight: Record<Tier, number> = { pro: 0, flash: 0, lite: 0 };
+const waiting: Record<Tier, (() => void)[]> = { pro: [], flash: [], lite: [] };
 let lastStart = 0;
 
-async function acquire(tier: "pro" | "flash"): Promise<() => void> {
+async function acquire(tier: Tier): Promise<() => void> {
   if (inFlight[tier] >= MAX_IN_FLIGHT[tier]) await new Promise<void>((r) => waiting[tier].push(r));
   inFlight[tier]++;
   const gap = lastStart + MIN_GAP_MS - Date.now();
@@ -56,13 +59,13 @@ export const backoffMs = (attempt: number) => Math.min(16_000, 1000 * 2 ** attem
  * Sends one Gemini request with the gate, backoff and Pro â†’ Flash fallback. Returns the last response
  * (which may still be a 429) once `deadline` leaves no room for another wait.
  */
-async function send(tier: "pro" | "flash", makeUrl: (model: string) => string, body: string, deadline: number, signal?: AbortSignal): Promise<{ res: Response; model: string }> {
+async function send(tier: Tier, makeUrl: (model: string) => string, body: string, deadline: number, signal?: AbortSignal): Promise<{ res: Response; model: string }> {
   const cfg = llmConfig();
   let current = tier;
   for (let attempt = 0; ; attempt++) {
     // After two busy answers from Pro, try Flash: it has higher limits and answers the same prompts.
     if (current === "pro" && attempt >= 2) current = "flash";
-    const model = current === "pro" ? cfg.pro : cfg.flash;
+    const model = current === "pro" ? cfg.pro : current === "lite" ? cfg.lite : cfg.flash;
     const release = await acquire(current);
     let res: Response;
     try {
@@ -84,7 +87,7 @@ async function send(tier: "pro" | "flash", makeUrl: (model: string) => string, b
 }
 
 export async function generate(opts: {
-  model: "flash" | "pro";
+  model: Tier;
   system?: string;
   prompt: string;
   /** Native files sent alongside the prompt (PDF, PNG/JPEG/WebP), base64-encoded (§9.22). */
@@ -201,18 +204,18 @@ export function thoughtTitle(text: string): string | undefined {
  * `timeoutMs` it resolves with whatever arrived, and `complete: false`.
  */
 export async function generateStream(
-  opts: Parameters<typeof generate>[0] & { timeoutMs: number },
+  opts: Parameters<typeof generate>[0] & { timeoutMs: number; onText?: (delta: string) => void; signal?: AbortSignal },
   onThought: (title: string) => void,
 ): Promise<LlmResult & { complete: boolean; retrievedUrls: string[]; finishReason?: string; usage?: string }> {
   const cfg = llmConfig();
-  let model = opts.model === "pro" ? cfg.pro : cfg.flash;
+  let model = opts.model === "pro" ? cfg.pro : opts.model === "lite" ? cfg.lite : cfg.flash;
   const empty = { text: "", sources: [], supports: [], queries: [], model, ms: 0, complete: false, retrievedUrls: [] };
   if (!cfg.project) return empty;
   const host = cfg.location === "global" ? "aiplatform.googleapis.com" : `${cfg.location}-aiplatform.googleapis.com`;
   const urlFor = (m: string) => `https://${host}/v1/projects/${cfg.project}/locations/${cfg.location}/publishers/google/models/${m}:streamGenerateContent?alt=sse`;
   const body = {
     ...(opts.system ? { systemInstruction: { parts: [{ text: opts.system }] } } : {}),
-    contents: [{ role: "user", parts: [{ text: opts.prompt }] }],
+    contents: [{ role: "user", parts: [...(opts.files ?? []).map((f) => ({ inlineData: { mimeType: f.mime, data: f.base64 } })), { text: opts.prompt }] }],
     ...(opts.grounding || opts.urlContext ? { tools: [...(opts.grounding ? [{ googleSearch: {} }] : []), ...(opts.urlContext ? [{ urlContext: {} }] : [])] } : {}),
     generationConfig: {
       maxOutputTokens: opts.maxOutputTokens ?? 4096,
@@ -223,6 +226,10 @@ export async function generateStream(
   const started = Date.now();
   const abort = new AbortController();
   const timer = setTimeout(() => abort.abort(), opts.timeoutMs);
+  if (opts.signal) {
+    if (opts.signal.aborted) abort.abort();
+    else opts.signal.addEventListener("abort", () => abort.abort(), { once: true });
+  }
   let text = "";
   // Grounding metadata can arrive spread over several chunks (sources in one, the search chip in another), so
   // it's merged, not replaced: support indices are shifted by the sources already collected.
@@ -264,7 +271,10 @@ export async function generateStream(
           if (p.thought) {
             const t = thoughtTitle(p.text ?? "");
             if (t) onThought(t);
-          } else text += p.text ?? "";
+          } else {
+            text += p.text ?? "";
+            if (p.text) opts.onText?.(p.text);
+          }
         }
         const g = c?.groundingMetadata;
         if (g) {
@@ -305,4 +315,56 @@ export async function generateStream(
     finishReason,
     usage,
   };
+}
+
+/**
+ * Hedged streaming for replies a person is waiting on ("The Tail at Scale"): if no text has arrived after
+ * `hedgeMs`, a second identical request starts, and whichever streams text first wins; the other is aborted.
+ * On shared pay-as-you-go capacity the same short call took 1.5 s or 20 s (9 Oct), so this cuts the spikes
+ * for the cost of an occasional duplicate Flash-Lite call.
+ */
+export async function generateStreamHedged(
+  opts: Parameters<typeof generateStream>[0],
+  onThought: (title: string) => void,
+  hedgeMs = 2500,
+): Promise<Awaited<ReturnType<typeof generateStream>>> {
+  const controllers: AbortController[] = [];
+  let winner = -1;
+  let hedge: ReturnType<typeof setTimeout> | undefined;
+  const start = (i: number) => {
+    const c = new AbortController();
+    controllers[i] = c;
+    return generateStream(
+      {
+        ...opts,
+        signal: c.signal,
+        onText: (d) => {
+          if (winner < 0) {
+            winner = i;
+            clearTimeout(hedge);
+            controllers.forEach((x, j) => j !== i && x.abort());
+          }
+          if (winner === i) opts.onText?.(d);
+        },
+      },
+      (t) => (winner < 0 || winner === i) && onThought(t),
+    ).then((r) => ({ r, i }));
+  };
+  const runs = [start(0)];
+  const second = new Promise<{ r: Awaited<ReturnType<typeof generateStream>>; i: number }>((resolve) => {
+    hedge = setTimeout(() => {
+      if (winner < 0) start(1).then(resolve);
+    }, hedgeMs);
+  });
+  runs.push(second);
+  // Wait for the winner (or, if neither streamed text, the first to finish).
+  for (;;) {
+    const done = await Promise.race(runs.map((p, k) => p.then((v) => ({ ...v, k }))));
+    if (winner < 0 || done.i === winner) {
+      clearTimeout(hedge);
+      controllers.forEach((x, j) => j !== done.i && x.abort());
+      return done.r;
+    }
+    runs.splice(done.k, 1);
+  }
 }

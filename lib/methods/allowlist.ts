@@ -96,6 +96,15 @@ export const ALL_AUDIENCE_TYPES = [
 ] as const;
 
 /** Names that stay hidden even inside an allowed audience type (8 Oct: "Political Junkie" is typed leisure). */
+/**
+ * Themes a brand should never be told to build its message on (§15): tragedy, violence, illness and identity.
+ * Qloo's theme tags describe what a crowd's films and books are about (10 Oct: Starface's crowd returned "Slavery").
+ */
+const SENSITIVE_THEME = /\b(slave|slavery|war|genocide|holocaust|racis|abuse|suicide|death|murder|rape|terror|addict|cancer|illness|disease|grief|trauma|violence|crime|prison|poverty|refugee|immigra|sexual|gender|race)\b/i;
+export function isAllowedTheme(name: string): boolean {
+  return !SENSITIVE_THEME.test(name) && !POLITICAL_OR_RELIGIOUS.test(name);
+}
+
 export function isAllowedAudienceName(name: string): boolean {
   return !POLITICAL_OR_RELIGIOUS.test(name) && !/\b(politic|activis|lgbt|latino|black|asian|ethnic|faith|church)/i.test(name);
 }
@@ -104,9 +113,9 @@ export function isAllowedAudienceType(type: string | undefined): boolean {
   return !!type && (ALLOWED_AUDIENCE_TYPES as readonly string[]).includes(type);
 }
 
-/** The fixed label shown with the skew chart and the interest chips (§9.17). Never edit without the PRD. */
+/** The fixed label shown with the skew chart and the interest chips (§9.17, v3.0). Never edit without the PRD. */
 export const AUDIENCE_LABEL =
-  "Aggregate taste-panel signal from Qloo, relative to average. It describes people who share this taste, not your customers. Not for targeting.";
+  "Aggregate taste-panel signal from Qloo, relative to average. It describes people who share this taste, not your customers. Treat it as something to test, not a fact.";
 
 /** Banned in product copy (§13.9); a test scans UI strings. */
 export const BANNED_WORDS = [

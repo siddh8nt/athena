@@ -123,6 +123,15 @@ function scorePool(ids: string[], signal: string): QlooEntity[] {
 export class FixtureTransport implements QlooTransport {
   readonly mode = "fixture" as const;
 
+  /** Weighted signals arrive as a JSON body; the fixture reads the entity IDs and ignores the weights. */
+  async post(path: string, body: Record<string, unknown>): Promise<RawResult> {
+    const q: Record<string, string> = {};
+    for (const [k, v] of Object.entries(body)) {
+      q[k] = Array.isArray(v) ? v.map((x) => (typeof x === "object" && x && "id" in x ? String((x as { id: unknown }).id) : String(x))).join(",") : String(v);
+    }
+    return this.send(path, q);
+  }
+
   async send(path: string, q: Record<string, string>): Promise<RawResult> {
     await new Promise((r) => setTimeout(r, 40 + (hash(JSON.stringify(q)) % 160)));
     const ok = (results: unknown): RawResult => ({ status: 200, body: { success: true, results: results as never } });

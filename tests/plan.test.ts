@@ -76,6 +76,7 @@ describe("never fails (§14.2)", () => {
         if (q["filter.type"] === "urn:entity:podcast") throw new Error("boom");
         return fixture.send(path, q);
       },
+      post: (path: string, body: Record<string, unknown>) => fixture.post(path, body),
     };
     // The client turns transport errors into status 0; make the block itself throw by failing every podcast call.
     const qloo = new QlooClient({ transport: flaky, retryDelayMs: 1 });

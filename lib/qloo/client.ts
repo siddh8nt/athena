@@ -1,10 +1,11 @@
 import type { QlooBody, QlooCall, QlooEntity, QlooParams, QlooResponse, QlooResults, QlooStatus } from "./types";
 
-// Qloo client (PRD §11.1): cache, bounded retries, at most 6 calls in flight, and a call log
-// that feeds the trace and the per-block "Built from n Qloo calls" count (F14).
+// Qloo client (PRD §11.1): cache, bounded retries, one shared pacer that holds the key's per-second limit
+// (§14.9), and a call log that feeds the trace and the per-block "Built from n Qloo calls" count (F14).
 
 export const MAX_TAKE = 50; // Qloo's `take` and `filter.results.entities` limit (S7, 8 Oct)
-export const MAX_IN_FLIGHT = 6; // §14.9
+/** Our key's limit, read from `x-second-ratelimit-limit` on 10 Oct (§11.1). */
+export const LIVE_PER_SECOND = 5;
 const INSIGHTS_TTL_MS = 24 * 60 * 60 * 1000;
 const FOREVER = Number.POSITIVE_INFINITY;
 
@@ -14,6 +15,8 @@ export type RawResult = { status: number; body: QlooBody | null };
 export interface QlooTransport {
   readonly mode: "live" | "fixture";
   send(path: string, query: Record<string, string>): Promise<RawResult>;
+  /** POST with a JSON body: needed for per-entity signal weights (Q24). */
+  post(path: string, body: Record<string, unknown>): Promise<RawResult>;
 }
 
 export interface ResponseCache {
@@ -47,11 +50,28 @@ export class HttpTransport implements QlooTransport {
 
   async send(path: string, query: Record<string, string>): Promise<RawResult> {
     const qs = new URLSearchParams(query).toString();
-    const res = await fetch(`${this.baseUrl}${path}${qs ? `?${qs}` : ""}`, {
-      headers: { "X-Api-Key": this.apiKey, Accept: "application/json" },
-      signal: AbortSignal.timeout(this.timeoutMs),
-      cache: "no-store",
-    });
+    return this.read(
+      await fetch(`${this.baseUrl}${path}${qs ? `?${qs}` : ""}`, {
+        headers: { "X-Api-Key": this.apiKey, Accept: "application/json" },
+        signal: AbortSignal.timeout(this.timeoutMs),
+        cache: "no-store",
+      }),
+    );
+  }
+
+  async post(path: string, body: Record<string, unknown>): Promise<RawResult> {
+    return this.read(
+      await fetch(`${this.baseUrl}${path}`, {
+        method: "POST",
+        headers: { "X-Api-Key": this.apiKey, Accept: "application/json", "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(this.timeoutMs),
+        cache: "no-store",
+      }),
+    );
+  }
+
+  private async read(res: Response): Promise<RawResult> {
     let body: QlooBody | null = null;
     try {
       body = (await res.json()) as QlooBody;
@@ -101,18 +121,56 @@ export function resultCount(body: QlooBody | null): number {
   );
 }
 
-class Semaphore {
-  private active = 0;
-  private queue: (() => void)[] = [];
-  constructor(private readonly limit: number) {}
-  async run<T>(fn: () => Promise<T>): Promise<T> {
-    if (this.active >= this.limit) await new Promise<void>((r) => this.queue.push(r));
-    this.active++;
-    try {
-      return await fn();
-    } finally {
-      this.active--;
-      this.queue.shift()?.();
+/**
+ * Who is waiting on a call (§14.9): "now" is what the founder is looking at, "next" prepares the likely next stop,
+ * "later" is background work. Higher priorities always start first.
+ */
+export type Priority = "now" | "next" | "later";
+const RANK: Record<Priority, number> = { now: 0, next: 1, later: 2 };
+
+/**
+ * Holds the key's per-second limit for every call the server makes, retries included: at most `perSecond` starts in
+ * any rolling window. One pacer is shared by every client derived from the server's client, so all visitors share it.
+ */
+export class Pacer {
+  private starts: number[] = [];
+  private waiting: { rank: number; seq: number; go: () => void }[] = [];
+  private seq = 0;
+  private timer: ReturnType<typeof setTimeout> | undefined;
+
+  constructor(
+    readonly perSecond: number,
+    private readonly windowMs = 1050, // a little over a second, so Qloo's own window never sees perSecond + 1
+    private readonly now: () => number = Date.now,
+  ) {}
+
+  /** Resolves when this call may start. */
+  acquire(priority: Priority = "now"): Promise<void> {
+    if (!Number.isFinite(this.perSecond)) return Promise.resolve();
+    return new Promise((go) => {
+      this.waiting.push({ rank: RANK[priority], seq: this.seq++, go });
+      this.waiting.sort((a, b) => a.rank - b.rank || a.seq - b.seq);
+      this.pump();
+    });
+  }
+
+  /** Calls waiting to start, for tests and the trace. */
+  get queued() {
+    return this.waiting.length;
+  }
+
+  private pump() {
+    const t = this.now();
+    this.starts = this.starts.filter((s) => t - s < this.windowMs);
+    while (this.waiting.length && this.starts.length < this.perSecond) {
+      this.starts.push(t);
+      this.waiting.shift()!.go();
+    }
+    if (this.waiting.length && !this.timer) {
+      this.timer = setTimeout(() => {
+        this.timer = undefined;
+        this.pump();
+      }, Math.max(1, this.starts[0] + this.windowMs - t));
     }
   }
 }
@@ -126,7 +184,16 @@ export type QlooClientOptions = {
   /** Called for every call, including cache hits, so the run log stays complete. */
   onCall?: (call: QlooCall) => void;
   retryDelayMs?: number;
+  /** Starts allowed per second; defaults to the key's limit live and to no limit for fixtures. */
+  perSecond?: number;
+  /** Share an existing pacer (child clients do). */
+  pacer?: Pacer;
 };
+
+/** One entity in a weighted signal (§9.23 step 7). */
+export type Weighted = { id: string; weight: number };
+
+export type CallOptions = { priority?: Priority };
 
 export class QlooClient {
   readonly mode: "live" | "fixture";
@@ -134,7 +201,7 @@ export class QlooClient {
   private readonly cache: ResponseCache;
   private readonly onCall?: (call: QlooCall) => void;
   private readonly retryDelayMs: number;
-  private readonly gate = new Semaphore(MAX_IN_FLIGHT);
+  readonly pacer: Pacer;
 
   constructor(opts: QlooClientOptions) {
     this.transport = opts.transport;
@@ -142,38 +209,55 @@ export class QlooClient {
     this.cache = opts.cache ?? new MemoryCache();
     this.onCall = opts.onCall;
     this.retryDelayMs = opts.retryDelayMs ?? 1000;
+    this.pacer = opts.pacer ?? new Pacer(opts.perSecond ?? (this.mode === "live" ? LIVE_PER_SECOND : Number.POSITIVE_INFINITY));
   }
 
-  /** A child client that also logs into another sink (one per block), sharing cache and transport. Parents still see every call. */
+  /** A child client that also logs into another sink (one per block), sharing cache, transport and pacer. Parents still see every call. */
   withLog(onCall: (call: QlooCall) => void): QlooClient {
     const parent = this.onCall;
-    return new QlooClient({ transport: this.transport, cache: this.cache, onCall: (c) => (parent?.(c), onCall(c)), retryDelayMs: this.retryDelayMs });
+    return new QlooClient({ transport: this.transport, cache: this.cache, pacer: this.pacer, onCall: (c) => (parent?.(c), onCall(c)), retryDelayMs: this.retryDelayMs });
   }
 
-  async get(path: string, params: QlooParams = {}): Promise<QlooResponse> {
+  async get(path: string, params: QlooParams = {}, opts: CallOptions = {}): Promise<QlooResponse> {
     const query = toQuery(params);
     if (query.take && Number(query.take) > MAX_TAKE) throw new Error(`take must be ≤ ${MAX_TAKE}`);
     for (const k of ["filter.results.entities", "filter.results.tags"]) {
       if (query[k] && query[k].split(",").length > MAX_TAKE) throw new Error(`${k} must hold ≤ ${MAX_TAKE} IDs`);
     }
-    const key = cacheKey(path, query);
+    return this.fetch(path, query, cacheKey(path, query), () => this.transport.send(path, query), opts);
+  }
+
+  /** POST /v2/insights with per-entity weights (Q24). Equal weights go as a plain GET, which Qloo treats the same (10 Oct). */
+  async insightsWeighted(params: QlooParams, signal: Weighted[], opts: CallOptions = {}) {
+    const live = signal.filter((s) => s.weight > 0);
+    if (live.every((s) => s.weight === live[0]?.weight)) return this.insights({ ...params, "signal.interests.entities": live.map((s) => s.id) }, opts);
+    const body: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(params)) {
+      if (v === undefined || v === "" || (Array.isArray(v) && v.length === 0)) continue;
+      body[k] = v;
+    }
+    body["signal.interests.entities"] = live.map(({ id, weight }) => ({ id, weight }));
+    const logged = { ...toQuery(params), "signal.interests.entities": live.map((s) => `${s.id}^${s.weight}`).join(",") };
+    const res = await this.fetch("/v2/insights", logged, `POST ${cacheKey("/v2/insights", logged)}`, () => this.transport.post("/v2/insights", body), opts);
+    return { ...res, results: results(res) };
+  }
+
+  private async fetch(path: string, query: Record<string, string>, key: string, send: () => Promise<RawResult>, opts: CallOptions): Promise<QlooResponse> {
     const started = Date.now();
     const hit = await this.cache.get(key);
     if (hit) return this.log(path, query, hit, 0, true);
 
-    const raw = await this.gate.run(async () => {
-      let last: RawResult = { status: 0, body: null };
-      for (let attempt = 0; attempt <= 2; attempt++) {
-        try {
-          last = await this.transport.send(path, query);
-        } catch {
-          last = { status: 0, body: null };
-        }
-        if (classify(last.status, last.body) !== "retryable" || attempt === 2) break;
-        await sleep(this.retryDelayMs * 2 ** attempt);
+    let raw: RawResult = { status: 0, body: null };
+    for (let attempt = 0; attempt <= 2; attempt++) {
+      await this.pacer.acquire(opts.priority);
+      try {
+        raw = await send();
+      } catch {
+        raw = { status: 0, body: null };
       }
-      return last;
-    });
+      if (classify(raw.status, raw.body) !== "retryable" || attempt === 2) break;
+      await sleep(this.retryDelayMs * 2 ** attempt);
+    }
     if (raw.status === 200) {
       const ttl = path.startsWith("/search") || path.startsWith("/entities") || path.startsWith("/v2/tags") || path.startsWith("/v2/audiences") ? FOREVER : INSIGHTS_TTL_MS;
       await this.cache.set(key, raw, ttl);
@@ -198,13 +282,13 @@ export class QlooClient {
 
   // ---- Convenience wrappers ----------------------------------------------------------------
 
-  async insights(params: QlooParams) {
-    const res = await this.get("/v2/insights", params);
+  async insights(params: QlooParams, opts: CallOptions = {}) {
+    const res = await this.get("/v2/insights", params, opts);
     return { ...res, results: results(res) };
   }
 
-  async search(params: QlooParams) {
-    const res = await this.get("/search", params);
+  async search(params: QlooParams, opts: CallOptions = {}) {
+    const res = await this.get("/search", params, opts);
     const r = res.body?.results;
     const entities: QlooEntity[] = Array.isArray(r) ? r : (r?.entities ?? []);
     return { ...res, entities };

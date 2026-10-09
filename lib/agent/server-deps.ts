@@ -5,6 +5,7 @@ import { readEnv } from "@/lib/env";
 import { loadStockists } from "@/lib/playbook/stockists";
 import { ticketmasterShows } from "@/lib/enrich/ticketmaster";
 import { censusMarket } from "@/lib/enrich/census";
+import { overtureNeighbourhoods } from "@/lib/enrich/neighbourhoods";
 import { groundedFestivalDates } from "@/lib/enrich/festival-dates";
 import { addWikidataWebsites } from "@/lib/enrich/wikidata";
 import { llmConfigured } from "@/lib/llm/vertex";
@@ -35,7 +36,7 @@ export function serverDeps(send: (e: PlanEvent) => void): PlanDeps {
     send,
     loadStockists,
     lastRun,
-    enrich: live ? { shows: ticketmasterShows(env.ticketmasterKey), markets: { census: censusMarket(env.censusKey) }, festivalDate: groundedFestivalDates(llm), websites: addWikidataWebsites, podcastDetails: addApplePodcastDetails } : {},
+    enrich: live ? { shows: ticketmasterShows(env.ticketmasterKey), markets: { census: censusMarket(env.censusKey), neighbourhoods: overtureNeighbourhoods }, festivalDate: groundedFestivalDates(llm), websites: addWikidataWebsites, podcastDetails: addApplePodcastDetails } : {},
     intake: llm ? { readWebsite, classify: classifyBusiness, parseAccounts, chooseComparables, writeHooks: cachedHooks } : undefined,
   };
 }

@@ -6,7 +6,7 @@
 
 | | |
 |---|---|
-| Version | 3.0 · 10 Oct 2026 |
+| Version | 3.1 · 10 Oct 2026 |
 | Owners | Siddhant, Jaiaditya |
 | Event | Qloo Agentic Hackathon, "Agents, but with taste." |
 | Deadline | 31 Oct 2026, 9:15 AM IST (30 Oct, 11:45 PM ET). **We submit on 28 Oct.** |
@@ -27,6 +27,7 @@
 | New in v2.13 | **Try your own brand becomes a conversation, not a form** (§6.2). It opens on a brief canvas: one text box (required) plus optional files of any common kind (images, PDF, Excel/CSV, PowerPoint, Word). Athena turns everything into one structured brand brief (§9.22), shows what it understood, fills the required facts from Qloo or the website where it can and asks for a one-tap confirmation, and asks follow-up questions only for what it still can't find. While the plan runs, it asks up to three inline questions only when the brief left a gap, never waiting: it assumes a default, keeps going, and re-runs only what an answer changes. |
 | New in v2.14 | **A landing page and a way in** (§2.2). `/` is now a landing page: a hero that says what Athena does, the six parts of the plan, how it works, and one **Start planning** button. It leads to `/start`, where the visitor picks **Try your own brand** (which opens the brief canvas, §6.2) or one of the three demo brands (which opens its workspace). The workspace moves to `/<brand>`. |
 | New in v3.0 | **The taste model is the centrepiece, and the whole product is a journey.** (1) **Intake asks about the product, not the customer** (§6.2): what it is, price, what it's made of, how it looks, when it's used, where it's sold. Athena turns those traits into Qloo signal itself. (2) **Online or offline** is asked (with Athena's guess) and shapes the options. (3) **Growth types replace motions as the founder's choice** (§7.8): Deepen, New city, New crowd, Borrow a crowd, Show up, Online, Own location; up to 3. (4) **A taste graph built from Qloo affinities splits the brand's crowd into 2–3 crowds** (§9.23), each with its own cities, loves, partners and audience skew; the founder's reactions re-weight it. (5) **City is no longer a required input:** it's an output of the crowd, asked only when a growth type needs it. (6) **The plan is a step-by-step journey** (§13.1–13.2): each stop is a decision with options, waits for the founder, and carries choices forward. (7) **The dashboard is the advanced view** and where the pipeline is worked (§13.2). (8) **Demos become context packs** (§7.7): ready-made material that judges drop in and watch run live: three real brands built only from public material (Brightland for the offline path, Starface for the online path, Fishwife for a brand Qloo doesn't know), nothing fictional; (11) **Retail step-up** (§9.25): Deepen also ranks the bigger retailers that fit the crowd and that the brand isn't in yet; the real-brand demo workspaces and the "Try this" card are removed. (9) **Responsible-use rules updated** (§3.2, §9.17, §15): creators can be partners in their professional role, like podcasts; the Online stop suggests allowed audience interests and, when clear, the age and gender skew as ad audiences *to test*; sensitive audience types stay banned and no private individual is ever a target. (10) **Qloo's limits measured** (10 Oct): 5 calls a second and 10,000 a month on our key; one shared pacer holds the per-second limit (§14.9). Weighted signals and person entities tested live (§11.1, Q21–Q25). |
+| New in v3.1 | **What the first build changed** (10 Oct). (1) **No blind guessing** (§6.2.1): the channel comes only from the founder's words or a cited source; "Not sure" now means "look it up for me", and missing facts are researched or asked, never guessed. (2) **Any US metro** everywhere, with self-describing metro ids and Census matched by metro name (§9.3). (3) **Seed:** tags join only when fewer than 2 lookalikes are found, and first-ring calls are capped at 15 s (§9.23). (4) **Next retailers:** curated pools per category; Qloo's own retail picks only for general goods (§9.25). (5) **Message drops sensitive themes** (§9.15). (6) **Speed:** Who listens on the top 3 podcasts, Partners streams as its calls land, and the journey prefetches the next stop (§14.9). (7) A journey counts once against the own-brand cap (§14.5). |
 
 **How to read this document**
 
@@ -302,7 +303,7 @@ Removed in v3.0. A first-time judge is guided by the journey itself and by the s
 
    Athena **never** asks the founder about their customers' tastes (what they listen to, which brands they love). Working that out is Athena's job (§9.23).
 3. **"Is this you?"** When Qloo returns more than one plausible brand, Athena asks once (Yes / No / Skip).
-4. **Online or offline.** Athena guesses from the website and the conversation (a shop page → online; a stockists page → offline) and asks for one tap: **Mostly online · Mostly offline · Both**.
+4. **Online or offline.** Pre-selected only when the founder said it or a cited source shows it (a shop page → online; a stockists page → offline; v3.1: never a blind guess), labelled "you said" or "from the web"; otherwise Athena asks. One tap: **Mostly online · Mostly offline · Both**.
 5. **Growth types** (§7.8): up to 3, shown as cards ordered for the channel, with 1–2 pre-selected by Athena and a one-line reason each.
 6. **Required before the journey moves on** (a fixed checklist in code, not the LLM):
 
@@ -314,7 +315,7 @@ Removed in v3.0. A first-time judge is guided by the journey itself and by the s
    | 1–3 growth types | Which stops the journey has |
 
    **City is no longer required.** It's asked at the Where stop, and only when a chosen growth type needs it (§7.8).
-7. **Kept from v2.13:** each question has a **"Not sure, make your best guess"** reply (the answer is labelled **Agent · guessed**, editable); at most 4 follow-up turns, after which missing fields are guessed and labelled; a question is never asked twice (the agent is given the questions already asked, and a code check refuses a rephrased repeat); out-of-scope businesses (§4.3) get the one-line reason.
+7. **Changed in v3.1:** each question has a **"Not sure, look it up for me"** reply: Athena researches the answer (labelled **Web**, editable) and asks again only if research finds nothing. Facts are never filled from the model's guesses. At most 4 follow-up turns; a question is never asked twice (the agent is given the questions already asked, and a code check refuses a rephrased repeat); out-of-scope businesses (§4.3) get the one-line reason.
 8. **The taste graph starts as soon as the product is clear** (§14.9), while the founder answers the channel and growth questions.
 
 #### 6.2.2 Chapters 2 onward: the journey
@@ -639,6 +640,7 @@ Notation: **A** = accounts, **W** = wins, **D** = declines, **C** = the pool. Wi
 - **Request:** `GET /v2/insights?filter.type=urn:entity:place&signal.interests.entities=<signal>&filter.tags=<placeChannels>&diversify.by=properties.geocode.metro&diversify.take=4&take=50&filter.exclude.location.query=<home metro>`, plus the tier parameters.
 - **Ranking:** Qloo returns metro groups ranked by their best venue. Every metro is scored inside this one call, so the comparison is valid. The reason line names each metro's strongest match.
 - **Filtering (v3.0):** **any US metro can be shown.** Qloo labels every place with its metro (`properties.geocode.metro`), which Athena maps to a Census CBSA; a metro needs ≥ 3 matching venues in the call to be listed. Other metros where the brand already has accounts are removed in Athena's code. The fixed list of the 25 largest metros is kept **only** for the pre-registered ranking check (§10.3) and the With/Without Qloo proof (§10.2), so their numbers stay comparable.
+- **Metro ids (v3.1):** a metro outside the 25 gets a self-describing id (name plus centre), so any step can rebuild it without stored state; Census rows are matched by CBSA name. A typed city outside the 25 gets its centre from one Qloo lookup.
 - **Typed cities (v3.0):** wherever the founder types a city (Deepen's home city, "what if Boise?" at the Where stop), it resolves to its Census metro; if Qloo returns fewer than 3 matching venues there, Athena says so and offers the nearest metro that has them.
 - **Why the change:** in v2 the city was a required input, so the cap only limited what a founder could type. In v3.0 the city is an output of the crowd (§9.23), so a cap would hide where a young brand's crowd really is (a Boulder or an Asheville).
 - **Per recipe:** for R2 the list is the launch order, for R3 it picks the activation or pop-up city, and for R4 it's the shortlist.
@@ -684,7 +686,7 @@ Notation: **A** = accounts, **W** = wins, **D** = declines, **C** = the pool. Wi
 - **Request:** `GET /v2/insights?filter.type=urn:entity:podcast&signal.interests.entities=<signal>&take=20`, plus the same reach window.
 - **Enrichment:** episode count, latest episode date, genre and Apple Podcasts link from Apple's lookup, keyed by the Apple ID in Qloo's `external` field; website and contact email from the show's RSS feed (§9.19). Qloo's `episode_count` isn't shown: it was "15" for every podcast on 8 Oct. A podcast with no episode in 60 days is marked "no new episode in 2+ months"; enrichments never change the order. Hosting relay addresses (`info+<id>@mg-eu.acast.com`) aren't shown as contacts.
 
-**Who listens (top 5 podcasts), based on Qloo Insights**
+**Who listens (top 3 podcasts, v3.1; was 5), based on Qloo Insights**
 
 Five Qloo calls per podcast, with the show itself as the signal:
 - **Skew:** `filter.type=urn:demographics`. Gender and age are named only at |value| ≥ 0.30, and an age bucket only when it leads the next by ≥ 0.15 (Fat Mascara scored 0.86 for "24 and under" and 0.78 for "55+" on 8 Oct, so no age is named). Labelled "a skew, not a head count".
@@ -806,6 +808,7 @@ All requests use the plan's signal (accounts, or the brand plus comparables). Ea
   - Every hook lists its claims, and the validator rejects any claim not in the evidence store.
   - Claims are never about the brand's customers as people ("people who love X…" is allowed; "your customers are…" is not).
 - **Calls:** 5 Qloo calls (1 tag call and 4 reference calls), plus 1 LLM call.
+- **Sensitive themes (v3.1):** themes Qloo returns are filtered before display; anything touching identity, health, politics, religion or historical atrocities is dropped (Qloo returned "Slavery" for Starface on 10 Oct).
 
 ### 9.16 Positioning (shared-pool method)
 
@@ -978,6 +981,8 @@ type BrandBrief = {
    - **3–5 lookalike brands** (similar tier and lifestyle, not direct competitors), each found in Qloo with `/search`; only found ones are kept;
    - **the brand itself**, if Qloo knows it.
 
+   **Built (v3.1):** tags join the seed **only when fewer than 2 lookalikes are found** (tag signals made first-ring calls 3× slower, 10–47 s); each tag must share a word with the trait and be a product tag type ("Gen Z" matched a pasta dish; place tags were rejected). First-ring calls are capped at **15 s**.
+
    *Verified 10 Oct:* vegan + skincare + minimalist tags as the only signal returned Cap Beauty, Organic Basics, Juice Press and Good Catch. "Clean beauty" matched only salon categories, so free phrases must go through tag search. (8 Oct found a theme tag alone too generic for **venues**, §11.1; seeds are used for brands and other entities, and venues come later from the chosen crowd.)
 2. **Expand.** From the seed, one Insights call per domain (brand, artist, TV, film, podcast, place) gives the first ring with affinity scores. The strongest few entities of the first ring are used as signals for a second ring. **Budget: ≤ 40 calls [DECISION; tune]**, cached per brand for 7 days.
    - *Verified 10 Oct:* every Insights result carries a numeric `query.affinity` (Liquid Death → Dr. Squatch 0.869; → POORSTACY 0.939), and edges cross domains (POORSTACY → Lyrical Lemonade 0.975, Golf Wang 0.967).
@@ -1018,6 +1023,7 @@ For online brands and the Online growth type. The chosen crowd is the signal.
 - **Pool:** retailer brands, from two sources, merged and de-duplicated:
   1. a fixed list of US grocery, specialty-food and home retailers (about 40: Whole Foods, Erewhon, Sprouts, Eataly, Central Market, Wegmans, Williams-Sonoma, Sur La Table, Target, Walmart, Kroger, Costco…), each resolved once in Qloo with a **match check** (10 Oct: "Murray's Cheese" resolved to Philadelphia cream cheese, so a name-similarity check like §9.1's is required) and cached forever;
   2. Qloo's own picks: `urn:entity:brand` with `filter.tags=urn:tag:genre:brand:retail` under the crowd's signal, `take=15`, which surfaces smaller retailers a founder may not know.
+- **Built (v3.1): pools per category.** The fixed list is split by category; Qloo's own retail-genre picks are added **only for general goods**, because its coarse genre tags put Goop and Thredup above grocers for tinned fish.
 - **Ranking:** one call, `filter.results.entities=<pool ≤ 50>` under the chosen crowd's weighted signal (Q8 method), ordered by affinity.
 - **Removed in code:** retailers already on the brand's store locator or in its files; retailers marked in the list as mostly own-label (Trader Joe's, Aldi) are shown last with a note ("mostly sells its own label").
 - **Shown:** the top 5 with affinity, the shared loves between the retailer's crowd and the brand's (the bridge rule, §9.8), and a **buyer-pitch** draft (F19). Labelled "Ranked by how much your crowd loves each retailer (Qloo)". Never phrased as a prediction that a buyer will say yes.
@@ -1543,6 +1549,7 @@ type RankingCheck = { brand: string; metroA: string; metroB: string; aucAthena: 
 - **Input:** Athena's server never fetches URLs users supply. Website reading goes only through the Vertex URL context tool, after the URL checks in §9.20.
 - **Uploads:** ≤ 10 files per brief, ≤ 15 MB each, ≤ 40 MB in total. The type is checked from the file's bytes, not its name. Files are processed in memory and never stored; only the brief is kept with the session. Macros and embedded objects in Office files are ignored.
 - **Follow-ups:** ≤ 4 follow-up turns and ≤ 6 Gemini ingestion calls per brief; they count toward the own-brand cap.
+- **Journeys (v3.1):** a whole journey counts **once** against the own-brand cap; its stop runs don't add to it. A dev-only `ATHENA_NO_LIMITS` flag (ignored in production) lifts caps for local testing.
 - **Sessions:** anonymous and deleted after 7 days. No accounts, no personal data.
 
 ### 14.6 Repo layout
@@ -1665,6 +1672,10 @@ So:
 - **Reading time is used:** while the founder reads a stop, idle capacity prepares the likely next choice (for example the top crowd's cities), **capped at 5 background calls per stop [DECISION]**. It never moves ahead or decides anything.
 - **The taste graph starts as soon as the product is clear,** during the channel and growth questions, so the Crowd stop is mostly ready when the founder gets there.
 - **Several visitors share the 5 a second.** Repeat brands and packs come from cache; this is the main argument for more headroom (§11.1).
+- **Built (v3.1):**
+  - **Prefetch:** once a stop's inputs are settled (a crowd, plus a city where the stop needs one), the next stop starts loading in the background; changing the city re-runs only the stops that use it.
+  - **Partners streams:** its lists show after the first 3 calls; mutual fit, Who listens (top 3) and enrichments run side by side and update the cards as they land. Measured cold: first results 10.8 s, done 17.9 s (was 31 s).
+  - **Business read once:** the classified business is cached for an hour, so stop runs don't redo it.
 - **Targets (v3.0):** first streamed reply ≤ 3 s; each stop's first results ≤ 2 s after the founder's choice; the Crowd stop ≤ 10 s after the product is clear.
 
 ---

@@ -3,6 +3,10 @@ import type { BrandInput } from "@/lib/agent/intake";
 import { planStream, serverDeps } from "@/lib/agent/server-deps";
 import { LIMITS, clientIp } from "@/lib/limits";
 import type { Block, Motion, Tier } from "@/lib/playbook/config";
+import { MAX_SIGNAL } from "@/lib/journey/weights";
+
+/** A reaction weight (§9.23 step 7): 1 unless a sane positive number was sent. */
+const weightOf = (w: unknown) => (typeof w === "number" && Number.isFinite(w) && w > 0 && w <= 10 ? w : 1);
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -45,13 +49,14 @@ export async function POST(req: Request) {
       pinnedComparables: Array.isArray(a.pinnedComparables) ? list(a.pinnedComparables, 5) : undefined,
     },
   };
-  const crowd = body.crowd as { name?: unknown; signal?: unknown } | undefined;
+  const crowd = body.crowd as { name?: unknown; signal?: unknown; exclude?: unknown } | undefined;
   const signal = (Array.isArray(crowd?.signal) ? crowd!.signal : [])
-    .map((s) => s as { id?: unknown; name?: unknown })
+    .map((s) => s as { id?: unknown; name?: unknown; weight?: unknown })
     .filter((s) => typeof s.id === "string" && typeof s.name === "string")
-    .slice(0, 12)
-    .map((s) => ({ id: (s.id as string).slice(0, 80), name: (s.name as string).slice(0, 120) }));
-  if (signal.length) input.crowd = { name: clip(crowd?.name, 80) ?? "Your crowd", signal };
+    .slice(0, MAX_SIGNAL)
+    .map((s) => ({ id: (s.id as string).slice(0, 80), name: (s.name as string).slice(0, 120), weight: weightOf(s.weight) }));
+  const exclude = Array.isArray(crowd?.exclude) ? list(crowd!.exclude, 30) : [];
+  if (signal.length) input.crowd = { name: clip(crowd?.name, 80) ?? "Your crowd", signal, exclude };
   // A re-run after an inline answer sends only the blocks the answer changes (§6.2.2).
   const scope: RunScope = Array.isArray(body.scope) ? body.scope.map((s) => oneOf(s, SCOPE)).filter((s): s is Block | "card" => !!s) : undefined;
   const ip = clientIp(req);

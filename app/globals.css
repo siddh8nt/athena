@@ -444,6 +444,7 @@ a.button.big { padding: 11px 20px; font-size: 15px; font-weight: 600; }
 .crowd.dimmed { opacity: 0.55; }
 .crowd-tag { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
 .react { display: flex; gap: 6px; }
+.which-crowd { display: grid; gap: 6px; margin-bottom: 8px; }
 .react button { flex: 1; padding: 5px 8px; font-size: 13px; }
 .react button.on { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
 .chosen-note { color: var(--accent); }

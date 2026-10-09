@@ -45,6 +45,8 @@ export type Journey = {
   /** The crowd the plan follows, and the founder's reactions to each. */
   crowdId?: string;
   reactions: Record<string, Reaction>;
+  /** With New crowd plus other picks: do the other picks target the current crowd or the new one (§7.8)? */
+  crowdTarget?: "current" | "new";
   city?: string;
 };
 

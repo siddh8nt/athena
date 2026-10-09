@@ -27,7 +27,8 @@ export type BrandInput = {
    *  Athena's earlier pick on a re-run, so blocks already on screen and re-run blocks rest on the same brands. */
   answers?: { brandId?: string | null; comparables?: string[]; whereSold?: string; pinnedComparables?: string[] };
   /** v3.0: the crowd chosen at the Crowd stop (§9.23); its entities become the plan's signal. */
-  crowd?: { name: string; signal: { id: string; name: string }[] };
+  /** Weights and exclusions come from the founder's reactions (§9.23 step 7, lib/journey/weights.ts). */
+  crowd?: { name: string; signal: { id: string; name: string; weight?: number }[]; exclude?: string[] };
 };
 
 export type WebsiteRead = {

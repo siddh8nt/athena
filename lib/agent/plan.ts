@@ -289,8 +289,10 @@ async function prepareCustom(input: BrandInput, qloo: QlooClient, deps: PlanDeps
 
 /** Runs the plan for a prepared business: the Read card, then every block, streamed and isolated. */
 async function runPlan(spec: PlanSpec, deps: PlanDeps, qloo: QlooClient, emit: Emit, started: number, count: () => number, scope?: RunScope, crowd?: BrandInput["crowd"]): Promise<void> {
-  const signal = { accounts: spec.accounts, wins: [], declines: [], brand: spec.own?.entity_id, comparables: spec.comparables.map((c) => c.entity_id), tags: [], crowd: crowd?.signal.map((s) => s.id) };
+  // The founder's reactions (§9.23 step 7): "Not us" entities are left out like declines; weights ride on the client.
+  const signal = { accounts: spec.accounts, wins: [], declines: crowd?.exclude ?? [], brand: spec.own?.entity_id, comparables: spec.comparables.map((c) => c.entity_id), tags: [], crowd: crowd?.signal.map((s) => s.id) };
   for (const s of crowd?.signal ?? []) spec.names.set(s.id, s.name);
+  if (crowd?.signal.some((s) => (s.weight ?? 1) !== 1)) qloo = qloo.withWeights(new Map(crowd.signal.map((s) => [s.id, s.weight ?? 1])));
   if (!signal.accounts.length && !signal.brand && !signal.comparables.length) {
     emit({ tool: "plan", why: `I need a little more about ${spec.brandName} to read its taste`, status: "needs_input", callIds: [], summary: "add a website, a few accounts or two brands like yours" });
     deps.send({ type: "done", qlooCalls: count(), ms: Date.now() - started });

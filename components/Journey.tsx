@@ -11,6 +11,7 @@ import { GUESS, type Turn } from "@/lib/brief/conversation";
 import { briefToInput } from "@/lib/brief/to-input";
 import type { BrandBrief } from "@/lib/brief/types";
 import { GROWTH, MAX_PICKS, STOP_LABELS, blockedReason, decisionsFor, labelFor, motionsFor, orderFor, spreadNote, stopsFor, suggest, type Channel, type GrowthType, type StopId } from "@/lib/journey/growth";
+import { crowdIdForStop, crowdSignal } from "@/lib/journey/weights";
 import { emptyJourney, type CrowdCard, type CrowdsEvent, type Journey as JourneyState, type Reaction } from "@/lib/journey/types";
 import { packBySlug } from "@/lib/journey/packs";
 import { takeFor } from "@/lib/journey/takes";
@@ -33,7 +34,7 @@ type Saved = { brief: BrandBrief; msgs: Msg[]; turn: Turn; journey: JourneyState
 /** `?pack=<slug>` starts a sample brand and `?new=1` starts fresh; either way, the URL is cleaned so a reload resumes. */
 let entered: { fresh: boolean; message: string } | undefined;
 function entry(): { fresh: boolean; message: string } {
-  // Read once per page load: React may run state initialisers twice, and the first run cleans the URL.
+  // Read once per page load: React may run state initialisers twice, and the URL is cleaned right after.
   return (entered ??= readEntry());
 }
 function readEntry(): { fresh: boolean; message: string } {
@@ -41,10 +42,7 @@ function readEntry(): { fresh: boolean; message: string } {
     const q = new URLSearchParams(window.location.search);
     const pack = packBySlug(q.get("pack"));
     const fresh = !!pack || q.get("new") === "1";
-    if (fresh) {
-      localStorage.removeItem(STORE);
-      window.history.replaceState(null, "", "/plan");
-    }
+    if (fresh) localStorage.removeItem(STORE);
     return { fresh, message: pack?.message ?? "" };
   } catch {
     return { fresh: false, message: "" };
@@ -76,6 +74,10 @@ const hash = (s: string) => {
 
 export function Journey() {
   const [start] = useState(entry);
+  // Clean the URL after render (changing it during render upsets Next's router), so a reload resumes.
+  useEffect(() => {
+    if (start.fresh) window.history.replaceState(null, "", "/plan");
+  }, [start.fresh]);
   const [saved] = useState(() => (start.fresh ? undefined : load()));
   const chat = useBriefChat(saved);
   const { brief, msgs, setMsgs, turn, busy, live, queued, first } = chat;
@@ -189,17 +191,24 @@ export function Journey() {
   }, [j.stop, stopData, j.crowds]);
 
   const crowd = j.crowds?.crowds.find((c) => c.id === j.crowdId);
-  const input = useMemo(
+  const base = useMemo(
     () => ({
       ...briefToInput(brief),
       comparables: (brief.comparables.length ? brief.comparables.map((c) => c.value) : (brief.proxies ?? [])).slice(0, 5),
       motions: motionsFor(j.growth),
-      crowd: crowd ? { name: crowd.name, signal: crowd.signal } : undefined,
       city: j.city,
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [brief.name?.value, brief.sells?.value, brief.stockists.length, j.growth.join(), crowd?.id, j.city],
+    [brief.name?.value, brief.sells?.value, brief.stockists.length, j.growth.join(), j.city],
   );
+  // Each stop's crowd, weighted by the founder's reactions (§9.23 step 7); with New crowd plus other picks, the
+  // which-crowd answer decides which crowd each stop follows (§7.8).
+  const signalFor = (s: StopId) => {
+    const id = j.crowds ? crowdIdForStop(s, { growth: j.growth, crowds: j.crowds.crowds, crowdId: j.crowdId, target: j.crowdTarget, reactions: j.reactions }) : undefined;
+    return id && j.crowds ? crowdSignal(j.crowds.crowds, id, j.reactions) : undefined;
+  };
+  const inputFor = (s: StopId) => ({ ...base, crowd: signalFor(s) });
+  const input = inputFor("go");
 
   // Prefetch (§14.9): the stop after this one starts in the background once its inputs are settled (a crowd, and a
   // city for the stops that use one), so it's ready when the founder arrives. Stays hidden until then.
@@ -359,7 +368,7 @@ export function Journey() {
             .filter((s) => BLOCK_OF[s] && (reached(s) || prefetch(s)))
             .map((s) => (
               <div key={s} id={`stop-${s}`} hidden={!reached(s)}>
-                <StopRunner stop={s} block={BLOCK_OF[s]!} input={CITY_STOPS.has(s) ? input : { ...input, city: undefined }} brandName={brief.name?.value ?? "Your brand"} onData={(d) => setStopData((x) => (x[s] === d ? x : { ...x, [s]: d }))} />
+                <StopRunner stop={s} block={BLOCK_OF[s]!} input={CITY_STOPS.has(s) ? inputFor(s) : { ...inputFor(s), city: undefined }} brandName={brief.name?.value ?? "Your brand"} onData={(d) => setStopData((x) => (x[s] === d ? x : { ...x, [s]: d }))} />
               </div>
             ))}
           {stops
@@ -369,7 +378,7 @@ export function Journey() {
                 {crowd ? (
                   <ExtraStop
                     kind={s as "retailers" | "online"}
-                    signal={crowd.signal.map((x) => x.id)}
+                    signal={(signalFor(s)?.signal ?? crowd.signal.map((x) => ({ ...x, weight: 1 }))).map((x) => ({ id: x.id, weight: x.weight }))}
                     product={[brief.sells?.value, ...(brief.traits ?? [])].filter(Boolean).join(", ")}
                     evidence={[brief.channels?.value ?? "", ...brief.stockists.map((x) => x.value.name), ...brief.notes.map((n) => n.value)].filter(Boolean)}
                     skew={crowd.skew}
@@ -403,12 +412,13 @@ function defaultCrowd(crowds: CrowdCard[], growth: GrowthType[]): string | undef
   return crowds.find((c) => c.main)?.id ?? crowds[0]?.id;
 }
 
-/** "That's us" picks the crowd; "Not us" moves the plan off it (§9.23 step 7). */
+/** "That's us" picks the crowd; "Partly" blends it in at half weight; "Not us" moves the plan off it and leaves its entities out (§9.23 step 7). */
 function react(x: JourneyState, id: string, r: Reaction): JourneyState {
   const reactions = { ...x.reactions, [id]: r };
   const crowds = x.crowds?.crowds ?? [];
   let crowdId = x.crowdId;
-  if (r === "us") crowdId = id;
+  // With New crowd, "That's us" marks today's customers; the plan keeps following the new crowd (§7.8).
+  if (r === "us" && !x.growth.includes("new_crowd")) crowdId = id;
   if (r === "not_us" && crowdId === id) crowdId = crowds.find((c) => reactions[c.id] !== "not_us" && c.id !== id)?.id ?? crowdId;
   return { ...x, reactions, crowdId };
 }
@@ -506,12 +516,30 @@ function Dock(props: {
   }
   if (j.stop === "crowd") {
     const chosen = j.crowds?.crowds.find((c) => c.id === j.crowdId);
+    // §7.8: New crowd plus other picks needs one answer: who do the other picks target?
+    const which = j.crowds?.crowds.length && chosen ? decisionsFor(j.growth).find((d) => d.id === "which_crowd") : undefined;
+    const current = j.crowds?.crowds.find((c) => j.reactions[c.id] === "us" && c.id !== j.crowdId) ?? j.crowds?.crowds.find((c) => c.main && c.id !== j.crowdId);
     return (
+      <div className="dock">
+        {which && current && (
+          <div className="which-crowd">
+            <p className="small">
+              {which.for!.map((g) => labelFor(g, j.channel)).join(" and ")}: should {which.for!.length > 1 ? "these" : "this"} target your current crowd or the new one?
+            </p>
+            <div className="seg" role="radiogroup" aria-label="Which crowd the other picks target">
+              {(["current", "new"] as const).map((t) => (
+                <button key={t} type="button" role="radio" aria-checked={j.crowdTarget === t} className={j.crowdTarget === t ? "on" : ""} onClick={() => setJ((x) => ({ ...x, crowdTarget: t }))}>
+                  {t === "current" ? `Current: ${current.name}` : `New: ${chosen!.name}`}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       <div className="replies">
         <button
           type="button"
           className="primary"
-          disabled={!j.crowds}
+          disabled={!j.crowds || (!!which && !!current && !j.crowdTarget)}
           onClick={() => {
             props.say(chosen ? `Planning for ${chosen.name}: ${chosen.loves.slice(0, 3).map((l) => l.name).join(", ")}.` : "Planning from your brand and brands like it.");
             props.onNext();
@@ -519,6 +547,7 @@ function Dock(props: {
         >
           {chosen ? `Plan for ${chosen.name} →` : j.crowds ? "Continue →" : "Reading your crowds…"}
         </button>
+      </div>
       </div>
     );
   }
@@ -643,6 +672,8 @@ function CrowdStop({ j, steps, onReact, onChoose }: { j: JourneyState; steps: st
               </div>
               {!chosen && reaction !== "not_us" && <button type="button" className="linkish small" onClick={() => onChoose(c.id)}>Plan for this crowd instead</button>}
               {chosen && <p className="small chosen-note">The plan follows this crowd</p>}
+              {!chosen && reaction === "partly" && <p className="small muted">Blended into the plan at half weight</p>}
+              {reaction === "not_us" && <p className="small muted">Left out of every ranking</p>}
             </article>
           );
         })}
@@ -656,7 +687,7 @@ type RetailersResult = { picks: { id: string; name: string; affinity: number; ra
 type OnlineResult = { creators: { id: string; name: string; role: string; affinity: number }[]; podcasts: { id: string; name: string; affinity: number }[]; interests: { id: string; name: string }[]; calls: number };
 
 /** Next retailers (§9.25) and Online (§9.24): small stops outside the six blocks, read for the chosen crowd. */
-function ExtraStop({ kind, signal, product, evidence, skew, brandName, onData }: { kind: "retailers" | "online"; signal: string[]; product: string; evidence: string[]; skew: CrowdCard["skew"]; brandName: string; onData: (d: unknown) => void }) {
+function ExtraStop({ kind, signal, product, evidence, skew, brandName, onData }: { kind: "retailers" | "online"; signal: { id: string; weight: number }[]; product: string; evidence: string[]; skew: CrowdCard["skew"]; brandName: string; onData: (d: unknown) => void }) {
   const [data, setData] = useState<RetailersResult | OnlineResult | null>(null);
   const key = JSON.stringify([kind, signal]);
   useEffect(() => {

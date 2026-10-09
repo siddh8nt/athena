@@ -188,6 +188,8 @@ export type QlooClientOptions = {
   perSecond?: number;
   /** Share an existing pacer (child clients do). */
   pacer?: Pacer;
+  /** Per-entity weights for insights signals (§9.23 step 7); entities not listed weigh 1. */
+  weights?: ReadonlyMap<string, number>;
 };
 
 /** One entity in a weighted signal (§9.23 step 7). */
@@ -202,6 +204,7 @@ export class QlooClient {
   private readonly onCall?: (call: QlooCall) => void;
   private readonly retryDelayMs: number;
   readonly pacer: Pacer;
+  private readonly weights?: ReadonlyMap<string, number>;
 
   constructor(opts: QlooClientOptions) {
     this.transport = opts.transport;
@@ -209,13 +212,22 @@ export class QlooClient {
     this.cache = opts.cache ?? new MemoryCache();
     this.onCall = opts.onCall;
     this.retryDelayMs = opts.retryDelayMs ?? 1000;
+    this.weights = opts.weights;
     this.pacer = opts.pacer ?? new Pacer(opts.perSecond ?? (this.mode === "live" ? LIVE_PER_SECOND : Number.POSITIVE_INFINITY));
   }
 
   /** A child client that also logs into another sink (one per block), sharing cache, transport and pacer. Parents still see every call. */
   withLog(onCall: (call: QlooCall) => void): QlooClient {
     const parent = this.onCall;
-    return new QlooClient({ transport: this.transport, cache: this.cache, pacer: this.pacer, onCall: (c) => (parent?.(c), onCall(c)), retryDelayMs: this.retryDelayMs });
+    return new QlooClient({ transport: this.transport, cache: this.cache, pacer: this.pacer, onCall: (c) => (parent?.(c), onCall(c)), retryDelayMs: this.retryDelayMs, weights: this.weights });
+  }
+
+  /**
+   * A child client whose insights calls weigh these entities wherever they appear in the signal (the founder's crowd
+   * reactions, §9.23 step 7). Blocks don't change: a signal with unequal weights goes as the weighted POST.
+   */
+  withWeights(weights: ReadonlyMap<string, number>): QlooClient {
+    return new QlooClient({ transport: this.transport, cache: this.cache, pacer: this.pacer, onCall: this.onCall, retryDelayMs: this.retryDelayMs, weights });
   }
 
   async get(path: string, params: QlooParams = {}, opts: CallOptions = {}): Promise<QlooResponse> {
@@ -230,7 +242,10 @@ export class QlooClient {
   /** POST /v2/insights with per-entity weights (Q24). Equal weights go as a plain GET, which Qloo treats the same (10 Oct). */
   async insightsWeighted(params: QlooParams, signal: Weighted[], opts: CallOptions = {}) {
     const live = signal.filter((s) => s.weight > 0);
-    if (live.every((s) => s.weight === live[0]?.weight)) return this.insights({ ...params, "signal.interests.entities": live.map((s) => s.id) }, opts);
+    if (live.every((s) => s.weight === live[0]?.weight)) {
+      const res = await this.get("/v2/insights", { ...params, "signal.interests.entities": live.map((s) => s.id) }, opts);
+      return { ...res, results: results(res) };
+    }
     const body: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(params)) {
       if (v === undefined || v === "" || (Array.isArray(v) && v.length === 0)) continue;
@@ -283,6 +298,12 @@ export class QlooClient {
   // ---- Convenience wrappers ----------------------------------------------------------------
 
   async insights(params: QlooParams, opts: CallOptions = {}) {
+    const raw = params["signal.interests.entities"];
+    const ids = Array.isArray(raw) ? raw : typeof raw === "string" && raw ? raw.split(",") : [];
+    if (this.weights && ids.some((id) => (this.weights!.get(id) ?? 1) !== 1)) {
+      const { ["signal.interests.entities"]: _, ...rest } = params;
+      return this.insightsWeighted(rest, ids.map((id) => ({ id, weight: this.weights!.get(id) ?? 1 })), opts);
+    }
     const res = await this.get("/v2/insights", params, opts);
     return { ...res, results: results(res) };
   }

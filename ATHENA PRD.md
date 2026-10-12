@@ -6,7 +6,7 @@
 
 | | |
 |---|---|
-| Version | 3.2 · 10 Oct 2026 |
+| Version | 4.0 · 12 Oct 2026 |
 | Owners | Siddhant, Jaiaditya |
 | Event | Qloo Agentic Hackathon, "Agents, but with taste." |
 | Deadline | 31 Oct 2026, 9:15 AM IST (30 Oct, 11:45 PM ET). **We submit on 28 Oct.** |
@@ -29,6 +29,7 @@
 | New in v3.0 | **The taste model is the centrepiece, and the whole product is a journey.** (1) **Intake asks about the product, not the customer** (§6.2): what it is, price, what it's made of, how it looks, when it's used, where it's sold. Athena turns those traits into Qloo signal itself. (2) **Online or offline** is asked (with Athena's guess) and shapes the options. (3) **Growth types replace motions as the founder's choice** (§7.8): Deepen, New city, New crowd, Borrow a crowd, Show up, Online, Own location; up to 3. (4) **A taste graph built from Qloo affinities splits the brand's crowd into 2–3 crowds** (§9.23), each with its own cities, loves, partners and audience skew; the founder's reactions re-weight it. (5) **City is no longer a required input:** it's an output of the crowd, asked only when a growth type needs it. (6) **The plan is a step-by-step journey** (§13.1–13.2): each stop is a decision with options, waits for the founder, and carries choices forward. (7) **The dashboard is the advanced view** and where the pipeline is worked (§13.2). (8) **Demos become context packs** (§7.7): ready-made material that judges drop in and watch run live: three real brands built only from public material (Brightland for the offline path, Starface for the online path, Fishwife for a brand Qloo doesn't know), nothing fictional; (11) **Retail step-up** (§9.25): Deepen also ranks the bigger retailers that fit the crowd and that the brand isn't in yet; the real-brand demo workspaces and the "Try this" card are removed. (9) **Responsible-use rules updated** (§3.2, §9.17, §15): creators can be partners in their professional role, like podcasts; the Online stop suggests allowed audience interests and, when clear, the age and gender skew as ad audiences *to test*; sensitive audience types stay banned and no private individual is ever a target. (10) **Qloo's limits measured** (10 Oct): 5 calls a second and 10,000 a month on our key; one shared pacer holds the per-second limit (§14.9). Weighted signals and person entities tested live (§11.1, Q21–Q25). |
 | New in v3.1 | **What the first build changed** (10 Oct). (1) **No blind guessing** (§6.2.1): the channel comes only from the founder's words or a cited source; "Not sure" now means "look it up for me", and missing facts are researched or asked, never guessed. (2) **Any US metro** everywhere, with self-describing metro ids and Census matched by metro name (§9.3). (3) **Seed:** tags join only when fewer than 2 lookalikes are found, and first-ring calls are capped at 15 s (§9.23). (4) **Next retailers:** curated pools per category; Qloo's own retail picks only for general goods (§9.25). (5) **Message drops sensitive themes** (§9.15). (6) **Speed:** Who listens on the top 3 podcasts, Partners streams as its calls land, and the journey prefetches the next stop (§14.9). (7) A journey counts once against the own-brand cap (§14.5). |
 | New in v3.2 | **Crowd reactions now change the plan** (§9.23 step 7): the chosen crowd leads at weight 3, a "Partly" crowd's top 6 entities join at 1.5, a "Not us" crowd's top 8 are excluded from every ranking, and unreacted crowds stay out. **New crowd plus other picks asks one question at the Crowd stop** (§7.8): do the other picks target the current crowd or the new one? |
+| New in v4.0 | **Qloo as a measuring instrument, a measured test against an LLM, and a taste map founders can touch** (12 Oct). (1) **Taste engine** (§9.23): about 100 controlled Qloo probes per brand over 6 domains form a percentile matrix; crowds come from spectral clustering with bootstrap confidence and are checked against shuffled data, so only each crowd's **core** is claimed; **specificity** sorts what a crowd loves beyond its fame. Every method uses only the order within each Qloo response. (2) **The Taste Bench** (§10.6): Athena vs one naive Qloo call vs Gemini alone vs popularity, on where to launch, which retailer next and which venues, scored against the brands' real stockists; registered in `prereg-v2` by 16 Oct and published whatever it shows. (3) **The Taste Galaxy** (§13.11): the crowds as a map that forms live while the agent probes; hover for why, pin "us" or "not us", answer the agent's one question. (4) **Two Qloo keys** (§11.1, §14.9): 10 calls a second and 20,000 a month, routed by headroom with failover. (5) **Planned 17–25 Oct:** crowd geography with hotspots, taste axes, bridges and why-paths (§9.26–9.29), and With / Without on every stop (§13.2). (6) **Cut after live probes on 12 Oct:** trends and compare (§11.1). |
 
 **How to read this document**
 
@@ -64,6 +65,8 @@
 
 **v3.0: one engine, one journey.** The six blocks stay as the engine. The founder sees them as stops on a step-by-step journey, chosen by the growth types they pick (§7.8): an olive-oil brand that picks Deepen and Borrow a crowd walks Crowd → Where → Places → Partners; an online skincare brand that picks Online and New crowd walks Crowd → Online → Message. Same engine, same screen.
 
+**v4.0: Qloo as a measuring instrument.** Most taste apps make one Qloo call per question and hand the list to an LLM. Athena runs about 100 controlled probes per brand, each asking Qloo to rank a fixed set of about 150 entities under one signal, and analyses the answers as a matrix with standard, citable methods (§9.23): crowds with bootstrap confidence, checked against shuffled data, and what each crowd loves beyond its fame. An LLM can't produce this matrix, because it needs Qloo's panel data. The founder sees it as the **Taste Galaxy** (§13.11), and the claim that Athena beats an LLM is put to a pre-registered test, the **Taste Bench** (§10.6).
+
 **Why only Qloo.** An LLM can name popular cafés, big cities and famous brands. It cannot:
 
 1. measure which venues' crowds match a brand's twelve best accounts;
@@ -72,7 +75,7 @@
 4. score a partnership from both sides: how much their crowd likes you, and how much yours likes them;
 5. name the shows, films, artists, podcasts and festivals this specific crowd over-indexes on;
 6. re-rank from what a brand wins and loses;
-7. split a brand's customers into distinct crowds from real cross-domain affinities, and say where each one lives and what it loves. An LLM can only guess at personas; here each crowd is a cluster of real Qloo entities with real affinity scores.
+7. split a brand's customers into distinct crowds from real cross-domain affinities, and say where each one lives and what it loves. An LLM can only guess at personas; here each crowd is a cluster of real Qloo entities, placed by about 100 Qloo probes, and only the members that hold up better than shuffled data are claimed (§9.23).
 
 Athena does all seven. On Places, the judge can flip **Without Qloo** to see a chatbot answer the same question, with each of the chatbot's venues looked up in Qloo.
 
@@ -80,12 +83,12 @@ Athena does all seven. On Places, the judge can flip **Without Qloo** to see a c
 
 **Why it wins.** Each judging criterion has a specific answer:
 
-- **Technological implementation:** cross-city signal transfer; two-call rank scoring over fixed pools; two-sided scoring (bridges and mutual fit); shared-pool positioning; Qloo-ranked moments joined to dated events; a grounding validator. They use 15 Qloo capabilities, each tested live on 8 Oct (§11.1), and every block shows how many Qloo calls built it.
-- **Design:** a product-first conversation that never asks founders what they can't know; a step-by-step journey where every stop is a decision; crowd cards built from a real taste graph; a **Without Qloo** toggle on Places; a line on every stop saying how it was ranked; every number opens its source; a dashboard for the work after.
+- **Technological implementation:** a taste engine that uses Qloo as a measuring instrument (about 100 probes per brand, spectral crowds with bootstrap confidence and a shuffled-data check, popularity-debiased specificity; §9.23) and a pre-registered test against Gemini alone (§10.6); cross-city signal transfer; two-call rank scoring over fixed pools; two-sided scoring (bridges and mutual fit); shared-pool positioning; Qloo-ranked moments joined to dated events; a grounding validator. They use 15 Qloo capabilities, each tested live on 8 Oct (§11.1), and every block shows how many Qloo calls built it.
+- **Design:** the Taste Galaxy, which forms live and can be hovered, pinned and questioned (§13.11); a product-first conversation that never asks founders what they can't know; a step-by-step journey where every stop is a decision; crowd cards built from a real taste graph; a **Without Qloo** toggle on Places; a line on every stop saying how it was ranked; every number opens its source; a dashboard for the work after.
 - **Potential impact:** a consumer founder's next growth decisions, turned into named targets they can act on tomorrow.
 - **Quality of the idea:** places and partners as a taste fingerprint; lookalike places, partners and moments; two-sided partnership fit; outcomes as signal.
 
-**Honesty.** The stockist blind test was run on the tuning brand on 8 Oct and failed (§10.1). Athena makes no accuracy claim it hasn't measured, and the Method page publishes the failed test.
+**Honesty.** The stockist blind test was run on the tuning brand on 8 Oct and failed (§10.1). Athena makes no accuracy claim it hasn't measured, and the Method page publishes the failed test. The Taste Bench (§10.6) is registered before any held-out brand is run and is published whatever it shows.
 
 ---
 
@@ -169,6 +172,7 @@ Removed in v3.0. A first-time judge is guided by the journey itself and by the s
 | G6 | Nothing breaks | Zero errors on the sample-pack path in 5 fresh-browser rehearsals; live and free through 17 Nov |
 | G7 | Ship early | Submitted on 28 Oct |
 | G8 | Zero spend outside the credit | All Google Cloud usage stays inside the $300 Free Trial credit; no card is ever charged; every external API is on a free tier (§14.8) |
+| G9 | A measured answer to "does it beat an LLM?" | The Taste Bench (§10.6): registered in `prereg-v2` by 16 Oct, run on 8 held-out brands by 19 Oct, published whatever it shows |
 
 ### 3.2 Non-goals
 
@@ -186,8 +190,8 @@ Removed in v3.0. A first-time judge is guided by the journey itself and by the s
 
 | Criterion | What we show | Where |
 |---|---|---|
-| Technological implementation | The methods in §1; 15 Qloo capabilities, each tested live (§11.1), with per-block Qloo call counts; gap-filling sources joined to Qloo results, each labelled (§11.2); tests for every method | M2–M9, Method page, trace, repo |
-| Design | A product-first conversation; a step-by-step journey where every stop is a decision; crowd cards from a real taste graph; a dashboard for the work after; a Without Qloo toggle on Places; every stop says how it was ranked; every number clickable; the 5-second test passed; a phone layout | §2, §13 |
+| Technological implementation | The taste engine (§9.23): about 100 Qloo probes per brand analysed as a matrix, spectral crowds with bootstrap confidence and a shuffled-data check, specificity; the Taste Bench against Gemini alone (§10.6); the methods in §1; 15 Qloo capabilities, each tested live (§11.1), with per-block Qloo call counts; gap-filling sources joined to Qloo results, each labelled (§11.2); tests for every method | M2–M9, Method page, trace, repo |
+| Design | The Taste Galaxy (§13.11); a product-first conversation; a step-by-step journey where every stop is a decision; crowd cards from a real taste graph; a dashboard for the work after; a Without Qloo toggle on Places; every stop says how it was ranked; every number clickable; the 5-second test passed; a phone layout | §2, §13 |
 | Potential impact | Three specific users with weekly jobs; output that is tomorrow's call list, launch city, collab shortlist, message and event calendar; a real brand and founder quotes; a market that spans consumer goods, tech and apps | M5–M10, Devpost, §4 |
 | Quality of the idea | Places and partners as a taste fingerprint; lookalike places, partners and moments; two-sided partnership fit; outcomes as signal | M1, M5, M7, M8 |
 
@@ -980,7 +984,7 @@ type BrandBrief = {
 - **[VERIFY]** Gemini's per-request limit on images when a deck has many; the cap of 10 above is a guess until tested.
 - **[DECISION]** Whether Phase 1's follow-ups use Flash (fast, cheap) or Pro. Default: Flash.
 
-### 9.23 Taste graph and crowds (v3.0)
+### 9.23 Taste graph and crowds (v3.0; engine v4.0)
 
 **Why:** the founder knows their product; Qloo knows who loves what. This turns one into the other, and splits the result into crowds the founder can choose between.
 
@@ -992,14 +996,25 @@ type BrandBrief = {
    **Built (v3.1):** tags join the seed **only when fewer than 2 lookalikes are found** (tag signals made first-ring calls 3× slower, 10–47 s); each tag must share a word with the trait and be a product tag type ("Gen Z" matched a pasta dish; place tags were rejected). First-ring calls are capped at **15 s**.
 
    *Verified 10 Oct:* vegan + skincare + minimalist tags as the only signal returned Cap Beauty, Organic Basics, Juice Press and Good Catch. "Clean beauty" matched only salon categories, so free phrases must go through tag search. (8 Oct found a theme tag alone too generic for **venues**, §11.1; seeds are used for brands and other entities, and venues come later from the chosen crowd.)
-2. **Expand.** From the seed, one Insights call per domain (brand, artist, TV, film, podcast, place) gives the first ring with affinity scores. The strongest few entities of the first ring are used as signals for a second ring. **Budget: ≤ 40 calls [DECISION; tune]**, cached per brand for 7 days.
+2. **Expand (ring 1).** From the seed, one Insights call per domain (brand, artist, TV, film, podcast, book) with `filter.popularity.max=0.99` and `take=25` gives about 150 entities; chain retailers are dropped. The seed's own order is the first column of the matrix in step 3.
    - *Verified 10 Oct:* every Insights result carries a numeric `query.affinity` (Liquid Death → Dr. Squatch 0.869; → POORSTACY 0.939), and edges cross domains (POORSTACY → Lyrical Lemonade 0.975, Golf Wang 0.967).
-   - Scores within one list are tightly packed (top 8 brands: 0.849–0.869), so each list is rank-scaled to 0–1 before use.
-3. **Taste vectors.** Each entity is described by its normalized affinities to the second-ring signals plus its tags. No model training.
-4. **Crowds.** Community detection (Louvain) on the graph **[DECISION: Louvain first; k-means on the vectors as the alternative]** gives **2–3 crowds**. A crowd needs ≥ 8 entities across ≥ 2 domains, or it merges into its nearest neighbour.
+   - Scores within one list are tightly packed (top 8 brands: 0.849–0.869), and Qloo's docs say scores are normalised per query. So **from v4.0 only the order within each response is used.**
+3. **Probes (v4.0).** A probe is one call: `filter.type=<domain>`, `signal.interests.entities=<one landmark entity>`, `filter.results.entities=<that domain's pool, ≤ 50>`, `take=<pool size>`. Each probe becomes within-probe percentiles, with unscored pool members tied below every scored one (the §10.3 rule). Every method below is therefore invariant to Qloo's per-query normalisation: in effect a rank (copula) transform.
+   - **The matrix U:** one row per entity, one column per landmark (the seed, then each probed entity). Two entities' similarity is the correlation of their column-centred rows. This is the idea behind landmark MDS and Nyström features (de Silva & Tenenbaum 2004; Williams & Seeger 2001): a few reference points describe everything.
+   - **Round 1:** 8 landmarks spread over every domain (each domain's strongest entity, then the 6th, 12th, 3rd and 9th).
+   - **Later rounds:** 3 landmarks each, chosen by **k-center greedy** in the current similarity (Gonzalez 1985): the entity farthest from every landmark so far, so probes go where the map is least known, never at random.
+   - **Stopping rule (the agent's):** stop when the crowds stop changing (adjusted Rand index ≥ 0.9 between consecutive rounds), at 16 landmarks, or at the budget of 110 calls. Below 2,000 calls left over both keys, landmarks drop to 8 (§14.9).
+   - *Measured 12 Oct (Brightland):* 102 calls, 16 landmarks, about 17 s cold; cached 24 hours.
+4. **Crowds with confidence (v4.0, 0 calls).**
+   - **Spectral clustering** (Ng, Jordan & Weiss 2002): a k-nearest-neighbour graph (k = 8) on the similarities, its normalised affinity, the number of crowds k ∈ {2, 3, 4} from the largest eigengap, then k-means on the row-normalised eigenvectors. Louvain stays in the tests as a cross-check.
+   - **Bootstrap consensus:** the landmark columns are resampled with replacement 100 times and each resample re-clustered. The co-association (the share of resamples in which two entities share a crowd) is clustered into the consensus crowds. The crowd rules carry over: ≥ 8 entities across ≥ 2 domains, otherwise merged into the nearest crowd; at most 3.
+   - **Membership:** each resample's clusters are matched to the consensus crowds (the best permutation, or many-to-one where crowds were merged). An entity's **certainty** is the share of resamples that keep it in its crowd. A crowd's **stability** is Hennig's (2007) mean Jaccard with its best match across resamples.
+   - **Core and fringe.** The same pipeline runs on shuffled data: every probe column permuted within each domain (the same marginals, no shared taste), 50 resamples. An entity is in its crowd's **core** only if its certainty beats the 95th percentile of certainty on shuffled data; the rest is its **fringe**. Crowd cards, signals and the Galaxy claim only cores.
+   - *Measured 12 Oct (Brightland, offline on cached matrices, 0 calls).* With Great Jones and Our Place as lookalikes, λ₂–λ₄ were 0.84 / 0.83 / 0.76 against 0.75 / 0.73 / 0.69 on shuffled data, and a crowd was recovered (Jaccard ≥ 0.5) in 31–39% of resamples against 3–16%: **real but soft crowds**, hence the core rule. With Our Place and Caraway the two crowds were strong: mean Jaccard 0.66 against 0.40, recovered in 85–88% of resamples against 20%, λ₂ 0.89 against 0.75; 86 of 150 entities were core. Tried and rejected: 80% subsamples (inflate real and shuffled data alike), rank-4 denoising (makes shuffled data look structured), a kNN of 12 (no gain).
+   - **The seed shapes the map.** Lookalikes come from the brief (step 1), so two briefs of the same brand can give different crowds (12 Oct: k = 2 with Our Place and Caraway, k = 3 with Aesop and Great Jones). For a fixed seed the engine is deterministic, because its random draws are seeded from the signal. The Bench registers each brand's seed (§10.6).
 5. **Each crowd gets:**
    - a **name** written by the agent from only its entities and tags (validator: every word maps to an entity or tag; otherwise "Crowd A");
-   - its **top loves** across domains, with affinity;
+   - its **top loves** across domains, core members first, with affinity;
    - its **audience skew** from `urn:demographics` with the crowd's top entities as the signal, under §9.17. *Verified 10 Oct:* crowds of the same brand get distinct skews (Liquid Death's emo-rap crowd ≤ 34 and gender-neutral, its Dr. Squatch–Slim Jim crowd male +0.69), while the brand alone gives a blend of them (45–54, male +0.43), which is itself an argument for crowds;
    - **where it concentrates:** metros by the place-diversify method (§9.3), any US metro.
 6. **Main and adjacent.** The crowd closest to the seed is the **main crowd**; the others are **adjacent crowds**, which power New crowd.
@@ -1007,6 +1022,9 @@ type BrandBrief = {
    - *Verified 10 Oct* (Liquid Death + Glossier as the signal, top 10 brands): equal weights matched the plain GET exactly (10 of 10). Liquid Death at 1.5× → 2 of 10 from its own list; 2× → 2; 3× → 5; 5× → 7; 20× → 9. **The shift is gradual**, so weights nudge a plan without flipping it.
    - **Built (v3.2):** the chosen crowd's entities weigh 3; a "Partly" crowd's top 6 join at 1.5; a "Not us" crowd never joins and its top 8 go to the exclude list; crowds without a reaction stay out, so the plan keeps its focus. With no "Partly" crowd every weight is equal, so the request is the plain GET and hits the same cache. Weights apply to every block and stop through one weighted Qloo client; blocks don't change. *Verified live 10 Oct* (Starface, Partners): the weighted POSTs returned results, and on Next retailers the order shifted gently (Target and Williams-Sonoma up a place or two), as the weight test predicted.
    - Per-entity weights need the POST body with `id` keys (`entity` keys return HTTP 400). The single-number GET form isn't used.
+   - **Built (v4.0): pins.** Any entity in the Galaxy (§13.11) can be pinned "Our customers love this" (it leads the signal at weight 3) or "Not us" (dropped from the signal and excluded). The agent's question (step 9) is a pin. Pins reach every later ranking through the same weighted client.
+8. **Specificity (v4.0, 0 calls).** Qloo's `popularity` is a percentile within the domain, so unlike affinity it can be compared across queries. Per domain, a least-squares line of the seed's percentile on logit(popularity); the residual is the entity's **specificity**: positive when the crowd loves it beyond its fame. It sizes the Galaxy's nodes. It cuts the "everyone loves Taylor Swift" effect, and an LLM can't fake it, because it needs the panel's measured popularity.
+9. **The agent's one question (v4.0, 0 calls).** After the crowds form, the agent asks about one entity: among the familiar ones (brands, TV, music) in the top half of the seed's order, the one whose membership is most evenly split between two crowds (highest normalised entropy; uncertainty sampling). The answer is a pin (step 7).
 
 ### 9.24 Online (v3.0)
 
@@ -1039,11 +1057,36 @@ For online brands and the Online growth type. The chosen crowd is the signal.
 - **Verified 10 Oct** (crowd from Brightland, Great Jones and Momofuku; 15 chains): Trader Joe's 0.855, Erewhon 0.852, Sur La Table 0.847, Williams-Sonoma 0.845, Eataly 0.838, Central Market 0.821 … Whole Foods 0.781 … Target 0.675, Kroger 0.672, Walmart 0.605. The retail-genre filter added The Goods Mart, New Seasons Market, H Mart, The Little Market and Verve Wine.
 - **Calls:** 2 (plus cached resolution).
 
+### 9.26 Crowd geography (v4.0, planned 17–19 Oct)
+
+- **Heatmap:** one US-wide heatmap per crowd (`urn:heatmap`, `filter.location` = a US WKT polygon, the crowd's core as the signal). *Verified 12 Oct:* 3,789 geohash-4 cells in 2.05 s; a Texas polygon gave 419 cells in 0.73 s; Brightland's top cells were the SF Bay, Monterey and Santa Barbara. **Calls:** 1 per crowd.
+- **People:** cells are joined to county population (3,121 county outlines in `data/outlines.json`; populations from one Census ACS call, `for=county:*` [VERIFY]), shared out by area overlap and precomputed once. **Taste-weighted reach** per metro is the sum over its cells of population × the cell's percentile.
+- **Hotspots:** Getis-Ord **Gi\*** over each cell and its 8 geohash neighbours, with Benjamini–Hochberg control across cells. The map shows only significant clusters.
+- **Crowd weather:** each cell coloured by the crowd that over-indexes there most (shape and colour per §13.4).
+- **P1, own-location brands:** a Huff gravity catchment, P(cell → store) ∝ attractiveness / distance^λ, λ = 2 [tune].
+- Extends Markets (§9.3); the place-diversify method stays as one input.
+
+### 9.27 Taste axes (v4.0, planned 20–22 Oct)
+
+- Non-negative matrix factorisation of U (Lee & Seung 1999), rank 3–5 chosen on held-out entries.
+- Each axis is named by the agent from its top-loading entities and their Qloo tags only, under the validator (§9.10); otherwise "Axis 1".
+- **Sliders** reweight the landmarks, w ∝ 1 + α·H (5 positions per axis), and re-rank the current stop for 1–2 calls per move through the weighted POST (§9.23 step 7). Positions are cached.
+
+### 9.28 Bridges and why-paths (v4.0, planned 20–22 Oct)
+
+- **Bridge score** between two signals (two crowds; or brand and partner): the harmonic mean of the entity's percentiles under each. High only if both sides love it, which tightens §9.8.
+- **Why-path:** final ranking calls add `feature.explainability=true` (*verified 12 Oct* on brands: Brightland + Great Jones → Material, The Culinistas, Lake Hour, with per-signal scores). Shown as a small Sankey from the signals, through each one's contribution, to the pick and its crowd. **Calls:** 0 extra.
+
+### 9.29 Learning from outcomes (v4.0, P1)
+
+- When the founder marks outcomes ("store said yes", "no reply"), a Bayesian logistic model on the U embedding proposes the next venues by Thompson sampling.
+- Tested by the Bench's discovery simulation (§10.6, T4).
+
 ---
 
 ## 10. Evidence and proof
 
-Athena makes one kind of claim per block: **demonstrated** (shown with evidence and compared with a chatbot) or **measured** (checked against ground truth under a pre-registered rule). Only the ranking check in §10.3 can earn "measured".
+Athena makes one kind of claim per block: **demonstrated** (shown with evidence and compared with a chatbot) or **measured** (checked against ground truth under a pre-registered rule). Only the ranking check (§10.3) and the Taste Bench (§10.6) can earn "measured".
 
 ### 10.1 The stockist blind test: run on 8 Oct, failed
 
@@ -1111,7 +1154,7 @@ Rules:
 
 The one measured claim. It tests whether Athena ranks a brand's real stockists above look-alike venues of the same types, in a fair pool.
 
-**Pre-registration.** Before the first call on any test brand, commit `proof/REGISTRATION.md` and tag it `prereg-v2`. It fixes everything below, plus the decoy seed, and a commitment to publish every result.
+**Pre-registration.** Before the first call on any test brand, commit `proof/REGISTRATION.md` and tag it `prereg-v2`. It fixes everything below, plus the decoy seed, and a commitment to publish every result. The Taste Bench (§10.6) is registered in the same file and tag; the ranking check becomes its task T3.
 
 **Test brands** [DECISION]: three brands from `proof/stockists/` other than Brightland, one per category where possible:
 - McClure's Pickles (G1): metro A Detroit (142 independents), metro B New York (95);
@@ -1140,11 +1183,43 @@ Each must have ≥ 25 resolved, open, independent stockists in metro B. That is 
 
 ### 10.4 What isn't measured
 
-Markets, Partners, Message and Moments have no ground truth we can test before judging. They're shown with their Qloo evidence chips, a line saying how each was ranked, and the calls that built them, and labelled "demonstrated".
+Partners, Message and Moments have no ground truth we can test before judging. (Markets and Next retailers are measured by the Taste Bench, T1 and T2, §10.6.) They're shown with their Qloo evidence chips, a line saying how each was ranked, and the calls that built them, and labelled "demonstrated".
 
 ### 10.5 Reporting
 
 Every brand, every metric, raw counts, coverage (match rate, share scored) and caveats go on the Method page and in the README. Nothing is omitted because it looks bad.
+
+### 10.6 The Taste Bench (v4.0, P0, measured)
+
+**Question.** Does Athena beat an LLM alone at decisions a founder makes, judged against real-world outcomes? And how much of that comes from Qloo itself versus our methods?
+
+**Arms**
+
+| Arm | What it is | Isolates |
+|---|---|---|
+| **Athena** | The taste engine (§9.23) and the stop's ranking, as built at the `prereg-v2` commit | — |
+| **Qloo-naive** | One Insights call with the seed as the signal, ordered by affinity: what a typical entry does | Our methods over raw Qloo |
+| **LLM-only** | Gemini 3.1 Pro (the model Athena uses), given the same brand context and the same candidate list, asked for a ranking. Run twice: with and without Google Search grounding | Qloo over an LLM |
+| **Popularity** | The candidates ordered by Qloo `popularity` (metros: by population) | A floor |
+
+**Tasks** (ground truth from `proof/stockists/`, collected 8 Oct; 25 metros, chain flag reviewed by hand before registering)
+
+- **T1 Where to launch.** Rank the 25 metros. Truth: the brand's stockists per million residents (Census population). Metrics: Spearman ρ, NDCG@5.
+- **T2 Which retailer next.** Rank the fixed retailer list (§9.25). Truth: chains with rows in the brand's file. Metrics: AUC, precision@5.
+- **T3 Which venues.** The ranking check (§10.3), unchanged, plus an LLM arm that ranks the same 50-venue pool from names and neighbourhoods. Metric: AUC.
+- **T4 Discovery (P1, with §9.29).** From the stockists in metro A, propose 10 venues per round in metro B and reveal which are real stockists. Metric: stockists found in the first 20 and 50 proposals. The one place a large ratio over the LLM is plausible; we claim only what is measured.
+
+**Conditions**
+- **Cold start (the headline):** the brand's name is withheld. The seed comes from a registered product description through lookalikes and tags (§9.23 step 1), recorded once per brand and reused by every arm. This is a new founder's real situation, and it stops the LLM from reading the store locator, which would test the web rather than taste.
+- **Known brand:** the brand is in the seed and its name is given to the LLM. Reported in full, with the leakage caveat.
+
+**Brands.** Tuning: Brightland and Fishwife, published as tuning data. Held out (8): McClure's, Rishi, Paddywax, Raaka, Dick Taylor, Diaspora Co., Juniper Ridge, MUD\WTR. No Qloo or LLM calls on them for the Bench until `prereg-v2` is tagged; any earlier calls are disclosed. A brand with too little ground truth for a task (for T1, MUD\WTR's file covers 4 metros) is reported as ineligible for that task, never swapped silently.
+
+**Registration (`proof/REGISTRATION.md`, tag `prereg-v2`, by 16 Oct)** fixes the arms, the prompts verbatim, the candidate lists, the metrics, the seeds and the code commit. **Primary comparisons (3):** T1 ρ, T2 AUC and T3 AUC, each Athena vs LLM-only, cold start. Everything else is secondary. **Statistics:** per-brand paired differences with 95% bootstrap CIs over brands (10,000 resamples). **Pass rule per primary metric:** the mean paired difference Athena − LLM-only is > 0 and its 95% CI excludes 0. With 8 brands the CIs will be wide, and we say so up front. The §10.3 rule stays as registered.
+
+**Where it shows.** A Bench page linked from the Method page; one quiet line under each stop's With / Without split, for example *"Metro ranking vs real stockist density, 8 brands: Athena ρ 0.xx · LLM-only 0.xx · popularity 0.xx"*; the Devpost write-up leads with the Bench table.
+
+**Cost.** Qloo: about 110 calls per brand per condition × 8 brands × 2 conditions, plus tuning: about 2,100 calls. Gemini: about 100 prompts [VERIFY the Search-grounding price on Vertex before running; it must stay inside the credit].
 
 ---
 
@@ -1190,6 +1265,10 @@ Base URL `https://hackathon.api.qloo.com`, header `X-Api-Key` (from Secret Manag
 - Locality enrichment tags (`{month}_event`, `peak_tourism_month`) are absent.
 - `output.heatmap.boundary=urn:entity:locality` returned HTTP 500.
 
+**Probed 12 Oct and cut:**
+- `/v2/trending` needs a signal entity (without one: 400), and returned an empty list for Madi Diaz and Taylor Swift over 4 weeks.
+- `/v2/analysis/compare` works over GET only with lower-case UUIDs (upper case: 400; POST: 404); Brightland vs Great Jones returned no shared tags.
+
 Athena doesn't depend on any of these.
 
 **Tested on 8 Oct and not used** (Brightland, cafés in Chicago, top 20):
@@ -1200,9 +1279,10 @@ Athena doesn't depend on any of these.
 **Limits on our key (verified 10 Oct, from the response headers):**
 - **5 calls per second** (`x-second-ratelimit-limit`). A burst of 40 calls at 10 in flight returned 27 × 429.
 - **10,000 calls per month** (`x-month-ratelimit-limit`); 8,462 were left on 10 Oct, resetting in about 28 days.
-- More headroom is being requested separately (Discord `#api-help`, and the second teammate's key).
+- More headroom is being requested separately (Discord `#api-help`).
+- **12 Oct: a second key** (the second teammate's) doubles both, to **10 calls a second and 20,000 a month**. The client treats each key as a lane: each call goes to the key with the most headroom, a 429 fails over to the other key, identical in-flight calls are shared, and slow calls are hedged.
 
-**Budget per plan (v3.0):** taste graph ≤ 40 calls, plus ≤ 30 across the stops a founder visits; at most 70 for any plan. (v2: R1 about 31, R2 about 23, R3 about 27.)
+**Budget per plan (v4.0):** taste engine ≤ 110 calls (measured 102 on Brightland), cached 24 hours. (v3.0: taste graph ≤ 40 calls, plus ≤ 30 across the stops a founder visits; at most 70 for any plan. v2: R1 about 31, R2 about 23, R3 about 27.)
 
 **Caching:**
 - Entity and tag lookups: forever.
@@ -1393,7 +1473,7 @@ At most 24 tool calls, 3 recovery steps and 3 questions per plan; at most 60 Qlo
   |---|---|---|
   | Product | Looks right / Edit | The "What I understood" card, every field with its source |
   | Channel and growth | Online/offline; 1–3 growth types | Why Athena suggested each one |
-  | Crowd | Which crowd (for New crowd: which adjacent one); That's us / Partly / Not us | Open a crowd: loves by domain, labelled skew, cities |
+  | Crowd | Which crowd (for New crowd: which adjacent one); That's us / Partly / Not us; the agent's one question | The Taste Galaxy (§13.11): hover any entity for why, pin it "us" or "not us"; open a crowd: loves by domain, labelled skew, cities |
   | Where | Starting city | Heatmap, neighbourhoods, "what if [city]" for any US city (§9.3) |
   | Places | Shortlist | Filter by type; venue drawer; field-day route; Without Qloo |
   | Next retailers (Deepen) | Shortlist the next 3–5 retailers | Why each fits (affinity, shared loves); which the brand is already in; a buyer-pitch draft |
@@ -1409,7 +1489,7 @@ At most 24 tool calls, 3 recovery steps and 3 questions per plan; at most 60 Qlo
 - **Actions tray:** drafts and route
 - **Method page**, **Sources page**, **What we don't know**
 
-**Without Qloo stays on Places only** **[DECISION]**: the v2.11 reason still holds (other stops have no outside check). "Show me why" is on every stop.
+**v4.0: With / Without on every stop (planned 17–19 Oct).** Each stop shows Athena beside Gemini alone answering the same question, with that task's Bench line under it (§10.6), or "demonstrated" where the stop has no Bench task (§10.4). Until then Without Qloo stays on Places. "Show me why" is on every stop.
 
 ### 13.3 Partner cards
 
@@ -1478,6 +1558,22 @@ At most 24 tool calls, 3 recovery steps and 3 questions per plan; at most 60 Qlo
 Calm and editorial: light by default with a dark mode, one accent colour, and a muted map so the pins carry the story. Tokens and components live in DESIGN.md.
 
 ---
+
+### 13.11 The Taste Galaxy (v4.0)
+
+The crowds as a map the founder can touch. It sits at the top of the Crowd stop, above the crowd cards.
+
+- **Nodes:** every entity the crowd loves (about 150). **Shape is the domain** (circle brand, triangle music, square TV, diamond film, hexagon podcast, rectangle book), **colour the crowd** (never colour alone, §13.4), **size the specificity** (§9.23 step 8), and a ring marks a probed landmark. A star marks the seed.
+- **Core and fringe:** a crowd's core is solid and its fringe faint (§9.23 step 4). Hulls are drawn round each core and labelled with the crowd's name.
+- **Layout:** each round's spectral coordinates are the targets of a small force layout (`d3-force`), aligned between rounds so the map doesn't flip. Edges (top 3 similarities) show only for the entity in focus.
+- **It forms live; the forming map is the progress narration.** Round 0 places each domain in its own sector, nearer the middle the more the seed's crowd loves it; each probe round then pulls the entities into crowds, with one line per round ("Round 2: 11 probes, 70 Qloo calls so far"). There is no spinner and no failure state.
+- **Hover** opens a card: name and domain; core or fringe of which crowd; "Ranked highest by" the three landmarks that rank it highest (from probes already made, 0 calls); the specificity line; "In this crowd in N% of resamples; shuffled data reaches M%".
+- **Click** pins the card: "Our customers love this" or "Not us" (§9.23 step 7). Pins change every later ranking. **P0, planned 14–16 Oct: click to probe**, which runs the entity as a new landmark (about 6 calls, narrated) and re-forms the map.
+- **The agent's one question** sits under the map: "Would your customers love [entity]? It sits between [crowd] and [crowd], so your answer tells me which way to lean." Yes / Not really; then "Noted…" with Undo.
+- **List view:** the same entities as lists by crowd, core first, with the same pin buttons; it is the accessible equivalent and the phone layout (< 640 px).
+- **Method line:** "[n] things this crowd loves, placed by how [p] probe entities rank each one. [c] Qloo calls. Solid: a crowd's core, placed more surely than shuffled data allows."
+- **Planned (17–22 Oct):** linked views with the map (§9.26), axis sliders (§9.27), lasso a custom crowd (P1).
+- **Respects reduced motion:** the layout settles at once.
 
 ## 14. Architecture
 
@@ -1687,6 +1783,12 @@ So:
   - **Business read once:** the classified business is cached for an hour, so stop runs don't redo it.
 - **Targets (v3.0):** first streamed reply ≤ 3 s; each stop's first results ≤ 2 s after the founder's choice; the Crowd stop ≤ 10 s after the product is clear.
 
+**v4.0 (12 Oct):**
+- **Two keys, 10 calls a second** (§11.1). *Measured 12 Oct:* 20 distinct calls in 3.55 s, all 200, no 429s; the same query on both keys at once took 3,882 vs 3,894 ms, so latency depends on the query, not the key.
+- **Taste engine:** 102 calls and about 17 s cold on Brightland; the first map (after round 1, about 54 calls) shows within seconds, and the forming Galaxy is the narration. Bootstrap and the shuffled-data check take under 2 s.
+- **Quota guard:** below 2,000 calls left over both keys, landmarks drop from 16 to 8; below 500, only cached results and the sample packs, with one calm line and no failure state (planned).
+- **Quota on 12 Oct:** 7,380 calls left on key 1 (resets about 6 Nov) and 9,967 on key 2 (about 11 Nov). Planned use before 2 Nov: development about 4,000, Bench about 2,100, warm cache about 900, QA about 1,000.
+
 ---
 
 ## 15. Responsible use
@@ -1796,6 +1898,19 @@ Both join the founder calls, the QA checklist and the rehearsals.
 | 31 Oct, 9:15 AM IST | Deadline. |
 | Until 17 Nov | Keep it live and free. Check credit spend weekly. |
 | 17 Nov | Judging ends: delete the Cloud Run service and Firestore data (§14.8). |
+
+**v4.0 plan (12 Oct; replaces the rows above from 13 Oct on).** Builder A: engine and Bench. Builder B: Galaxy, map and stops. Both: prereg, QA and write-up.
+
+| Dates | Builder A (engine, Bench) | Builder B (experience) |
+|---|---|---|
+| 12 Oct (done) | Two-key client; taste engine (probes, spectral crowds, bootstrap, shuffled-data core, specificity) | Taste Galaxy: forming map, hover, pins, the agent's question, list view |
+| 13–16 Oct | Bench harness with the LLM arm; Brightland tuning run; **write and tag `prereg-v2` (ranking check + Bench) by 16 Oct** | Click to probe; Galaxy polish |
+| 17–19 Oct | Run the Bench on the 8 held-out brands; crowd geography (§9.26) | Map linked to the Galaxy; crowd weather; With / Without on every stop |
+| 20–22 Oct | Axes (§9.27); bridges and why-paths (§9.28); quota guard; **deploy to Cloud Run; warm cache** | Sliders; lasso; why-path Sankey; Bench page |
+| 23–25 Oct | P1: learning loop and T4 (§9.29); MCP server (§12.9) | Phone layout; accessibility pass; Try your own brand end to end |
+| 26–28 Oct | QA; 5 fresh-browser rehearsals; README, Method and Sources pages built around the Bench | Devpost text led by the Bench table; GIFs of the Galaxy; video. **Submit 28 Oct** |
+
+**v4.0 cut ladder (before the list below):** the MCP server; the learning loop and T4; lasso; axis sliders (keep the axes as labels); Gi\* (keep the top cells, population-weighted); the why-path Sankey (keep a one-line why); landmarks down to 10. **Never cut (v4.0):** the taste engine with its shuffled-data check; the Bench, run and published whatever the result; the Galaxy with hover, click and pin; With / Without with the Bench line; the quota guard.
 
 **Cut ladder.** Check progress on 16, 19 and 22 Oct. If behind, drop in this order:
 

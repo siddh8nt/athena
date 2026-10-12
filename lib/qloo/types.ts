@@ -86,6 +86,8 @@ export type QlooCall = {
   resultCount: number;
   cached: boolean;
   at: string;
+  /** A second request on another key answered first (§14.9). */
+  hedged?: boolean;
 };
 
 export type QlooResponse = {

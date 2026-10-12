@@ -308,7 +308,7 @@ export function Workspace({ slug, brands, custom: fromJourney, onBack }: { slug:
           <ol>
             {trace.calls.map((c) => (
               <li key={c.id}>
-                <code>{c.id}</code> <strong>{c.endpoint}</strong> · HTTP {c.status} · {c.resultCount} results · {c.cached ? "cached" : `${c.ms} ms`}
+                <code>{c.id}</code> <strong>{c.endpoint}</strong> · HTTP {c.status} · {c.resultCount} results · {c.cached ? "cached" : `${c.ms} ms${c.hedged ? " · answered by a second key" : ""}`}
                 <pre>{Object.entries(c.params).map(([k, v]) => `${k}=${v.length > 120 ? `${v.slice(0, 120)}…` : v}`).join("\n")}</pre>
               </li>
             ))}

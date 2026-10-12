@@ -7,13 +7,15 @@ import { ACCEPT, TrailView, Understood, useBriefChat, type Msg } from "./chat";
 import { usePlan, type PlanSource } from "./usePlan";
 import { MarketsView, MessageView, MomentsView, PartnersView, PlacesView } from "./Blocks";
 import { Workspace } from "./Workspace";
+import { Galaxy } from "./Galaxy";
 import { GUESS, type Turn } from "@/lib/brief/conversation";
 import { briefToInput } from "@/lib/brief/to-input";
 import type { BrandBrief } from "@/lib/brief/types";
 import { GROWTH, MAX_PICKS, STOP_LABELS, blockedReason, decisionsFor, labelFor, motionsFor, orderFor, spreadNote, stopsFor, suggest, type Channel, type GrowthType, type StopId } from "@/lib/journey/growth";
 import { crowdIdForStop, crowdSignal } from "@/lib/journey/weights";
 import type { PlaceOption, Resolution } from "@/lib/places/resolve";
-import { emptyJourney, type CrowdCard, type CrowdsEvent, type Journey as JourneyState, type Reaction } from "@/lib/journey/types";
+import { emptyJourney, type CrowdCard, type CrowdsEvent, type Journey as JourneyState, type Pin, type Reaction } from "@/lib/journey/types";
+import type { Galaxy as GalaxyData } from "@/lib/taste/galaxy";
 import { packBySlug } from "@/lib/journey/packs";
 import { takeFor } from "@/lib/journey/takes";
 import type { Block } from "@/lib/playbook/config";
@@ -87,6 +89,8 @@ export function Journey() {
   const [drag, setDrag] = useState(false);
   const [view, setView] = useState<"journey" | "dashboard">("journey");
   const [crowdSteps, setCrowdSteps] = useState<string[]>([]);
+  // The Taste Galaxy as it forms, round by round, before the crowds are named.
+  const [forming, setForming] = useState<GalaxyData | undefined>();
   const crowdKey = useRef<string>("");
   const [stopData, setStopData] = useState<Partial<Record<StopId, unknown>>>({});
   const pick = useRef<HTMLInputElement>(null);
@@ -123,7 +127,8 @@ export function Journey() {
     crowdKey.current = key;
     if (j.crowds && j.crowdsFor === key) return; // already built for this product (a returning founder)
     setCrowdSteps([]);
-    setJ((x) => ({ ...x, crowds: undefined, crowdId: undefined, reactions: {} }));
+    setForming(undefined);
+    setJ((x) => ({ ...x, crowds: undefined, crowdId: undefined, reactions: {}, pins: {} }));
     void (async () => {
       try {
         const res = await fetch("/api/crowds", { method: "POST", headers: { "Content-Type": "application/json" }, body: key });
@@ -141,6 +146,7 @@ export function Journey() {
             const e = JSON.parse(p.slice(5)) as CrowdsEvent;
             if (crowdKey.current !== key) return;
             if (e.type === "status") setCrowdSteps((s) => [...s, e.text]);
+            else if (e.type === "graph") setForming(e.galaxy);
             else setJ((x) => ({ ...x, crowds: e.result, crowdsFor: key, crowdId: defaultCrowd(e.result.crowds, x.growth) }));
           }
           if (done) break;
@@ -206,7 +212,7 @@ export function Journey() {
   // which-crowd answer decides which crowd each stop follows (§7.8).
   const signalFor = (s: StopId) => {
     const id = j.crowds ? crowdIdForStop(s, { growth: j.growth, crowds: j.crowds.crowds, crowdId: j.crowdId, target: j.crowdTarget, reactions: j.reactions }) : undefined;
-    return id && j.crowds ? crowdSignal(j.crowds.crowds, id, j.reactions) : undefined;
+    return id && j.crowds ? crowdSignal(j.crowds.crowds, id, j.reactions, j.pins) : undefined;
   };
   const inputFor = (s: StopId) => ({ ...base, crowd: signalFor(s) });
   const input = inputFor("go");
@@ -362,7 +368,14 @@ export function Journey() {
           )}
           {reached("crowd") && (
             <div id="stop-crowd">
-              <CrowdStop j={j} steps={crowdSteps} onReact={(id, r) => setJ((x) => react(x, id, r))} onChoose={(id) => setJ((x) => ({ ...x, crowdId: id }))} />
+              <CrowdStop
+                j={j}
+                steps={crowdSteps}
+                forming={forming}
+                onReact={(id, r) => setJ((x) => react(x, id, r))}
+                onChoose={(id) => setJ((x) => ({ ...x, crowdId: id }))}
+                onPin={(id, name, pin) => setJ((x) => ({ ...x, pins: pinned(x.pins, id, name, pin) }))}
+              />
             </div>
           )}
           {stops
@@ -422,6 +435,14 @@ function react(x: JourneyState, id: string, r: Reaction): JourneyState {
   if (r === "us" && !x.growth.includes("new_crowd")) crowdId = id;
   if (r === "not_us" && crowdId === id) crowdId = crowds.find((c) => reactions[c.id] !== "not_us" && c.id !== id)?.id ?? crowdId;
   return { ...x, reactions, crowdId };
+}
+
+/** A Galaxy pin set, changed or cleared. */
+function pinned(pins: Record<string, Pin> | undefined, id: string, name: string, pin: Pin["pin"] | undefined): Record<string, Pin> {
+  const next = { ...pins };
+  if (pin) next[id] = { name, pin };
+  else delete next[id];
+  return next;
 }
 
 /** What the growth rules need to know about the brand (§7.8 prerequisites). */
@@ -648,8 +669,11 @@ function skewLine(s: CrowdCard["skew"]): string | undefined {
 }
 
 /** The Crowd stop (§9.23, J3): 2–3 crowds from Qloo's taste graph; the founder says which sound like their customers. */
-function CrowdStop({ j, steps, onReact, onChoose }: { j: JourneyState; steps: string[]; onReact: (id: string, r: Reaction) => void; onChoose: (id: string) => void }) {
+function CrowdStop({ j, steps, forming, onReact, onChoose, onPin }: { j: JourneyState; steps: string[]; forming?: GalaxyData; onReact: (id: string, r: Reaction) => void; onChoose: (id: string) => void; onPin: (id: string, name: string, pin: Pin["pin"] | undefined) => void }) {
   const r = j.crowds;
+  const pins = j.pins ?? {};
+  // While the crowds are measured, the Galaxy forms in place of the step list (from the first ring, about 5 s in).
+  if (!r && forming) return <Galaxy galaxy={forming} pins={pins} onPin={onPin} step={steps[steps.length - 1]} />;
   if (!r)
     return (
       <section className="card">
@@ -674,6 +698,7 @@ function CrowdStop({ j, steps, onReact, onChoose }: { j: JourneyState; steps: st
   const from = [r.seed.brand?.name, ...r.seed.lookalikes.map((l) => l.name)].filter(Boolean);
   return (
     <section className="crowds">
+      {r.galaxy && <Galaxy galaxy={r.galaxy} names={r.crowds.map((c) => c.name)} pins={pins} onPin={onPin} />}
       <header className="card-head">
         <h3>Your crowds</h3>
         <p className="small muted">
@@ -681,14 +706,17 @@ function CrowdStop({ j, steps, onReact, onChoose }: { j: JourneyState; steps: st
         </p>
       </header>
       <div className="crowd-grid">
-        {r.crowds.map((c) => {
+        {r.crowds.map((c, ci) => {
           const chosen = j.crowdId === c.id;
           const reaction = j.reactions[c.id];
           const skew = skewLine(c.skew);
           return (
             <article key={c.id} className={`crowd ${chosen ? "chosen" : ""} ${reaction === "not_us" ? "dimmed" : ""}`}>
               <p className="crowd-tag">{c.main ? "Closest to your product" : "Next door"}</p>
-              <h4>{c.name}</h4>
+              <h4>
+                <span className="swatch" style={{ background: `var(--crowd-${ci % 4})` }} aria-hidden />
+                {c.name}
+              </h4>
               <div className="taste-loves">
                 {c.loves.map((l, i) => (
                   <span key={l.name} className="love" style={{ animationDelay: `${i * 50}ms` }}>

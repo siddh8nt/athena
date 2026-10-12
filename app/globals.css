@@ -16,6 +16,10 @@
   --heat-0: #f3efe6;
   --heat-1: #f2b880;
   --heat-2: #c8553d;
+  --crowd-0: #2b50c8;
+  --crowd-1: #c8553d;
+  --crowd-2: #2f8a64;
+  --crowd-3: #8a4fa8;
   --radius: 10px;
   color-scheme: light;
 }
@@ -32,6 +36,10 @@
     --on-accent: #10142a;
     --pick: #8ea6ff;
     --thin: #e0b25c;
+    --crowd-0: #8ea6ff;
+    --crowd-1: #f08a6c;
+    --crowd-2: #6cc5a0;
+    --crowd-3: #c99be6;
     color-scheme: dark;
   }
 }
@@ -462,3 +470,50 @@ a.button.big { padding: 11px 20px; font-size: 15px; font-weight: 600; }
 .rank-list .rank { width: 20px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .rank-list .grow { flex: 1; }
 .card h4 { margin: 12px 0 4px; font-size: 14px; }
+
+/* The Taste Galaxy (v4.0): shape is the domain, colour the crowd, size the specificity. */
+.galaxy { display: flex; flex-direction: column; gap: 8px; }
+.galaxy-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
+.galaxy-head h3 { margin: 0; }
+.galaxy-method { margin: 0; flex: 1; min-width: 220px; }
+.galaxy-stage { position: relative; }
+.galaxy-stage svg { width: 100%; height: auto; display: block; touch-action: manipulation; }
+.hulls path { fill-opacity: 0.07; stroke-opacity: 0.07; stroke-width: 30; stroke-linejoin: round; transition: d 0.2s; }
+.galaxy-edge { stroke: var(--fg); stroke-width: 1; }
+.gnode { cursor: pointer; transition: opacity 0.2s; }
+.gnode path { stroke: var(--surface); stroke-width: 1; }
+.gnode path.us { stroke: var(--fg); stroke-width: 2; }
+.gnode.faded { opacity: 0.18; }
+.gnode.out { opacity: 0.25; }
+.gnode.sel path { stroke: var(--fg); stroke-width: 2; }
+.gnode .ring { fill: none; stroke: var(--fg); stroke-width: 1; opacity: 0.6; }
+.gnode.fringe path { fill-opacity: 0.35; }
+.seed path { fill: var(--fg); }
+.seed text, .labels text, .hull-label { font-size: 10.5px; paint-order: stroke; stroke: var(--surface); stroke-width: 3px; stroke-linejoin: round; }
+.seed text { font-weight: 600; fill: var(--fg); }
+.labels text { fill: var(--fg); pointer-events: none; }
+.labels text.strong { font-weight: 600; }
+.hull-label { font-weight: 600; font-size: 11px; pointer-events: none; }
+.galaxy-card { position: absolute; z-index: 2; width: 250px; max-width: 70%; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; box-shadow: 0 6px 24px rgb(0 0 0 / 0.12); display: flex; flex-direction: column; gap: 4px; pointer-events: none; }
+.galaxy-card.pinned { pointer-events: auto; border-color: var(--accent); }
+.galaxy-card p { margin: 0; }
+.galaxy-card .react button { font-size: 12px; padding: 4px 6px; }
+.galaxy-card .react .linkish { flex: 0; }
+.galaxy-step { display: flex; align-items: center; gap: 8px; margin: 0; }
+.galaxy-question { border-top: 1px solid var(--line); padding-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+.galaxy-question p { margin: 0; }
+.galaxy-legend { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.galaxy-legend li { display: flex; align-items: center; gap: 5px; }
+.galaxy-legend path { fill: var(--muted); }
+.legend-ring { fill: none; stroke: var(--fg); stroke-width: 1.2; }
+.legend-fringe { fill: var(--muted); fill-opacity: 0.35; }
+.galaxy-list { max-height: 420px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
+.galaxy-list h4 { display: flex; align-items: center; gap: 6px; margin: 8px 0 4px; }
+.galaxy-list ul { list-style: none; margin: 0; padding: 0; }
+.galaxy-list li { display: flex; align-items: center; gap: 6px; padding: 5px 0; border-bottom: 1px solid var(--line); }
+.galaxy-list .grow { flex: 1; }
+.galaxy-list button { font-size: 12px; padding: 3px 8px; }
+.galaxy-list button.on { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+.swatch { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex: none; }
+.crowd h4 { display: flex; align-items: center; gap: 8px; }
+@media (prefers-reduced-motion: reduce) { .gnode, .hulls path { transition: none; } }

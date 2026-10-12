@@ -5,7 +5,8 @@ import { HttpTransport, QlooClient } from "@/lib/qloo/client";
 import { StoreCache } from "@/lib/qloo/store-cache";
 import { getStore } from "@/lib/store";
 import { resolveBrand } from "@/lib/methods/resolve";
-import { buildGraph, type Seed } from "@/lib/taste/graph";
+import { buildGraph, whyOf, type Seed } from "@/lib/taste/graph";
+import { readEnv } from "@/lib/env";
 import { crowdDetails, fallbackName } from "@/lib/taste/crowds";
 
 // Usage: pnpm live tests/live/graph.live.ts. Builds the taste graph for a few brands and prints the crowds.
@@ -25,7 +26,7 @@ const log = (s: string) => (console.log(s), appendFileSync(".cache/live/graph.tx
 for (const c of CASES.filter((x) => !process.env.ONLY || x.label.startsWith(process.env.ONLY))) {
   it(c.label, async () => {
     let calls = 0;
-    const qloo = new QlooClient({ transport: new HttpTransport(env.QLOO_BASE_URL, env.QLOO_API_KEY), cache: new StoreCache(getStore()), onCall: (x) => !x.cached && calls++ });
+    const qloo = new QlooClient({ transport: new HttpTransport(readEnv(env).qlooBaseUrl, readEnv(env).qlooApiKeys), cache: new StoreCache(getStore()), onCall: (x) => !x.cached && calls++ });
     const ref = async (n: string) => {
       const r = await resolveBrand(qloo, n);
       return r.entity ? { id: r.entity.entity_id, name: r.entity.name } : undefined;
@@ -38,12 +39,16 @@ for (const c of CASES.filter((x) => !process.env.ONLY || x.label.startsWith(proc
     }
     const seed: Seed = { brand: c.brand ? await ref(c.brand) : undefined, lookalikes: (await Promise.all(c.lookalikes.map(ref))).filter((x) => !!x), tags };
     const t0 = Date.now();
-    const g = await buildGraph(qloo, seed, { onStep: (s) => log(`   … ${s}`) });
+    const g = await buildGraph(qloo, seed, { onStep: (s) => log(`   … ${s} (+${((Date.now() - t0) / 1000).toFixed(1)} s)`), onRound: (x) => log(`   round ${x.round}: k=${x.k}, ${x.landmarks.length} probes, ${x.calls} calls, eigenvalues ${x.eigenvalues.join(" ")}`) });
     log(`\n${c.label}: seed ${[seed.brand?.name, ...seed.lookalikes.map((l) => l.name), ...seed.tags.map((x) => x.name)].filter(Boolean).join(", ")}`);
-    log(`  ${g.nodes.length} nodes, hubs: ${g.hubs.map((h) => h.name).join(", ")}`);
+    log(`  ${g.nodes.length} nodes over ${new Set(g.nodes.map((n) => n.domain)).size} domains; landmarks: ${g.landmarks.map((h) => h.name).join(", ")}`);
+    const top = [...g.nodes].sort((a, b) => (b.specificity ?? 0) - (a.specificity ?? 0)).slice(0, 6);
+    log(`  most specific: ${top.map((n) => `${n.name} (${n.domain}, +${n.specificity}, pop ${n.popularity?.toFixed(2)})`).join(", ")}`);
+    if (g.galaxy?.question) log(`  agent's question: ${g.galaxy.question.name} (between crowds ${g.galaxy.question.crowds.join(" and ")})`);
+    if (g.galaxy) log(`  why ${g.galaxy.nodes[0].name}: ${whyOf(g.galaxy, 0).map((w) => `${w.landmark} ${w.pct.toFixed(2)}`).join(", ")}`);
     log(`  ${g.calls} graph calls (${calls} uncached incl. resolution) in ${((Date.now() - t0) / 1000).toFixed(1)} s`);
     for (const cr of g.crowds) {
-      log(`  ${cr.main ? "MAIN" : "adj."} ${cr.id} (${cr.entities.length}): ${cr.domains.map((d) => `${d}: ${cr.entities.filter((n) => n.domain === d).slice(0, 5).map((n) => n.name).join(", ")}`).join(" || ")}`);
+      log(`  ${cr.main ? "MAIN" : "adj."} ${cr.id} (${cr.entities.length}, holds ${Math.round((cr.stability ?? 0) * 100)}%, signal ${cr.signal.map((s) => s.name).join(" / ")}): ${cr.domains.map((d) => `${d}: ${cr.entities.filter((n) => n.domain === d).slice(0, 5).map((n) => n.name).join(", ")}`).join(" || ")}`);
       const d = await crowdDetails(qloo, cr);
       log(`       ${fallbackName(cr)} · skew ${d.skew?.clear ? JSON.stringify({ ...d.skew.age, ...d.skew.gender }) : "none clear"}`);
       log(`       cities: ${d.cities.map((x) => `${x.name} (${x.venues}: ${x.venue})`).join(" | ")}`);

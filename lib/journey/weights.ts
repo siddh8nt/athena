@@ -1,5 +1,5 @@
 import { GROWTH, type GrowthType, type StopId } from "./growth";
-import type { CrowdCard, Reaction } from "./types";
+import type { CrowdCard, Pin, Reaction } from "./types";
 
 // The founder's reactions become the plan's signal (PRD §9.23 step 7): one weighted list of entities sent to Qloo,
 // plus the entities to leave out. Pure, shared by the client and the server.
@@ -18,22 +18,26 @@ export type CrowdSignal = { name: string; signal: WeightedRef[]; exclude: string
 /**
  * The signal for one crowd under the founder's reactions. With no "Partly" crowds every weight is equal, so Qloo gets
  * the same plain request as before (and the same cached answer). "Not us" crowds never join and their strongest
- * entities are excluded from results.
+ * entities are excluded from results. Entities pinned "us" in the Taste Galaxy lead at the chosen crowd's weight;
+ * entities pinned "not us" never join and are excluded.
  */
-export function crowdSignal(crowds: CrowdCard[], chosenId: string, reactions: Record<string, Reaction>): CrowdSignal | undefined {
+export function crowdSignal(crowds: CrowdCard[], chosenId: string, reactions: Record<string, Reaction>, pins: Record<string, Pin> = {}): CrowdSignal | undefined {
   const chosen = crowds.find((c) => c.id === chosenId);
   if (!chosen) return undefined;
-  const seen = new Set<string>();
+  const pinned = Object.entries(pins);
+  const seen = new Set<string>(pinned.filter(([, p]) => p.pin === "not_us").map(([id]) => id));
   const signal: WeightedRef[] = [];
   const add = (refs: { id: string; name: string }[], weight: number) => {
     for (const r of refs) if (!seen.has(r.id) && signal.length < MAX_SIGNAL) (seen.add(r.id), signal.push({ ...r, weight }));
   };
+  add(pinned.filter(([, p]) => p.pin === "us").map(([id, p]) => ({ id, name: p.name })), WEIGHT.chosen);
   add(chosen.signal, WEIGHT.chosen);
   for (const c of crowds) if (c.id !== chosenId && reactions[c.id] === "partly") add(c.signal.slice(0, PARTLY_TAKE), WEIGHT.partly);
-  const exclude = crowds
-    .filter((c) => c.id !== chosenId && reactions[c.id] === "not_us")
-    .flatMap((c) => c.signal.slice(0, NOT_US_TAKE).map((s) => s.id))
-    .filter((id) => !seen.has(id));
+  const inSignal = new Set(signal.map((s) => s.id));
+  const exclude = [
+    ...pinned.filter(([, p]) => p.pin === "not_us").map(([id]) => id),
+    ...crowds.filter((c) => c.id !== chosenId && reactions[c.id] === "not_us").flatMap((c) => c.signal.slice(0, NOT_US_TAKE).map((s) => s.id)),
+  ].filter((id) => !inSignal.has(id));
   // Equal weights read the same as no weights; keep them at 1 so requests (and cache keys) match the unweighted ones.
   const equal = signal.every((s) => s.weight === signal[0]?.weight);
   return { name: chosen.name, signal: equal ? signal.map((s) => ({ ...s, weight: 1 })) : signal, exclude: [...new Set(exclude)] };

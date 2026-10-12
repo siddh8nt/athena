@@ -18,6 +18,12 @@ describe("crowd reactions become a weighted signal (§9.23 step 7)", () => {
     expect(s.signal.filter((x) => x.weight === WEIGHT.partly).map((x) => x.id)).toEqual(["b1", "b2"]);
     expect(s.exclude).toEqual(["c1", "c2"]);
   });
+  it("entities pinned in the Taste Galaxy: 'us' leads the signal, 'not us' is dropped and excluded", () => {
+    const s = crowdSignal(crowds, "a", { b: "partly" }, { b9: { name: "B nine", pin: "us" }, a2: { name: "a2", pin: "not_us" } })!;
+    expect(s.signal[0]).toEqual({ id: "b9", name: "B nine", weight: WEIGHT.chosen });
+    expect(s.signal.map((x) => x.id)).not.toContain("a2");
+    expect(s.exclude).toEqual(["a2"]);
+  });
 });
 
 describe("which crowd each stop follows (§7.8)", () => {

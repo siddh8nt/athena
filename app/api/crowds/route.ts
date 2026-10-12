@@ -2,10 +2,11 @@ import { getQloo } from "@/lib/qloo";
 import { getStore } from "@/lib/store";
 import { LIMITS, clientIp } from "@/lib/limits";
 import { buildSeed, type SeedInput } from "@/lib/taste/seed";
-import { buildGraph, seedSignal, type Crowd } from "@/lib/taste/graph";
+import { DOMAINS, buildGraph, seedSignal, shortName, type Crowd, type Domain } from "@/lib/taste/graph";
 import { crowdDetails } from "@/lib/taste/crowds";
 import { nameCrowds } from "@/lib/taste/name";
 import type { CrowdCard, CrowdsEvent, CrowdsResult, Love } from "@/lib/journey/types";
+import type { Galaxy } from "@/lib/taste/graph";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -28,13 +29,20 @@ function readInput(raw: unknown): SeedInput {
   };
 }
 
-const KIND: Record<string, Love["kind"]> = { brand: "brand", artist: "artist", tv_show: "TV" };
+const KIND: Record<Domain, Love["kind"]> = { brand: "brand", artist: "artist", tv_show: "TV", movie: "film", podcast: "podcast", book: "book" };
 
-/** Loves across domains: interleaved so a card shows brands, music and TV, not ten brands. */
+/**
+ * Loves across domains, interleaved so a card shows brands, music, TV, film, podcasts and books, not ten brands. Within a
+ * domain: the crowd's central members (certain in at least half the resamples), most specific first (E3).
+ */
 function lovesOf(c: Crowd, n = 9): Love[] {
-  const by = ["brand", "artist", "tv_show"].map((d) => c.entities.filter((e) => e.domain === d));
+  const by = DOMAINS.map((d) => {
+    const all = c.entities.filter((e) => e.domain === d);
+    const central = all.filter((e) => e.core ?? true);
+    return (central.length >= 2 ? central : all).sort((a, b) => (b.specificity ?? 0) - (a.specificity ?? 0));
+  });
   const out: Love[] = [];
-  for (let i = 0; out.length < n && i < 10; i++) for (const list of by) if (list[i] && out.length < n) out.push({ name: list[i].name, kind: KIND[list[i].domain] });
+  for (let i = 0; out.length < n && i < 10; i++) for (const list of by) if (list[i] && out.length < n) out.push({ name: shortName(list[i].name, list[i].domain), kind: KIND[list[i].domain] });
   return out;
 }
 
@@ -52,7 +60,7 @@ export async function POST(req: Request) {
         }
       };
       try {
-        send({ type: "result", result: await run(input, ip, (text) => send({ type: "status", text })) });
+        send({ type: "result", result: await run(input, ip, (text) => send({ type: "status", text }), (galaxy) => send({ type: "graph", galaxy })) });
       } catch (err) {
         // Never a failure state: the journey carries on without crowds.
         console.error("crowds failed", err);
@@ -69,8 +77,9 @@ export async function POST(req: Request) {
   return new Response(stream, { headers: { "Content-Type": "text/event-stream", "Cache-Control": "no-cache, no-transform", Connection: "keep-alive" } });
 }
 
-async function run(input: SeedInput, ip: string, status: (t: string) => void): Promise<CrowdsResult> {
-  const key = JSON.stringify([input.brand?.id ?? "", [...input.comparables].sort(), [...input.lookalikes].sort(), [...input.traits].sort()]).toLowerCase();
+async function run(input: SeedInput, ip: string, status: (t: string) => void, graphEvent: (g: Galaxy) => void): Promise<CrowdsResult> {
+  // "v4.1": results from the probe-based graph (§9.23, v4.0) carry the Galaxy with null-calibrated cores; older ones don't.
+  const key = `v4.1|${JSON.stringify([input.brand?.id ?? "", [...input.comparables].sort(), [...input.lookalikes].sort(), [...input.traits].sort()]).toLowerCase()}`;
   const hit = await getStore().get<CrowdsResult>("crowds", key).catch(() => undefined);
   if (hit?.value?.crowds?.length) return hit.value;
   if (!LIMITS.ownBrand(ip).ok) return { seed: { lookalikes: [], tags: [], missing: [] }, crowds: [], calls: 0, callIds: [], empty: true };
@@ -79,7 +88,7 @@ async function run(input: SeedInput, ip: string, status: (t: string) => void): P
   const qloo = process.env.ATHENA_DEBUG_QLOO ? getQloo().withLog((c) => console.log(`qloo +${Date.now() - t0}ms ${c.status} ${c.ms}ms ${c.cached ? "cached" : ""} ${c.params["filter.type"] ?? c.endpoint} ${c.params["filter.results.entities"] ? "pool" : ""}`)) : getQloo();
   status(input.brand ? `Reading ${input.brand.name}'s crowd in Qloo` : "Finding brands like yours in Qloo");
   const seed = await buildSeed(qloo, input);
-  const graph = await buildGraph(qloo, seed, { onStep: status });
+  const graph = await buildGraph(qloo, seed, { onStep: status, onRound: graphEvent });
   // Report only the tags the graph actually used (they join the signal only when brands are scarce).
   const used = new Set(seedSignal(seed).tags);
   seed.tags = seed.tags.filter((t) => used.has(t.id));
@@ -97,9 +106,11 @@ async function run(input: SeedInput, ip: string, status: (t: string) => void): P
     skew: details[i].skew,
     cities: details[i].cities,
     size: c.entities.length,
+    stability: c.stability,
+    core: c.core,
   }));
   const callIds = [...seed.callIds, ...graph.callIds, ...details.flatMap((d) => d.callIds)];
-  const result: CrowdsResult = { seed: { brand: seed.brand, lookalikes: seed.lookalikes, tags: seed.tags, missing: seed.missing }, crowds, calls: callIds.length, callIds };
+  const result: CrowdsResult = { seed: { brand: seed.brand, lookalikes: seed.lookalikes, tags: seed.tags, missing: seed.missing }, crowds, calls: callIds.length, callIds, galaxy: graph.galaxy };
   await getStore().set("crowds", key, result, TTL).catch(() => undefined);
   return result;
 }

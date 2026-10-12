@@ -13,6 +13,6 @@ export function getQloo(): QlooClient {
   const env = readEnv();
   shared = env.fixtures || !env.qlooApiKey
     ? new QlooClient({ transport: new FixtureTransport(), cache: new MemoryCache() })
-    : new QlooClient({ transport: new HttpTransport(env.qlooBaseUrl, env.qlooApiKey), cache: new StoreCache(getStore()) });
+    : new QlooClient({ transport: new HttpTransport(env.qlooBaseUrl, env.qlooApiKeys), cache: new StoreCache(getStore()) });
   return shared;
 }

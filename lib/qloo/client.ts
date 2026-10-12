@@ -42,11 +42,25 @@ export class MemoryCache implements ResponseCache {
 
 export class HttpTransport implements QlooTransport {
   readonly mode = "live" as const;
+  private readonly keys: string[];
+  private next = 0;
+  /** One key or several: requests rotate across keys, so each key sees an equal share of the pacer's rate. */
   constructor(
     private readonly baseUrl: string,
-    private readonly apiKey: string,
+    apiKey: string | string[],
     private readonly timeoutMs = 60_000,
-  ) {}
+  ) {
+    this.keys = (Array.isArray(apiKey) ? apiKey : [apiKey]).filter(Boolean);
+  }
+
+  /** How many keys this transport rotates across. */
+  get keyCount() {
+    return this.keys.length;
+  }
+
+  private get apiKey() {
+    return this.keys[this.next++ % this.keys.length];
+  }
 
   async send(path: string, query: Record<string, string>): Promise<RawResult> {
     const qs = new URLSearchParams(query).toString();
@@ -215,7 +229,8 @@ export class QlooClient {
     this.onCall = opts.onCall;
     this.retryDelayMs = opts.retryDelayMs ?? 1000;
     this.weights = opts.weights;
-    this.pacer = opts.pacer ?? new Pacer(opts.perSecond ?? (this.mode === "live" ? LIVE_PER_SECOND : Number.POSITIVE_INFINITY));
+    const keys = opts.transport instanceof HttpTransport ? opts.transport.keyCount : 1;
+    this.pacer = opts.pacer ?? new Pacer(opts.perSecond ?? (this.mode === "live" ? LIVE_PER_SECOND * keys : Number.POSITIVE_INFINITY));
   }
 
   /** A child client that also logs into another sink (one per block), sharing cache, transport and pacer. Parents still see every call. */

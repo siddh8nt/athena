@@ -28,7 +28,8 @@ export type BrandInput = {
   answers?: { brandId?: string | null; comparables?: string[]; whereSold?: string; pinnedComparables?: string[] };
   /** v3.0: the crowd chosen at the Crowd stop (§9.23); its entities become the plan's signal. */
   /** Weights and exclusions come from the founder's reactions (§9.23 step 7, lib/journey/weights.ts). */
-  crowd?: { name: string; signal: { id: string; name: string; weight?: number }[]; exclude?: string[] };
+  /** `brands`: the chosen crowd's brand members, which Markets scores each city on (§9.3, v4.0). */
+  crowd?: { name: string; signal: { id: string; name: string; weight?: number }[]; exclude?: string[]; brands?: { id: string; name: string }[] };
 };
 
 export type WebsiteRead = {

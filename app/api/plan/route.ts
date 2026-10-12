@@ -50,14 +50,19 @@ export async function POST(req: Request) {
       pinnedComparables: Array.isArray(a.pinnedComparables) ? list(a.pinnedComparables, 5) : undefined,
     },
   };
-  const crowd = body.crowd as { name?: unknown; signal?: unknown; exclude?: unknown } | undefined;
+  const crowd = body.crowd as { name?: unknown; signal?: unknown; exclude?: unknown; brands?: unknown } | undefined;
   const signal = (Array.isArray(crowd?.signal) ? crowd!.signal : [])
     .map((s) => s as { id?: unknown; name?: unknown; weight?: unknown })
     .filter((s) => typeof s.id === "string" && typeof s.name === "string")
     .slice(0, MAX_SIGNAL)
     .map((s) => ({ id: (s.id as string).slice(0, 80), name: (s.name as string).slice(0, 120), weight: weightOf(s.weight) }));
   const exclude = Array.isArray(crowd?.exclude) ? list(crowd!.exclude, 30) : [];
-  if (signal.length) input.crowd = { name: clip(crowd?.name, 80) ?? "Your crowd", signal, exclude };
+  const brands = (Array.isArray(crowd?.brands) ? crowd!.brands : [])
+    .map((s) => s as { id?: unknown; name?: unknown })
+    .filter((s) => typeof s.id === "string" && typeof s.name === "string")
+    .slice(0, 50)
+    .map((s) => ({ id: (s.id as string).slice(0, 80), name: (s.name as string).slice(0, 120) }));
+  if (signal.length) input.crowd = { name: clip(crowd?.name, 80) ?? "Your crowd", signal, exclude, ...(brands.length ? { brands } : {}) };
   // A re-run after an inline answer sends only the blocks the answer changes (§6.2.2).
   const scope: RunScope = Array.isArray(body.scope) ? body.scope.map((s) => oneOf(s, SCOPE)).filter((s): s is Block | "card" => !!s) : undefined;
   const ip = clientIp(req);

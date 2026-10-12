@@ -36,7 +36,7 @@ const OFF_CATEGORY: Record<RetailCategory, RegExp | undefined> = {
   general: undefined,
 };
 
-/** The product's retail category, from what it is and its traits. */
+/** The product's retail category from its words: the fallback when the brief agent hasn't read one (brief.retail). */
 export function retailCategory(product: string): RetailCategory {
   const p = product.toLowerCase();
   if (/\b(food|snack|drink|beverage|coffee|tea|olive oil|oil|fish|seafood|sauce|chocolate|pantry|soda|water|candy|spice|condiment|grocery|tinned|canned|cereal|bar|jerky|pasta|honey|wine|kombucha)/.test(p)) return "food";
@@ -60,9 +60,9 @@ export function alreadyIn(name: string, evidence: string[]): boolean {
 }
 
 /** Never throws. Calls: 2, plus first-time resolution of the pool (cached forever after). */
-export async function nextRetailers(qloo: QlooClient, signal: string[], evidence: string[], product: string, opts: { priority?: Priority } = {}): Promise<RetailersData & { category: RetailCategory }> {
+export async function nextRetailers(qloo: QlooClient, signal: string[], evidence: string[], product: string, opts: { priority?: Priority; category?: RetailCategory } = {}): Promise<RetailersData & { category: RetailCategory }> {
   const callIds: string[] = [];
-  const category = retailCategory(product);
+  const category = opts.category ?? retailCategory(product);
   const off = OFF_CATEGORY[category];
   const resolved = (
     await Promise.all(

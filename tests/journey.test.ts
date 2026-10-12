@@ -13,6 +13,7 @@ const crowd = (names: [string, string][], tags: string[] = []): Crowd => ({
   main: true,
   entities: names.map(([name, domain], i) => ({ id: `e${i}`, name, domain: domain as "brand", affinity: 1 - i / 10, tags })),
   signal: [],
+  brands: [],
   domains: ["brand"],
 });
 

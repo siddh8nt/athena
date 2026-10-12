@@ -41,6 +41,7 @@ function readBrief(raw: string | null): BrandBrief {
     ...brief,
     qloo: b.qloo,
     proxies: Array.isArray(b.proxies) ? b.proxies.filter((x) => typeof x === "string").slice(0, 5) : undefined,
+    retail: ["food", "beauty", "home", "fashion", "general"].includes(b.retail as string) ? b.retail : undefined,
     traits: Array.isArray(b.traits) ? b.traits.filter((x) => typeof x === "string").map((x) => x.slice(0, 40)).slice(0, 6) : undefined,
     channel: b.channel && ["online", "offline", "both"].includes(b.channel.value) ? b.channel : undefined,
     research: r && typeof r.for === "string" ? { for: str(r.for, 120), dossier: str(r.dossier, 6000), sources: (r.sources ?? []).slice(0, 8), queries: (r.queries ?? []).slice(0, 6) } : undefined,

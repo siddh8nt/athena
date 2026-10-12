@@ -1,6 +1,6 @@
 import { getQloo } from "@/lib/qloo";
 import { LIMITS, clientIp } from "@/lib/limits";
-import { nextRetailers } from "@/lib/stops/retailers";
+import { RETAILER_POOLS, nextRetailers, type RetailCategory } from "@/lib/stops/retailers";
 import { onlineStop } from "@/lib/stops/online";
 import { MAX_SIGNAL } from "@/lib/journey/weights";
 
@@ -21,6 +21,7 @@ export async function POST(req: Request) {
     .map((x) => ({ id: x.id.slice(0, 80), weight: typeof x.weight === "number" && x.weight > 0 && x.weight <= 10 ? x.weight : 1 }));
   const signal = weighted.map((x) => x.id);
   const product = typeof body.product === "string" ? body.product.slice(0, 400) : "";
+  const category = typeof body.category === "string" && Object.hasOwn(RETAILER_POOLS, body.category) ? (body.category as RetailCategory) : undefined;
   const evidence = (Array.isArray(body.evidence) ? body.evidence : []).filter((x): x is string => typeof x === "string").map((x) => x.slice(0, 200)).slice(0, 300);
   if (!signal.length || (kind !== "retailers" && kind !== "online")) return Response.json({ error: "A crowd signal and a stop are required" }, { status: 400 });
   const cap = LIMITS.rerun(clientIp(req));
@@ -28,7 +29,7 @@ export async function POST(req: Request) {
   const base = getQloo();
   const qloo = weighted.some((x) => x.weight !== 1) ? base.withWeights(new Map(weighted.map((x) => [x.id, x.weight]))) : base;
   try {
-    return Response.json(kind === "retailers" ? await nextRetailers(qloo, signal, evidence, product) : await onlineStop(qloo, signal));
+    return Response.json(kind === "retailers" ? await nextRetailers(qloo, signal, evidence, product, { category }) : await onlineStop(qloo, signal));
   } catch (err) {
     // Never a failure state: an empty stop says what it would need.
     console.error(`stop ${kind} failed`, err);

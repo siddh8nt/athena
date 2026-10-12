@@ -144,6 +144,8 @@ export type Signal = {
   tags: string[];
   /** v3.0: the crowd the founder chose (§9.23 step 7). It replaces the brand and comparables wherever they'd be used. */
   crowd?: string[];
+  /** v4.0: the chosen crowd's brand members, strongest first; Markets scores each city on them (§9.3). */
+  crowdBrands?: string[];
 };
 
 export type PlaybookConfig = {

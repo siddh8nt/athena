@@ -15,6 +15,8 @@ export type CrowdCard = {
   loves: Love[];
   /** The entities that stand for this crowd in later stops. */
   signal: Ref[];
+  /** Its brand members, strongest first: Markets scores each city on them (§9.3, v4.0). */
+  brands?: Ref[];
   skew?: { age: Record<string, number>; gender: Record<string, number>; clear: boolean };
   cities: { metro: string; name: string; venue: string; venues: number }[];
   size: number;

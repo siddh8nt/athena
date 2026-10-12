@@ -13,7 +13,7 @@ const NOT_US_TAKE = 8;
 export const MAX_SIGNAL = 24;
 
 export type WeightedRef = { id: string; name: string; weight: number };
-export type CrowdSignal = { name: string; signal: WeightedRef[]; exclude: string[] };
+export type CrowdSignal = { name: string; signal: WeightedRef[]; exclude: string[]; brands?: { id: string; name: string }[] };
 
 /**
  * The signal for one crowd under the founder's reactions. With no "Partly" crowds every weight is equal, so Qloo gets
@@ -40,7 +40,10 @@ export function crowdSignal(crowds: CrowdCard[], chosenId: string, reactions: Re
   ].filter((id) => !inSignal.has(id));
   // Equal weights read the same as no weights; keep them at 1 so requests (and cache keys) match the unweighted ones.
   const equal = signal.every((s) => s.weight === signal[0]?.weight);
-  return { name: chosen.name, signal: equal ? signal.map((s) => ({ ...s, weight: 1 })) : signal, exclude: [...new Set(exclude)] };
+  // Markets scores cities on the chosen crowd's brands (§9.3, v4.0), less any the founder marked "not us".
+  const notUs = new Set(pinned.filter(([, p]) => p.pin === "not_us").map(([id]) => id));
+  const brands = chosen.brands?.filter((b) => !notUs.has(b.id));
+  return { name: chosen.name, signal: equal ? signal.map((s) => ({ ...s, weight: 1 })) : signal, exclude: [...new Set(exclude)], ...(brands?.length ? { brands } : {}) };
 }
 
 /** The "which crowd?" answer (§7.8): when New crowd is combined with other picks, do those target the current crowd or the new one? */

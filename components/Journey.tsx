@@ -394,6 +394,7 @@ export function Journey() {
                     kind={s as "retailers" | "online"}
                     signal={(signalFor(s)?.signal ?? crowd.signal.map((x) => ({ ...x, weight: 1 }))).map((x) => ({ id: x.id, weight: x.weight }))}
                     product={[brief.sells?.value, ...(brief.traits ?? [])].filter(Boolean).join(", ")}
+                    category={brief.retail}
                     evidence={[brief.channels?.value ?? "", ...brief.stockists.map((x) => x.value.name), ...brief.notes.map((n) => n.value)].filter(Boolean)}
                     skew={crowd.skew}
                     brandName={brief.name?.value ?? "your brand"}
@@ -610,7 +611,7 @@ function Dock(props: {
       <div className="dock">
         {m ? (
           <>
-            <p className="small muted">Where should the plan start? Ranked by how much of your crowd&apos;s taste each city holds.</p>
+            <p className="small muted">Where should the plan start? {m.method === "brands" ? <>Each city scored on how strongly your crowd&apos;s brands rank there.</> : <>Ranked by how much of your crowd&apos;s taste each city holds.</>}</p>
             <div className="replies">
               {m.metros.slice(0, 5).map((r) => (
                 <button key={r.metroId} type="button" className={r.metroId === m.target.metroId ? "primary" : ""} onClick={() => set(r.metroId, r.name)}>
@@ -750,13 +751,13 @@ type RetailersResult = { picks: { id: string; name: string; affinity: number; ra
 type OnlineResult = { creators: { id: string; name: string; role: string; affinity: number }[]; podcasts: { id: string; name: string; affinity: number }[]; interests: { id: string; name: string }[]; calls: number };
 
 /** Next retailers (§9.25) and Online (§9.24): small stops outside the six blocks, read for the chosen crowd. */
-function ExtraStop({ kind, signal, product, evidence, skew, brandName, onData }: { kind: "retailers" | "online"; signal: { id: string; weight: number }[]; product: string; evidence: string[]; skew: CrowdCard["skew"]; brandName: string; onData: (d: unknown) => void }) {
+function ExtraStop({ kind, signal, product, category, evidence, skew, brandName, onData }: { kind: "retailers" | "online"; signal: { id: string; weight: number }[]; product: string; category?: string; evidence: string[]; skew: CrowdCard["skew"]; brandName: string; onData: (d: unknown) => void }) {
   const [data, setData] = useState<RetailersResult | OnlineResult | null>(null);
   const key = JSON.stringify([kind, signal]);
   useEffect(() => {
     let live = true;
     setData(null);
-    fetch("/api/stop", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ kind, signal, product, evidence }) })
+    fetch("/api/stop", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ kind, signal, product, category, evidence }) })
       .then((r) => r.json())
       .then((d) => {
         if (!live) return;

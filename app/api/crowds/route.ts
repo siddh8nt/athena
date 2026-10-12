@@ -33,7 +33,7 @@ const KIND: Record<Domain, Love["kind"]> = { brand: "brand", artist: "artist", t
 
 /**
  * Loves across domains, interleaved so a card shows brands, music, TV, film, podcasts and books, not ten brands. Within a
- * domain: the crowd's central members (certain in at least half the resamples), most specific first (E3).
+ * domain: the crowd's core members (placed more surely than shuffled data allows), most specific first (E3).
  */
 function lovesOf(c: Crowd, n = 9): Love[] {
   const by = DOMAINS.map((d) => {
@@ -78,8 +78,9 @@ export async function POST(req: Request) {
 }
 
 async function run(input: SeedInput, ip: string, status: (t: string) => void, graphEvent: (g: Galaxy) => void): Promise<CrowdsResult> {
-  // "v4.1": results from the probe-based graph (§9.23, v4.0) carry the Galaxy with null-calibrated cores; older ones don't.
-  const key = `v4.1|${JSON.stringify([input.brand?.id ?? "", [...input.comparables].sort(), [...input.lookalikes].sort(), [...input.traits].sort()]).toLowerCase()}`;
+  // "v4.2": results from the probe-based graph (§9.23, v4.0) carry the Galaxy with null-calibrated cores and each
+  // crowd's brand members (for Markets); older ones don't.
+  const key = `v4.2|${JSON.stringify([input.brand?.id ?? "", [...input.comparables].sort(), [...input.lookalikes].sort(), [...input.traits].sort()]).toLowerCase()}`;
   const hit = await getStore().get<CrowdsResult>("crowds", key).catch(() => undefined);
   if (hit?.value?.crowds?.length) return hit.value;
   if (!LIMITS.ownBrand(ip).ok) return { seed: { lookalikes: [], tags: [], missing: [] }, crowds: [], calls: 0, callIds: [], empty: true };
@@ -103,6 +104,7 @@ async function run(input: SeedInput, ip: string, status: (t: string) => void, gr
     main: c.main,
     loves: lovesOf(c),
     signal: c.signal,
+    brands: c.brands,
     skew: details[i].skew,
     cities: details[i].cities,
     size: c.entities.length,

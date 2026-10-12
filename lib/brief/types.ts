@@ -1,4 +1,5 @@
 import type { Motion, Tier } from "@/lib/playbook/config";
+import type { RetailCategory } from "@/lib/stops/retailers";
 
 // The brand brief (§9.22): many messy inputs in, one typed brief out. Pure code, no server imports,
 // so the client card and the tests can use it too.
@@ -22,6 +23,8 @@ export type BrandBrief = {
   channel?: Sourced<"online" | "offline" | "both">;
   /** v3.0 (§9.23 step 1): short product traits for Qloo tag search ("tinned fish", "playful packaging"). */
   traits?: string[];
+  /** v4.0 (§9.25): which kind of bigger retailer would carry it, read by the agent (picks the Next retailers list). */
+  retail?: RetailCategory;
   websites: Sourced<string>[];
   stockists: Sourced<Stockist>[];
   comparables: Sourced<string>[];
@@ -106,6 +109,7 @@ export function mergeBrief(brief: BrandBrief, patch: Partial<BrandBrief>): { bri
     channels: pickScalar(brief.channels, patch.channels, "channels", conflicts),
     channel: pickScalar(brief.channel, patch.channel, "channel", conflicts),
     traits: patch.traits?.length ? patch.traits.slice(0, 6) : brief.traits,
+    retail: patch.retail ?? brief.retail,
     howBought: pickScalar(brief.howBought, patch.howBought, "howBought", conflicts),
     activeCity: pickScalar(brief.activeCity, patch.activeCity, "activeCity", conflicts),
     tierHint: pickScalar(brief.tierHint, patch.tierHint, "tierHint", conflicts),

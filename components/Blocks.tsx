@@ -82,7 +82,7 @@ export function ReadView({ card, meta, onTrace }: { card: ReadCard; meta?: Block
 export function MarketsView({ data, meta, onTrace }: { data: MarketsData; meta: BlockMeta; onTrace: () => void }) {
   return (
     <section className="block">
-      <BlockHeader title="Where to grow next" meta={meta} onTrace={onTrace} method="Ranked by how much of your crowd's taste each metro holds." />
+      <BlockHeader title="Where to grow next" meta={meta} onTrace={onTrace} method={data.method === "brands" ? "Each city scored on how strongly your crowd's brands rank there." : "Ranked by how much of your crowd's taste each metro holds."} />
       <ol className="list">
         {data.metros.slice(0, 10).map((m) => (
           <li key={m.metroId} className={m.metroId === data.target.metroId ? "is-target" : ""}>

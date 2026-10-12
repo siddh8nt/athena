@@ -49,6 +49,8 @@ export type Crowd = {
   entities: Node[];
   /** The crowd's signal for later stops: its most central strong members, one per domain first. */
   signal: Ref[];
+  /** Its brand members, strongest first (at most 50): what Markets scores each city on (§9.3, v4.0). */
+  brands: Ref[];
   domains: Domain[];
   /** Hennig's stability: the crowd's mean Jaccard with its best match across resamples of the landmarks (0–1). */
   stability?: number;
@@ -355,5 +357,6 @@ function crowdOf(id: string, main: boolean, members: Node[]): Crowd {
   const ranked = [...entities].sort((a, b) => score(b) - score(a));
   const lead = FAMILIAR.flatMap((d) => ranked.filter((n) => n.domain === d).slice(0, 2));
   const signal = [...lead, ...ranked].filter((n, i, all) => all.findIndex((x) => x.id === n.id) === i).slice(0, 6);
-  return { id, main, entities, signal: signal.map(({ id, name }) => ({ id, name })), domains };
+  const brands = entities.filter((n) => n.domain === "brand").slice(0, 50);
+  return { id, main, entities, signal: signal.map(({ id, name }) => ({ id, name })), brands: brands.map(({ id, name }) => ({ id, name })), domains };
 }

@@ -30,7 +30,7 @@ export function takeFor(stop: StopId, raw: unknown, crowds?: CrowdCard[]): Take 
       const m = raw as MarketsData;
       if (!m?.metros?.length) return undefined;
       return {
-        data: { cities: m.metros.slice(0, 5).map((r) => ({ city: r.name, strongestVenue: r.topVenue.name })), planningFor: m.target.name },
+        data: { cities: m.metros.slice(0, 5).map((r) => ({ city: r.name, ...(r.leans?.length ? { leansTo: r.leans } : r.topVenue ? { strongestVenue: r.topVenue.name } : {}) })), planningFor: m.target.name },
         fallback: `Your crowd's taste is strongest in ${list(m.metros.map((r) => r.name))}.`,
       };
     }

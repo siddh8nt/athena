@@ -11,6 +11,8 @@ import { Galaxy } from "./Galaxy";
 import { CrowdGeography } from "./CrowdGeography";
 import { BenchNote, WithWithout, type AloneRequest } from "./WithWithout";
 import { TasteAxes, useLean, type Taste } from "./TasteAxes";
+import { ShowWhy } from "./WhyPath";
+import type { Contribution } from "@/lib/qloo/types";
 import { GUESS, type Turn } from "@/lib/brief/conversation";
 import { briefToInput } from "@/lib/brief/to-input";
 import type { BrandBrief } from "@/lib/brief/types";
@@ -132,10 +134,10 @@ export function Journey() {
       // Already built for this product (a returning founder). Crowds saved before taste axes (§9.27) pick them up
       // from the server's copy, which factorises the stored graph once; nothing else about the crowds changes.
       // Probed crowds wait for the next probe: their graph isn't the stored one.
-      if (!j.crowds.axes && j.crowds.crowds.length && !j.crowds.probes?.length)
+      if ((!j.crowds.axes || !j.crowds.meetings) && j.crowds.crowds.length && !j.crowds.probes?.length)
         void fetch("/api/crowds", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...body, axesOnly: true }) })
-          .then((r) => r.json() as Promise<{ axes?: CrowdsResult["axes"] }>)
-          .then(({ axes }) => axes?.length && setJ((x) => (x.crowds && x.crowdsFor === key && !x.crowds.probes?.length ? { ...x, crowds: { ...x.crowds, axes } } : x)))
+          .then((r) => r.json() as Promise<Pick<CrowdsResult, "axes" | "meetings">>)
+          .then(({ axes, meetings }) => (axes?.length || meetings) && setJ((x) => (x.crowds && x.crowdsFor === key && !x.crowds.probes?.length ? { ...x, crowds: { ...x.crowds, ...(axes ? { axes } : {}), ...(meetings ? { meetings } : {}) } } : x)))
           .catch(() => undefined);
       return;
     }
@@ -421,6 +423,8 @@ export function Journey() {
                   <ExtraStop
                     kind={s as "retailers" | "online"}
                     signal={(signalFor(s)?.signal ?? crowd.signal.map((x) => ({ ...x, weight: 1 }))).map((x) => ({ id: x.id, weight: x.weight }))}
+                    crowdName={signalFor(s)?.name ?? crowd.name}
+                    names={Object.fromEntries((signalFor(s)?.signal ?? crowd.signal).map((x) => [x.id, x.name]))}
                     product={[brief.sells?.value, ...(brief.traits ?? [])].filter(Boolean).join(", ")}
                     category={brief.retail}
                     evidence={[brief.channels?.value ?? "", ...brief.stockists.map((x) => x.value.name), ...brief.notes.map((n) => n.value)].filter(Boolean)}
@@ -776,6 +780,7 @@ function CrowdStop({ j, steps, forming, onReact, onChoose, onPin, onProbe, probi
                 ))}
               </div>
               {!!c.cities.length && <p className="small"><strong>Concentrates in</strong> {c.cities.slice(0, 4).map((x) => x.name).join(", ")}</p>}
+              <Meeting r={r} crowd={c} />
               {skew && <p className="small" title={SKEW_LABEL}><strong>Audience</strong> {skew} <span className="muted">· Qloo taste panel, to test</span></p>}
               <div className="react" role="group" aria-label={`Is ${c.name} your customer?`}>
                 {(["us", "partly", "not_us"] as Reaction[]).map((x) => (
@@ -800,7 +805,7 @@ function CrowdStop({ j, steps, forming, onReact, onChoose, onPin, onProbe, probi
 }
 
 /** Next retailers (§9.25), re-ranked under the taste sliders (§9.27) when they lean. */
-function Retailers({ r, signal, alone, taste }: { r: RetailersResult; signal: { id: string; weight: number }[]; alone: AloneRequest; taste?: Taste }) {
+function Retailers({ r, signal, crowdName, names, alone, taste }: { r: RetailersResult; signal: { id: string; weight: number }[]; crowdName: string; names: Record<string, string>; alone: AloneRequest; taste?: Taste }) {
   const lean = useLean("brand", r.picks.slice(0, 50).map((p) => p.id), signal, taste);
   const byId = new Map(r.picks.map((p) => [p.id, p]));
   const leaned = lean.order.map((id) => byId.get(id)!).filter(Boolean);
@@ -826,17 +831,36 @@ function Retailers({ r, signal, alone, taste }: { r: RetailersResult; signal: { 
         ) : (
           <p>Every retailer on my list is already one of yours. Add a few you&apos;re eyeing in the chat and I&apos;ll rank them.</p>
         )}
+        <ShowWhy crowd={crowdName} names={names} picks={top.map((p) => ({ ...p, why: lean.why?.[p.id] ?? p.why }))} />
         <p className="small muted">Fit means your crowd loves the retailer, not that a buyer will say yes.</p>
         {r.picks.length > 1 && <WithWithout stop="retailers" question={`Which of these ${r.picks.length} retailers are most likely to carry this product?`} athena={picks.map((p) => ({ id: p.id, name: p.name }))} request={{ ...alone, candidates: r.picks.map((p) => ({ id: p.id, label: p.name })) }} bench="t2" ranked />}
       </section>
   );
 }
 
-type RetailersResult = { picks: { id: string; name: string; affinity: number; rank: number; ownLabel: boolean }[]; already: string[]; calls: number; category?: string };
+/** Where a next-door crowd meets the main one (§9.28): what both love, each side's percentile on hover. */
+function Meeting({ r, crowd }: { r: NonNullable<JourneyState["crowds"]>; crowd: CrowdCard }) {
+  const m = r.meetings?.find((x) => x.b === crowd.id);
+  const main = r.crowds.find((c) => c.id === m?.a);
+  if (!m || !main) return null;
+  return (
+    <p className="small meeting">
+      <strong>Meets {main.name} at</strong>{" "}
+      {m.items.slice(0, 4).map((x, i) => (
+        <span key={x.id} title={`${main.name}: ${Math.round(x.a * 100)}th percentile · ${crowd.name}: ${Math.round(x.b * 100)}th`}>
+          {i ? ", " : ""}
+          {x.name}
+        </span>
+      ))}
+    </p>
+  );
+}
+
+type RetailersResult = { picks: { id: string; name: string; affinity: number; rank: number; ownLabel: boolean; why?: Contribution[] }[]; already: string[]; calls: number; category?: string };
 type OnlineResult = { creators: { id: string; name: string; role: string; affinity: number }[]; podcasts: { id: string; name: string; affinity: number }[]; interests: { id: string; name: string }[]; calls: number };
 
 /** Next retailers (§9.25) and Online (§9.24): small stops outside the six blocks, read for the chosen crowd. */
-function ExtraStop({ kind, signal, product, category, evidence, skew, brandName, alone, taste, onData }: { kind: "retailers" | "online"; signal: { id: string; weight: number }[]; product: string; category?: string; evidence: string[]; skew: CrowdCard["skew"]; brandName: string; alone: AloneRequest; taste?: Taste; onData: (d: unknown) => void }) {
+function ExtraStop({ kind, signal, crowdName, names, product, category, evidence, skew, brandName, alone, taste, onData }: { kind: "retailers" | "online"; signal: { id: string; weight: number }[]; crowdName: string; names: Record<string, string>; product: string; category?: string; evidence: string[]; skew: CrowdCard["skew"]; brandName: string; alone: AloneRequest; taste?: Taste; onData: (d: unknown) => void }) {
   const [data, setData] = useState<RetailersResult | OnlineResult | null>(null);
   const key = JSON.stringify([kind, signal]);
   useEffect(() => {
@@ -864,7 +888,7 @@ function ExtraStop({ kind, signal, product, category, evidence, skew, brandName,
         </ol>
       </section>
     );
-  if (kind === "retailers") return <Retailers r={data as RetailersResult} signal={signal} alone={alone} taste={taste} />;
+  if (kind === "retailers") return <Retailers r={data as RetailersResult} signal={signal} crowdName={crowdName} names={names} alone={alone} taste={taste} />;
   const o = data as OnlineResult;
   const skewNote = skewLine(skew);
   return (
@@ -950,7 +974,7 @@ function StopRunner({ stop, block, input, brandName, alone, taste, onData }: { s
       const p = b.data as PlacesData;
       return (
         <section className="card stop-block">
-          <LeanPlaces p={p} signal={(input.crowd as { signal?: { id: string; weight: number }[] } | undefined)?.signal} taste={taste}>
+          <LeanPlaces p={p} crowd={input.crowd as { name: string; signal: { id: string; name: string; weight: number }[] } | undefined} taste={taste}>
             {(data, lean) => (
               <>
                 {lean}
@@ -1004,10 +1028,18 @@ function StopRunner({ stop, block, input, brandName, alone, taste, onData }: { s
 }
 
 /** Places ranked against the crowd (§9.23) re-rank under the taste sliders (§9.27); ranked against accounts, they don't. */
-function LeanPlaces({ p, signal, taste, children }: { p: PlacesData; signal?: { id: string; weight: number }[]; taste?: Taste; children: (data: PlacesData, lean: ReactNode) => ReactNode }) {
-  const on = !!(taste && p.fromCrowd && signal?.length);
-  const lean = useLean("place", p.picks.slice(0, 50).map((x) => x.id), on ? signal! : [], on ? taste : undefined);
+function LeanPlaces({ p, crowd, taste, children }: { p: PlacesData; crowd?: { name: string; signal: { id: string; name: string; weight: number }[] }; taste?: Taste; children: (data: PlacesData, lean: ReactNode) => ReactNode }) {
+  const fromCrowd = !!(p.fromCrowd && crowd?.signal?.length);
+  const on = !!(taste && fromCrowd);
+  const lean = useLean("place", p.picks.slice(0, 50).map((x) => x.id), on ? crowd!.signal : [], on ? taste : undefined);
   const byId = new Map(p.picks.map((x) => [x.id, x]));
-  const picks = lean.order.flatMap((id, i) => (byId.has(id) ? [{ ...byId.get(id)!, rank: i + 1 }] : []));
-  return <>{children(on ? { ...p, picks } : p, on ? <TasteAxes taste={taste!} compact busy={lean.busy} note={lean.note} /> : null)}</>;
+  const picks = on ? lean.order.flatMap((id, i) => (byId.has(id) ? [{ ...byId.get(id)!, rank: i + 1, why: lean.why?.[id] ?? byId.get(id)!.why }] : [])) : p.picks;
+  // Why-paths (§9.28) need the signal's names; the crowd's are known here, the founder's accounts' aren't.
+  const why = fromCrowd ? <ShowWhy crowd={crowd!.name} names={Object.fromEntries(crowd!.signal.map((x) => [x.id, x.name]))} picks={picks} /> : null;
+  return (
+    <>
+      {children(on ? { ...p, picks } : p, on ? <TasteAxes taste={taste!} compact busy={lean.busy} note={lean.note} /> : null)}
+      {why}
+    </>
+  );
 }

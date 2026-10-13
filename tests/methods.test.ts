@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { auc, bridges, classifyTag, median, mutualFit, percentiles, positioning, rerank } from "@/lib/methods/rank";
+import { auc, bridgeScore, bridges, classifyTag, median, mutualFit, percentiles, positioning, rerank } from "@/lib/methods/rank";
 import { accept, cleanVenue, isChainName, nameSim, seqRatio } from "@/lib/methods/names";
 import { ALL_AUDIENCE_TYPES, BRAND_FINGERPRINT_TYPES, VENUE_FINGERPRINT_TYPES, isAllowedAudienceType, isAllowedTag } from "@/lib/methods/allowlist";
 
@@ -13,7 +13,7 @@ describe("percentiles", () => {
   it("gives a single item 1", () => expect(percentiles(["x"]).get("x")).toBe(1));
 });
 
-describe("mutual fit and bridges use min()", () => {
+describe("mutual fit uses min(); bridges gate on both sides and score by the harmonic mean", () => {
   it("mutual fit is the weaker side", () => {
     expect(mutualFit(0.91, 0.4)).toBe(0.4);
     expect(mutualFit(0.3, 0.8)).toBe(0.3);
@@ -24,7 +24,13 @@ describe("mutual fit and bridges use min()", () => {
     const venue = new Map([["b1", 0.85], ["b2", 0.6], ["b3", 0.92], ["b4", 0.75]]);
     const out = bridges(acc, venue);
     expect(out.map((b) => b.id)).toEqual(["b3", "b1"]);
-    expect(out[0].value).toBe(0.92);
+    expect(out[0].value).toBeCloseTo((2 * 0.99 * 0.92) / (0.99 + 0.92), 10);
+  });
+  it("the bridge score is high only when both sides are", () => {
+    expect(bridgeScore(0.9, 0.9)).toBeCloseTo(0.9, 10);
+    expect(bridgeScore(1, 0.1)).toBeLessThan(0.2);
+    expect(bridgeScore(0.99, 0.92)).toBeGreaterThan(bridgeScore(0.92, 0.92));
+    expect(bridgeScore(0, 0)).toBe(0);
   });
 });
 

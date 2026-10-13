@@ -1,5 +1,5 @@
 import type { Priority, QlooClient } from "@/lib/qloo/client";
-import type { QlooEntity } from "@/lib/qloo/types";
+import { contributions, type Contribution, type QlooEntity } from "@/lib/qloo/types";
 import { resolveBrand } from "@/lib/methods/resolve";
 import { norm } from "@/lib/methods/names";
 
@@ -49,7 +49,8 @@ export function retailCategory(product: string): RetailCategory {
 /** Mostly sell their own label: shown last, with a note (§9.25). */
 export const OWN_LABEL = new Set(["trader joe s", "aldi"]);
 
-export type RetailerPick = { id: string; name: string; affinity: number; rank: number; ownLabel: boolean; qlooPick: boolean; callId: string };
+/** `why`: the crowd's entities behind the pick, from Qloo's explainability (§9.28). */
+export type RetailerPick = { id: string; name: string; affinity: number; rank: number; ownLabel: boolean; qlooPick: boolean; callId: string; why?: Contribution[] };
 export type RetailersData = { picks: RetailerPick[]; already: string[]; calls: number; callIds: string[] };
 
 /** Is this retailer one the brand is already in? Matched against its store list, files and how it says it's sold. */
@@ -83,7 +84,8 @@ export async function nextRetailers(qloo: QlooClient, signal: string[], evidence
   const qlooPicks = new Set(qlooOwn.map((e) => e.entity_id));
   const pool = [...new Map([...resolved, ...qlooOwn].map((e) => [e.entity_id, e])).values()].slice(0, 50);
   if (!pool.length || !signal.length) return { picks: [], already: [], calls: callIds.length, callIds, category };
-  const scored = await qloo.insights({ "filter.type": "urn:entity:brand", "signal.interests.entities": signal, "filter.results.entities": pool.map((e) => e.entity_id), take: pool.length }, opts).catch(() => undefined);
+  // Explainability rides on the same call (§9.28): it adds no call and doesn't change the order.
+  const scored = await qloo.insights({ "filter.type": "urn:entity:brand", "signal.interests.entities": signal, "filter.results.entities": pool.map((e) => e.entity_id), "feature.explainability": true, take: pool.length }, opts).catch(() => undefined);
   if (scored) callIds.push(scored.call.id);
   const already: string[] = [];
   const picks: RetailerPick[] = [];
@@ -92,7 +94,7 @@ export async function nextRetailers(qloo: QlooClient, signal: string[], evidence
       already.push(e.name);
       continue;
     }
-    picks.push({ id: e.entity_id, name: e.name, affinity: Math.round((e.query?.affinity ?? 0) * 1000) / 1000, rank: 0, ownLabel: OWN_LABEL.has(norm(e.name)), qlooPick: qlooPicks.has(e.entity_id), callId: scored!.call.id });
+    picks.push({ id: e.entity_id, name: e.name, affinity: Math.round((e.query?.affinity ?? 0) * 1000) / 1000, rank: 0, ownLabel: OWN_LABEL.has(norm(e.name)), qlooPick: qlooPicks.has(e.entity_id), callId: scored!.call.id, why: contributions(e) });
   }
   // Own-label retailers go last; the rest keep Qloo's order.
   const ordered = [...picks.filter((p) => !p.ownLabel), ...picks.filter((p) => p.ownLabel)].map((p, i) => ({ ...p, rank: i + 1 }));

@@ -161,9 +161,10 @@ export function partners(ctx: BlockContext, opts: { fingerprint: TagChip[]; webs
     const narrow = narrowestGenre(own?.tags);
 
     const [brandRes, podRes, peerRes] = await Promise.all([
-      qloo.insights({ "filter.type": "urn:entity:brand", "signal.interests.entities": signal, "filter.exclude.entities": pb.exclude.slice(0, 50), take: 50, ...pb.partnerParams }),
+      // Explainability (§9.28) fills each pick's "Loved by fans of" line; it rides on the ranking call, no extra call.
+      qloo.insights({ "filter.type": "urn:entity:brand", "signal.interests.entities": signal, "filter.exclude.entities": pb.exclude.slice(0, 50), "feature.explainability": true, take: 50, ...pb.partnerParams }),
       pb.partnerTypes.includes("podcast")
-        ? qloo.insights({ "filter.type": "urn:entity:podcast", "signal.interests.entities": signal, take: 20, ...pb.partnerParams })
+        ? qloo.insights({ "filter.type": "urn:entity:podcast", "signal.interests.entities": signal, "feature.explainability": true, take: 20, ...pb.partnerParams })
         : Promise.resolve(undefined),
       pb.signal.brand && narrow
         ? qloo.insights({ "filter.type": "urn:entity:brand", "signal.interests.entities": pb.signal.brand, "filter.tags": narrow, "filter.exclude.entities": pb.signal.brand, take: 14 })

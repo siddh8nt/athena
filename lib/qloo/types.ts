@@ -16,6 +16,18 @@ export type QlooTag = {
 
 export type Explainability = Record<string, { entity_id: string; score: number }[]>;
 
+/** One signal entity's contribution to a pick (§9.28), from `feature.explainability`. */
+export type Contribution = { id: string; score: number };
+
+/** The signal entities behind a result, strongest first; empty when Qloo didn't explain it. */
+export function contributions(e: { query?: { explainability?: Explainability } }, max = 6): Contribution[] {
+  return (e.query?.explainability?.["signal.interests.entities"] ?? [])
+    .filter((c) => typeof c.entity_id === "string" && typeof c.score === "number" && c.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, max)
+    .map((c) => ({ id: c.entity_id, score: Math.round(c.score * 1000) / 1000 }));
+}
+
 export type QlooEntity = {
   entity_id: string;
   name: string;

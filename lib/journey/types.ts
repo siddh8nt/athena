@@ -32,6 +32,9 @@ export type CrowdCard = {
  */
 export type TasteAxisCard = { id: string; name: string; named: boolean; top: Ref[]; load: Record<string, number> };
 
+/** Where two crowds meet (§9.28): the entities both love, with each side's percentile and the bridge score. */
+export type CrowdMeeting = { a: string; b: string; items: { id: string; name: string; a: number; b: number; score: number }[] };
+
 /** Slider positions per axis: −2 (much less) to 2 (much more); 0 or absent is neutral. */
 export type Lean = Record<string, number>;
 
@@ -54,6 +57,8 @@ export type CrowdsResult = {
   probes?: string[];
   /** The graph's taste axes, strongest first (§9.27). Absent when the graph was too thin to factorise. */
   axes?: TasteAxisCard[];
+  /** Where the main crowd meets each other crowd (§9.28), read from the measured graph. */
+  meetings?: CrowdMeeting[];
 };
 
 export type CrowdsEvent = { type: "status"; text: string } | { type: "graph"; galaxy: Galaxy } | { type: "result"; result: CrowdsResult };

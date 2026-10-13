@@ -16,7 +16,15 @@ export function mutualFit(pForward: number, pReverse: number | undefined): numbe
 
 export type Bridge = { id: string; pAccounts: number; pVenue: number; value: number };
 
-/** Bridges (§9.8): min of both sides; keep the top `max` with value ≥ threshold. */
+/**
+ * Bridge score between two signals (§9.28, v4.0): the harmonic mean of the entity's percentiles under each. High only
+ * when both sides love it, and, unlike min(), it still tells a 0.99 / 0.92 bridge from a 0.92 / 0.92 one.
+ */
+export function bridgeScore(a: number, b: number): number {
+  return a + b > 0 ? (2 * a * b) / (a + b) : 0;
+}
+
+/** Bridges (§9.8): both sides at least `threshold`, ordered by the bridge score (§9.28); the top `max`. */
 export function bridges(
   pAccounts: Map<string, number>,
   pVenue: Map<string, number>,
@@ -27,8 +35,7 @@ export function bridges(
   for (const [id, a] of pAccounts) {
     const v = pVenue.get(id);
     if (v === undefined) continue;
-    const value = Math.min(a, v);
-    if (value >= threshold) out.push({ id, pAccounts: a, pVenue: v, value });
+    if (Math.min(a, v) >= threshold) out.push({ id, pAccounts: a, pVenue: v, value: bridgeScore(a, v) });
   }
   return out.sort((x, y) => y.value - x.value || y.pAccounts - x.pAccounts).slice(0, max);
 }

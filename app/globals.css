@@ -569,3 +569,16 @@ a.button.big { padding: 11px 20px; font-size: 15px; font-weight: 600; }
   .taste-axes li { grid-template-columns: minmax(0, 1fr) auto; }
   .taste-axes .axis-pos { display: none; }
 }
+
+/* Bridges and why-paths (§9.28) */
+.meeting span[title] { border-bottom: 1px dotted var(--muted); cursor: help; }
+.why-path { margin: 6px 0; }
+.why-figure { margin: 8px 0 0; }
+.why-figure svg { width: 100%; height: auto; display: block; font-size: 12px; }
+.why-figure text { fill: var(--fg); }
+.why-figure .why-head { fill: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
+.why-link { fill: none; stroke: var(--accent); stroke-opacity: 0.28; transition: stroke-opacity 120ms; }
+.why-link.dim { stroke-opacity: 0.06; }
+.why-node rect { fill: var(--muted); }
+.why-node.pick rect { fill: var(--accent); }
+.why-node { cursor: default; }

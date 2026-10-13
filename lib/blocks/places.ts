@@ -1,6 +1,6 @@
 import { results } from "@/lib/qloo/client";
 import { locationParams } from "@/lib/places/location";
-import type { QlooEntity } from "@/lib/qloo/types";
+import { contributions, type Contribution, type QlooEntity } from "@/lib/qloo/types";
 import { cleanVenue, isChainName, norm } from "@/lib/methods/names";
 import { metroById } from "@/lib/playbook/metros";
 import { VENUE_LABELS, VENUE_TAGS, signalIds, type Tier, type VenueType } from "@/lib/playbook/config";
@@ -20,6 +20,8 @@ export type VenuePick = {
   reasons: Evidence[];
   tags: { id: string; name: string }[];
   contact: { phone?: Enriched<string>; website?: Enriched<string> };
+  /** The signal entities behind the pick, from Qloo's explainability (§9.28). */
+  why?: Contribution[];
 };
 
 /** `fromCrowd`: ranked against the crowd the founder chose (§9.23), not their own accounts, so reasons say so. */
@@ -93,6 +95,7 @@ export function places(ctx: BlockContext, opts: { fingerprint: TagChip[]; chainN
           priceLevel: e.properties?.price_level,
           popularity: e.popularity,
           reasons: reasonsFor(withRank, res.call.id, names, opts.fingerprint, pb.tier, fromCrowd),
+          why: contributions(e),
           tags: (e.tags ?? []).filter((t) => !(t.type ?? "").includes("customer_identity")).slice(0, 6).map((t) => ({ id: t.id ?? t.tag_id ?? t.name, name: t.name })),
           contact: {
             phone: e.properties?.phone ? { value: e.properties.phone, source: "Qloo" as const, callId: res.call.id } : undefined,

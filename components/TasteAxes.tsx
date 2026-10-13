@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { LEAN_LABEL, LEAN_STEPS, leanSignal, neutralLean } from "@/lib/journey/weights";
 import type { Lean, TasteAxisCard } from "@/lib/journey/types";
+import type { Contribution } from "@/lib/qloo/types";
 
 // Taste axes and sliders (§9.27): the directions the crowd's taste runs along, from a factorisation of the measured
 // graph. Each slider leans the signal toward or away from one axis, and the current stop's list re-ranks in one Qloo
@@ -56,14 +57,14 @@ export function TasteAxes({ taste, compact, busy, note }: { taste: Taste; compac
   );
 }
 
-type Order = { order: string[]; affinity: Record<string, number>; note?: string };
+type Order = { order: string[]; affinity: Record<string, number>; why?: Record<string, Contribution[]>; note?: string };
 const memo = new Map<string, Order>();
 
 /**
  * A stop's list re-ranked under the sliders. Neutral sliders keep the stop's own order (no call). Otherwise one call to
  * /api/lean scores the same items under the leaned signal; each position is remembered for the session.
  */
-export function useLean(type: string, ids: string[], signal: { id: string; weight: number }[], taste?: Taste): { order: string[]; affinity?: Record<string, number>; busy: boolean; note?: string } {
+export function useLean(type: string, ids: string[], signal: { id: string; weight: number }[], taste?: Taste): { order: string[]; affinity?: Record<string, number>; why?: Record<string, Contribution[]>; busy: boolean; note?: string } {
   const leaned = taste && !neutralLean(taste.lean) ? leanSignal(signal, taste.axes, taste.lean) : undefined;
   // A lean that changes no weight (none of this signal runs along the axis) changes no order.
   const moves = !!leaned && leaned.some((s, i) => Math.abs(s.weight / leaned[0].weight - signal[i].weight / signal[0].weight) > 0.01);
@@ -91,5 +92,5 @@ export function useLean(type: string, ids: string[], signal: { id: string; weigh
   // Keep only the stop's own items, in the new order, and any the answer missed at the end.
   const known = new Set(ids);
   const order = [...got.order.filter((id) => known.has(id)), ...ids.filter((id) => !got.order.includes(id))];
-  return { order, affinity: got.affinity, busy: false, note: got.note };
+  return { order, affinity: got.affinity, why: got.why, busy: false, note: got.note };
 }

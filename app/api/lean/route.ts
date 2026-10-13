@@ -2,6 +2,7 @@ import { getQloo } from "@/lib/qloo";
 import { LIMITS, clientIp } from "@/lib/limits";
 import { MAX_SIGNAL } from "@/lib/journey/weights";
 import { MAX_TAKE } from "@/lib/qloo/client";
+import { contributions, type Contribution } from "@/lib/qloo/types";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -12,7 +13,7 @@ export const runtime = "nodejs";
 
 const TYPES = new Set(["brand", "place", "podcast", "artist", "tv_show", "movie", "book"]);
 
-export type LeanResult = { order: string[]; affinity: Record<string, number>; callId?: string; note?: string };
+export type LeanResult = { order: string[]; affinity: Record<string, number>; why?: Record<string, Contribution[]>; callId?: string; note?: string };
 
 export async function POST(req: Request) {
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
@@ -28,13 +29,14 @@ export async function POST(req: Request) {
   const cap = LIMITS.lean(clientIp(req));
   if (!cap.ok) return Response.json({ ...keep, note: cap.message });
   try {
-    const res = await getQloo().insightsWeighted({ "filter.type": `urn:entity:${type}`, "filter.results.entities": ids, take: ids.length }, signal);
+    const res = await getQloo().insightsWeighted({ "filter.type": `urn:entity:${type}`, "filter.results.entities": ids, "feature.explainability": true, take: ids.length }, signal);
     const scored = (res.results.entities ?? []).filter((e) => ids.includes(e.entity_id));
     const seen = new Set(scored.map((e) => e.entity_id));
     // Items Qloo didn't score keep their place order, after the scored ones (as everywhere else, §9.4).
     const order = [...scored.map((e) => e.entity_id), ...ids.filter((id) => !seen.has(id))];
     const affinity = Object.fromEntries(scored.map((e) => [e.entity_id, Math.round((e.query?.affinity ?? 0) * 1000) / 1000]));
-    return Response.json({ order, affinity, callId: res.call.id } satisfies LeanResult);
+    const why = Object.fromEntries(scored.map((e) => [e.entity_id, contributions(e)]));
+    return Response.json({ order, affinity, why, callId: res.call.id } satisfies LeanResult);
   } catch (err) {
     // Never a failure state: the list keeps the order it had.
     console.error("lean failed", err);

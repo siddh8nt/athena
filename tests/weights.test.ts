@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { crowdIdForStop, crowdSignal, WEIGHT } from "@/lib/journey/weights";
-import type { CrowdCard } from "@/lib/journey/types";
+import { crowdIdForStop, crowdSignal, leanSignal, WEIGHT } from "@/lib/journey/weights";
+import type { CrowdCard, TasteAxisCard } from "@/lib/journey/types";
 import { QlooClient } from "@/lib/qloo/client";
 
 const crowd = (id: string, main: boolean, ids: string[]): CrowdCard => ({ id, name: `Crowd ${id}`, main, loves: [], signal: ids.map((x) => ({ id: x, name: x })), cities: [], size: ids.length });
@@ -52,5 +52,41 @@ describe("weighted client", () => {
     expect((post.mock.calls[0] as unknown[])[1]).toMatchObject({ "signal.interests.entities": [{ id: "x", weight: 3 }, { id: "y", weight: 1 }] });
     await q.withWeights(new Map([["x", 2], ["y", 2]])).insights({ "signal.interests.entities": ["x", "y"] });
     expect(send).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("leanSignal (§9.27)", () => {
+  const axes: TasteAxisCard[] = [
+    { id: "axis-1", name: "Natural wine", named: true, top: [], load: { a: 0.9, b: 0.1 } },
+    { id: "axis-2", name: "Streetwear", named: true, top: [], load: { b: 0.8, c: 0.6 } },
+  ];
+  const sig = [
+    { id: "a", name: "A", weight: 1 },
+    { id: "b", name: "B", weight: 1 },
+    { id: "c", name: "C", weight: 1 },
+  ];
+
+  it("leaves the signal alone when every slider is neutral", () => {
+    expect(leanSignal(sig, axes, {})).toBe(sig);
+    expect(leanSignal(sig, axes, { "axis-1": 0 })).toBe(sig);
+    expect(leanSignal(sig, undefined, { "axis-1": 2 })).toBe(sig);
+  });
+
+  it("pulls weight toward an axis on More and away on Less, within (0, 10]", () => {
+    const more = leanSignal(sig, axes, { "axis-1": 2 });
+    expect(more[0].weight).toBe(10);
+    expect(more[0].weight).toBeGreaterThan(more[1].weight);
+    expect(more[1].weight).toBeGreaterThan(more[2].weight);
+    const less = leanSignal(sig, axes, { "axis-1": -2 });
+    expect(less[0].weight).toBeLessThan(less[2].weight);
+    for (const s of [...more, ...less]) expect(s.weight > 0 && s.weight <= 10).toBe(true);
+  });
+
+  it("combines axes multiplicatively and keeps names", () => {
+    const both = leanSignal(sig, axes, { "axis-1": 1, "axis-2": 1 });
+    // b loads on both axes (1.1 × 1.8), a on one (1.9), c on one (1.6).
+    expect(both.map((s) => s.id)).toEqual(["a", "b", "c"]);
+    expect(both[1].weight).toBe(10);
+    expect(both[0].name).toBe("A");
   });
 });

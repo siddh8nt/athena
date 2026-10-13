@@ -1,5 +1,5 @@
 import { GROWTH, type GrowthType, type StopId } from "./growth";
-import type { CrowdCard, Pin, Reaction } from "./types";
+import type { CrowdCard, Lean, Pin, Reaction, TasteAxisCard } from "./types";
 
 // The founder's reactions become the plan's signal (PRD §9.23 step 7): one weighted list of entities sent to Qloo,
 // plus the entities to leave out. Pure, shared by the client and the server.
@@ -44,6 +44,35 @@ export function crowdSignal(crowds: CrowdCard[], chosenId: string, reactions: Re
   const notUs = new Set(pinned.filter(([, p]) => p.pin === "not_us").map(([id]) => id));
   const brands = chosen.brands?.filter((b) => !notUs.has(b.id));
   return { name: chosen.name, signal: equal ? signal.map((s) => ({ ...s, weight: 1 })) : signal, exclude: [...new Set(exclude)], ...(brands?.length ? { brands } : {}) };
+}
+
+/**
+ * Slider steps (§9.27) [DECISION; tune]: at position p an entity's weight is multiplied by 1 + α_p × its load on the
+ * axis, so "more" pulls toward the axis and "less" pushes away; an entity off the axis keeps its weight.
+ */
+export const LEAN_ALPHA: Record<number, number> = { [-2]: -0.8, [-1]: -0.4, 0: 0, 1: 1, 2: 2 };
+export const LEAN_STEPS = [-2, -1, 0, 1, 2] as const;
+export const LEAN_LABEL: Record<number, string> = { [-2]: "Much less", [-1]: "Less", 0: "As measured", 1: "More", 2: "Much more" };
+
+/** True when every slider is neutral. */
+export const neutralLean = (lean?: Lean) => !lean || Object.values(lean).every((p) => !p);
+
+/**
+ * The signal under the sliders: w × Π over axes of (1 + α_p × load), rescaled so the largest weight is 10 (the API's
+ * ceiling) and no weight falls to 0. Neutral sliders return the signal unchanged.
+ */
+export function leanSignal<T extends { id: string; weight: number }>(signal: T[], axes: TasteAxisCard[] | undefined, lean: Lean | undefined): T[] {
+  if (!axes?.length || neutralLean(lean)) return signal;
+  const raw = signal.map((s) => {
+    let f = 1;
+    for (const a of axes) {
+      const p = lean?.[a.id] ?? 0;
+      if (p) f *= 1 + (LEAN_ALPHA[p] ?? 0) * (a.load[s.id] ?? 0);
+    }
+    return Math.max(0.01, s.weight * f);
+  });
+  const top = Math.max(...raw);
+  return signal.map((s, i) => ({ ...s, weight: Math.max(0.05, Math.round((raw[i] / top) * 10 * 100) / 100) }));
 }
 
 /** The "which crowd?" answer (§7.8): when New crowd is combined with other picks, do those target the current crowd or the new one? */

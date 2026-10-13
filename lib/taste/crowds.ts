@@ -100,7 +100,7 @@ const STOP = new Set(["the", "and", "of", "a", "an", "crowd", "fans", "people", 
  * The name validator (§9.23 step 5): every content word must come from the crowd's own entity names or Qloo tags,
  * so a name can never claim a taste Qloo didn't show. Prefix matching lets "comedies" match "comedy".
  */
-export function validName(name: string, crowd: Crowd): boolean {
+export function validName(name: string, crowd: Pick<Crowd, "entities">): boolean {
   const vocab = crowd.entities.flatMap((n) => [n.name, ...n.tags]).join(" ").toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length > 2);
   const words = name.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length > 2 && !STOP.has(w));
   if (!words.length || words.length > 5) return false;

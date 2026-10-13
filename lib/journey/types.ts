@@ -26,6 +26,15 @@ export type CrowdCard = {
   core?: number;
 };
 
+/**
+ * One taste axis (§9.27, v4.0): a direction the measured graph's landmarks pull along, from a non-negative
+ * factorisation of U. `load` is each entity's share of its taste on this axis (0–1), by Qloo id.
+ */
+export type TasteAxisCard = { id: string; name: string; named: boolean; top: Ref[]; load: Record<string, number> };
+
+/** Slider positions per axis: −2 (much less) to 2 (much more); 0 or absent is neutral. */
+export type Lean = Record<string, number>;
+
 export type Reaction = "us" | "partly" | "not_us";
 
 /** One entity the founder marked in the Taste Galaxy: "us" joins the plan's signal, "not_us" is left out (v4.0). */
@@ -43,6 +52,8 @@ export type CrowdsResult = {
   galaxy?: Galaxy;
   /** Entities the founder probed (click to probe, §13.11), in order. */
   probes?: string[];
+  /** The graph's taste axes, strongest first (§9.27). Absent when the graph was too thin to factorise. */
+  axes?: TasteAxisCard[];
 };
 
 export type CrowdsEvent = { type: "status"; text: string } | { type: "graph"; galaxy: Galaxy } | { type: "result"; result: CrowdsResult };
@@ -63,6 +74,8 @@ export type Journey = {
   pins?: Record<string, Pin>;
   /** With New crowd plus other picks: do the other picks target the current crowd or the new one (§7.8)? */
   crowdTarget?: "current" | "new";
+  /** The founder's taste-axis sliders (§9.27): they re-rank the current stop's list. */
+  lean?: Lean;
   city?: string;
 };
 

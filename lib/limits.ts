@@ -47,6 +47,11 @@ export const LIMITS = {
     const t = take(`rerun:${ip}`, 20, HOUR);
     return t.ok ? { ok: true as const } : { ok: false as const, message: "I'll keep your answer and use it on your next plan." };
   },
+  /** Taste-axis sliders (§9.27): 60 re-ranks per IP per hour, one Qloo call each (cached ones don't count). */
+  lean(ip: string) {
+    const t = take(`lean:${ip}`, 60, HOUR);
+    return t.ok ? { ok: true as const } : { ok: false as const, message: `That's 60 slider moves in an hour, so the list keeps its order for now. More open in about ${t.retryInMin} minutes.` };
+  },
   /** Click to probe (§13.11): 12 probes per IP per hour, about 6 Qloo calls each. */
   probe(ip: string) {
     const t = take(`probe:${ip}`, 12, HOUR);

@@ -5,8 +5,9 @@ import { buildSeed, type SeedInput } from "@/lib/taste/seed";
 import { DOMAINS, MAX_EXTRA, buildGraph, extendGraph, seedSignal, shortName, type Crowd, type Domain, type GraphState, type TasteGraph } from "@/lib/taste/graph";
 import type { QlooClient } from "@/lib/qloo/client";
 import { crowdDetails } from "@/lib/taste/crowds";
-import { nameCrowds } from "@/lib/taste/name";
-import type { CrowdCard, CrowdsEvent, CrowdsResult, Love } from "@/lib/journey/types";
+import { nameAxes, nameCrowds } from "@/lib/taste/name";
+import { tasteAxes } from "@/lib/taste/axes";
+import type { CrowdCard, CrowdsEvent, CrowdsResult, Love, TasteAxisCard } from "@/lib/journey/types";
 import type { Galaxy } from "@/lib/taste/graph";
 
 export const dynamic = "force-dynamic";
@@ -57,6 +58,8 @@ export async function POST(req: Request) {
   const raw = await req.json().catch(() => ({}));
   const input = readInput(raw);
   const probes = readProbes(raw);
+  // Taste axes for crowds a founder already has (§9.27): read from the stored graph only, never measured.
+  if ((raw as { axesOnly?: unknown } | null)?.axesOnly === true) return Response.json({ axes: await storedAxes(baseKey(input)) });
   const ip = clientIp(req);
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
@@ -90,13 +93,15 @@ export async function POST(req: Request) {
 type SavedGraph = { state: GraphState; seed: CrowdsResult["seed"]; seedCallIds: string[] };
 
 async function run(input: SeedInput, probes: string[], ip: string, status: (t: string) => void, graphEvent: (g: Galaxy) => void): Promise<CrowdsResult> {
-  // "v4.2": results from the probe-based graph (§9.23, v4.0) carry the Galaxy with null-calibrated cores and each
-  // crowd's brand members (for Markets); older ones don't.
-  const base = `v4.2|${JSON.stringify([input.brand?.id ?? "", [...input.comparables].sort(), [...input.lookalikes].sort(), [...input.traits].sort()]).toLowerCase()}`;
+  const base = baseKey(input);
   const keyOf = (p: string[]) => (p.length ? `${base}|probe:${p.join(",")}` : base);
   const cached = async (p: string[]) => (await getStore().get<CrowdsResult>("crowds", keyOf(p)).catch(() => undefined))?.value;
   const hit = await cached(probes);
-  if (hit?.crowds?.length) return hit;
+  if (hit?.crowds?.length) {
+    if (hit.axes || probes.length) return hit;
+    const axes = await storedAxes(base);
+    return axes ? { ...hit, axes } : hit;
+  }
 
   const t0 = Date.now();
   const qloo = process.env.ATHENA_DEBUG_QLOO ? getQloo().withLog((c) => console.log(`qloo +${Date.now() - t0}ms ${c.status} ${c.ms}ms ${c.cached ? "cached" : ""} ${c.params["filter.type"] ?? c.endpoint} ${c.params["filter.results.entities"] ? "pool" : ""}`)) : getQloo();
@@ -144,7 +149,7 @@ async function measure(qloo: QlooClient, input: SeedInput, base: string, status:
 async function resultOf(qloo: QlooClient, graph: TasteGraph, seed: CrowdsResult["seed"], seedCallIds: string[], status: (t: string) => void): Promise<CrowdsResult> {
   if (!graph.crowds.length) return { seed, crowds: [], calls: seedCallIds.length + graph.calls, callIds: [...seedCallIds, ...graph.callIds], empty: true };
   status(graph.crowds.length > 1 ? `Found ${graph.crowds.length} distinct crowds; checking where each one lives` : "Checking where this crowd lives");
-  const [details, names] = await Promise.all([Promise.all(graph.crowds.map((c) => crowdDetails(qloo, c, { priority: c.main ? "now" : "next" }))), nameCrowds(graph.crowds)]);
+  const [details, names, axes] = await Promise.all([Promise.all(graph.crowds.map((c) => crowdDetails(qloo, c, { priority: c.main ? "now" : "next" }))), nameCrowds(graph.crowds), graph.state ? axesOf(graph.state) : undefined]);
   const crowds: CrowdCard[] = graph.crowds.map((c, i) => ({
     id: c.id,
     name: names[i],
@@ -159,5 +164,37 @@ async function resultOf(qloo: QlooClient, graph: TasteGraph, seed: CrowdsResult[
     core: c.core,
   }));
   const callIds = [...seedCallIds, ...graph.callIds, ...details.flatMap((d) => d.callIds)];
-  return { seed, crowds, calls: callIds.length, callIds, galaxy: graph.galaxy, probes: graph.state?.extra.length ? graph.state.extra : undefined };
+  return { seed, crowds, calls: callIds.length, callIds, galaxy: graph.galaxy, probes: graph.state?.extra.length ? graph.state.extra : undefined, ...(axes ? { axes } : {}) };
+}
+
+// "v4.2": results from the probe-based graph (§9.23, v4.0) carry the Galaxy with null-calibrated cores and each
+// crowd's brand members (for Markets); older ones don't.
+const baseKey = (input: SeedInput) => `v4.2|${JSON.stringify([input.brand?.id ?? "", [...input.comparables].sort(), [...input.lookalikes].sort(), [...input.traits].sort()]).toLowerCase()}`;
+
+/**
+ * Axes for a result cached before taste axes (§9.27): the stored graph is factorised once (no Qloo calls) and the
+ * cached result keeps them. Undefined when nothing is stored for this seed.
+ */
+async function storedAxes(base: string): Promise<TasteAxisCard[] | undefined> {
+  const store = getStore();
+  const hit = (await store.get<CrowdsResult>("crowds", base).catch(() => undefined))?.value;
+  if (hit?.axes) return hit.axes;
+  const saved = (await store.get<SavedGraph>("graph", base).catch(() => undefined))?.value;
+  const axes = saved ? await axesOf(saved.state) : undefined;
+  if (axes && hit?.crowds?.length) await store.set("crowds", base, { ...hit, axes }, TTL).catch(() => undefined);
+  return axes;
+}
+
+/** The graph's taste axes (§9.27): a factorisation of the measured matrix (no Qloo calls), named by the agent. */
+async function axesOf(state: GraphState): Promise<TasteAxisCard[] | undefined> {
+  const out = tasteAxes(state.U, state.nodes);
+  if (!out) return undefined;
+  const names = await nameAxes(out.axes);
+  return out.axes.map((a, i) => ({
+    id: `axis-${i + 1}`,
+    ...names[i],
+    top: a.top.slice(0, 6).map((n) => ({ id: n.id, name: n.name })),
+    // Only loads that move a weight are sent; anything under 0.05 is treated as 0.
+    load: Object.fromEntries([...a.load].filter(([, x]) => x >= 0.05)),
+  }));
 }

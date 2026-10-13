@@ -549,3 +549,23 @@ a.button.big { padding: 11px 20px; font-size: 15px; font-weight: 600; }
 .ww-both { color: var(--pick); }
 .bench-line { margin: 6px 0 0; }
 @media (max-width: 760px) { .ww-cols { grid-template-columns: 1fr; } }
+
+/* Taste axes and sliders (§9.27) */
+.taste-axes { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; margin: 12px 0; background: var(--surface); }
+.taste-axes header h4 { margin: 0 0 4px; }
+.taste-axes ul { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 8px; }
+.taste-axes li { display: grid; grid-template-columns: minmax(0, 1fr) auto 84px; align-items: center; gap: 10px; }
+.taste-axes .axis-name { display: flex; flex-direction: column; min-width: 0; }
+.taste-axes .axis-name small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.taste-axes .axis-steps { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
+.taste-axes .axis-steps button { border: 0; border-radius: 0; padding: 2px 10px; min-width: 30px; background: transparent; }
+.taste-axes .axis-steps button + button { border-left: 1px solid var(--line); }
+.taste-axes .axis-steps button.on { background: var(--accent); color: var(--surface); }
+.taste-axes .axis-steps button.mid:not(.on) { color: var(--muted); }
+.taste-axes .axis-pos { text-align: right; }
+.taste-axes.compact { padding: 8px 12px; }
+.taste-axes.compact ul { margin-top: 0; gap: 4px; }
+@media (max-width: 560px) {
+  .taste-axes li { grid-template-columns: minmax(0, 1fr) auto; }
+  .taste-axes .axis-pos { display: none; }
+}

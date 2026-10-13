@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { ACCEPT, TrailView, Understood, useBriefChat, type Msg } from "./chat";
@@ -10,13 +10,14 @@ import { Workspace } from "./Workspace";
 import { Galaxy } from "./Galaxy";
 import { CrowdGeography } from "./CrowdGeography";
 import { BenchNote, WithWithout, type AloneRequest } from "./WithWithout";
+import { TasteAxes, useLean, type Taste } from "./TasteAxes";
 import { GUESS, type Turn } from "@/lib/brief/conversation";
 import { briefToInput } from "@/lib/brief/to-input";
 import type { BrandBrief } from "@/lib/brief/types";
 import { GROWTH, MAX_PICKS, STOP_LABELS, blockedReason, decisionsFor, labelFor, motionsFor, orderFor, spreadNote, stopsFor, suggest, type Channel, type GrowthType, type StopId } from "@/lib/journey/growth";
 import { crowdIdForStop, crowdSignal } from "@/lib/journey/weights";
 import type { PlaceOption, Resolution } from "@/lib/places/resolve";
-import { emptyJourney, type CrowdCard, type CrowdsEvent, type Journey as JourneyState, type Pin, type Reaction } from "@/lib/journey/types";
+import { emptyJourney, type CrowdCard, type CrowdsEvent, type CrowdsResult, type Journey as JourneyState, type Pin, type Reaction } from "@/lib/journey/types";
 import type { Galaxy as GalaxyData } from "@/lib/taste/galaxy";
 import { packBySlug } from "@/lib/journey/packs";
 import { takeFor } from "@/lib/journey/takes";
@@ -127,10 +128,20 @@ export function Journey() {
     const key = JSON.stringify(body);
     if (crowdKey.current === key) return;
     crowdKey.current = key;
-    if (j.crowds && j.crowdsFor === key) return; // already built for this product (a returning founder)
+    if (j.crowds && j.crowdsFor === key) {
+      // Already built for this product (a returning founder). Crowds saved before taste axes (§9.27) pick them up
+      // from the server's copy, which factorises the stored graph once; nothing else about the crowds changes.
+      // Probed crowds wait for the next probe: their graph isn't the stored one.
+      if (!j.crowds.axes && j.crowds.crowds.length && !j.crowds.probes?.length)
+        void fetch("/api/crowds", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...body, axesOnly: true }) })
+          .then((r) => r.json() as Promise<{ axes?: CrowdsResult["axes"] }>)
+          .then(({ axes }) => axes?.length && setJ((x) => (x.crowds && x.crowdsFor === key && !x.crowds.probes?.length ? { ...x, crowds: { ...x.crowds, axes } } : x)))
+          .catch(() => undefined);
+      return;
+    }
     setCrowdSteps([]);
     setForming(undefined);
-    setJ((x) => ({ ...x, crowds: undefined, crowdId: undefined, reactions: {}, pins: {} }));
+    setJ((x) => ({ ...x, crowds: undefined, crowdId: undefined, reactions: {}, pins: {}, lean: {} }));
     void crowdStream(key, (e) => {
       if (crowdKey.current !== key) return false;
       if (e.type === "status") setCrowdSteps((s) => [...s, e.text]);
@@ -157,7 +168,8 @@ export function Journey() {
         setJ((x) => {
           const ids = new Set(e.result.crowds.map((c) => c.id));
           const reactions = Object.fromEntries(Object.entries(x.reactions).filter(([c]) => ids.has(c)));
-          return { ...x, crowds: e.result, reactions, crowdId: x.crowdId && ids.has(x.crowdId) ? x.crowdId : defaultCrowd(e.result.crowds, x.growth) };
+          // A probe re-factorises the graph, so the axes (and the sliders on them) start over.
+          return { ...x, crowds: e.result, reactions, lean: {}, crowdId: x.crowdId && ids.has(x.crowdId) ? x.crowdId : defaultCrowd(e.result.crowds, x.growth) };
         });
       return true;
     })
@@ -226,6 +238,8 @@ export function Journey() {
   const input = inputFor("go");
   // With / Without (§13.2): every stop's question also goes to Gemini alone, from the same product description.
   const alone: AloneRequest = { brand: brief.name?.value || "The brand", product: String(base.description ?? "").slice(0, 400) };
+  // Taste axes (§9.27): the sliders live in the journey, so a lean set at the Crowd stop carries to every list.
+  const taste: Taste | undefined = j.crowds?.axes?.length ? { axes: j.crowds.axes, lean: j.lean ?? {}, onLean: (id, pos) => setJ((x) => ({ ...x, lean: { ...x.lean, [id]: pos } })) } : undefined;
 
   // Prefetch (§14.9): the stop after this one starts in the background once its inputs are settled (a crowd, and a
   // city for the stops that use one), so it's ready when the founder arrives. Stays hidden until then.
@@ -388,6 +402,7 @@ export function Journey() {
                 onProbe={probe}
                 probing={probing}
                 alone={alone}
+                taste={taste}
               />
             </div>
           )}
@@ -395,7 +410,7 @@ export function Journey() {
             .filter((s) => BLOCK_OF[s] && (reached(s) || prefetch(s)))
             .map((s) => (
               <div key={s} id={`stop-${s}`} hidden={!reached(s)}>
-                <StopRunner alone={alone} stop={s} block={BLOCK_OF[s]!} input={CITY_STOPS.has(s) ? inputFor(s) : { ...inputFor(s), city: undefined }} brandName={brief.name?.value ?? "Your brand"} onData={(d) => setStopData((x) => (x[s] === d ? x : { ...x, [s]: d }))} />
+                <StopRunner alone={alone} taste={taste} stop={s} block={BLOCK_OF[s]!} input={CITY_STOPS.has(s) ? inputFor(s) : { ...inputFor(s), city: undefined }} brandName={brief.name?.value ?? "Your brand"} onData={(d) => setStopData((x) => (x[s] === d ? x : { ...x, [s]: d }))} />
               </div>
             ))}
           {stops
@@ -412,6 +427,7 @@ export function Journey() {
                     skew={crowd.skew}
                     brandName={brief.name?.value ?? "your brand"}
                     alone={alone}
+                    taste={taste}
                     onData={(d) => setStopData((x) => (x[s] === d ? x : { ...x, [s]: d }))}
                   />
                 ) : (
@@ -701,7 +717,7 @@ function skewLine(s: CrowdCard["skew"]): string | undefined {
 }
 
 /** The Crowd stop (§9.23, J3): 2–3 crowds from Qloo's taste graph; the founder says which sound like their customers. */
-function CrowdStop({ j, steps, forming, onReact, onChoose, onPin, onProbe, probing, alone }: { j: JourneyState; steps: string[]; forming?: GalaxyData; onReact: (id: string, r: Reaction) => void; onChoose: (id: string) => void; onPin: (id: string, name: string, pin: Pin["pin"] | undefined) => void; onProbe: (id: string, name: string) => void; probing?: string; alone: AloneRequest }) {
+function CrowdStop({ j, steps, forming, onReact, onChoose, onPin, onProbe, probing, alone, taste }: { j: JourneyState; steps: string[]; forming?: GalaxyData; onReact: (id: string, r: Reaction) => void; onChoose: (id: string) => void; onPin: (id: string, name: string, pin: Pin["pin"] | undefined) => void; onProbe: (id: string, name: string) => void; probing?: string; alone: AloneRequest; taste?: Taste }) {
   const r = j.crowds;
   // Linked views (§9.26): the crowd under the pointer in the Galaxy, the map or the cards lights up in all three.
   const [lit, setLit] = useState<number | null>(null);
@@ -776,9 +792,43 @@ function CrowdStop({ j, steps, forming, onReact, onChoose, onPin, onProbe, probi
           );
         })}
       </div>
+      {taste && !probing && <TasteAxes taste={taste} />}
       <WithWithout stop="crowd" question="Who are this product's customers, and what do they love?" athena={r.crowds.map((c) => ({ name: c.name, why: c.loves.slice(0, 6).map((l) => l.name).join(", ") }))} request={alone} />
       <p className="small muted">{SKEW_LABEL}</p>
     </section>
+  );
+}
+
+/** Next retailers (§9.25), re-ranked under the taste sliders (§9.27) when they lean. */
+function Retailers({ r, signal, alone, taste }: { r: RetailersResult; signal: { id: string; weight: number }[]; alone: AloneRequest; taste?: Taste }) {
+  const lean = useLean("brand", r.picks.slice(0, 50).map((p) => p.id), signal, taste);
+  const byId = new Map(r.picks.map((p) => [p.id, p]));
+  const leaned = lean.order.map((id) => byId.get(id)!).filter(Boolean);
+  // As in the stop itself, own-label retailers go last; the rest take the leaned order.
+  const picks = [...leaned.filter((p) => !p.ownLabel), ...leaned.filter((p) => p.ownLabel)];
+  const top = picks.slice(0, 8);
+  return (
+      <section className="card">
+        <h3>Next retailers</h3>
+        <p className="small muted">Bigger retailers ranked by how much your crowd loves each one (Qloo). Built from {r.calls} Qloo calls.</p>
+        {taste && <TasteAxes taste={taste} compact busy={lean.busy} note={lean.note} />}
+        {r.already.length > 0 && <p className="small"><strong>You&apos;re already in</strong> {r.already.join(", ")}, so they&apos;re left out.</p>}
+        {top.length ? (
+          <ol className="rank-list">
+            {top.map((p, i) => (
+              <li key={p.id}>
+                <span className="rank">{i + 1}</span>
+                <span className="grow"><strong>{p.name}</strong>{p.ownLabel && <small className="muted"> · mostly sells its own label</small>}</span>
+                <small className="muted">affinity {(lean.affinity?.[p.id] ?? p.affinity).toFixed(2)}</small>
+              </li>
+            ))}
+          </ol>
+        ) : (
+          <p>Every retailer on my list is already one of yours. Add a few you&apos;re eyeing in the chat and I&apos;ll rank them.</p>
+        )}
+        <p className="small muted">Fit means your crowd loves the retailer, not that a buyer will say yes.</p>
+        {r.picks.length > 1 && <WithWithout stop="retailers" question={`Which of these ${r.picks.length} retailers are most likely to carry this product?`} athena={picks.map((p) => ({ id: p.id, name: p.name }))} request={{ ...alone, candidates: r.picks.map((p) => ({ id: p.id, label: p.name })) }} bench="t2" ranked />}
+      </section>
   );
 }
 
@@ -786,7 +836,7 @@ type RetailersResult = { picks: { id: string; name: string; affinity: number; ra
 type OnlineResult = { creators: { id: string; name: string; role: string; affinity: number }[]; podcasts: { id: string; name: string; affinity: number }[]; interests: { id: string; name: string }[]; calls: number };
 
 /** Next retailers (§9.25) and Online (§9.24): small stops outside the six blocks, read for the chosen crowd. */
-function ExtraStop({ kind, signal, product, category, evidence, skew, brandName, alone, onData }: { kind: "retailers" | "online"; signal: { id: string; weight: number }[]; product: string; category?: string; evidence: string[]; skew: CrowdCard["skew"]; brandName: string; alone: AloneRequest; onData: (d: unknown) => void }) {
+function ExtraStop({ kind, signal, product, category, evidence, skew, brandName, alone, taste, onData }: { kind: "retailers" | "online"; signal: { id: string; weight: number }[]; product: string; category?: string; evidence: string[]; skew: CrowdCard["skew"]; brandName: string; alone: AloneRequest; taste?: Taste; onData: (d: unknown) => void }) {
   const [data, setData] = useState<RetailersResult | OnlineResult | null>(null);
   const key = JSON.stringify([kind, signal]);
   useEffect(() => {
@@ -814,32 +864,7 @@ function ExtraStop({ kind, signal, product, category, evidence, skew, brandName,
         </ol>
       </section>
     );
-  if (kind === "retailers") {
-    const r = data as RetailersResult;
-    const top = r.picks.slice(0, 8);
-    return (
-      <section className="card">
-        <h3>Next retailers</h3>
-        <p className="small muted">Bigger retailers ranked by how much your crowd loves each one (Qloo). Built from {r.calls} Qloo calls.</p>
-        {r.already.length > 0 && <p className="small"><strong>You&apos;re already in</strong> {r.already.join(", ")}, so they&apos;re left out.</p>}
-        {top.length ? (
-          <ol className="rank-list">
-            {top.map((p) => (
-              <li key={p.id}>
-                <span className="rank">{p.rank}</span>
-                <span className="grow"><strong>{p.name}</strong>{p.ownLabel && <small className="muted"> · mostly sells its own label</small>}</span>
-                <small className="muted">affinity {p.affinity.toFixed(2)}</small>
-              </li>
-            ))}
-          </ol>
-        ) : (
-          <p>Every retailer on my list is already one of yours. Add a few you&apos;re eyeing in the chat and I&apos;ll rank them.</p>
-        )}
-        <p className="small muted">Fit means your crowd loves the retailer, not that a buyer will say yes.</p>
-        {r.picks.length > 1 && <WithWithout stop="retailers" question={`Which of these ${r.picks.length} retailers are most likely to carry this product?`} athena={r.picks.map((p) => ({ id: p.id, name: p.name }))} request={{ ...alone, candidates: r.picks.map((p) => ({ id: p.id, label: p.name })) }} bench="t2" ranked />}
-      </section>
-    );
-  }
+  if (kind === "retailers") return <Retailers r={data as RetailersResult} signal={signal} alone={alone} taste={taste} />;
   const o = data as OnlineResult;
   const skewNote = skewLine(skew);
   return (
@@ -881,7 +906,7 @@ function ExtraStop({ kind, signal, product, category, evidence, skew, brandName,
 }
 
 /** One stop on the plan engine: a scoped run of one block for the chosen crowd and city. */
-function StopRunner({ stop, block, input, brandName, alone, onData }: { stop: StopId; block: Block; input: Record<string, unknown>; brandName: string; alone: AloneRequest; onData: (d: unknown) => void }) {
+function StopRunner({ stop, block, input, brandName, alone, taste, onData }: { stop: StopId; block: Block; input: Record<string, unknown>; brandName: string; alone: AloneRequest; taste?: Taste; onData: (d: unknown) => void }) {
   const key = JSON.stringify(input);
   const source: PlanSource = useMemo(() => ({ kind: "custom", input, id: hash(`${block}|${key}`), scope: [block] }), [block, key]); // eslint-disable-line react-hooks/exhaustive-deps
   const plan = usePlan(source);
@@ -925,8 +950,12 @@ function StopRunner({ stop, block, input, brandName, alone, onData }: { stop: St
       const p = b.data as PlacesData;
       return (
         <section className="card stop-block">
+          <LeanPlaces p={p} signal={(input.crowd as { signal?: { id: string; weight: number }[] } | undefined)?.signal} taste={taste}>
+            {(data, lean) => (
+              <>
+                {lean}
           <PlacesView
-            data={p}
+            data={data}
             meta={b.meta}
             selectedId={selected}
             onSelect={(id) => setSelected(id === selected ? undefined : id)}
@@ -935,6 +964,9 @@ function StopRunner({ stop, block, input, brandName, alone, onData }: { stop: St
             // Without Qloo (§9.9): the same question to a chatbot with search, side by side; capped (§14.5).
             compare={{ key: `journey-${hash(`${brandName}|${p.metroId}|${p.signal.join()}`)}`, brandName, whatYouSell: String(input.description ?? "").split(".")[0], tier: String(input.tierHint ?? "") }}
           />
+              </>
+            )}
+          </LeanPlaces>
           <BenchNote task="t3" />
         </section>
       );
@@ -969,4 +1001,13 @@ function StopRunner({ stop, block, input, brandName, alone, onData }: { stop: St
     default:
       return null;
   }
+}
+
+/** Places ranked against the crowd (§9.23) re-rank under the taste sliders (§9.27); ranked against accounts, they don't. */
+function LeanPlaces({ p, signal, taste, children }: { p: PlacesData; signal?: { id: string; weight: number }[]; taste?: Taste; children: (data: PlacesData, lean: ReactNode) => ReactNode }) {
+  const on = !!(taste && p.fromCrowd && signal?.length);
+  const lean = useLean("place", p.picks.slice(0, 50).map((x) => x.id), on ? signal! : [], on ? taste : undefined);
+  const byId = new Map(p.picks.map((x) => [x.id, x]));
+  const picks = lean.order.flatMap((id, i) => (byId.has(id) ? [{ ...byId.get(id)!, rank: i + 1 }] : []));
+  return <>{children(on ? { ...p, picks } : p, on ? <TasteAxes taste={taste!} compact busy={lean.busy} note={lean.note} /> : null)}</>;
 }

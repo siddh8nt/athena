@@ -2,51 +2,15 @@
 
 import { useEffect, useRef } from "react";
 import type { Map as MlMap, GeoJSONSource, MapLayerMouseEvent } from "maplibre-gl";
-
-type MapLibre = typeof import("maplibre-gl");
-/** Loads MapLibre from /public/maplibre (copied by scripts/copy-maplibre.mjs), unbundled, so its worker resolves. */
-function loadMapLibre(): Promise<MapLibre> {
-  if (!document.querySelector('link[data-maplibre]')) {
-    const link = document.createElement("link");
-    link.rel = "stylesheet";
-    link.href = "/maplibre/maplibre-gl.css";
-    link.dataset.maplibre = "1";
-    document.head.appendChild(link);
-  }
-  return import(/* webpackIgnore: true */ /* turbopackIgnore: true */ "/maplibre/maplibre-gl.mjs" as string) as Promise<MapLibre>;
-}
 import type { HeatmapCell } from "@/lib/qloo/types";
-
-// Muted basemap so pins carry the story (§13.10). OpenFreeMap: free, no key [VERIFY terms before launch].
-const STYLE = "https://tiles.openfreemap.org/styles/positron";
+import { geohashBounds } from "@/lib/geo/geohash";
+import { STYLE, css, loadMapLibre } from "./maplibre";
 
 // Minimal GeoJSON shapes (avoids a @types/geojson dependency).
 type Feature = { type: "Feature"; properties: Record<string, unknown>; geometry: { type: "Polygon"; coordinates: number[][][] } | { type: "Point"; coordinates: number[] } };
 type FeatureCollection = { type: "FeatureCollection"; features: Feature[] };
 
 export type MapPin = { id: string; rank: number; name: string; lat: number; lon: number; kind: "pick" | "account" | "llm" };
-
-const BASE32 = "0123456789bcdefghjkmnpqrstuvwxyz";
-
-/** Geohash → [minLon, minLat, maxLon, maxLat]. */
-export function geohashBounds(hash: string): [number, number, number, number] | undefined {
-  let even = true;
-  const lat = [-90, 90];
-  const lon = [-180, 180];
-  for (const ch of hash.toLowerCase()) {
-    const v = BASE32.indexOf(ch);
-    if (v < 0) return undefined;
-    for (let bit = 4; bit >= 0; bit--) {
-      const b = (v >> bit) & 1;
-      const r = even ? lon : lat;
-      const mid = (r[0] + r[1]) / 2;
-      if (b) r[0] = mid;
-      else r[1] = mid;
-      even = !even;
-    }
-  }
-  return [lon[0], lat[0], lon[1], lat[1]];
-}
 
 function cellsGeoJSON(cells: HeatmapCell[]): FeatureCollection {
   return {
@@ -68,9 +32,6 @@ function pinsGeoJSON(pins: MapPin[]): FeatureCollection {
     features: pins.map((p) => ({ type: "Feature", properties: { id: p.id, rank: p.rank, name: p.name, kind: p.kind }, geometry: { type: "Point", coordinates: [p.lon, p.lat] } })),
   };
 }
-
-const css = (name: string, fallback: string) =>
-  typeof window === "undefined" ? fallback : getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
 
 /** Wider than a metro (about 1.5° of longitude): fit the whole area instead of the city zoom. */
 const wide = (b?: [number, number, number, number]) => !!b && b[2] - b[0] > 1.5;

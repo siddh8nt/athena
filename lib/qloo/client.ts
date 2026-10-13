@@ -391,7 +391,11 @@ export type QlooClientOptions = {
 /** One entity in a weighted signal (§9.23 step 7). */
 export type Weighted = { id: string; weight: number };
 
-export type CallOptions = { priority?: Priority };
+export type CallOptions = {
+  priority?: Priority;
+  /** false: never hedge this call. For calls that are slow by nature (a US-wide heatmap, about 10 s), where a hedge only doubles the cost. */
+  hedge?: boolean;
+};
 /** Longest query string sent as a GET. */
 const MAX_GET = 6000;
 
@@ -477,7 +481,7 @@ export class QlooClient {
       shared.promote(priority);
       return this.log(path, query, await shared.result, Date.now() - started, true);
     }
-    const state = { priority, ticket: undefined as Ticket | undefined };
+    const state = { priority, ticket: undefined as Ticket | undefined, hedge: opts.hedge !== false };
     const flight: InFlight = {
       result: this.run(path, query, send, state),
       promote: (p) => {
@@ -501,12 +505,12 @@ export class QlooClient {
   }
 
   /** Up to three attempts. A key at its per-second limit hands the retry to another key at once; anything else backs off. */
-  private async run(path: string, query: Record<string, string>, send: (o: SendOptions) => Promise<RawResult>, state: { priority: Priority; ticket?: Ticket }): Promise<RawResult> {
+  private async run(path: string, query: Record<string, string>, send: (o: SendOptions) => Promise<RawResult>, state: { priority: Priority; ticket?: Ticket; hedge: boolean }): Promise<RawResult> {
     let raw: RawResult = { status: 0, body: null };
     let avoid: number | undefined;
     for (let attempt = 0; attempt <= 2; attempt++) {
       const lane = await this.pacer.acquire(state.priority, { avoid, ticket: (t) => (state.ticket = t) });
-      raw = await this.attempt(latencyKind(path, query), send, lane, state.priority);
+      raw = await this.attempt(latencyKind(path, query), send, lane, state.hedge ? state.priority : "later");
       if (classify(raw.status, raw.body) !== "retryable" || attempt === 2) break;
       avoid = raw.lane ?? lane;
       if (raw.status !== 429 || this.pacer.laneCount < 2) await sleep(this.retryDelayMs * 2 ** attempt);

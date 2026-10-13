@@ -502,6 +502,24 @@ a.button.big { padding: 11px 20px; font-size: 15px; font-weight: 600; }
 .galaxy-card .react { flex-wrap: wrap; }
 .galaxy-card .react .probe-btn { flex: 1 0 100%; text-align: left; padding: 2px 0; }
 .galaxy-step { display: flex; align-items: center; gap: 8px; margin: 0; }
+
+/* Where each crowd lives (v4.0, §9.26): crowd weather on a US map, linked to the Galaxy. */
+.crowd-geo { display: flex; flex-direction: column; gap: 8px; }
+.crowd-geo-body { display: grid; grid-template-columns: minmax(0, 3fr) minmax(220px, 2fr); gap: 12px; align-items: start; }
+.crowd-map-stage { position: relative; }
+.crowd-map, .crowd-map-stage .map { height: 320px; min-height: 320px; border-radius: 10px; overflow: hidden; }
+.crowd-map-tip { position: absolute; z-index: 2; pointer-events: none; transform: translate(12px, -110%); max-width: 260px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; box-shadow: 0 4px 16px rgb(0 0 0 / 0.12); }
+.crowd-geo-lists { display: flex; flex-direction: column; gap: 10px; }
+.crowd-geo-crowd { border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; transition: opacity 0.2s, border-color 0.2s; }
+.crowd-geo-crowd:focus-visible { outline: 2px solid var(--accent); }
+.crowd-geo-crowd h4 { margin: 0 0 4px; }
+.crowd-geo-crowd p { margin: 2px 0; }
+.crowd-geo-crowd.dimmed { opacity: 0.45; }
+.crowd.lit { border-color: var(--fg); }
+@media (max-width: 760px) {
+  .crowd-geo-body { grid-template-columns: 1fr; }
+  .crowd-map, .crowd-map-stage .map { height: 240px; min-height: 240px; }
+}
 .galaxy-question { border-top: 1px solid var(--line); padding-top: 10px; display: flex; flex-direction: column; gap: 8px; }
 .galaxy-question p { margin: 0; }
 .galaxy-legend { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 14px; }

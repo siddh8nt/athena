@@ -52,6 +52,11 @@ export const LIMITS = {
     const t = take(`probe:${ip}`, 12, HOUR);
     return t.ok ? { ok: true as const } : { ok: false as const, message: `That's 12 probes in an hour, so the map stays as it is for now. More open in about ${t.retryInMin} minutes.` };
   },
+  /** Crowd geography (§9.26): 10 new maps per IP per hour, one Qloo call per crowd (cached maps don't count). */
+  geography(ip: string) {
+    const t = take(`geo:${ip}`, 10, HOUR);
+    return t.ok ? { ok: true as const } : { ok: false as const, message: `The map of where your crowds live opens again in about ${t.retryInMin} minutes.` };
+  },
   /** 10 new Without Qloo runs a day in total (cached comparisons don't count). */
   comparison() {
     const t = take("compare:all", 10, DAY);

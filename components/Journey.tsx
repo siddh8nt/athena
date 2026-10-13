@@ -8,6 +8,7 @@ import { usePlan, type PlanSource } from "./usePlan";
 import { MarketsView, MessageView, MomentsView, PartnersView, PlacesView } from "./Blocks";
 import { Workspace } from "./Workspace";
 import { Galaxy } from "./Galaxy";
+import { CrowdGeography } from "./CrowdGeography";
 import { GUESS, type Turn } from "@/lib/brief/conversation";
 import { briefToInput } from "@/lib/brief/to-input";
 import type { BrandBrief } from "@/lib/brief/types";
@@ -697,6 +698,8 @@ function skewLine(s: CrowdCard["skew"]): string | undefined {
 /** The Crowd stop (§9.23, J3): 2–3 crowds from Qloo's taste graph; the founder says which sound like their customers. */
 function CrowdStop({ j, steps, forming, onReact, onChoose, onPin, onProbe, probing }: { j: JourneyState; steps: string[]; forming?: GalaxyData; onReact: (id: string, r: Reaction) => void; onChoose: (id: string) => void; onPin: (id: string, name: string, pin: Pin["pin"] | undefined) => void; onProbe: (id: string, name: string) => void; probing?: string }) {
   const r = j.crowds;
+  // Linked views (§9.26): the crowd under the pointer in the Galaxy, the map or the cards lights up in all three.
+  const [lit, setLit] = useState<number | null>(null);
   const pins = j.pins ?? {};
   // While the crowds are measured, the Galaxy forms in place of the step list (from the first ring, about 5 s in).
   if (!r && forming) return <Galaxy galaxy={forming} pins={pins} onPin={onPin} step={steps[steps.length - 1]} />;
@@ -724,7 +727,8 @@ function CrowdStop({ j, steps, forming, onReact, onChoose, onPin, onProbe, probi
   const from = [r.seed.brand?.name, ...r.seed.lookalikes.map((l) => l.name)].filter(Boolean);
   return (
     <section className="crowds">
-      {r.galaxy && <Galaxy galaxy={r.galaxy} names={r.crowds.map((c) => c.name)} pins={pins} onPin={onPin} probes={r.probes ?? []} onProbe={onProbe} probing={probing} />}
+      {r.galaxy && <Galaxy galaxy={r.galaxy} names={r.crowds.map((c) => c.name)} pins={pins} onPin={onPin} probes={r.probes ?? []} onProbe={onProbe} probing={probing} lit={lit} onLight={setLit} />}
+      {!probing && <CrowdGeography crowds={r.crowds} lit={lit} onLight={setLit} />}
       <header className="card-head">
         <h3>Your crowds</h3>
         <p className="small muted">
@@ -737,7 +741,7 @@ function CrowdStop({ j, steps, forming, onReact, onChoose, onPin, onProbe, probi
           const reaction = j.reactions[c.id];
           const skew = skewLine(c.skew);
           return (
-            <article key={c.id} className={`crowd ${chosen ? "chosen" : ""} ${reaction === "not_us" ? "dimmed" : ""}`}>
+            <article key={c.id} className={`crowd ${chosen ? "chosen" : ""} ${reaction === "not_us" ? "dimmed" : ""}${lit === ci ? " lit" : ""}`} onMouseEnter={() => setLit(ci)} onMouseLeave={() => setLit(null)}>
               <p className="crowd-tag">{c.main ? "Closest to your product" : "Next door"}</p>
               <h4>
                 <span className="swatch" style={{ background: `var(--crowd-${ci % 4})` }} aria-hidden />

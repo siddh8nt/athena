@@ -83,9 +83,12 @@ type Props = {
   onProbe?: (id: string, name: string) => void;
   /** The narrated line while a probe runs. */
   probing?: string;
+  /** Linked views (§9.26): the crowd lit from the map or the crowd cards, and the crowd under the pointer here. */
+  lit?: number | null;
+  onLight?: (c: number | null) => void;
 };
 
-export function Galaxy({ galaxy, names, pins, onPin, step, probes: yourProbes = [], onProbe, probing }: Props) {
+export function Galaxy({ galaxy, names, pins, onPin, step, probes: yourProbes = [], onProbe, probing, lit = null, onLight }: Props) {
   const sim = useRef<Simulation<SimNode, SimLink> | null>(null);
   const simNodes = useRef(new Map<string, SimNode>());
   const lastTargets = useRef<{ round: number; x: Map<string, number>; y: Map<string, number> } | null>(null);
@@ -180,6 +183,7 @@ export function Galaxy({ galaxy, names, pins, onPin, step, probes: yourProbes = 
   }, [galaxy]);
   const focus = hover ?? sel;
   const near = focus === null ? null : new Set([focus, ...neighbours[focus].map((x) => x.j)]);
+  const dim = (i: number) => (near ? !near.has(i) : lit !== null && galaxy.nodes[i].crowd !== lit);
   const colour = (c: number) => (c >= 0 ? `var(--crowd-${slotOf.get(c) ?? 0})` : "var(--muted)");
 
   // Hulls around each crowd's core (all its members while forming, or when it has under 3 at the core).
@@ -249,7 +253,7 @@ export function Galaxy({ galaxy, names, pins, onPin, step, probes: yourProbes = 
       {list ? (
         <GalaxyList g={galaxy} crowds={crowds} crowdName={crowdName} colour={colour} pins={pins} onPin={onPin} />
       ) : (
-        <div className="galaxy-stage" onMouseLeave={() => setHover(null)}>
+        <div className="galaxy-stage" onMouseLeave={() => (setHover(null), onLight?.(null))}>
           <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Taste Galaxy: ${galaxy.nodes.length} entities in ${crowds.length || "no"} crowds. Use "Show as a list" for every name.`} onClick={() => setSel(null)}>
             <g className="hulls">
               {hulls.map(({ c, pts }) =>
@@ -270,9 +274,9 @@ export function Galaxy({ galaxy, names, pins, onPin, step, probes: yourProbes = 
               return (
                 <g
                   key={n.id}
-                  className={`gnode${near && !near.has(i) ? " faded" : ""}${pin === "not_us" ? " out" : ""}${sel === i ? " sel" : ""}${n.core ? "" : " fringe"}`}
+                  className={`gnode${dim(i) ? " faded" : ""}${pin === "not_us" ? " out" : ""}${sel === i ? " sel" : ""}${n.core ? "" : " fringe"}`}
                   transform={`translate(${(p.x ?? 0).toFixed(1)},${(p.y ?? 0).toFixed(1)})`}
-                  onMouseEnter={() => setHover(i)}
+                  onMouseEnter={() => (setHover(i), onLight?.(n.crowd >= 0 ? n.crowd : null))}
                   onClick={(e) => {
                     e.stopPropagation();
                     setSel(i);

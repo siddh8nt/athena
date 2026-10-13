@@ -174,13 +174,17 @@ it("summary", () => {
       out[label] = { athena: r3(a), other: r3(o), n: ci.n, diff: r3(ci.mean), lo: r3(ci.lo), hi: r3(ci.hi), pass: ci.pass };
       rows.push(`| ${label} | ${ci.n} | ${r3(a)} | ${r3(o)} | ${r3(ci.mean)} [${r3(ci.lo)}, ${r3(ci.hi)}] | ${ci.pass ? "yes" : "no"} |`);
     };
-    for (const [task, metric] of [["t1", "rho"], ["t2", "auc"], ["t3", "auc"]]) compare(`PRIMARY ${task} ${metric}: Athena − LLM-only (cold)`, task, metric, "cold", "llm");
+    // Primary (registration §9): what Athena gets out of Qloo beyond a raw call, and Qloo's taste signal beyond
+    // popularity, cold start. The LLM comparisons are secondary and reported in full below.
+    const NAMES: Record<string, string> = { llm: "LLM-only", llmSearch: "LLM + Search", naive: "Qloo-naive", popularity: "popularity" };
+    const PRIMARY = [["t1", "rho", "naive"], ["t1", "rho", "popularity"], ["t2", "auc", "naive"], ["t2", "auc", "popularity"], ["t3", "auc", "popularity"]];
+    for (const [task, metric, arm] of PRIMARY) compare(`PRIMARY ${task} ${metric}: Athena − ${NAMES[arm]} (cold)`, task, metric, "cold", arm);
     for (const cond of ["cold", "known"])
       for (const [task, metric] of [["t1", "rho"], ["t1", "ndcg5"], ["t2", "auc"], ["t2", "p5"], ["t3", "auc"]])
-        for (const arm of ["llm", "llmSearch", "naive", "popularity"]) {
+        for (const arm of ["llmSearch", "llm", "naive", "popularity"]) {
           if (task === "t3" && arm === "naive") continue;
-          if (cond === "cold" && arm === "llm" && metric === (task === "t1" ? "rho" : "auc")) continue;
-          compare(`${task} ${metric}: Athena − ${arm} (${cond})`, task, metric, cond, arm);
+          if (cond === "cold" && PRIMARY.some(([t, m, a]) => t === task && m === metric && a === arm)) continue;
+          compare(`${task} ${metric}: Athena − ${NAMES[arm]} (${cond})`, task, metric, cond, arm);
         }
     writeFileSync(path.join(dir, "summary.json"), JSON.stringify({ brands: runs.map((r) => r.slug), comparisons: out }, null, 1) + "\n");
     writeFileSync(

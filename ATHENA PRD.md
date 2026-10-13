@@ -6,7 +6,7 @@
 
 | | |
 |---|---|
-| Version | 4.0 · 12 Oct 2026 |
+| Version | 4.1 · 13 Oct 2026 |
 | Owners | Siddhant, Jaiaditya |
 | Event | Qloo Agentic Hackathon, "Agents, but with taste." |
 | Deadline | 31 Oct 2026, 9:15 AM IST (30 Oct, 11:45 PM ET). **We submit on 28 Oct.** |
@@ -30,6 +30,7 @@
 | New in v3.1 | **What the first build changed** (10 Oct). (1) **No blind guessing** (§6.2.1): the channel comes only from the founder's words or a cited source; "Not sure" now means "look it up for me", and missing facts are researched or asked, never guessed. (2) **Any US metro** everywhere, with self-describing metro ids and Census matched by metro name (§9.3). (3) **Seed:** tags join only when fewer than 2 lookalikes are found, and first-ring calls are capped at 15 s (§9.23). (4) **Next retailers:** curated pools per category; Qloo's own retail picks only for general goods (§9.25). (5) **Message drops sensitive themes** (§9.15). (6) **Speed:** Who listens on the top 3 podcasts, Partners streams as its calls land, and the journey prefetches the next stop (§14.9). (7) A journey counts once against the own-brand cap (§14.5). |
 | New in v3.2 | **Crowd reactions now change the plan** (§9.23 step 7): the chosen crowd leads at weight 3, a "Partly" crowd's top 6 entities join at 1.5, a "Not us" crowd's top 8 are excluded from every ranking, and unreacted crowds stay out. **New crowd plus other picks asks one question at the Crowd stop** (§7.8): do the other picks target the current crowd or the new one? |
 | New in v4.0 | **Qloo as a measuring instrument, a measured test against an LLM, and a taste map founders can touch** (12 Oct). (1) **Taste engine** (§9.23): about 100 controlled Qloo probes per brand over 6 domains form a percentile matrix; crowds come from spectral clustering with bootstrap confidence and are checked against shuffled data, so only each crowd's **core** is claimed; **specificity** sorts what a crowd loves beyond its fame. Every method uses only the order within each Qloo response. (2) **The Taste Bench** (§10.6): Athena vs one naive Qloo call vs Gemini alone vs popularity, on where to launch, which retailer next and which venues, scored against the brands' real stockists; registered in `prereg-v2` by 16 Oct and published whatever it shows. (3) **The Taste Galaxy** (§13.11): the crowds as a map that forms live while the agent probes; hover for why, pin "us" or "not us", answer the agent's one question. (4) **Two Qloo keys** (§11.1, §14.9): 10 calls a second and 20,000 a month, routed by headroom with failover. (5) **Planned 17–25 Oct:** crowd geography with hotspots, taste axes, bridges and why-paths (§9.26–9.29), and With / Without on every stop (§13.2). (6) **Cut after live probes on 12 Oct:** trends and compare (§11.1). |
+| New in v4.1 | **The Bench's main tests change, and Markets ranks cities on the crowd's brands** (13 Oct, after the tuning run). (1) **Two layers, stated plainly** (§10.6): Qloo's taste graph makes every measurement and ranking; Gemini reads the brand at the start and writes the plan from Qloo's findings. (2) **The Bench's primary tests** are now Athena vs one raw Qloo call and vs popularity: what Athena's methods add to Qloo, and whether Qloo's taste beats fame. Gemini alone, with and without Search, stays registered as a secondary comparison and is published in full; on the tuning brands it ranked retailers and venues better than Athena (§10.6). (3) **Markets** scores each of the 25 named metros on the crowd's brands, one location-signal call per metro (§9.3): Spearman 0.73 and 0.62 against stockist density on the tuning brands, up from 0.21 and 0.40; any-metro stays in the fallback and in typed places. (4) **The ranking check's pool** pairs each stockist Insights can see with a decoy matched on kind and popularity (§10.3), because random same-type decoys were told apart by fame alone. (5) Ranking-check brands fixed: McClure's, Rishi Tea, Paddywax (§22). |
 
 **How to read this document**
 
@@ -65,7 +66,7 @@
 
 **v3.0: one engine, one journey.** The six blocks stay as the engine. The founder sees them as stops on a step-by-step journey, chosen by the growth types they pick (§7.8): an olive-oil brand that picks Deepen and Borrow a crowd walks Crowd → Where → Places → Partners; an online skincare brand that picks Online and New crowd walks Crowd → Online → Message. Same engine, same screen.
 
-**v4.0: Qloo as a measuring instrument.** Most taste apps make one Qloo call per question and hand the list to an LLM. Athena runs about 100 controlled probes per brand, each asking Qloo to rank a fixed set of about 150 entities under one signal, and analyses the answers as a matrix with standard, citable methods (§9.23): crowds with bootstrap confidence, checked against shuffled data, and what each crowd loves beyond its fame. An LLM can't produce this matrix, because it needs Qloo's panel data. The founder sees it as the **Taste Galaxy** (§13.11), and the claim that Athena beats an LLM is put to a pre-registered test, the **Taste Bench** (§10.6).
+**v4.0: Qloo as a measuring instrument.** Most taste apps make one Qloo call per question and hand the list to an LLM. Athena runs about 100 controlled probes per brand, each asking Qloo to rank a fixed set of about 150 entities under one signal, and analyses the answers as a matrix with standard, citable methods (§9.23): crowds with bootstrap confidence, checked against shuffled data, and what each crowd loves beyond its fame. An LLM can't produce this matrix, because it needs Qloo's panel data. The founder sees it as the **Taste Galaxy** (§13.11). The **Taste Bench** (§10.6) measures, under a pre-registered rule and against real stockists, how much more Athena gets out of Qloo than a raw call, and publishes how Gemini alone does on the same questions.
 
 **Why only Qloo.** An LLM can name popular cafés, big cities and famous brands. It cannot:
 
@@ -172,7 +173,7 @@ Removed in v3.0. A first-time judge is guided by the journey itself and by the s
 | G6 | Nothing breaks | Zero errors on the sample-pack path in 5 fresh-browser rehearsals; live and free through 17 Nov |
 | G7 | Ship early | Submitted on 28 Oct |
 | G8 | Zero spend outside the credit | All Google Cloud usage stays inside the $300 Free Trial credit; no card is ever charged; every external API is on a free tier (§14.8) |
-| G9 | A measured answer to "does it beat an LLM?" | The Taste Bench (§10.6): registered in `prereg-v2` by 16 Oct, run on 8 held-out brands by 19 Oct, published whatever it shows |
+| G9 | A measured answer to "what does Qloo add?" | The Taste Bench (§10.6): Athena vs a raw Qloo call and popularity as the primary tests, Gemini alone as a published secondary; registered in `prereg-v2` by 16 Oct, run on 8 held-out brands by 19 Oct, published whatever it shows |
 
 ### 3.2 Non-goals
 
@@ -190,7 +191,7 @@ Removed in v3.0. A first-time judge is guided by the journey itself and by the s
 
 | Criterion | What we show | Where |
 |---|---|---|
-| Technological implementation | The taste engine (§9.23): about 100 Qloo probes per brand analysed as a matrix, spectral crowds with bootstrap confidence and a shuffled-data check, specificity; the Taste Bench against Gemini alone (§10.6); the methods in §1; 15 Qloo capabilities, each tested live (§11.1), with per-block Qloo call counts; gap-filling sources joined to Qloo results, each labelled (§11.2); tests for every method | M2–M9, Method page, trace, repo |
+| Technological implementation | The taste engine (§9.23): about 100 Qloo probes per brand analysed as a matrix, spectral crowds with bootstrap confidence and a shuffled-data check, specificity; the Taste Bench (§10.6): Athena against a raw Qloo call, popularity and Gemini alone; the methods in §1; 15 Qloo capabilities, each tested live (§11.1), with per-block Qloo call counts; gap-filling sources joined to Qloo results, each labelled (§11.2); tests for every method | M2–M9, Method page, trace, repo |
 | Design | The Taste Galaxy (§13.11); a product-first conversation; a step-by-step journey where every stop is a decision; crowd cards from a real taste graph; a dashboard for the work after; a Without Qloo toggle on Places; every stop says how it was ranked; every number clickable; the 5-second test passed; a phone layout | §2, §13 |
 | Potential impact | Three specific users with weekly jobs; output that is tomorrow's call list, launch city, collab shortlist, message and event calendar; a real brand and founder quotes; a market that spans consumer goods, tech and apps | M5–M10, Devpost, §4 |
 | Quality of the idea | Places and partners as a taste fingerprint; lookalike places, partners and moments; two-sided partnership fit; outcomes as signal | M1, M5, M7, M8 |
@@ -642,9 +643,12 @@ Notation: **A** = accounts, **W** = wins, **D** = declines, **C** = the pool. Wi
 
 ### 9.3 Markets
 
-- **Request:** `GET /v2/insights?filter.type=urn:entity:place&signal.interests.entities=<signal>&filter.tags=<placeChannels>&diversify.by=properties.geocode.metro&diversify.take=4&take=50&filter.exclude.location.query=<home metro>`, plus the tier parameters.
-- **Ranking:** Qloo returns metro groups ranked by their best venue. Every metro is scored inside this one call, so the comparison is valid. The reason line names each metro's strongest match.
-- **Filtering (v3.0):** **any US metro can be shown.** Qloo labels every place with its metro (`properties.geocode.metro`), which Athena maps to a Census CBSA; a metro needs ≥ 3 matching venues in the call to be listed. Other metros where the brand already has accounts are removed in Athena's code. The fixed list of the 25 largest metros is kept **only** for the pre-registered ranking check (§10.3) and the With/Without Qloo proof (§10.2), so their numbers stay comparable.
+- **The brands method (v4.1, built 13 Oct; used whenever there are ≥ 5 brands).** The brands are the brand itself when Qloo has it, plus the main crowd's brand members (§9.23), strongest first, at most 50. Each of the 25 named metros except home gets one call: `GET /v2/insights?filter.type=urn:entity:brand&signal.location.query=<metro>&filter.results.entities=<the brands>&take=<their number>`, all in parallel. Qloo returns each brand's affinity in that metro.
+- **Ranking:** a metro's score is the mean `query.affinity` of the brands Qloo returns there; a metro where it returns none comes last. Every metro is scored on the same brands, so the comparison is valid.
+- **Reason line:** "Over-indexes on A, B and C": the brands that score furthest above their own average in that metro, measured in each brand's standard deviations across the metros (above 0.5, at most 3). A raw lift put the same high-variance brands on every city; the standardised one varies city by city (checked in the app, 13 Oct). Without any such brand: "Scored on n of your crowd's brands".
+- **Why (tuning brands, 13 Oct):** against independent stockists per million residents (the Bench's T1 truth, §10.6), the brands method gave Spearman 0.73 (Brightland) and 0.62 (Fishwife), where the v3.0 venues method gave 0.21 and 0.40. The crowd's brands tracked stockists better than its artists, films, TV, podcasts or books on both brands. A mass-market control crowd ran the other way (−0.28 and −0.32), so the score reads the crowd's taste, not city size.
+- **The venues method (v3.0, the fallback with fewer than 5 brands):** one call, `filter.type=urn:entity:place`, the signal, `filter.tags=<placeChannels>` (union), `diversify.by=properties.geocode.metro`, `diversify.take=2`, `filter.geocode.country_code=US`, `take=50`, `filter.exclude.location.query=<home metro>`, plus the tier parameters. Qloo returns metro groups ranked by their best venue; the reason line names each metro's strongest match. Here **any US metro can be shown**: Qloo labels every place with its metro (`properties.geocode.metro`), which Athena maps to a Census CBSA.
+- **Coverage (v4.1):** the brands method ranks the 25 named metros only, because each metro costs one call. So a Boulder or an Asheville can't surface on its own any more; v3.0 opened the list for exactly that, and v4.1 trades it for a ranking that tracks real stockists. The founder can still type any US place (below), and the fallback still shows any metro. P1: score unnamed metros with a point and radius (`signal.location`) [VERIFY].
 - **Metro ids (v3.1):** a metro outside the 25 gets a self-describing id (name plus centre), so any step can rebuild it without stored state; Census rows are matched by CBSA name. A typed city outside the 25 gets its centre from one Qloo lookup.
 - **Typed locations (built 10 Oct):** the founder can type **any form of US location**: a state ("Ohio", "OH"), county ("Cook County, IL"), city ("Austin TX"), neighbourhood ("Williamsburg, Brooklyn"), zip code ("11211") or an informal region ("Bay Area", "Pacific Northwest", "the Midwest", "near UCLA").
   - **Why not Qloo's text lookup:** tested live on 10 Oct, `filter.location.query` sent "Bay Area" to Hong Kong, "Pacific Northwest" to Vietnam, "Northern California" to Northern Ireland, "Orange County" to Orlando and "near UCLA" to Chicago, and rejected zip codes. It does accept WKT polygons and multipolygons for heatmaps, venues and festivals, so Athena resolves the place itself and sends its **area**.
@@ -653,9 +657,8 @@ Notation: **A** = accounts, **W** = wins, **D** = declines, **C** = the pool. Wi
   - **Informal places** are read by Gemini Flash-Lite into named states, counties or neighbourhoods, and **only places found in the data are kept**; two requests race because Vertex's latency tail passed 20 s. If nothing can be placed, Athena asks which city, county, state or zip was meant.
   - **Names on the heatmap follow the area:** a city or zip names neighbourhoods; a state or region names its cities (50k+ people first, smaller towns only where there aren't five such cities). Long areas go to Qloo as POST. *Verified live 10 Oct:* Ohio → Cleveland, Columbus, Cincinnati, Toledo; NorCal (46 counties) → San Francisco, San Mateo, San Rafael; 11211 → Williamsburg, Greenpoint; Pacific Northwest → Portland, Seattle, Bellevue.
 - **Typed cities (v3.0):** wherever the founder types a city (Deepen's home city, "what if Boise?" at the Where stop), it resolves to its Census metro; if Qloo returns fewer than 3 matching venues there, Athena says so and offers the nearest metro that has them.
-- **Why the change:** in v2 the city was a required input, so the cap only limited what a founder could type. In v3.0 the city is an output of the crowd (§9.23), so a cap would hide where a young brand's crowd really is (a Boulder or an Asheville).
 - **Per recipe:** for R2 the list is the launch order, for R3 it picks the activation or pop-up city, and for R4 it's the shortlist.
-- **Verified 8 Oct:** 14 metros returned for the tuning brand.
+- **Verified 13 Oct** in the app (Brightland sample pack): "Built from 26 Qloo calls", a different "Over-indexes on …" line per city, no console errors. (8 Oct, venues method: 14 metros returned for the tuning brand.)
 - **Market size:** each metro row adds a Census line (§9.19): population and median household income, labelled "Census, ACS 2020–2024". Census values never change the order.
 
 ### 9.4 Heatmap and neighbourhoods
@@ -1150,34 +1153,33 @@ Rules:
 - **The demo brands' Without Qloo answers are cached with their date** and re-run at most 10 times a day in total (§14.5).
 - **The landing comparison line** (§2.2) is filled only from these computed values.
 
-### 10.3 Ranking check (measured, P0)
+### 10.3 Ranking check (measured, P0; pool revised 13 Oct)
 
-The one measured claim. It tests whether Athena ranks a brand's real stockists above look-alike venues of the same types, in a fair pool.
+It tests whether Qloo, given a brand's real stockists in one metro, ranks its real stockists in another metro above look-alike venues of the same kind and the same fame. It is the Taste Bench's task T3 (§10.6).
 
-**Pre-registration.** Before the first call on any test brand, commit `proof/REGISTRATION.md` and tag it `prereg-v2`. It fixes everything below, plus the decoy seed, and a commitment to publish every result. The Taste Bench (§10.6) is registered in the same file and tag; the ranking check becomes its task T3.
+**Pre-registration.** Before the first call on any test brand, commit `proof/REGISTRATION.md` and tag it `prereg-v2`. It fixes everything below, plus the seeds and the code, and a commitment to publish every result. The Taste Bench (§10.6) is registered in the same file and tag.
 
-**Test brands** [DECISION]: three brands from `proof/stockists/` other than Brightland, one per category where possible:
+**Test brands (fixed 13 Oct, §22):** three brands from `proof/stockists/` other than the tuning brands, one per category:
 - McClure's Pickles (G1): metro A Detroit (142 independents), metro B New York (95);
-- Rishi Tea or MUD\WTR (G2);
+- Rishi Tea (G2). MUD\WTR, the alternative, isn't used: it was a signal in development checks and an anchor brand in Athena's code (registration §11);
 - Paddywax (G4).
 
-Each must have ≥ 25 resolved, open, independent stockists in metro B. That is checked after registration; a brand that falls short is reported as ineligible, never swapped silently.
+Each must have ≥ 10 stockists kept in metro B (step 3) and a decoy for every one. That is checked after registration; a brand that falls short is reported as ineligible, never swapped silently.
 
 **Swap on 10 Oct:** Fishwife (G1) was replaced by McClure's Pickles, because Fishwife became a sample pack (§7.7) and its stockists would run through Places repeatedly. Fishwife was never cleanly held out anyway: its NYC stockists were resolved in the 8 Oct spike (S2), and one Qloo brand-name search for "Fishwife" was made on 10 Oct (no match). No Qloo call has been made for McClure's. The registration discloses all of this.
 
-**Procedure, per test brand**
-1. **Signal:** all resolved, open, independent stockists in metro A (≤ 50 IDs). Metro A and metro B are the two metros with the most independents.
-2. **Pool (exactly 50):**
-   - 25 resolved, open, independent stockists in metro B, chosen at random with the registered seed if there are more than 25;
-   - 25 decoys: venues inside a 55 km radius of metro B's centre, carrying the same `urn:tag:genre:place` tags as the stockists, not on the brand's list, sampled with the registered seed from pages 1–5 of the no-signal ranking.
-3. **One call:** `filter.type=urn:entity:place`, `signal.interests.entities=<signal>`, `filter.results.entities=<pool>`, `take=50`.
-4. **Athena's order:** the order returned. Unscored pool members are tied, below every scored member.
-5. **Baseline order:** the same pool sorted by each entity's Qloo `popularity`.
-6. **Metric:** AUC, meaning the probability that a random stockist ranks above a random decoy, over all 25 × 25 pairs. Ties count as 0.5. Also report the share of the pool that was scored.
+**Procedure, per test brand** (code: `venuePool` and `t3Athena` in `lib/bench/arms.ts`; the registration gives every detail)
+1. **Metros:** A and B are the two metros with the most independent stockists in the brand's file.
+2. **Signal:** metro A's independent stockists in seeded order, the first 80 resolved, keeping up to 50 matched, open venues.
+3. **Stockists:** metro B's independent stockists in seeded order, resolved 10 at a time. A venue is kept only if Insights can see it (a no-signal call listing it in `filter.results.entities` returns it), up to 25.
+4. **Decoys, matched one to one:** for each stockist, a venue within 55 km of metro B's centre, of the same Qloo kind (its primary genre, else its genre tags) and as close in Qloo `popularity` as possible (within ±0.01, widening step by step to ±0.20), open, not a chain and not on the brand's list; drawn with the registered seed.
+5. **One call:** `filter.type=urn:entity:place`, `signal.interests.entities=<signal>`, `filter.results.entities=<pool>`, `take=<pool size>`. Athena's order is the order returned; unscored pool members tie below every scored one.
+6. **Baseline order:** the pool sorted by Qloo `popularity`. Because each decoy matches its stockist's popularity, this should land near 0.5.
+7. **Metric:** AUC, the probability that a random stockist ranks above a random decoy, over all stockist–decoy pairs; ties count as 0.5. Also report the share of the pool scored.
 
-**Pass rule:** on at least 2 of 3 test brands, Athena's AUC ≥ 0.60, **and** Athena's AUC minus the baseline AUC is ≥ 0.05.
+**Pass rule (unchanged):** on at least 2 of 3 test brands, Athena's AUC ≥ 0.60, **and** Athena's AUC minus the baseline AUC is ≥ 0.05.
 
-**Before registering:** compute the same metric on Brightland, the tuning brand, and publish it as tuning data. On 8 Oct an earlier version of this measure gave 0.61 on scored pairs only; the registered version counts unscored items, so expect it to come out lower.
+**Why the pool changed (tuning brands, 13 Oct).** The v2 pool (25 random stockists against 25 decoys from pages 1–5 of the no-signal ranking) was told apart by fame alone. Decoys from Qloo's top pages were far more popular than the small shops that stock these brands, so popularity's AUC was 0.03 (Brightland) and 0.00 (Fishwife); Athena's was 0.15 and 0.30; Gemini, reading the names, scored 0.90 and 1.00. That pool tested fame, not taste. Matching each decoy on kind and popularity brings popularity to chance, and keeping only stockists Insights can see stops a gap in Qloo's data counting as a taste miss (Brightland in LA: 37 stockists resolved, 13 visible). **Tuning results on the revised pool:** Athena 0.60 (Brightland, 13 pairs of venues) and 0.67 (Fishwife, 25 pairs); popularity 0.47 and 0.48; Gemini alone 0.74 and 0.85 (§10.6). On 8 Oct an earlier version gave 0.61 on scored pairs only.
 
 **If it passes:** Places shows "Ranking check: measured · AUC [x] vs popularity [y] on [n] of 3 brands", linked to the Method page. **If it fails:** the Method page publishes the result, and nothing on Places says "measured".
 
@@ -1189,24 +1191,30 @@ Partners, Message and Moments have no ground truth we can test before judging. (
 
 Every brand, every metric, raw counts, coverage (match rate, share scored) and caveats go on the Method page and in the README. Nothing is omitted because it looks bad.
 
-### 10.6 The Taste Bench (v4.0, P0, measured)
+### 10.6 The Taste Bench (v4.0, P0, measured; main tests revised 13 Oct)
 
-**Question.** Does Athena beat an LLM alone at decisions a founder makes, judged against real-world outcomes? And how much of that comes from Qloo itself versus our methods?
+**How Athena is built, and which layer the Bench tests.** Athena has two layers.
+- **Qloo makes every measurement and ranking.** The crowd, what it loves, the cities, the retailers and the venues all come from Qloo's taste graph, read through Athena's methods (§9.3, §9.23, §9.25).
+- **Gemini builds on them.** At the start it reads the brand (its traits and lookalike brands seed the graph); at the end it turns Qloo's findings into the founder's plan: each stop's take, the drafts, the questions.
+
+The Bench tests the first layer against real-world outcomes.
+
+**Question.** At decisions a founder makes, judged against real stockists: how much more does Athena get out of Qloo's taste graph than one raw Qloo call, and does Qloo's taste signal beat plain popularity? Secondary: how does an LLM do on the same questions from its own knowledge?
 
 **Arms**
 
 | Arm | What it is | Isolates |
 |---|---|---|
 | **Athena** | The taste engine (§9.23) and the stop's ranking, as built at the `prereg-v2` commit | — |
-| **Qloo-naive** | One Insights call with the seed as the signal, ordered by affinity: what a typical entry does | Our methods over raw Qloo |
-| **LLM-only** | Gemini 3.1 Pro (the model Athena uses), given the same brand context and the same candidate list, asked for a ranking. Run twice: with and without Google Search grounding | Qloo over an LLM |
-| **Popularity** | The candidates ordered by Qloo `popularity` (metros: by population) | A floor |
+| **Qloo-naive** | One Insights call with the seed as the signal, ordered by affinity: what a typical entry does | Athena's methods over raw Qloo |
+| **Popularity** | The candidates ordered by Qloo `popularity` (metros: by population) | Qloo's taste signal over fame |
+| **LLM-only** | Gemini 3.1 Pro (the model Athena uses), given the same brand context and the same candidate list, asked for a ranking. Run twice: with and without Google Search grounding | Athena's measured rankings vs an LLM's own knowledge (secondary) |
 
 **Tasks** (ground truth from `proof/stockists/`, collected 8 Oct; 25 metros, chain flag reviewed by hand before registering)
 
 - **T1 Where to launch.** Rank the 25 metros. Truth: the brand's stockists per million residents (Census population). Metrics: Spearman ρ, NDCG@5.
 - **T2 Which retailer next.** Rank the fixed retailer list (§9.25). Truth: chains with rows in the brand's file. Metrics: AUC, precision@5.
-- **T3 Which venues.** The ranking check (§10.3), unchanged, plus an LLM arm that ranks the same 50-venue pool from names and neighbourhoods. Metric: AUC.
+- **T3 Which venues.** The ranking check (§10.3, pool revised 13 Oct), plus an LLM arm that ranks the same pool from names and neighbourhoods. Metric: AUC.
 - **T4 Discovery (P1, with §9.29).** From the stockists in metro A, propose 10 venues per round in metro B and reveal which are real stockists. Metric: stockists found in the first 20 and 50 proposals. The one place a large ratio over the LLM is plausible; we claim only what is measured.
 
 **Conditions**
@@ -1215,11 +1223,26 @@ Every brand, every metric, raw counts, coverage (match rate, share scored) and c
 
 **Brands.** Tuning: Brightland and Fishwife, published as tuning data. Held out (8): McClure's, Rishi, Paddywax, Raaka, Dick Taylor, Diaspora Co., Juniper Ridge, MUD\WTR. No Qloo or LLM calls on them for the Bench until `prereg-v2` is tagged; any earlier calls are disclosed. A brand with too little ground truth for a task (for T1, MUD\WTR's file covers 4 metros) is reported as ineligible for that task, never swapped silently.
 
-**Registration (`proof/REGISTRATION.md`, tag `prereg-v2`, by 16 Oct)** fixes the arms, the prompts verbatim, the candidate lists, the metrics, the seeds and the code commit. **Primary comparisons (3):** T1 ρ, T2 AUC and T3 AUC, each Athena vs LLM-only, cold start. Everything else is secondary. **Statistics:** per-brand paired differences with 95% bootstrap CIs over brands (10,000 resamples). **Pass rule per primary metric:** the mean paired difference Athena − LLM-only is > 0 and its 95% CI excludes 0. With 8 brands the CIs will be wide, and we say so up front. The §10.3 rule stays as registered.
+**Registration (`proof/REGISTRATION.md`, tag `prereg-v2`, by 16 Oct)** fixes the arms, the prompts verbatim, the candidate lists, the metrics, the seeds and the code commit.
+- **Primary comparisons (5), cold start:** T1 ρ and T2 AUC, each Athena vs Qloo-naive and Athena vs popularity; T3 AUC, Athena vs popularity (T3's Athena arm is itself one raw call, so it has no naive arm).
+- **Secondary:** everything else, including every LLM comparison (LLM-only and LLM + Search, every task, both conditions), registered and published in full.
+- **Statistics:** per-brand paired differences with 95% bootstrap CIs over brands (10,000 resamples). **Pass rule per primary comparison:** the mean paired difference Athena − other arm is > 0 and its 95% CI excludes 0. The 5 are judged one by one, with no correction for multiple comparisons. With 8 brands the CIs will be wide, and we say so up front. The §10.3 rule stays as registered.
 
-**Where it shows.** A Bench page linked from the Method page; one quiet line under each stop's With / Without split, for example *"Metro ranking vs real stockist density, 8 brands: Athena ρ 0.xx · LLM-only 0.xx · popularity 0.xx"*; the Devpost write-up leads with the Bench table.
+**Why the main tests changed (13 Oct, before registration).** v4.0 made Athena vs LLM-only the primary comparison on each task. On the two tuning brands, Gemini alone ranked better (cold start, mean of the two brands):
 
-**Cost.** Qloo: about 110 calls per brand per condition × 8 brands × 2 conditions, plus tuning: about 2,100 calls. Gemini: about 100 prompts [VERIFY the Search-grounding price on Vertex before running; it must stay inside the credit].
+| Task | Athena | Qloo-naive | Popularity | LLM-only | LLM + Search |
+|---|---|---|---|---|---|
+| T1 cities, Spearman ρ | 0.68 | 0.38 | −0.01 | 0.74 | 0.73 |
+| T2 retailers, AUC | 0.60 | 0.49 | 0.55 | 0.73 | 0.75 |
+| T3 venues, AUC | 0.63 | — | 0.47 | 0.79 | 0.79 |
+
+These tasks reward general retail knowledge (which grocers carry premium food, which shop names sound like specialty stores), and an LLM already has it. We also gave Gemini Qloo's scores beside each candidate; it did no better than Gemini alone (T1 0.72, T2 0.69, T3 0.79). So the primary tests now ask what Qloo and Athena's methods add, the question the brief poses ("would it work the same without Qloo?"), and the LLM comparisons stay registered as secondary and are published in full. The registration discloses the change (its §12).
+- **What we can claim:** Athena's rankings come from Qloo's measured taste, with reasons a founder can check; Athena gets more out of Qloo than a raw call; and Qloo's taste signal beats popularity, wherever the held-out results say so.
+- **What we can't:** that Athena, or Qloo's scores, rank stockists better than an LLM does.
+
+**Where it shows.** A Bench page linked from the Method page, with every arm. One quiet line under each stop that has a Bench task, for example *"Metro ranking vs real stockist density, 8 brands: Athena ρ 0.xx · one raw Qloo call 0.xx · popularity 0.xx · Gemini alone 0.xx"*. The line always carries Gemini's number, so a With / Without split (§13.2) never implies more than the Bench measured. The Devpost write-up leads with the Bench table, every arm included.
+
+**Cost.** Qloo: about 300–450 calls per brand (T3's venue resolution is most of it), about 3,600 at most for 8 held-out brands, within the two keys' limit. Gemini 3.1 Pro: about 36 prompts per brand; Search grounding is free for 5,000 queries a month, then $14 per 1,000 (Google Cloud pricing page, read 13 Oct). All inside the credit.
 
 ---
 
@@ -1237,7 +1260,7 @@ Base URL `https://hackathon.api.qloo.com`, header `X-Api-Key` (from Secret Manag
 | Q2 | Resolve brands, comparables, competitors | `/search`: `types=urn:entity:brand`, `take=5` | Read, Partners, Message | ✅ only 3 of 10 stockist brands exist as brands (Brightland, MUD\WTR, Juniper Ridge); all demo brands resolve |
 | Q3 | Tags and the allow-list | `/v2/tags`: `filter.query`; `/v2/tags/types` | Startup | ✅ place genre URNs confirmed (§7.3) |
 | Q4 | Fingerprint | `/v2/insights`: `filter.type=urn:tag`, `filter.tag.types=<allow-list>` | Read | ✅ (several types per call return HTTP 200; filter by `subtype` in code) |
-| Q5 | Metros | `urn:entity:place`, `diversify.by=properties.geocode.metro`, `diversify.take=4`, `take=50`, `filter.exclude.location.query=<home metro>` | Markets | ✅ 14 metros |
+| Q5 | Metros | v4.1: `urn:entity:brand`, `signal.location.query=<metro>`, `filter.results.entities=<the crowd's brands>`, one call per named metro. Fallback: `urn:entity:place`, `diversify.by=properties.geocode.metro`, `diversify.take=2`, `take=50`, `filter.exclude.location.query=<home metro>` | Markets | ✅ 14 metros (8 Oct, fallback); 13 Oct: brands method ρ 0.73 and 0.62 vs stockist density on the tuning brands |
 | Q6 | Taste heatmap | `urn:heatmap`, `filter.location.query=<metro>`, `signal.interests.entities` | Markets | ✅ 577 geohash cells; `output.heatmap.boundary` accepts only `urn:geohash` or `urn:entity:locality`, and `urn:entity:locality` returned HTTP 500 → neighbourhood names come from Overture (§9.4) |
 | Q7 | Places | `urn:entity:place`, `filter.tags`, `operator.filter.tags=union`, tier filters, `filter.exclude.entities`, `feature.explainability=true`, `take=50`, pages 1–2 | Places | ✅ explainability on 20 of 20; `audience_growth` values present |
 | Q8 | Score a fixed pool | `filter.results.entities=<≤ 50 IDs>`, `take ≤ 50` | Re-rank, bridges, mutual fit, comparison, ranking check | ⚠️ `take` maximum is 50; a 50-venue pool returned 33 scored |
@@ -1489,7 +1512,7 @@ At most 24 tool calls, 3 recovery steps and 3 questions per plan; at most 60 Qlo
 - **Actions tray:** drafts and route
 - **Method page**, **Sources page**, **What we don't know**
 
-**v4.0: With / Without on every stop (planned 17–19 Oct).** Each stop shows Athena beside Gemini alone answering the same question, with that task's Bench line under it (§10.6), or "demonstrated" where the stop has no Bench task (§10.4). Until then Without Qloo stays on Places. "Show me why" is on every stop.
+**v4.0: With / Without on every stop (planned 17–19 Oct).** Each stop shows Athena beside Gemini alone answering the same question, with that task's Bench line under it, Gemini's number included (§10.6), or "demonstrated" where the stop has no Bench task (§10.4). Until then Without Qloo stays on Places. "Show me why" is on every stop.
 
 ### 13.3 Partner cards
 
@@ -2088,7 +2111,7 @@ The headings mirror the judging criteria, so both people and automated screeners
 
 1. **Name and title:** Athena: the taste-led growth agent for consumer startups (decided).
 2. **Demos:** **three context packs, all real brands from public material only** (decided 10 Oct, §7.7): **Brightland** (hero, offline), **Starface** (online-first) and **Fishwife** (not in Qloo; shows the retail step-up). Nothing fictional. Messy-file reading is shown whenever someone uploads their own files. The v2 demo brands stay in tests.
-3. **Ranking-check test brands:** **McClure's Pickles (G1), Rishi Tea (G2), Paddywax (G4)**, registered in `prereg-v2` by 16 Oct. MUD\WTR is the G2 alternative. Fishwife was swapped out on 10 Oct because it became a sample pack (§10.3).
+3. **Ranking-check test brands (decided 13 Oct):** **McClure's Pickles (G1), Rishi Tea (G2), Paddywax (G4)**, registered in `prereg-v2` by 16 Oct. MUD\WTR, the G2 alternative, isn't used (§10.3). Fishwife was swapped out on 10 Oct because it became a sample pack (§10.3).
 4. **Fifth tuned category:** **G4 home** (Paddywax has 13 qualifying metros), replacing the earlier G3 default. Beauty stays Beta: only Juniper Ridge qualified, in 2 metros.
 5. **Target metro:** chosen by the founder at the Where stop (v3.0); no fixed demo metro.
 6. **Models:** **Gemini 3.8 Flash (`gemini-3.8-flash`) for the agent, Gemini 3.1 Pro (`gemini-3.1-pro-preview`) for draft retries and Without Qloo (with Search grounding), all on Vertex AI's `global` endpoint**, paid from the credit (§12.8). Claude can be added later through the Claude API, billed separately.

@@ -1,12 +1,16 @@
 # Pre-registration: the Taste Bench and the ranking check (prereg-v2)
 
-DRAFT, not yet registered. Registration is the commit that holds this file, tagged `prereg-v2`, before any Bench call on a held-out brand (PRD §10.3, §10.6). Every result is published, whatever it shows: the per-brand files, the summary, and this file stay in the repo.
+Registration is the commit that holds this file, tagged `prereg-v2`, before any Bench call on a held-out brand (PRD v4.1, §10.3 and §10.6). Every result is published, whatever it shows: the per-brand files, the summary, and this file stay in the repo.
 
 The code that runs the Bench is part of the registration: `lib/bench/` (arms, metrics, ground truth), `tests/live/bench.live.ts` (the runner) and the Athena code they call, all at the tagged commit. Where this file and the code differ, the code is what ran, and the difference is reported.
 
 ## 1. Question
 
-Does Athena beat an LLM alone at three decisions a founder makes, judged against real-world outcomes? And how much of that comes from Qloo itself versus Athena's methods?
+Athena has two layers. Qloo makes every measurement and ranking: the crowd, what it loves, the cities, the retailers and the venues all come from Qloo's taste graph, read through Athena's methods. Gemini builds on them: it reads the brand at the start (its traits and lookalike brands seed the graph) and turns Qloo's findings into the founder's plan at the end. The Bench tests the first layer against real-world outcomes.
+
+**Primary question.** At three decisions a founder makes, judged against real stockists: how much more does Athena get out of Qloo's taste graph than one raw Qloo call, and does Qloo's taste signal beat plain popularity?
+
+**Secondary question.** How does an LLM (Gemini 3.1 Pro, with and without Google Search) do on the same questions, ranking the same candidates from its own knowledge?
 
 ## 2. Brands
 
@@ -81,7 +85,7 @@ Every arm ranks the same candidates. A ranking is a list of tie groups; candidat
 ## 7. The LLM-only arm
 
 - **Model:** Gemini 3.1 Pro (`gemini-3.1-pro-preview`, Vertex AI, global endpoint), the model Athena uses; temperature 0.4; default thinking; at most 32,768 output tokens.
-- **Two variants:** without tools (**LLM-only**, the primary comparison) and with Google Search grounding (**LLM + Search**, secondary). Same prompt; only the tool differs. [DECISION to confirm]
+- **Two variants, both secondary:** without tools (**LLM-only**) and with Google Search grounding (**LLM + Search**). Same prompt, except the one line the Search variant adds (below). LLM + Search is the LLM number quoted beside Athena's wherever the Bench is summarised in one line, because it is what a founder would use today; LLM-only is reported beside it everywhere else.
 - **Samples:** 3 per brand, task, condition and variant. Each shows the candidates in a different seeded order (§8). The arm's metric is the mean over the 3 samples. A sample answered by another model (the client falls back to Flash when Pro is busy) is retried, up to 3 tries; the model that answered is reported.
 - **Parsing:** the numbers in `ranking`, in order; unknown numbers and repeats are ignored; candidates it leaves out are tied last.
 
@@ -124,11 +128,17 @@ T3 candidates are written `<Qloo name> (<neighbourhood or city>)`.
 
 ## 9. Statistics and pass rules
 
-- **Primary comparisons (3), cold start:** T1 ρ, T2 AUC, T3 AUC, each Athena vs LLM-only.
-- **Secondary:** every other arm, metric and condition, as listed in `summary.md`.
+- **Primary comparisons (5), cold start:**
+  1. T1 ρ, Athena vs Qloo-naive;
+  2. T1 ρ, Athena vs popularity;
+  3. T2 AUC, Athena vs Qloo-naive;
+  4. T2 AUC, Athena vs popularity;
+  5. T3 AUC, Athena vs popularity (T3 has no naive arm, §5.3).
+- **Secondary:** every other arm, metric and condition, as listed in `summary.md`, including every LLM comparison (LLM-only and LLM + Search, every task, both conditions). They are run and published in full, beside the primary results.
 - **Method:** for each brand eligible for the task, the paired difference Athena − other arm; the mean over brands, with a 95% percentile bootstrap CI over brands (10,000 resamples, seeded).
-- **Pass rule (each primary comparison):** the mean difference is above 0 and its 95% CI excludes 0. With 8 held-out brands (fewer where brands are ineligible) the CIs will be wide; we say so up front, and a comparison with fewer than 2 eligible brands is reported as untestable.
-- **§10.3 rule, unchanged:** on at least 2 of the 3 ranking-check brands (McClure's, Rishi Tea or MUD\WTR, Paddywax), Athena's T3 AUC ≥ 0.60 and Athena's AUC − popularity AUC ≥ 0.05.
+- **Pass rule (each primary comparison):** the mean difference is above 0 and its 95% CI excludes 0. The 5 are judged one by one, with no correction for multiple comparisons; we report each and claim no overall pass. With 8 held-out brands (fewer where brands are ineligible) the CIs will be wide; we say so up front, and a comparison with fewer than 2 eligible brands is reported as untestable.
+- **§10.3 rule, unchanged:** on at least 2 of the 3 ranking-check brands (McClure's Pickles, Rishi Tea & Botanicals, Paddywax), Athena's T3 AUC ≥ 0.60 and Athena's AUC − popularity AUC ≥ 0.05.
+- **Code:** `summary` in `tests/live/bench.live.ts` computes all of these and marks the five primary rows.
 
 ## 10. Cold-start descriptions (verbatim)
 
@@ -158,8 +168,26 @@ From `proof/bench/descriptions.json`. Written from each brand's public product i
 
 ## 12. Tuning run (Brightland and Fishwife)
 
-To be filled from `proof/bench/tuning/` before registering: results, and any change made to the arms because of them.
+Run on 13 Oct with the code as registered; results in `proof/bench/tuning/` (per-brand files and `summary.md`). Cold start, Brightland / Fishwife:
+
+| Task | Athena | Qloo-naive | Popularity | LLM-only | LLM + Search |
+|---|---|---|---|---|---|
+| T1 cities, Spearman ρ | 0.733 / 0.622 | 0.366 / 0.384 | 0.038 / −0.056 | 0.692 / 0.781 | 0.667 / 0.784 |
+| T2 retailers, AUC | 0.663 / 0.526 | 0.588 / 0.393 | 0.625 / 0.481 | 0.804 / 0.649 | 0.838 / 0.669 |
+| T3 venues, AUC | 0.601 / 0.667 | — | 0.467 / 0.481 | 0.736 / 0.853 | 0.726 / 0.857 |
+
+T2: 4 of the 24 food retailers stock Brightland, 15 of 24 stock Fishwife. T3: New York → Los Angeles for both; 13 and 25 stockists kept. The known condition is in `summary.md`.
+
+**Changes made because of the tuning run, in the order they were made:**
+
+1. **Markets, and so T1's Athena arm, moved to the brands method** (§5.1; PRD §9.3, v4.1). With the v3.0 venues method, Athena's T1 ρ was 0.21 / 0.40 cold (Qloo-naive: 0.37 / 0.38) and 0.37 / 0.40 known. We then scored each named metro on the main crowd's members with `signal.location.query`, one domain at a time. Brands tracked stockist density best on both brands: 0.73 / 0.62, against artists 0.53 / 0.54, films 0.63 / 0.33, TV 0.03 / 0.61, podcasts 0.51 / 0.13 and books 0.18 / 0.46. A mass-market control crowd gave −0.28 / −0.32. The app's Markets stop was changed to the brands method, so the Bench still runs Athena as built, and the engine's crowd now carries its brand members (§5).
+2. **T3's pool was redesigned** (§5.3; PRD §10.3). The v4.0 pool (25 random stockists against 25 decoys drawn from pages 1–5 of the no-signal ranking) was told apart by fame alone: popularity's AUC was 0.03 / 0.00, Athena's 0.15 / 0.30 and LLM-only's 0.90 / 1.00. Stockists now must be visible to Insights, each decoy is matched to a stockist on kind and popularity, and a brand needs at least 10 stockists kept rather than exactly 25.
+3. **The LLM + Search prompt gained one line** (§7): "You can use Google Search; use it wherever it helps you rank." Without it, Gemini made no search queries, even when given the brand's name, so that arm wasn't a with-web baseline.
+4. **The primary comparisons changed** (§9). PRD v4.0 made Athena vs LLM-only on T1, T2 and T3 the primary comparisons. On the tuning brands, LLM-only led on all three (cold, mean of the two brands: ρ 0.74 vs 0.68, AUC 0.73 vs 0.60, AUC 0.79 vs 0.63). The primary comparisons are now Athena vs Qloo-naive and vs popularity, which ask what Athena's methods and Qloo's taste signal add. Every LLM comparison stays registered as secondary and is published in full. We made this change after seeing the LLM results, and say so here.
+5. **A hybrid arm was tried and not registered.** Gemini 3.1 Pro was given Qloo's measurements beside each candidate (T1: each metro's taste score and the brands it over-indexes on; T2 and T3: each candidate's Qloo affinity), with the same prompts and 3 samples. Cold, mean of the two brands: T1 ρ 0.72, T2 AUC 0.69, T3 AUC 0.79, against LLM-only's 0.74, 0.73 and 0.79. A rank fusion of Athena and LLM-only was no better either. Neither is part of the Bench.
+
+Nothing else in the arms, prompts, candidates, metrics or seeds changed after the tuning run.
 
 ## 13. Cost
 
-Qloo: about 300–450 calls per brand (the T3 venue resolution is most of it), within the two keys' monthly limit. Gemini 3.1 Pro on Vertex: $2.00 per 1M input tokens and $12.00 per 1M output tokens, reasoning included (Google Cloud pricing page, read 13 Oct 2026); Search grounding for Gemini 3: 5,000 queries a month free, then $14 per 1,000. About 36 Pro prompts per brand; all inside the $300 credit.
+Qloo: about 300–450 calls per brand (the T3 venue resolution is most of it), at most about 3,600 for the 8 held-out brands; 14,851 calls were left on the two keys after the tuning run. Gemini 3.1 Pro on Vertex: $2.00 per 1M input tokens and $12.00 per 1M output tokens, reasoning included (Google Cloud pricing page, read 13 Oct 2026); Search grounding for Gemini 3: 5,000 queries a month free, then $14 per 1,000. About 36 Pro prompts per brand; all inside the $300 credit.

@@ -1,0 +1,1853 @@
+{
+ "brand": "MUD\\WTR",
+ "slug": "mud-wtr",
+ "set": "held-out",
+ "code": "c2e947b",
+ "ranAt": "2026-10-13T04:02:33.270Z",
+ "profile": {
+  "description": "A coffee alternative: a powdered blend of cacao, masala chai spices, turmeric and four mushrooms (lion's mane, chaga, cordyceps, reishi), with about a seventh of the caffeine of coffee. Sold in tins and single-serve packs, about $40 for 30 servings. For wellness-minded people who want to cut back on coffee without losing the ritual.",
+  "sells": "powdered mushroom and spiced cacao coffee alternative",
+  "traits": [
+   "coffee alternative",
+   "functional mushrooms",
+   "wellness ritual",
+   "premium beverage"
+  ],
+  "lookalikes": [
+   "Four Sigmatic",
+   "Moon Juice",
+   "Athletic Greens",
+   "Sakara Life"
+  ],
+  "retail": "food",
+  "tier": "premium",
+  "category": "G2",
+  "motions": [
+   "venue"
+  ]
+ },
+ "engine": {
+  "cold": {
+   "ownBrandInSeed": false,
+   "lookalikesInQloo": 4,
+   "tags": 0,
+   "crowds": 2,
+   "signal": 6,
+   "fallback": false
+  },
+  "known": {
+   "ownBrandInSeed": true,
+   "lookalikesInQloo": 4,
+   "tags": 0,
+   "crowds": 3,
+   "signal": 6,
+   "fallback": false
+  }
+ },
+ "t1": {
+  "eligible": false,
+  "metrosCovered": 5,
+  "truth": {
+   "nyc": {
+    "independents": 0,
+    "perMillion": 0
+   },
+   "la": {
+    "independents": 101,
+    "perMillion": 7.785
+   },
+   "chicago": {
+    "independents": 62,
+    "perMillion": 6.616
+   },
+   "dfw": {
+    "independents": 0,
+    "perMillion": 0
+   },
+   "houston": {
+    "independents": 0,
+    "perMillion": 0
+   },
+   "dc": {
+    "independents": 0,
+    "perMillion": 0
+   },
+   "philadelphia": {
+    "independents": 0,
+    "perMillion": 0
+   },
+   "atlanta": {
+    "independents": 0,
+    "perMillion": 0
+   },
+   "miami": {
+    "independents": 0,
+    "perMillion": 0
+   },
+   "phoenix": {
+    "independents": 0,
+    "perMillion": 0
+   },
+   "boston": {
+    "independents": 0,
+    "perMillion": 0
+   },
+   "riverside": {
+    "independents": 17,
+    "perMillion": 3.636
+   },
+   "sf": {
+    "independents": 49,
+    "perMillion": 10.549
+   },
+   "detroit": {
+    "independents": 0,
+    "perMillion": 0
+   },
+   "seattle": {
+    "independents": 0,
+    "perMillion": 0
+   },
+   "minneapolis": {
+    "independents": 55,
+    "perMillion": 14.81
+   },
+   "tampa": {
+    "independents": 0,
+    "perMillion": 0
+   },
+   "sandiego": {
+    "independents": 0,
+    "perMillion": 0
+   },
+   "denver": {
+    "independents": 0,
+    "perMillion": 0
+   },
+   "baltimore": {
+    "independents": 0,
+    "perMillion": 0
+   },
+   "orlando": {
+    "independents": 0,
+    "perMillion": 0
+   },
+   "charlotte": {
+    "independents": 0,
+    "perMillion": 0
+   },
+   "stlouis": {
+    "independents": 0,
+    "perMillion": 0
+   },
+   "sanantonio": {
+    "independents": 0,
+    "perMillion": 0
+   },
+   "austin": {
+    "independents": 0,
+    "perMillion": 0
+   }
+  }
+ },
+ "t2": {
+  "category": "food",
+  "candidates": [
+   "Whole Foods Market",
+   "Erewhon",
+   "Sprouts Farmers Market",
+   "Trader Joe's",
+   "Eataly",
+   "Central Market",
+   "Wegmans",
+   "The Fresh Market",
+   "New Seasons Market",
+   "Natural Grocers",
+   "Publix",
+   "H-E-B",
+   "Safeway",
+   "Aldi",
+   "Ralphs",
+   "Harris Teeter",
+   "Williams-Sonoma",
+   "Sur La Table",
+   "Thrive Market",
+   "H Mart",
+   "Target",
+   "Walmart",
+   "Costco",
+   "Kroger"
+  ],
+  "unresolved": [
+   "Gelson's",
+   "Bristol Farms",
+   "Albertsons",
+   "Foxtrot"
+  ],
+  "stocked": [
+   "Sprouts Farmers Market",
+   "Safeway",
+   "Ralphs",
+   "Target",
+   "Costco"
+  ],
+  "eligible": true,
+  "arms": {
+   "cold": {
+    "athena": {
+     "auc": 0.453,
+     "p5": 0.2,
+     "ranking": [
+      [
+       "Whole Foods Market"
+      ],
+      [
+       "Thrive Market"
+      ],
+      [
+       "Erewhon"
+      ],
+      [
+       "Williams-Sonoma"
+      ],
+      [
+       "Sprouts Farmers Market"
+      ],
+      [
+       "Costco"
+      ],
+      [
+       "The Fresh Market"
+      ],
+      [
+       "Natural Grocers"
+      ],
+      [
+       "Eataly"
+      ],
+      [
+       "H Mart"
+      ],
+      [
+       "Sur La Table"
+      ],
+      [
+       "Central Market"
+      ],
+      [
+       "Target"
+      ],
+      [
+       "New Seasons Market"
+      ],
+      [
+       "Wegmans"
+      ],
+      [
+       "H-E-B"
+      ],
+      [
+       "Walmart"
+      ],
+      [
+       "Harris Teeter"
+      ],
+      [
+       "Publix"
+      ],
+      [
+       "Kroger"
+      ],
+      [
+       "Ralphs"
+      ],
+      [
+       "Safeway"
+      ],
+      [
+       "Trader Joe's"
+      ],
+      [
+       "Aldi"
+      ]
+     ]
+    },
+    "naive": {
+     "auc": 0.305,
+     "p5": 0,
+     "ranking": [
+      [
+       "Thrive Market"
+      ],
+      [
+       "Trader Joe's"
+      ],
+      [
+       "Erewhon"
+      ],
+      [
+       "Natural Grocers"
+      ],
+      [
+       "Whole Foods Market"
+      ],
+      [
+       "Sprouts Farmers Market"
+      ],
+      [
+       "H Mart"
+      ],
+      [
+       "Central Market"
+      ],
+      [
+       "New Seasons Market"
+      ],
+      [
+       "Williams-Sonoma"
+      ],
+      [
+       "The Fresh Market"
+      ],
+      [
+       "Sur La Table"
+      ],
+      [
+       "Costco"
+      ],
+      [
+       "Eataly"
+      ],
+      [
+       "H-E-B"
+      ],
+      [
+       "Target"
+      ],
+      [
+       "Wegmans"
+      ],
+      [
+       "Kroger"
+      ],
+      [
+       "Harris Teeter"
+      ],
+      [
+       "Aldi"
+      ],
+      [
+       "Walmart"
+      ],
+      [
+       "Ralphs"
+      ],
+      [
+       "Publix"
+      ],
+      [
+       "Safeway"
+      ]
+     ]
+    },
+    "popularity": {
+     "auc": 0.526,
+     "p5": 0.2,
+     "ranking": [
+      [
+       "Whole Foods Market"
+      ],
+      [
+       "Target"
+      ],
+      [
+       "Walmart"
+      ],
+      [
+       "Aldi"
+      ],
+      [
+       "Williams-Sonoma"
+      ],
+      [
+       "Trader Joe's"
+      ],
+      [
+       "Thrive Market"
+      ],
+      [
+       "H-E-B"
+      ],
+      [
+       "Costco"
+      ],
+      [
+       "Sprouts Farmers Market"
+      ],
+      [
+       "Publix"
+      ],
+      [
+       "Kroger"
+      ],
+      [
+       "Sur La Table"
+      ],
+      [
+       "Wegmans"
+      ],
+      [
+       "Eataly"
+      ],
+      [
+       "Safeway"
+      ],
+      [
+       "The Fresh Market"
+      ],
+      [
+       "Harris Teeter"
+      ],
+      [
+       "Central Market"
+      ],
+      [
+       "Erewhon"
+      ],
+      [
+       "Natural Grocers"
+      ],
+      [
+       "H Mart"
+      ],
+      [
+       "Ralphs"
+      ],
+      [
+       "New Seasons Market"
+      ]
+     ]
+    },
+    "llm": {
+     "auc": 0.491,
+     "p5": 0.2,
+     "samples": [
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 24,
+       "queries": 0,
+       "tokens": 3227,
+       "tries": 1,
+       "auc": 0.442,
+       "p5": 0.2,
+       "ranking": [
+        [
+         "Erewhon"
+        ],
+        [
+         "Whole Foods Market"
+        ],
+        [
+         "Thrive Market"
+        ],
+        [
+         "Sprouts Farmers Market"
+        ],
+        [
+         "Natural Grocers"
+        ],
+        [
+         "New Seasons Market"
+        ],
+        [
+         "Central Market"
+        ],
+        [
+         "The Fresh Market"
+        ],
+        [
+         "Wegmans"
+        ],
+        [
+         "Target"
+        ],
+        [
+         "Williams-Sonoma"
+        ],
+        [
+         "Sur La Table"
+        ],
+        [
+         "H-E-B"
+        ],
+        [
+         "Harris Teeter"
+        ],
+        [
+         "Publix"
+        ],
+        [
+         "Kroger"
+        ],
+        [
+         "Safeway"
+        ],
+        [
+         "Ralphs"
+        ],
+        [
+         "Costco"
+        ],
+        [
+         "Walmart"
+        ],
+        [
+         "H Mart"
+        ],
+        [
+         "Trader Joe's"
+        ],
+        [
+         "Eataly"
+        ],
+        [
+         "Aldi"
+        ]
+       ]
+      },
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 24,
+       "queries": 0,
+       "tokens": 2961,
+       "tries": 1,
+       "auc": 0.516,
+       "p5": 0.2,
+       "ranking": [
+        [
+         "Erewhon"
+        ],
+        [
+         "Thrive Market"
+        ],
+        [
+         "Whole Foods Market"
+        ],
+        [
+         "Sprouts Farmers Market"
+        ],
+        [
+         "Natural Grocers"
+        ],
+        [
+         "New Seasons Market"
+        ],
+        [
+         "Central Market"
+        ],
+        [
+         "The Fresh Market"
+        ],
+        [
+         "Wegmans"
+        ],
+        [
+         "Target"
+        ],
+        [
+         "H-E-B"
+        ],
+        [
+         "Publix"
+        ],
+        [
+         "Harris Teeter"
+        ],
+        [
+         "Ralphs"
+        ],
+        [
+         "Kroger"
+        ],
+        [
+         "Safeway"
+        ],
+        [
+         "Costco"
+        ],
+        [
+         "Walmart"
+        ],
+        [
+         "Williams-Sonoma"
+        ],
+        [
+         "Sur La Table"
+        ],
+        [
+         "H Mart"
+        ],
+        [
+         "Eataly"
+        ],
+        [
+         "Trader Joe's"
+        ],
+        [
+         "Aldi"
+        ]
+       ]
+      },
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 24,
+       "queries": 0,
+       "tokens": 3069,
+       "tries": 1,
+       "auc": 0.516,
+       "p5": 0.2,
+       "ranking": [
+        [
+         "Erewhon"
+        ],
+        [
+         "Thrive Market"
+        ],
+        [
+         "Whole Foods Market"
+        ],
+        [
+         "Sprouts Farmers Market"
+        ],
+        [
+         "Natural Grocers"
+        ],
+        [
+         "New Seasons Market"
+        ],
+        [
+         "Central Market"
+        ],
+        [
+         "The Fresh Market"
+        ],
+        [
+         "Wegmans"
+        ],
+        [
+         "Target"
+        ],
+        [
+         "H-E-B"
+        ],
+        [
+         "Publix"
+        ],
+        [
+         "Harris Teeter"
+        ],
+        [
+         "Ralphs"
+        ],
+        [
+         "Safeway"
+        ],
+        [
+         "Kroger"
+        ],
+        [
+         "Walmart"
+        ],
+        [
+         "Costco"
+        ],
+        [
+         "Williams-Sonoma"
+        ],
+        [
+         "Sur La Table"
+        ],
+        [
+         "H Mart"
+        ],
+        [
+         "Eataly"
+        ],
+        [
+         "Trader Joe's"
+        ],
+        [
+         "Aldi"
+        ]
+       ]
+      }
+     ]
+    },
+    "llmSearch": {
+     "auc": 0.582,
+     "p5": 0.267,
+     "samples": [
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 24,
+       "queries": 0,
+       "tokens": 3099,
+       "tries": 1,
+       "auc": 0.526,
+       "p5": 0.2,
+       "ranking": [
+        [
+         "Erewhon"
+        ],
+        [
+         "Whole Foods Market"
+        ],
+        [
+         "Thrive Market"
+        ],
+        [
+         "Sprouts Farmers Market"
+        ],
+        [
+         "Natural Grocers"
+        ],
+        [
+         "New Seasons Market"
+        ],
+        [
+         "Central Market"
+        ],
+        [
+         "The Fresh Market"
+        ],
+        [
+         "Wegmans"
+        ],
+        [
+         "Target"
+        ],
+        [
+         "H-E-B"
+        ],
+        [
+         "Publix"
+        ],
+        [
+         "Kroger"
+        ],
+        [
+         "Ralphs"
+        ],
+        [
+         "Safeway"
+        ],
+        [
+         "Harris Teeter"
+        ],
+        [
+         "Costco"
+        ],
+        [
+         "Walmart"
+        ],
+        [
+         "Williams-Sonoma"
+        ],
+        [
+         "Sur La Table"
+        ],
+        [
+         "H Mart"
+        ],
+        [
+         "Trader Joe's"
+        ],
+        [
+         "Aldi"
+        ],
+        [
+         "Eataly"
+        ]
+       ]
+      },
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 24,
+       "queries": 6,
+       "tokens": 4739,
+       "tries": 3,
+       "auc": 0.621,
+       "p5": 0.4,
+       "ranking": [
+        [
+         "Erewhon"
+        ],
+        [
+         "Thrive Market"
+        ],
+        [
+         "Whole Foods Market"
+        ],
+        [
+         "Sprouts Farmers Market"
+        ],
+        [
+         "Target"
+        ],
+        [
+         "Wegmans"
+        ],
+        [
+         "Kroger"
+        ],
+        [
+         "H-E-B"
+        ],
+        [
+         "Costco"
+        ],
+        [
+         "Natural Grocers"
+        ],
+        [
+         "New Seasons Market"
+        ],
+        [
+         "Central Market"
+        ],
+        [
+         "The Fresh Market"
+        ],
+        [
+         "Harris Teeter"
+        ],
+        [
+         "Publix"
+        ],
+        [
+         "Safeway"
+        ],
+        [
+         "Ralphs"
+        ],
+        [
+         "Walmart"
+        ],
+        [
+         "Williams-Sonoma"
+        ],
+        [
+         "Sur La Table"
+        ],
+        [
+         "H Mart"
+        ],
+        [
+         "Eataly"
+        ],
+        [
+         "Trader Joe's"
+        ],
+        [
+         "Aldi"
+        ]
+       ]
+      },
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 24,
+       "queries": 2,
+       "tokens": 5442,
+       "tries": 1,
+       "auc": 0.6,
+       "p5": 0.2,
+       "ranking": [
+        [
+         "Erewhon"
+        ],
+        [
+         "Whole Foods Market"
+        ],
+        [
+         "Sprouts Farmers Market"
+        ],
+        [
+         "Thrive Market"
+        ],
+        [
+         "Natural Grocers"
+        ],
+        [
+         "New Seasons Market"
+        ],
+        [
+         "Target"
+        ],
+        [
+         "Central Market"
+        ],
+        [
+         "The Fresh Market"
+        ],
+        [
+         "Wegmans"
+        ],
+        [
+         "Kroger"
+        ],
+        [
+         "Ralphs"
+        ],
+        [
+         "H-E-B"
+        ],
+        [
+         "Safeway"
+        ],
+        [
+         "Publix"
+        ],
+        [
+         "Harris Teeter"
+        ],
+        [
+         "Costco"
+        ],
+        [
+         "Walmart"
+        ],
+        [
+         "Williams-Sonoma"
+        ],
+        [
+         "Sur La Table"
+        ],
+        [
+         "H Mart"
+        ],
+        [
+         "Trader Joe's"
+        ],
+        [
+         "Aldi"
+        ],
+        [
+         "Eataly"
+        ]
+       ]
+      }
+     ]
+    }
+   },
+   "known": {
+    "athena": {
+     "auc": 0.537,
+     "p5": 0.4,
+     "ranking": [
+      [
+       "Whole Foods Market"
+      ],
+      [
+       "Sprouts Farmers Market"
+      ],
+      [
+       "Williams-Sonoma"
+      ],
+      [
+       "Erewhon"
+      ],
+      [
+       "Costco"
+      ],
+      [
+       "Natural Grocers"
+      ],
+      [
+       "The Fresh Market"
+      ],
+      [
+       "Sur La Table"
+      ],
+      [
+       "Eataly"
+      ],
+      [
+       "H Mart"
+      ],
+      [
+       "Target"
+      ],
+      [
+       "Central Market"
+      ],
+      [
+       "New Seasons Market"
+      ],
+      [
+       "Wegmans"
+      ],
+      [
+       "Kroger"
+      ],
+      [
+       "Harris Teeter"
+      ],
+      [
+       "Walmart"
+      ],
+      [
+       "Publix"
+      ],
+      [
+       "H-E-B"
+      ],
+      [
+       "Ralphs"
+      ],
+      [
+       "Safeway"
+      ],
+      [
+       "Trader Joe's"
+      ],
+      [
+       "Aldi"
+      ],
+      [
+       "Thrive Market"
+      ]
+     ]
+    },
+    "naive": {
+     "auc": 0.358,
+     "p5": 0.2,
+     "ranking": [
+      [
+       "Thrive Market"
+      ],
+      [
+       "Trader Joe's"
+      ],
+      [
+       "Erewhon"
+      ],
+      [
+       "Natural Grocers"
+      ],
+      [
+       "Sprouts Farmers Market"
+      ],
+      [
+       "H Mart"
+      ],
+      [
+       "New Seasons Market"
+      ],
+      [
+       "Central Market"
+      ],
+      [
+       "Whole Foods Market"
+      ],
+      [
+       "Sur La Table"
+      ],
+      [
+       "The Fresh Market"
+      ],
+      [
+       "Costco"
+      ],
+      [
+       "Williams-Sonoma"
+      ],
+      [
+       "Eataly"
+      ],
+      [
+       "H-E-B"
+      ],
+      [
+       "Target"
+      ],
+      [
+       "Kroger"
+      ],
+      [
+       "Wegmans"
+      ],
+      [
+       "Harris Teeter"
+      ],
+      [
+       "Ralphs"
+      ],
+      [
+       "Publix"
+      ],
+      [
+       "Aldi"
+      ],
+      [
+       "Safeway"
+      ],
+      [
+       "Walmart"
+      ]
+     ]
+    },
+    "popularity": {
+     "auc": 0.526,
+     "p5": 0.2,
+     "ranking": [
+      [
+       "Whole Foods Market"
+      ],
+      [
+       "Target"
+      ],
+      [
+       "Walmart"
+      ],
+      [
+       "Aldi"
+      ],
+      [
+       "Williams-Sonoma"
+      ],
+      [
+       "Trader Joe's"
+      ],
+      [
+       "Thrive Market"
+      ],
+      [
+       "H-E-B"
+      ],
+      [
+       "Costco"
+      ],
+      [
+       "Sprouts Farmers Market"
+      ],
+      [
+       "Publix"
+      ],
+      [
+       "Kroger"
+      ],
+      [
+       "Sur La Table"
+      ],
+      [
+       "Wegmans"
+      ],
+      [
+       "Eataly"
+      ],
+      [
+       "Safeway"
+      ],
+      [
+       "The Fresh Market"
+      ],
+      [
+       "Harris Teeter"
+      ],
+      [
+       "Central Market"
+      ],
+      [
+       "Erewhon"
+      ],
+      [
+       "Natural Grocers"
+      ],
+      [
+       "H Mart"
+      ],
+      [
+       "Ralphs"
+      ],
+      [
+       "New Seasons Market"
+      ]
+     ]
+    },
+    "llm": {
+     "auc": 0.53,
+     "p5": 0.2,
+     "samples": [
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 24,
+       "queries": 0,
+       "tokens": 2885,
+       "tries": 1,
+       "auc": 0.568,
+       "p5": 0.2,
+       "ranking": [
+        [
+         "Erewhon"
+        ],
+        [
+         "Whole Foods Market"
+        ],
+        [
+         "Thrive Market"
+        ],
+        [
+         "Sprouts Farmers Market"
+        ],
+        [
+         "Natural Grocers"
+        ],
+        [
+         "New Seasons Market"
+        ],
+        [
+         "Central Market"
+        ],
+        [
+         "The Fresh Market"
+        ],
+        [
+         "Target"
+        ],
+        [
+         "Wegmans"
+        ],
+        [
+         "H-E-B"
+        ],
+        [
+         "Ralphs"
+        ],
+        [
+         "Kroger"
+        ],
+        [
+         "Safeway"
+        ],
+        [
+         "Publix"
+        ],
+        [
+         "Harris Teeter"
+        ],
+        [
+         "Costco"
+        ],
+        [
+         "Williams-Sonoma"
+        ],
+        [
+         "Walmart"
+        ],
+        [
+         "H Mart"
+        ],
+        [
+         "Sur La Table"
+        ],
+        [
+         "Eataly"
+        ],
+        [
+         "Trader Joe's"
+        ],
+        [
+         "Aldi"
+        ]
+       ]
+      },
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 24,
+       "queries": 0,
+       "tokens": 3338,
+       "tries": 1,
+       "auc": 0.484,
+       "p5": 0.2,
+       "ranking": [
+        [
+         "Erewhon"
+        ],
+        [
+         "Whole Foods Market"
+        ],
+        [
+         "Thrive Market"
+        ],
+        [
+         "Sprouts Farmers Market"
+        ],
+        [
+         "Natural Grocers"
+        ],
+        [
+         "New Seasons Market"
+        ],
+        [
+         "Central Market"
+        ],
+        [
+         "Wegmans"
+        ],
+        [
+         "Target"
+        ],
+        [
+         "The Fresh Market"
+        ],
+        [
+         "H-E-B"
+        ],
+        [
+         "Williams-Sonoma"
+        ],
+        [
+         "Publix"
+        ],
+        [
+         "Harris Teeter"
+        ],
+        [
+         "Ralphs"
+        ],
+        [
+         "Kroger"
+        ],
+        [
+         "Safeway"
+        ],
+        [
+         "Sur La Table"
+        ],
+        [
+         "Costco"
+        ],
+        [
+         "Walmart"
+        ],
+        [
+         "H Mart"
+        ],
+        [
+         "Trader Joe's"
+        ],
+        [
+         "Aldi"
+        ],
+        [
+         "Eataly"
+        ]
+       ]
+      },
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 24,
+       "queries": 0,
+       "tokens": 2530,
+       "tries": 1,
+       "auc": 0.537,
+       "p5": 0.2,
+       "ranking": [
+        [
+         "Erewhon"
+        ],
+        [
+         "Thrive Market"
+        ],
+        [
+         "Whole Foods Market"
+        ],
+        [
+         "Sprouts Farmers Market"
+        ],
+        [
+         "Natural Grocers"
+        ],
+        [
+         "New Seasons Market"
+        ],
+        [
+         "Central Market"
+        ],
+        [
+         "The Fresh Market"
+        ],
+        [
+         "Wegmans"
+        ],
+        [
+         "Target"
+        ],
+        [
+         "H-E-B"
+        ],
+        [
+         "Ralphs"
+        ],
+        [
+         "Harris Teeter"
+        ],
+        [
+         "Kroger"
+        ],
+        [
+         "Publix"
+        ],
+        [
+         "Safeway"
+        ],
+        [
+         "Costco"
+        ],
+        [
+         "Walmart"
+        ],
+        [
+         "Williams-Sonoma"
+        ],
+        [
+         "Sur La Table"
+        ],
+        [
+         "H Mart"
+        ],
+        [
+         "Eataly"
+        ],
+        [
+         "Trader Joe's"
+        ],
+        [
+         "Aldi"
+        ]
+       ]
+      }
+     ]
+    },
+    "llmSearch": {
+     "auc": 0.73,
+     "p5": 0.267,
+     "samples": [
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 24,
+       "queries": 4,
+       "tokens": 3176,
+       "tries": 1,
+       "auc": 0.8,
+       "p5": 0.2,
+       "ranking": [
+        [
+         "Erewhon"
+        ],
+        [
+         "Thrive Market"
+        ],
+        [
+         "Sprouts Farmers Market"
+        ],
+        [
+         "Natural Grocers"
+        ],
+        [
+         "Whole Foods Market"
+        ],
+        [
+         "Target"
+        ],
+        [
+         "Safeway"
+        ],
+        [
+         "Ralphs"
+        ],
+        [
+         "Kroger"
+        ],
+        [
+         "Costco"
+        ],
+        [
+         "New Seasons Market"
+        ],
+        [
+         "Central Market"
+        ],
+        [
+         "The Fresh Market"
+        ],
+        [
+         "Wegmans"
+        ],
+        [
+         "H-E-B"
+        ],
+        [
+         "Harris Teeter"
+        ],
+        [
+         "Publix"
+        ],
+        [
+         "Walmart"
+        ],
+        [
+         "Williams-Sonoma"
+        ],
+        [
+         "Sur La Table"
+        ],
+        [
+         "H Mart"
+        ],
+        [
+         "Trader Joe's"
+        ],
+        [
+         "Aldi"
+        ],
+        [
+         "Eataly"
+        ]
+       ]
+      },
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 24,
+       "queries": 7,
+       "tokens": 3941,
+       "tries": 1,
+       "auc": 0.747,
+       "p5": 0.4,
+       "ranking": [
+        [
+         "Erewhon"
+        ],
+        [
+         "Thrive Market"
+        ],
+        [
+         "Sprouts Farmers Market"
+        ],
+        [
+         "Target"
+        ],
+        [
+         "Whole Foods Market"
+        ],
+        [
+         "Kroger"
+        ],
+        [
+         "Safeway"
+        ],
+        [
+         "Ralphs"
+        ],
+        [
+         "H-E-B"
+        ],
+        [
+         "Natural Grocers"
+        ],
+        [
+         "Central Market"
+        ],
+        [
+         "New Seasons Market"
+        ],
+        [
+         "The Fresh Market"
+        ],
+        [
+         "Wegmans"
+        ],
+        [
+         "Harris Teeter"
+        ],
+        [
+         "Publix"
+        ],
+        [
+         "Costco"
+        ],
+        [
+         "Walmart"
+        ],
+        [
+         "Williams-Sonoma"
+        ],
+        [
+         "Sur La Table"
+        ],
+        [
+         "Trader Joe's"
+        ],
+        [
+         "Aldi"
+        ],
+        [
+         "H Mart"
+        ],
+        [
+         "Eataly"
+        ]
+       ]
+      },
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 24,
+       "queries": 13,
+       "tokens": 4439,
+       "tries": 1,
+       "auc": 0.642,
+       "p5": 0.2,
+       "ranking": [
+        [
+         "Erewhon"
+        ],
+        [
+         "Thrive Market"
+        ],
+        [
+         "Whole Foods Market"
+        ],
+        [
+         "Sprouts Farmers Market"
+        ],
+        [
+         "Natural Grocers"
+        ],
+        [
+         "Target"
+        ],
+        [
+         "Central Market"
+        ],
+        [
+         "Wegmans"
+        ],
+        [
+         "H-E-B"
+        ],
+        [
+         "Kroger"
+        ],
+        [
+         "Safeway"
+        ],
+        [
+         "Harris Teeter"
+        ],
+        [
+         "Ralphs"
+        ],
+        [
+         "Publix"
+        ],
+        [
+         "Costco"
+        ],
+        [
+         "Walmart"
+        ],
+        [
+         "New Seasons Market"
+        ],
+        [
+         "The Fresh Market"
+        ],
+        [
+         "Williams-Sonoma"
+        ],
+        [
+         "Sur La Table"
+        ],
+        [
+         "H Mart"
+        ],
+        [
+         "Trader Joe's"
+        ],
+        [
+         "Aldi"
+        ],
+        [
+         "Eataly"
+        ]
+       ]
+      }
+     ]
+    }
+   }
+  }
+ },
+ "t3": {
+  "eligible": true,
+  "metroA": "la",
+  "metroB": "chicago",
+  "signal": 18,
+  "stockists": 17,
+  "decoys": 17,
+  "tried": {
+   "a": 80,
+   "b": 62
+  },
+  "coverage": {
+   "resolved": 18,
+   "visible": 17
+  },
+  "match": {
+   "jaccard": 0.679,
+   "dPop": 0.016,
+   "bands": {
+    "1": 1,
+    "0.01": 12,
+    "0.05": 3,
+    "0.1": 1
+   }
+  },
+  "arms": {
+   "cold": {
+    "athena": {
+     "auc": 0.417,
+     "scoredShare": 0.647
+    },
+    "popularity": {
+     "auc": 0.483
+    },
+    "llm": {
+     "auc": 0.446,
+     "samples": [
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 34,
+       "queries": 0,
+       "tokens": 3468,
+       "tries": 1,
+       "auc": 0.46
+      },
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 34,
+       "queries": 0,
+       "tokens": 4380,
+       "tries": 1,
+       "auc": 0.467
+      },
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 34,
+       "queries": 0,
+       "tokens": 3188,
+       "tries": 1,
+       "auc": 0.412
+      }
+     ]
+    },
+    "llmSearch": {
+     "auc": 0.465,
+     "samples": [
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 34,
+       "queries": 15,
+       "tokens": 11526,
+       "tries": 1,
+       "auc": 0.478
+      },
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 34,
+       "queries": 0,
+       "tokens": 4553,
+       "tries": 1,
+       "auc": 0.429
+      },
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 34,
+       "queries": 0,
+       "tokens": 5436,
+       "tries": 1,
+       "auc": 0.488
+      }
+     ]
+    }
+   },
+   "known": {
+    "athena": {
+     "auc": 0.417,
+     "scoredShare": 0.647
+    },
+    "popularity": {
+     "auc": 0.483
+    },
+    "llm": {
+     "auc": 0.438,
+     "samples": [
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 34,
+       "queries": 0,
+       "tokens": 3533,
+       "tries": 1,
+       "auc": 0.443
+      },
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 34,
+       "queries": 0,
+       "tokens": 3277,
+       "tries": 1,
+       "auc": 0.419
+      },
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 34,
+       "queries": 0,
+       "tokens": 3566,
+       "tries": 1,
+       "auc": 0.453
+      }
+     ]
+    },
+    "llmSearch": {
+     "auc": 0.556,
+     "samples": [
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 34,
+       "queries": 18,
+       "tokens": 8463,
+       "tries": 1,
+       "auc": 0.612
+      },
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 34,
+       "queries": 16,
+       "tokens": 9113,
+       "tries": 1,
+       "auc": 0.557
+      },
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 34,
+       "queries": 0,
+       "tokens": 5213,
+       "tries": 1,
+       "auc": 0.498
+      }
+     ]
+    }
+   }
+  }
+ },
+ "qlooCalls": 571
+}

@@ -1,0 +1,3197 @@
+{
+ "brand": "Raaka Chocolate",
+ "slug": "raaka",
+ "set": "held-out",
+ "code": "c2e947b",
+ "ranAt": "2026-10-13T03:22:58.774Z",
+ "profile": {
+  "description": "Bean-to-bar chocolate made from unroasted, organic, directly traded cacao, in bold flavours such as fruit, spice, tea and herb pairings. About $8-10 a bar, plus tasting boxes and chocolate-making classes. For adventurous chocolate lovers who care about sourcing and want something different from a classic bar.",
+  "sells": "Bean-to-bar chocolate from unroasted, organic cacao with bold flavor pairings",
+  "traits": [
+   "bean to bar",
+   "craft chocolate",
+   "unroasted cacao",
+   "organic",
+   "ethical sourcing"
+  ],
+  "lookalikes": [
+   "Brightland",
+   "Fly By Jing",
+   "Fishwife",
+   "Ritual Chocolate"
+  ],
+  "retail": "food",
+  "tier": "premium",
+  "category": "G1",
+  "motions": [
+   "retail",
+   "venue"
+  ]
+ },
+ "engine": {
+  "cold": {
+   "ownBrandInSeed": false,
+   "lookalikesInQloo": 1,
+   "tags": 1,
+   "crowds": 3,
+   "signal": 6,
+   "fallback": false
+  },
+  "known": {
+   "ownBrandInSeed": false,
+   "lookalikesInQloo": 1,
+   "tags": 1,
+   "crowds": 3,
+   "signal": 6,
+   "fallback": false
+  }
+ },
+ "t1": {
+  "eligible": true,
+  "metrosCovered": 24,
+  "truth": {
+   "nyc": {
+    "independents": 141,
+    "perMillion": 7.122
+   },
+   "la": {
+    "independents": 31,
+    "perMillion": 2.389
+   },
+   "chicago": {
+    "independents": 16,
+    "perMillion": 1.707
+   },
+   "dfw": {
+    "independents": 8,
+    "perMillion": 1.002
+   },
+   "houston": {
+    "independents": 9,
+    "perMillion": 1.209
+   },
+   "dc": {
+    "independents": 11,
+    "perMillion": 1.741
+   },
+   "philadelphia": {
+    "independents": 21,
+    "perMillion": 3.348
+   },
+   "atlanta": {
+    "independents": 8,
+    "perMillion": 1.279
+   },
+   "miami": {
+    "independents": 1,
+    "perMillion": 0.16
+   },
+   "phoenix": {
+    "independents": 3,
+    "perMillion": 0.597
+   },
+   "boston": {
+    "independents": 24,
+    "perMillion": 4.845
+   },
+   "riverside": {
+    "independents": 3,
+    "perMillion": 0.642
+   },
+   "sf": {
+    "independents": 29,
+    "perMillion": 6.243
+   },
+   "detroit": {
+    "independents": 12,
+    "perMillion": 2.742
+   },
+   "seattle": {
+    "independents": 14,
+    "perMillion": 3.447
+   },
+   "minneapolis": {
+    "independents": 11,
+    "perMillion": 2.962
+   },
+   "tampa": {
+    "independents": 5,
+    "perMillion": 1.513
+   },
+   "sandiego": {
+    "independents": 12,
+    "perMillion": 3.649
+   },
+   "denver": {
+    "independents": 6,
+    "perMillion": 1.998
+   },
+   "baltimore": {
+    "independents": 10,
+    "perMillion": 3.509
+   },
+   "orlando": {
+    "independents": 4,
+    "perMillion": 1.432
+   },
+   "charlotte": {
+    "independents": 2,
+    "perMillion": 0.722
+   },
+   "stlouis": {
+    "independents": 2,
+    "perMillion": 0.712
+   },
+   "sanantonio": {
+    "independents": 0,
+    "perMillion": 0
+   },
+   "austin": {
+    "independents": 8,
+    "perMillion": 3.297
+   }
+  },
+  "arms": {
+   "cold": {
+    "athena": {
+     "rho": 0.683,
+     "ndcg5": 0.857,
+     "ranking": [
+      [
+       "sf"
+      ],
+      [
+       "la"
+      ],
+      [
+       "nyc"
+      ],
+      [
+       "austin"
+      ],
+      [
+       "seattle"
+      ],
+      [
+       "minneapolis"
+      ],
+      [
+       "chicago"
+      ],
+      [
+       "sandiego"
+      ],
+      [
+       "boston"
+      ],
+      [
+       "denver"
+      ],
+      [
+       "philadelphia"
+      ],
+      [
+       "dc"
+      ],
+      [
+       "phoenix"
+      ],
+      [
+       "dfw"
+      ],
+      [
+       "miami"
+      ],
+      [
+       "detroit"
+      ],
+      [
+       "atlanta"
+      ],
+      [
+       "stlouis"
+      ],
+      [
+       "baltimore"
+      ],
+      [
+       "houston"
+      ],
+      [
+       "charlotte"
+      ],
+      [
+       "tampa"
+      ],
+      [
+       "sanantonio"
+      ],
+      [
+       "riverside"
+      ],
+      [
+       "orlando"
+      ]
+     ]
+    },
+    "naive": {
+     "rho": 0.318,
+     "ndcg5": 0.722,
+     "ranking": [
+      [
+       "la"
+      ],
+      [
+       "sf"
+      ],
+      [
+       "nyc"
+      ],
+      [
+       "detroit"
+      ],
+      [
+       "denver"
+      ],
+      [
+       "chicago"
+      ],
+      [
+       "miami"
+      ],
+      [
+       "sandiego"
+      ],
+      [
+       "atlanta"
+      ],
+      [
+       "dfw",
+       "houston",
+       "dc",
+       "philadelphia",
+       "phoenix",
+       "boston",
+       "riverside",
+       "seattle",
+       "minneapolis",
+       "tampa",
+       "baltimore",
+       "orlando",
+       "charlotte",
+       "stlouis",
+       "sanantonio",
+       "austin"
+      ]
+     ]
+    },
+    "popularity": {
+     "rho": 0.092,
+     "ndcg5": 0.633,
+     "ranking": [
+      [
+       "nyc"
+      ],
+      [
+       "la"
+      ],
+      [
+       "chicago"
+      ],
+      [
+       "dfw"
+      ],
+      [
+       "houston"
+      ],
+      [
+       "dc"
+      ],
+      [
+       "philadelphia"
+      ],
+      [
+       "atlanta"
+      ],
+      [
+       "miami"
+      ],
+      [
+       "phoenix"
+      ],
+      [
+       "boston"
+      ],
+      [
+       "riverside"
+      ],
+      [
+       "sf"
+      ],
+      [
+       "detroit"
+      ],
+      [
+       "seattle"
+      ],
+      [
+       "minneapolis"
+      ],
+      [
+       "tampa"
+      ],
+      [
+       "sandiego"
+      ],
+      [
+       "denver"
+      ],
+      [
+       "baltimore"
+      ],
+      [
+       "stlouis"
+      ],
+      [
+       "orlando"
+      ],
+      [
+       "charlotte"
+      ],
+      [
+       "sanantonio"
+      ],
+      [
+       "austin"
+      ]
+     ]
+    },
+    "llm": {
+     "rho": 0.765,
+     "ndcg5": 0.765,
+     "samples": [
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 25,
+       "queries": 0,
+       "tokens": 1563,
+       "tries": 1,
+       "rho": 0.759,
+       "ndcg5": 0.78,
+       "ranking": [
+        [
+         "sf"
+        ],
+        [
+         "seattle"
+        ],
+        [
+         "austin"
+        ],
+        [
+         "denver"
+        ],
+        [
+         "boston"
+        ],
+        [
+         "minneapolis"
+        ],
+        [
+         "dc"
+        ],
+        [
+         "sandiego"
+        ],
+        [
+         "nyc"
+        ],
+        [
+         "la"
+        ],
+        [
+         "philadelphia"
+        ],
+        [
+         "chicago"
+        ],
+        [
+         "baltimore"
+        ],
+        [
+         "stlouis"
+        ],
+        [
+         "atlanta"
+        ],
+        [
+         "miami"
+        ],
+        [
+         "charlotte"
+        ],
+        [
+         "detroit"
+        ],
+        [
+         "dfw"
+        ],
+        [
+         "houston"
+        ],
+        [
+         "phoenix"
+        ],
+        [
+         "tampa"
+        ],
+        [
+         "orlando"
+        ],
+        [
+         "sanantonio"
+        ],
+        [
+         "riverside"
+        ]
+       ]
+      },
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 25,
+       "queries": 0,
+       "tokens": 2358,
+       "tries": 1,
+       "rho": 0.758,
+       "ndcg5": 0.736,
+       "ranking": [
+        [
+         "sf"
+        ],
+        [
+         "seattle"
+        ],
+        [
+         "austin"
+        ],
+        [
+         "denver"
+        ],
+        [
+         "minneapolis"
+        ],
+        [
+         "boston"
+        ],
+        [
+         "nyc"
+        ],
+        [
+         "dc"
+        ],
+        [
+         "sandiego"
+        ],
+        [
+         "la"
+        ],
+        [
+         "chicago"
+        ],
+        [
+         "philadelphia"
+        ],
+        [
+         "atlanta"
+        ],
+        [
+         "miami"
+        ],
+        [
+         "baltimore"
+        ],
+        [
+         "stlouis"
+        ],
+        [
+         "detroit"
+        ],
+        [
+         "charlotte"
+        ],
+        [
+         "houston"
+        ],
+        [
+         "dfw"
+        ],
+        [
+         "tampa"
+        ],
+        [
+         "orlando"
+        ],
+        [
+         "phoenix"
+        ],
+        [
+         "sanantonio"
+        ],
+        [
+         "riverside"
+        ]
+       ]
+      },
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 25,
+       "queries": 0,
+       "tokens": 1851,
+       "tries": 1,
+       "rho": 0.777,
+       "ndcg5": 0.78,
+       "ranking": [
+        [
+         "sf"
+        ],
+        [
+         "seattle"
+        ],
+        [
+         "austin"
+        ],
+        [
+         "denver"
+        ],
+        [
+         "boston"
+        ],
+        [
+         "minneapolis"
+        ],
+        [
+         "sandiego"
+        ],
+        [
+         "nyc"
+        ],
+        [
+         "dc"
+        ],
+        [
+         "la"
+        ],
+        [
+         "philadelphia"
+        ],
+        [
+         "chicago"
+        ],
+        [
+         "atlanta"
+        ],
+        [
+         "baltimore"
+        ],
+        [
+         "stlouis"
+        ],
+        [
+         "miami"
+        ],
+        [
+         "detroit"
+        ],
+        [
+         "charlotte"
+        ],
+        [
+         "dfw"
+        ],
+        [
+         "houston"
+        ],
+        [
+         "phoenix"
+        ],
+        [
+         "tampa"
+        ],
+        [
+         "orlando"
+        ],
+        [
+         "sanantonio"
+        ],
+        [
+         "riverside"
+        ]
+       ]
+      }
+     ]
+    },
+    "llmSearch": {
+     "rho": 0.758,
+     "ndcg5": 0.749,
+     "samples": [
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 25,
+       "queries": 0,
+       "tokens": 2636,
+       "tries": 1,
+       "rho": 0.775,
+       "ndcg5": 0.736,
+       "ranking": [
+        [
+         "sf"
+        ],
+        [
+         "seattle"
+        ],
+        [
+         "austin"
+        ],
+        [
+         "denver"
+        ],
+        [
+         "minneapolis"
+        ],
+        [
+         "boston"
+        ],
+        [
+         "dc"
+        ],
+        [
+         "nyc"
+        ],
+        [
+         "sandiego"
+        ],
+        [
+         "chicago"
+        ],
+        [
+         "philadelphia"
+        ],
+        [
+         "la"
+        ],
+        [
+         "baltimore"
+        ],
+        [
+         "stlouis"
+        ],
+        [
+         "atlanta"
+        ],
+        [
+         "miami"
+        ],
+        [
+         "detroit"
+        ],
+        [
+         "houston"
+        ],
+        [
+         "dfw"
+        ],
+        [
+         "charlotte"
+        ],
+        [
+         "tampa"
+        ],
+        [
+         "orlando"
+        ],
+        [
+         "phoenix"
+        ],
+        [
+         "sanantonio"
+        ],
+        [
+         "riverside"
+        ]
+       ]
+      },
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 25,
+       "queries": 0,
+       "tokens": 2752,
+       "tries": 1,
+       "rho": 0.778,
+       "ndcg5": 0.774,
+       "ranking": [
+        [
+         "sf"
+        ],
+        [
+         "seattle"
+        ],
+        [
+         "denver"
+        ],
+        [
+         "austin"
+        ],
+        [
+         "boston"
+        ],
+        [
+         "minneapolis"
+        ],
+        [
+         "nyc"
+        ],
+        [
+         "dc"
+        ],
+        [
+         "sandiego"
+        ],
+        [
+         "la"
+        ],
+        [
+         "philadelphia"
+        ],
+        [
+         "chicago"
+        ],
+        [
+         "stlouis"
+        ],
+        [
+         "baltimore"
+        ],
+        [
+         "detroit"
+        ],
+        [
+         "atlanta"
+        ],
+        [
+         "miami"
+        ],
+        [
+         "houston"
+        ],
+        [
+         "dfw"
+        ],
+        [
+         "charlotte"
+        ],
+        [
+         "sanantonio"
+        ],
+        [
+         "tampa"
+        ],
+        [
+         "orlando"
+        ],
+        [
+         "phoenix"
+        ],
+        [
+         "riverside"
+        ]
+       ]
+      },
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 25,
+       "queries": 0,
+       "tokens": 2882,
+       "tries": 1,
+       "rho": 0.721,
+       "ndcg5": 0.736,
+       "ranking": [
+        [
+         "sf"
+        ],
+        [
+         "seattle"
+        ],
+        [
+         "austin"
+        ],
+        [
+         "denver"
+        ],
+        [
+         "minneapolis"
+        ],
+        [
+         "boston"
+        ],
+        [
+         "sandiego"
+        ],
+        [
+         "la"
+        ],
+        [
+         "dc"
+        ],
+        [
+         "nyc"
+        ],
+        [
+         "chicago"
+        ],
+        [
+         "philadelphia"
+        ],
+        [
+         "atlanta"
+        ],
+        [
+         "stlouis"
+        ],
+        [
+         "baltimore"
+        ],
+        [
+         "miami"
+        ],
+        [
+         "dfw"
+        ],
+        [
+         "houston"
+        ],
+        [
+         "charlotte"
+        ],
+        [
+         "detroit"
+        ],
+        [
+         "phoenix"
+        ],
+        [
+         "tampa"
+        ],
+        [
+         "orlando"
+        ],
+        [
+         "sanantonio"
+        ],
+        [
+         "riverside"
+        ]
+       ]
+      }
+     ]
+    }
+   },
+   "known": {
+    "athena": {
+     "rho": 0.683,
+     "ndcg5": 0.857,
+     "ranking": [
+      [
+       "sf"
+      ],
+      [
+       "la"
+      ],
+      [
+       "nyc"
+      ],
+      [
+       "austin"
+      ],
+      [
+       "seattle"
+      ],
+      [
+       "minneapolis"
+      ],
+      [
+       "chicago"
+      ],
+      [
+       "sandiego"
+      ],
+      [
+       "boston"
+      ],
+      [
+       "denver"
+      ],
+      [
+       "philadelphia"
+      ],
+      [
+       "dc"
+      ],
+      [
+       "phoenix"
+      ],
+      [
+       "dfw"
+      ],
+      [
+       "miami"
+      ],
+      [
+       "detroit"
+      ],
+      [
+       "atlanta"
+      ],
+      [
+       "stlouis"
+      ],
+      [
+       "baltimore"
+      ],
+      [
+       "houston"
+      ],
+      [
+       "charlotte"
+      ],
+      [
+       "tampa"
+      ],
+      [
+       "sanantonio"
+      ],
+      [
+       "riverside"
+      ],
+      [
+       "orlando"
+      ]
+     ]
+    },
+    "naive": {
+     "rho": 0.318,
+     "ndcg5": 0.722,
+     "ranking": [
+      [
+       "la"
+      ],
+      [
+       "sf"
+      ],
+      [
+       "nyc"
+      ],
+      [
+       "detroit"
+      ],
+      [
+       "denver"
+      ],
+      [
+       "chicago"
+      ],
+      [
+       "miami"
+      ],
+      [
+       "sandiego"
+      ],
+      [
+       "atlanta"
+      ],
+      [
+       "dfw",
+       "houston",
+       "dc",
+       "philadelphia",
+       "phoenix",
+       "boston",
+       "riverside",
+       "seattle",
+       "minneapolis",
+       "tampa",
+       "baltimore",
+       "orlando",
+       "charlotte",
+       "stlouis",
+       "sanantonio",
+       "austin"
+      ]
+     ]
+    },
+    "popularity": {
+     "rho": 0.092,
+     "ndcg5": 0.633,
+     "ranking": [
+      [
+       "nyc"
+      ],
+      [
+       "la"
+      ],
+      [
+       "chicago"
+      ],
+      [
+       "dfw"
+      ],
+      [
+       "houston"
+      ],
+      [
+       "dc"
+      ],
+      [
+       "philadelphia"
+      ],
+      [
+       "atlanta"
+      ],
+      [
+       "miami"
+      ],
+      [
+       "phoenix"
+      ],
+      [
+       "boston"
+      ],
+      [
+       "riverside"
+      ],
+      [
+       "sf"
+      ],
+      [
+       "detroit"
+      ],
+      [
+       "seattle"
+      ],
+      [
+       "minneapolis"
+      ],
+      [
+       "tampa"
+      ],
+      [
+       "sandiego"
+      ],
+      [
+       "denver"
+      ],
+      [
+       "baltimore"
+      ],
+      [
+       "stlouis"
+      ],
+      [
+       "orlando"
+      ],
+      [
+       "charlotte"
+      ],
+      [
+       "sanantonio"
+      ],
+      [
+       "austin"
+      ]
+     ]
+    },
+    "llm": {
+     "rho": 0.759,
+     "ndcg5": 0.83,
+     "samples": [
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 25,
+       "queries": 0,
+       "tokens": 2231,
+       "tries": 1,
+       "rho": 0.767,
+       "ndcg5": 0.863,
+       "ranking": [
+        [
+         "sf"
+        ],
+        [
+         "seattle"
+        ],
+        [
+         "nyc"
+        ],
+        [
+         "austin"
+        ],
+        [
+         "denver"
+        ],
+        [
+         "minneapolis"
+        ],
+        [
+         "boston"
+        ],
+        [
+         "dc"
+        ],
+        [
+         "sandiego"
+        ],
+        [
+         "la"
+        ],
+        [
+         "chicago"
+        ],
+        [
+         "philadelphia"
+        ],
+        [
+         "atlanta"
+        ],
+        [
+         "miami"
+        ],
+        [
+         "baltimore"
+        ],
+        [
+         "stlouis"
+        ],
+        [
+         "detroit"
+        ],
+        [
+         "charlotte"
+        ],
+        [
+         "dfw"
+        ],
+        [
+         "houston"
+        ],
+        [
+         "phoenix"
+        ],
+        [
+         "tampa"
+        ],
+        [
+         "orlando"
+        ],
+        [
+         "sanantonio"
+        ],
+        [
+         "riverside"
+        ]
+       ]
+      },
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 25,
+       "queries": 0,
+       "tokens": 2168,
+       "tries": 1,
+       "rho": 0.769,
+       "ndcg5": 0.847,
+       "ranking": [
+        [
+         "sf"
+        ],
+        [
+         "seattle"
+        ],
+        [
+         "austin"
+        ],
+        [
+         "nyc"
+        ],
+        [
+         "denver"
+        ],
+        [
+         "boston"
+        ],
+        [
+         "minneapolis"
+        ],
+        [
+         "dc"
+        ],
+        [
+         "sandiego"
+        ],
+        [
+         "chicago"
+        ],
+        [
+         "la"
+        ],
+        [
+         "philadelphia"
+        ],
+        [
+         "atlanta"
+        ],
+        [
+         "stlouis"
+        ],
+        [
+         "baltimore"
+        ],
+        [
+         "miami"
+        ],
+        [
+         "detroit"
+        ],
+        [
+         "charlotte"
+        ],
+        [
+         "houston"
+        ],
+        [
+         "dfw"
+        ],
+        [
+         "phoenix"
+        ],
+        [
+         "tampa"
+        ],
+        [
+         "orlando"
+        ],
+        [
+         "sanantonio"
+        ],
+        [
+         "riverside"
+        ]
+       ]
+      },
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 25,
+       "queries": 0,
+       "tokens": 2180,
+       "tries": 1,
+       "rho": 0.742,
+       "ndcg5": 0.78,
+       "ranking": [
+        [
+         "sf"
+        ],
+        [
+         "seattle"
+        ],
+        [
+         "austin"
+        ],
+        [
+         "denver"
+        ],
+        [
+         "boston"
+        ],
+        [
+         "nyc"
+        ],
+        [
+         "minneapolis"
+        ],
+        [
+         "dc"
+        ],
+        [
+         "sandiego"
+        ],
+        [
+         "chicago"
+        ],
+        [
+         "la"
+        ],
+        [
+         "philadelphia"
+        ],
+        [
+         "atlanta"
+        ],
+        [
+         "stlouis"
+        ],
+        [
+         "baltimore"
+        ],
+        [
+         "miami"
+        ],
+        [
+         "detroit"
+        ],
+        [
+         "charlotte"
+        ],
+        [
+         "dfw"
+        ],
+        [
+         "houston"
+        ],
+        [
+         "sanantonio"
+        ],
+        [
+         "phoenix"
+        ],
+        [
+         "tampa"
+        ],
+        [
+         "orlando"
+        ],
+        [
+         "riverside"
+        ]
+       ]
+      }
+     ]
+    },
+    "llmSearch": {
+     "rho": 0.656,
+     "ndcg5": 0.719,
+     "samples": [
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 25,
+       "queries": 7,
+       "tokens": 4997,
+       "tries": 1,
+       "rho": 0.386,
+       "ndcg5": 0.535,
+       "ranking": [
+        [
+         "stlouis"
+        ],
+        [
+         "orlando"
+        ],
+        [
+         "nyc"
+        ],
+        [
+         "sf"
+        ],
+        [
+         "la"
+        ],
+        [
+         "miami"
+        ],
+        [
+         "seattle"
+        ],
+        [
+         "tampa"
+        ],
+        [
+         "sandiego"
+        ],
+        [
+         "denver"
+        ],
+        [
+         "austin"
+        ],
+        [
+         "dc"
+        ],
+        [
+         "boston"
+        ],
+        [
+         "chicago"
+        ],
+        [
+         "atlanta"
+        ],
+        [
+         "philadelphia"
+        ],
+        [
+         "minneapolis"
+        ],
+        [
+         "detroit"
+        ],
+        [
+         "baltimore"
+        ],
+        [
+         "charlotte"
+        ],
+        [
+         "dfw"
+        ],
+        [
+         "houston"
+        ],
+        [
+         "sanantonio"
+        ],
+        [
+         "phoenix"
+        ],
+        [
+         "riverside"
+        ]
+       ]
+      },
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 25,
+       "queries": 0,
+       "tokens": 2858,
+       "tries": 1,
+       "rho": 0.806,
+       "ndcg5": 0.847,
+       "ranking": [
+        [
+         "sf"
+        ],
+        [
+         "seattle"
+        ],
+        [
+         "austin"
+        ],
+        [
+         "nyc"
+        ],
+        [
+         "denver"
+        ],
+        [
+         "minneapolis"
+        ],
+        [
+         "boston"
+        ],
+        [
+         "dc"
+        ],
+        [
+         "sandiego"
+        ],
+        [
+         "la"
+        ],
+        [
+         "chicago"
+        ],
+        [
+         "philadelphia"
+        ],
+        [
+         "baltimore"
+        ],
+        [
+         "stlouis"
+        ],
+        [
+         "atlanta"
+        ],
+        [
+         "detroit"
+        ],
+        [
+         "miami"
+        ],
+        [
+         "charlotte"
+        ],
+        [
+         "houston"
+        ],
+        [
+         "dfw"
+        ],
+        [
+         "tampa"
+        ],
+        [
+         "orlando"
+        ],
+        [
+         "sanantonio"
+        ],
+        [
+         "phoenix"
+        ],
+        [
+         "riverside"
+        ]
+       ]
+      },
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 25,
+       "queries": 0,
+       "tokens": 2100,
+       "tries": 1,
+       "rho": 0.775,
+       "ndcg5": 0.774,
+       "ranking": [
+        [
+         "sf"
+        ],
+        [
+         "seattle"
+        ],
+        [
+         "denver"
+        ],
+        [
+         "austin"
+        ],
+        [
+         "boston"
+        ],
+        [
+         "minneapolis"
+        ],
+        [
+         "sandiego"
+        ],
+        [
+         "nyc"
+        ],
+        [
+         "dc"
+        ],
+        [
+         "chicago"
+        ],
+        [
+         "philadelphia"
+        ],
+        [
+         "la"
+        ],
+        [
+         "baltimore"
+        ],
+        [
+         "stlouis"
+        ],
+        [
+         "atlanta"
+        ],
+        [
+         "miami"
+        ],
+        [
+         "detroit"
+        ],
+        [
+         "charlotte"
+        ],
+        [
+         "dfw"
+        ],
+        [
+         "houston"
+        ],
+        [
+         "phoenix"
+        ],
+        [
+         "tampa"
+        ],
+        [
+         "orlando"
+        ],
+        [
+         "sanantonio"
+        ],
+        [
+         "riverside"
+        ]
+       ]
+      }
+     ]
+    }
+   }
+  }
+ },
+ "t2": {
+  "category": "food",
+  "candidates": [
+   "Whole Foods Market",
+   "Erewhon",
+   "Sprouts Farmers Market",
+   "Trader Joe's",
+   "Eataly",
+   "Central Market",
+   "Wegmans",
+   "The Fresh Market",
+   "New Seasons Market",
+   "Natural Grocers",
+   "Publix",
+   "H-E-B",
+   "Safeway",
+   "Aldi",
+   "Ralphs",
+   "Harris Teeter",
+   "Williams-Sonoma",
+   "Sur La Table",
+   "Thrive Market",
+   "H Mart",
+   "Target",
+   "Walmart",
+   "Costco",
+   "Kroger"
+  ],
+  "unresolved": [
+   "Gelson's",
+   "Bristol Farms",
+   "Albertsons",
+   "Foxtrot"
+  ],
+  "stocked": [
+   "Whole Foods Market",
+   "Erewhon",
+   "Sprouts Farmers Market",
+   "Central Market"
+  ],
+  "eligible": true,
+  "arms": {
+   "cold": {
+    "athena": {
+     "auc": 0.888,
+     "p5": 0.4,
+     "ranking": [
+      [
+       "Whole Foods Market"
+      ],
+      [
+       "Williams-Sonoma"
+      ],
+      [
+       "Thrive Market"
+      ],
+      [
+       "H Mart"
+      ],
+      [
+       "Erewhon"
+      ],
+      [
+       "Sprouts Farmers Market"
+      ],
+      [
+       "Central Market"
+      ],
+      [
+       "The Fresh Market"
+      ],
+      [
+       "Sur La Table"
+      ],
+      [
+       "Costco"
+      ],
+      [
+       "Target"
+      ],
+      [
+       "New Seasons Market"
+      ],
+      [
+       "Natural Grocers"
+      ],
+      [
+       "Eataly"
+      ],
+      [
+       "Wegmans"
+      ],
+      [
+       "Harris Teeter"
+      ],
+      [
+       "H-E-B"
+      ],
+      [
+       "Kroger"
+      ],
+      [
+       "Walmart"
+      ],
+      [
+       "Publix"
+      ],
+      [
+       "Safeway"
+      ],
+      [
+       "Ralphs"
+      ],
+      [
+       "Trader Joe's"
+      ],
+      [
+       "Aldi"
+      ]
+     ]
+    },
+    "naive": {
+     "auc": 0.8,
+     "p5": 0.4,
+     "ranking": [
+      [
+       "New Seasons Market"
+      ],
+      [
+       "Thrive Market"
+      ],
+      [
+       "Natural Grocers"
+      ],
+      [
+       "Central Market"
+      ],
+      [
+       "Sprouts Farmers Market"
+      ],
+      [
+       "H Mart"
+      ],
+      [
+       "Trader Joe's"
+      ],
+      [
+       "Erewhon"
+      ],
+      [
+       "Whole Foods Market"
+      ],
+      [
+       "Harris Teeter"
+      ],
+      [
+       "Kroger"
+      ],
+      [
+       "Williams-Sonoma"
+      ],
+      [
+       "Sur La Table"
+      ],
+      [
+       "Eataly"
+      ],
+      [
+       "The Fresh Market"
+      ],
+      [
+       "Costco"
+      ],
+      [
+       "Safeway"
+      ],
+      [
+       "Wegmans"
+      ],
+      [
+       "H-E-B"
+      ],
+      [
+       "Target"
+      ],
+      [
+       "Ralphs"
+      ],
+      [
+       "Publix"
+      ],
+      [
+       "Walmart"
+      ],
+      [
+       "Aldi"
+      ]
+     ]
+    },
+    "popularity": {
+     "auc": 0.5,
+     "p5": 0.2,
+     "ranking": [
+      [
+       "Whole Foods Market"
+      ],
+      [
+       "Target"
+      ],
+      [
+       "Walmart"
+      ],
+      [
+       "Aldi"
+      ],
+      [
+       "Williams-Sonoma"
+      ],
+      [
+       "Trader Joe's"
+      ],
+      [
+       "Thrive Market"
+      ],
+      [
+       "H-E-B"
+      ],
+      [
+       "Costco"
+      ],
+      [
+       "Sprouts Farmers Market"
+      ],
+      [
+       "Publix"
+      ],
+      [
+       "Kroger"
+      ],
+      [
+       "Sur La Table"
+      ],
+      [
+       "Wegmans"
+      ],
+      [
+       "Eataly"
+      ],
+      [
+       "Safeway"
+      ],
+      [
+       "The Fresh Market"
+      ],
+      [
+       "Harris Teeter"
+      ],
+      [
+       "Central Market"
+      ],
+      [
+       "Erewhon"
+      ],
+      [
+       "Natural Grocers"
+      ],
+      [
+       "H Mart"
+      ],
+      [
+       "Ralphs"
+      ],
+      [
+       "New Seasons Market"
+      ]
+     ]
+    },
+    "llm": {
+     "auc": 0.954,
+     "p5": 0.6,
+     "samples": [
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 24,
+       "queries": 0,
+       "tokens": 2954,
+       "tries": 1,
+       "auc": 0.963,
+       "p5": 0.6,
+       "ranking": [
+        [
+         "Erewhon"
+        ],
+        [
+         "Whole Foods Market"
+        ],
+        [
+         "Central Market"
+        ],
+        [
+         "New Seasons Market"
+        ],
+        [
+         "Thrive Market"
+        ],
+        [
+         "Natural Grocers"
+        ],
+        [
+         "Sprouts Farmers Market"
+        ],
+        [
+         "The Fresh Market"
+        ],
+        [
+         "Wegmans"
+        ],
+        [
+         "Williams-Sonoma"
+        ],
+        [
+         "Sur La Table"
+        ],
+        [
+         "H-E-B"
+        ],
+        [
+         "Harris Teeter"
+        ],
+        [
+         "Publix"
+        ],
+        [
+         "Target"
+        ],
+        [
+         "Safeway"
+        ],
+        [
+         "Kroger"
+        ],
+        [
+         "Ralphs"
+        ],
+        [
+         "Costco"
+        ],
+        [
+         "Walmart"
+        ],
+        [
+         "H Mart"
+        ],
+        [
+         "Eataly"
+        ],
+        [
+         "Trader Joe's"
+        ],
+        [
+         "Aldi"
+        ]
+       ]
+      },
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 24,
+       "queries": 0,
+       "tokens": 3034,
+       "tries": 1,
+       "auc": 0.963,
+       "p5": 0.6,
+       "ranking": [
+        [
+         "Erewhon"
+        ],
+        [
+         "Whole Foods Market"
+        ],
+        [
+         "Central Market"
+        ],
+        [
+         "New Seasons Market"
+        ],
+        [
+         "Natural Grocers"
+        ],
+        [
+         "The Fresh Market"
+        ],
+        [
+         "Sprouts Farmers Market"
+        ],
+        [
+         "Thrive Market"
+        ],
+        [
+         "Williams-Sonoma"
+        ],
+        [
+         "Sur La Table"
+        ],
+        [
+         "Wegmans"
+        ],
+        [
+         "H-E-B"
+        ],
+        [
+         "Target"
+        ],
+        [
+         "Harris Teeter"
+        ],
+        [
+         "Publix"
+        ],
+        [
+         "Safeway"
+        ],
+        [
+         "Ralphs"
+        ],
+        [
+         "Kroger"
+        ],
+        [
+         "Eataly"
+        ],
+        [
+         "H Mart"
+        ],
+        [
+         "Costco"
+        ],
+        [
+         "Trader Joe's"
+        ],
+        [
+         "Walmart"
+        ],
+        [
+         "Aldi"
+        ]
+       ]
+      },
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 24,
+       "queries": 0,
+       "tokens": 2364,
+       "tries": 1,
+       "auc": 0.938,
+       "p5": 0.6,
+       "ranking": [
+        [
+         "Erewhon"
+        ],
+        [
+         "Central Market"
+        ],
+        [
+         "Whole Foods Market"
+        ],
+        [
+         "New Seasons Market"
+        ],
+        [
+         "Natural Grocers"
+        ],
+        [
+         "Thrive Market"
+        ],
+        [
+         "Williams-Sonoma"
+        ],
+        [
+         "The Fresh Market"
+        ],
+        [
+         "Sprouts Farmers Market"
+        ],
+        [
+         "Sur La Table"
+        ],
+        [
+         "Wegmans"
+        ],
+        [
+         "Harris Teeter"
+        ],
+        [
+         "H-E-B"
+        ],
+        [
+         "Publix"
+        ],
+        [
+         "Ralphs"
+        ],
+        [
+         "Safeway"
+        ],
+        [
+         "Kroger"
+        ],
+        [
+         "Target"
+        ],
+        [
+         "Costco"
+        ],
+        [
+         "H Mart"
+        ],
+        [
+         "Eataly"
+        ],
+        [
+         "Trader Joe's"
+        ],
+        [
+         "Walmart"
+        ],
+        [
+         "Aldi"
+        ]
+       ]
+      }
+     ]
+    },
+    "llmSearch": {
+     "auc": 0.958,
+     "p5": 0.6,
+     "samples": [
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 24,
+       "queries": 0,
+       "tokens": 4290,
+       "tries": 1,
+       "auc": 0.95,
+       "p5": 0.6,
+       "ranking": [
+        [
+         "Erewhon"
+        ],
+        [
+         "Whole Foods Market"
+        ],
+        [
+         "Central Market"
+        ],
+        [
+         "New Seasons Market"
+        ],
+        [
+         "Thrive Market"
+        ],
+        [
+         "Natural Grocers"
+        ],
+        [
+         "The Fresh Market"
+        ],
+        [
+         "Sprouts Farmers Market"
+        ],
+        [
+         "Wegmans"
+        ],
+        [
+         "Williams-Sonoma"
+        ],
+        [
+         "Sur La Table"
+        ],
+        [
+         "H-E-B"
+        ],
+        [
+         "Harris Teeter"
+        ],
+        [
+         "Publix"
+        ],
+        [
+         "Target"
+        ],
+        [
+         "Safeway"
+        ],
+        [
+         "Kroger"
+        ],
+        [
+         "Ralphs"
+        ],
+        [
+         "Costco"
+        ],
+        [
+         "Walmart"
+        ],
+        [
+         "H Mart"
+        ],
+        [
+         "Eataly"
+        ],
+        [
+         "Trader Joe's"
+        ],
+        [
+         "Aldi"
+        ]
+       ]
+      },
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 24,
+       "queries": 0,
+       "tokens": 4294,
+       "tries": 1,
+       "auc": 0.963,
+       "p5": 0.6,
+       "ranking": [
+        [
+         "Erewhon"
+        ],
+        [
+         "Whole Foods Market"
+        ],
+        [
+         "Central Market"
+        ],
+        [
+         "New Seasons Market"
+        ],
+        [
+         "Thrive Market"
+        ],
+        [
+         "Natural Grocers"
+        ],
+        [
+         "Sprouts Farmers Market"
+        ],
+        [
+         "The Fresh Market"
+        ],
+        [
+         "Williams-Sonoma"
+        ],
+        [
+         "Sur La Table"
+        ],
+        [
+         "Wegmans"
+        ],
+        [
+         "H-E-B"
+        ],
+        [
+         "Target"
+        ],
+        [
+         "Harris Teeter"
+        ],
+        [
+         "Publix"
+        ],
+        [
+         "Safeway"
+        ],
+        [
+         "Kroger"
+        ],
+        [
+         "Ralphs"
+        ],
+        [
+         "Costco"
+        ],
+        [
+         "H Mart"
+        ],
+        [
+         "Walmart"
+        ],
+        [
+         "Eataly"
+        ],
+        [
+         "Trader Joe's"
+        ],
+        [
+         "Aldi"
+        ]
+       ]
+      },
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 24,
+       "queries": 4,
+       "tokens": 3947,
+       "tries": 1,
+       "auc": 0.963,
+       "p5": 0.6,
+       "ranking": [
+        [
+         "Erewhon"
+        ],
+        [
+         "Whole Foods Market"
+        ],
+        [
+         "Central Market"
+        ],
+        [
+         "New Seasons Market"
+        ],
+        [
+         "Thrive Market"
+        ],
+        [
+         "Natural Grocers"
+        ],
+        [
+         "Sprouts Farmers Market"
+        ],
+        [
+         "The Fresh Market"
+        ],
+        [
+         "Wegmans"
+        ],
+        [
+         "Williams-Sonoma"
+        ],
+        [
+         "Sur La Table"
+        ],
+        [
+         "Harris Teeter"
+        ],
+        [
+         "H-E-B"
+        ],
+        [
+         "Publix"
+        ],
+        [
+         "Safeway"
+        ],
+        [
+         "Kroger"
+        ],
+        [
+         "Ralphs"
+        ],
+        [
+         "Target"
+        ],
+        [
+         "Walmart"
+        ],
+        [
+         "Costco"
+        ],
+        [
+         "Eataly"
+        ],
+        [
+         "H Mart"
+        ],
+        [
+         "Trader Joe's"
+        ],
+        [
+         "Aldi"
+        ]
+       ]
+      }
+     ]
+    }
+   },
+   "known": {
+    "athena": {
+     "auc": 0.888,
+     "p5": 0.4,
+     "ranking": [
+      [
+       "Whole Foods Market"
+      ],
+      [
+       "Williams-Sonoma"
+      ],
+      [
+       "Thrive Market"
+      ],
+      [
+       "H Mart"
+      ],
+      [
+       "Erewhon"
+      ],
+      [
+       "Sprouts Farmers Market"
+      ],
+      [
+       "Central Market"
+      ],
+      [
+       "The Fresh Market"
+      ],
+      [
+       "Sur La Table"
+      ],
+      [
+       "Costco"
+      ],
+      [
+       "Target"
+      ],
+      [
+       "New Seasons Market"
+      ],
+      [
+       "Natural Grocers"
+      ],
+      [
+       "Eataly"
+      ],
+      [
+       "Wegmans"
+      ],
+      [
+       "Harris Teeter"
+      ],
+      [
+       "H-E-B"
+      ],
+      [
+       "Kroger"
+      ],
+      [
+       "Walmart"
+      ],
+      [
+       "Publix"
+      ],
+      [
+       "Safeway"
+      ],
+      [
+       "Ralphs"
+      ],
+      [
+       "Trader Joe's"
+      ],
+      [
+       "Aldi"
+      ]
+     ]
+    },
+    "naive": {
+     "auc": 0.8,
+     "p5": 0.4,
+     "ranking": [
+      [
+       "New Seasons Market"
+      ],
+      [
+       "Thrive Market"
+      ],
+      [
+       "Natural Grocers"
+      ],
+      [
+       "Central Market"
+      ],
+      [
+       "Sprouts Farmers Market"
+      ],
+      [
+       "H Mart"
+      ],
+      [
+       "Trader Joe's"
+      ],
+      [
+       "Erewhon"
+      ],
+      [
+       "Whole Foods Market"
+      ],
+      [
+       "Harris Teeter"
+      ],
+      [
+       "Kroger"
+      ],
+      [
+       "Williams-Sonoma"
+      ],
+      [
+       "Sur La Table"
+      ],
+      [
+       "Eataly"
+      ],
+      [
+       "The Fresh Market"
+      ],
+      [
+       "Costco"
+      ],
+      [
+       "Safeway"
+      ],
+      [
+       "Wegmans"
+      ],
+      [
+       "H-E-B"
+      ],
+      [
+       "Target"
+      ],
+      [
+       "Ralphs"
+      ],
+      [
+       "Publix"
+      ],
+      [
+       "Walmart"
+      ],
+      [
+       "Aldi"
+      ]
+     ]
+    },
+    "popularity": {
+     "auc": 0.5,
+     "p5": 0.2,
+     "ranking": [
+      [
+       "Whole Foods Market"
+      ],
+      [
+       "Target"
+      ],
+      [
+       "Walmart"
+      ],
+      [
+       "Aldi"
+      ],
+      [
+       "Williams-Sonoma"
+      ],
+      [
+       "Trader Joe's"
+      ],
+      [
+       "Thrive Market"
+      ],
+      [
+       "H-E-B"
+      ],
+      [
+       "Costco"
+      ],
+      [
+       "Sprouts Farmers Market"
+      ],
+      [
+       "Publix"
+      ],
+      [
+       "Kroger"
+      ],
+      [
+       "Sur La Table"
+      ],
+      [
+       "Wegmans"
+      ],
+      [
+       "Eataly"
+      ],
+      [
+       "Safeway"
+      ],
+      [
+       "The Fresh Market"
+      ],
+      [
+       "Harris Teeter"
+      ],
+      [
+       "Central Market"
+      ],
+      [
+       "Erewhon"
+      ],
+      [
+       "Natural Grocers"
+      ],
+      [
+       "H Mart"
+      ],
+      [
+       "Ralphs"
+      ],
+      [
+       "New Seasons Market"
+      ]
+     ]
+    },
+    "llm": {
+     "auc": 0.946,
+     "p5": 0.6,
+     "samples": [
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 24,
+       "queries": 0,
+       "tokens": 2238,
+       "tries": 1,
+       "auc": 0.95,
+       "p5": 0.6,
+       "ranking": [
+        [
+         "Whole Foods Market"
+        ],
+        [
+         "Erewhon"
+        ],
+        [
+         "Central Market"
+        ],
+        [
+         "New Seasons Market"
+        ],
+        [
+         "Thrive Market"
+        ],
+        [
+         "The Fresh Market"
+        ],
+        [
+         "Natural Grocers"
+        ],
+        [
+         "Sprouts Farmers Market"
+        ],
+        [
+         "Williams-Sonoma"
+        ],
+        [
+         "Sur La Table"
+        ],
+        [
+         "Wegmans"
+        ],
+        [
+         "Harris Teeter"
+        ],
+        [
+         "Publix"
+        ],
+        [
+         "H-E-B"
+        ],
+        [
+         "Eataly"
+        ],
+        [
+         "Target"
+        ],
+        [
+         "Ralphs"
+        ],
+        [
+         "Safeway"
+        ],
+        [
+         "Kroger"
+        ],
+        [
+         "H Mart"
+        ],
+        [
+         "Costco"
+        ],
+        [
+         "Walmart"
+        ],
+        [
+         "Trader Joe's"
+        ],
+        [
+         "Aldi"
+        ]
+       ]
+      },
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 24,
+       "queries": 0,
+       "tokens": 3097,
+       "tries": 1,
+       "auc": 0.938,
+       "p5": 0.6,
+       "ranking": [
+        [
+         "Whole Foods Market"
+        ],
+        [
+         "Erewhon"
+        ],
+        [
+         "Central Market"
+        ],
+        [
+         "New Seasons Market"
+        ],
+        [
+         "Thrive Market"
+        ],
+        [
+         "Natural Grocers"
+        ],
+        [
+         "Williams-Sonoma"
+        ],
+        [
+         "The Fresh Market"
+        ],
+        [
+         "Sprouts Farmers Market"
+        ],
+        [
+         "Wegmans"
+        ],
+        [
+         "Sur La Table"
+        ],
+        [
+         "Eataly"
+        ],
+        [
+         "Target"
+        ],
+        [
+         "H-E-B"
+        ],
+        [
+         "Harris Teeter"
+        ],
+        [
+         "Publix"
+        ],
+        [
+         "Ralphs"
+        ],
+        [
+         "Safeway"
+        ],
+        [
+         "Kroger"
+        ],
+        [
+         "Costco"
+        ],
+        [
+         "H Mart"
+        ],
+        [
+         "Walmart"
+        ],
+        [
+         "Aldi"
+        ],
+        [
+         "Trader Joe's"
+        ]
+       ]
+      },
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 24,
+       "queries": 0,
+       "tokens": 3233,
+       "tries": 1,
+       "auc": 0.95,
+       "p5": 0.6,
+       "ranking": [
+        [
+         "Whole Foods Market"
+        ],
+        [
+         "Erewhon"
+        ],
+        [
+         "Central Market"
+        ],
+        [
+         "New Seasons Market"
+        ],
+        [
+         "Thrive Market"
+        ],
+        [
+         "The Fresh Market"
+        ],
+        [
+         "Wegmans"
+        ],
+        [
+         "Sprouts Farmers Market"
+        ],
+        [
+         "Natural Grocers"
+        ],
+        [
+         "Williams-Sonoma"
+        ],
+        [
+         "Sur La Table"
+        ],
+        [
+         "H-E-B"
+        ],
+        [
+         "Harris Teeter"
+        ],
+        [
+         "Publix"
+        ],
+        [
+         "Target"
+        ],
+        [
+         "Kroger"
+        ],
+        [
+         "Safeway"
+        ],
+        [
+         "Ralphs"
+        ],
+        [
+         "Walmart"
+        ],
+        [
+         "Costco"
+        ],
+        [
+         "H Mart"
+        ],
+        [
+         "Eataly"
+        ],
+        [
+         "Trader Joe's"
+        ],
+        [
+         "Aldi"
+        ]
+       ]
+      }
+     ]
+    },
+    "llmSearch": {
+     "auc": 0.942,
+     "p5": 0.6,
+     "samples": [
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 24,
+       "queries": 4,
+       "tokens": 2907,
+       "tries": 1,
+       "auc": 0.938,
+       "p5": 0.6,
+       "ranking": [
+        [
+         "Whole Foods Market"
+        ],
+        [
+         "Erewhon"
+        ],
+        [
+         "Thrive Market"
+        ],
+        [
+         "Central Market"
+        ],
+        [
+         "New Seasons Market"
+        ],
+        [
+         "Natural Grocers"
+        ],
+        [
+         "The Fresh Market"
+        ],
+        [
+         "Sprouts Farmers Market"
+        ],
+        [
+         "Wegmans"
+        ],
+        [
+         "Williams-Sonoma"
+        ],
+        [
+         "Sur La Table"
+        ],
+        [
+         "H-E-B"
+        ],
+        [
+         "Harris Teeter"
+        ],
+        [
+         "Target"
+        ],
+        [
+         "Publix"
+        ],
+        [
+         "Safeway"
+        ],
+        [
+         "Kroger"
+        ],
+        [
+         "Ralphs"
+        ],
+        [
+         "Eataly"
+        ],
+        [
+         "H Mart"
+        ],
+        [
+         "Costco"
+        ],
+        [
+         "Walmart"
+        ],
+        [
+         "Trader Joe's"
+        ],
+        [
+         "Aldi"
+        ]
+       ]
+      },
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 24,
+       "queries": 8,
+       "tokens": 4909,
+       "tries": 1,
+       "auc": 0.938,
+       "p5": 0.6,
+       "ranking": [
+        [
+         "Whole Foods Market"
+        ],
+        [
+         "Erewhon"
+        ],
+        [
+         "Thrive Market"
+        ],
+        [
+         "Central Market"
+        ],
+        [
+         "New Seasons Market"
+        ],
+        [
+         "Natural Grocers"
+        ],
+        [
+         "The Fresh Market"
+        ],
+        [
+         "Sprouts Farmers Market"
+        ],
+        [
+         "Wegmans"
+        ],
+        [
+         "Williams-Sonoma"
+        ],
+        [
+         "Sur La Table"
+        ],
+        [
+         "Target"
+        ],
+        [
+         "H-E-B"
+        ],
+        [
+         "Publix"
+        ],
+        [
+         "Harris Teeter"
+        ],
+        [
+         "Safeway"
+        ],
+        [
+         "Kroger"
+        ],
+        [
+         "Ralphs"
+        ],
+        [
+         "H Mart"
+        ],
+        [
+         "Costco"
+        ],
+        [
+         "Walmart"
+        ],
+        [
+         "Eataly"
+        ],
+        [
+         "Trader Joe's"
+        ],
+        [
+         "Aldi"
+        ]
+       ]
+      },
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 24,
+       "queries": 8,
+       "tokens": 3501,
+       "tries": 1,
+       "auc": 0.95,
+       "p5": 0.6,
+       "ranking": [
+        [
+         "Whole Foods Market"
+        ],
+        [
+         "Erewhon"
+        ],
+        [
+         "Thrive Market"
+        ],
+        [
+         "Central Market"
+        ],
+        [
+         "New Seasons Market"
+        ],
+        [
+         "Natural Grocers"
+        ],
+        [
+         "Sprouts Farmers Market"
+        ],
+        [
+         "The Fresh Market"
+        ],
+        [
+         "Wegmans"
+        ],
+        [
+         "Williams-Sonoma"
+        ],
+        [
+         "Sur La Table"
+        ],
+        [
+         "H-E-B"
+        ],
+        [
+         "Harris Teeter"
+        ],
+        [
+         "Publix"
+        ],
+        [
+         "Target"
+        ],
+        [
+         "Kroger"
+        ],
+        [
+         "Safeway"
+        ],
+        [
+         "Ralphs"
+        ],
+        [
+         "Walmart"
+        ],
+        [
+         "Costco"
+        ],
+        [
+         "Eataly"
+        ],
+        [
+         "H Mart"
+        ],
+        [
+         "Trader Joe's"
+        ],
+        [
+         "Aldi"
+        ]
+       ]
+      }
+     ]
+    }
+   }
+  }
+ },
+ "t3": {
+  "eligible": false,
+  "reason": "6 stockists in metro B seen by Insights (need 10); 43 signal venues in metro A",
+  "metroA": "nyc",
+  "metroB": "la",
+  "signal": 43,
+  "stockists": 6,
+  "decoys": 0,
+  "tried": {
+   "a": 80,
+   "b": 31
+  },
+  "coverage": {
+   "resolved": 9,
+   "visible": 6
+  }
+ },
+ "qlooCalls": 284
+}

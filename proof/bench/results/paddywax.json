@@ -1,0 +1,1815 @@
+{
+ "brand": "Paddywax",
+ "slug": "paddywax",
+ "set": "held-out",
+ "code": "c2e947b",
+ "ranAt": "2026-10-13T03:16:11.043Z",
+ "profile": {
+  "description": "Scented candles, reed diffusers and room sprays in decorative vessels (tinted glass, ceramic and novelty jars), grouped into fragrance collections, some made with artists and well-known franchises. About $15-50. Design-led and giftable, for people who like their home to smell good and look styled.",
+  "sells": "Decorative scented candles, reed diffusers, and room sprays",
+  "traits": [
+   "home fragrance",
+   "decorative vessels",
+   "giftable",
+   "artist collabs",
+   "design led"
+  ],
+  "lookalikes": [
+   "Rifle Paper Co.",
+   "Baggu",
+   "Urban Outfitters",
+   "Dusen Dusen"
+  ],
+  "retail": "home",
+  "tier": "mainstream",
+  "category": "G4",
+  "motions": [
+   "retail",
+   "partnership"
+  ]
+ },
+ "engine": {
+  "cold": {
+   "ownBrandInSeed": false,
+   "lookalikesInQloo": 3,
+   "tags": 0,
+   "crowds": 2,
+   "signal": 6,
+   "fallback": false
+  },
+  "known": {
+   "ownBrandInSeed": false,
+   "lookalikesInQloo": 3,
+   "tags": 0,
+   "crowds": 2,
+   "signal": 6,
+   "fallback": false
+  }
+ },
+ "t1": {
+  "eligible": true,
+  "metrosCovered": 25,
+  "truth": {
+   "nyc": {
+    "independents": 100,
+    "perMillion": 5.051
+   },
+   "la": {
+    "independents": 105,
+    "perMillion": 8.093
+   },
+   "chicago": {
+    "independents": 53,
+    "perMillion": 5.655
+   },
+   "dfw": {
+    "independents": 67,
+    "perMillion": 8.39
+   },
+   "houston": {
+    "independents": 32,
+    "perMillion": 4.299
+   },
+   "dc": {
+    "independents": 16,
+    "perMillion": 2.532
+   },
+   "philadelphia": {
+    "independents": 35,
+    "perMillion": 5.58
+   },
+   "atlanta": {
+    "independents": 24,
+    "perMillion": 3.836
+   },
+   "miami": {
+    "independents": 16,
+    "perMillion": 2.56
+   },
+   "phoenix": {
+    "independents": 26,
+    "perMillion": 5.17
+   },
+   "boston": {
+    "independents": 39,
+    "perMillion": 7.873
+   },
+   "riverside": {
+    "independents": 10,
+    "perMillion": 2.139
+   },
+   "sf": {
+    "independents": 43,
+    "perMillion": 9.257
+   },
+   "detroit": {
+    "independents": 14,
+    "perMillion": 3.199
+   },
+   "seattle": {
+    "independents": 64,
+    "perMillion": 15.756
+   },
+   "minneapolis": {
+    "independents": 19,
+    "perMillion": 5.116
+   },
+   "tampa": {
+    "independents": 5,
+    "perMillion": 1.513
+   },
+   "sandiego": {
+    "independents": 29,
+    "perMillion": 8.818
+   },
+   "denver": {
+    "independents": 18,
+    "perMillion": 5.995
+   },
+   "baltimore": {
+    "independents": 9,
+    "perMillion": 3.159
+   },
+   "orlando": {
+    "independents": 7,
+    "perMillion": 2.506
+   },
+   "charlotte": {
+    "independents": 4,
+    "perMillion": 1.445
+   },
+   "stlouis": {
+    "independents": 13,
+    "perMillion": 4.625
+   },
+   "sanantonio": {
+    "independents": 8,
+    "perMillion": 3.004
+   },
+   "austin": {
+    "independents": 29,
+    "perMillion": 11.951
+   }
+  },
+  "arms": {
+   "cold": {
+    "athena": {
+     "rho": 0.83,
+     "ndcg5": 0.914,
+     "ranking": [
+      [
+       "seattle"
+      ],
+      [
+       "sf"
+      ],
+      [
+       "austin"
+      ],
+      [
+       "minneapolis"
+      ],
+      [
+       "chicago"
+      ],
+      [
+       "la"
+      ],
+      [
+       "denver"
+      ],
+      [
+       "boston"
+      ],
+      [
+       "nyc"
+      ],
+      [
+       "sandiego"
+      ],
+      [
+       "dc"
+      ],
+      [
+       "philadelphia"
+      ],
+      [
+       "stlouis"
+      ],
+      [
+       "dfw"
+      ],
+      [
+       "phoenix"
+      ],
+      [
+       "atlanta"
+      ],
+      [
+       "baltimore"
+      ],
+      [
+       "charlotte"
+      ],
+      [
+       "detroit"
+      ],
+      [
+       "houston"
+      ],
+      [
+       "sanantonio"
+      ],
+      [
+       "tampa"
+      ],
+      [
+       "miami"
+      ],
+      [
+       "orlando"
+      ],
+      [
+       "riverside"
+      ]
+     ]
+    },
+    "naive": {
+     "rho": 0.152,
+     "ndcg5": 0.612,
+     "ranking": [
+      [
+       "la"
+      ],
+      [
+       "nyc"
+      ],
+      [
+       "austin"
+      ],
+      [
+       "dc"
+      ],
+      [
+       "boston"
+      ],
+      [
+       "miami"
+      ],
+      [
+       "chicago",
+       "dfw",
+       "houston",
+       "philadelphia",
+       "atlanta",
+       "phoenix",
+       "riverside",
+       "sf",
+       "detroit",
+       "seattle",
+       "minneapolis",
+       "tampa",
+       "sandiego",
+       "denver",
+       "baltimore",
+       "orlando",
+       "charlotte",
+       "stlouis",
+       "sanantonio"
+      ]
+     ]
+    },
+    "popularity": {
+     "rho": 0.172,
+     "ndcg5": 0.522,
+     "ranking": [
+      [
+       "nyc"
+      ],
+      [
+       "la"
+      ],
+      [
+       "chicago"
+      ],
+      [
+       "dfw"
+      ],
+      [
+       "houston"
+      ],
+      [
+       "dc"
+      ],
+      [
+       "philadelphia"
+      ],
+      [
+       "atlanta"
+      ],
+      [
+       "miami"
+      ],
+      [
+       "phoenix"
+      ],
+      [
+       "boston"
+      ],
+      [
+       "riverside"
+      ],
+      [
+       "sf"
+      ],
+      [
+       "detroit"
+      ],
+      [
+       "seattle"
+      ],
+      [
+       "minneapolis"
+      ],
+      [
+       "tampa"
+      ],
+      [
+       "sandiego"
+      ],
+      [
+       "denver"
+      ],
+      [
+       "baltimore"
+      ],
+      [
+       "stlouis"
+      ],
+      [
+       "orlando"
+      ],
+      [
+       "charlotte"
+      ],
+      [
+       "sanantonio"
+      ],
+      [
+       "austin"
+      ]
+     ]
+    },
+    "llm": {
+     "rho": 0.676,
+     "ndcg5": 0.886,
+     "samples": [
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 25,
+       "queries": 0,
+       "tokens": 2526,
+       "tries": 1,
+       "rho": 0.632,
+       "ndcg5": 0.895,
+       "ranking": [
+        [
+         "austin"
+        ],
+        [
+         "sf"
+        ],
+        [
+         "seattle"
+        ],
+        [
+         "denver"
+        ],
+        [
+         "boston"
+        ],
+        [
+         "minneapolis"
+        ],
+        [
+         "sandiego"
+        ],
+        [
+         "nyc"
+        ],
+        [
+         "la"
+        ],
+        [
+         "dc"
+        ],
+        [
+         "atlanta"
+        ],
+        [
+         "miami"
+        ],
+        [
+         "chicago"
+        ],
+        [
+         "philadelphia"
+        ],
+        [
+         "charlotte"
+        ],
+        [
+         "stlouis"
+        ],
+        [
+         "baltimore"
+        ],
+        [
+         "tampa"
+        ],
+        [
+         "orlando"
+        ],
+        [
+         "dfw"
+        ],
+        [
+         "houston"
+        ],
+        [
+         "detroit"
+        ],
+        [
+         "phoenix"
+        ],
+        [
+         "sanantonio"
+        ],
+        [
+         "riverside"
+        ]
+       ]
+      },
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 25,
+       "queries": 0,
+       "tokens": 1721,
+       "tries": 1,
+       "rho": 0.684,
+       "ndcg5": 0.867,
+       "ranking": [
+        [
+         "sf"
+        ],
+        [
+         "austin"
+        ],
+        [
+         "seattle"
+        ],
+        [
+         "denver"
+        ],
+        [
+         "boston"
+        ],
+        [
+         "la"
+        ],
+        [
+         "sandiego"
+        ],
+        [
+         "minneapolis"
+        ],
+        [
+         "miami"
+        ],
+        [
+         "nyc"
+        ],
+        [
+         "dc"
+        ],
+        [
+         "chicago"
+        ],
+        [
+         "atlanta"
+        ],
+        [
+         "philadelphia"
+        ],
+        [
+         "charlotte"
+        ],
+        [
+         "stlouis"
+        ],
+        [
+         "dfw"
+        ],
+        [
+         "baltimore"
+        ],
+        [
+         "tampa"
+        ],
+        [
+         "houston"
+        ],
+        [
+         "orlando"
+        ],
+        [
+         "sanantonio"
+        ],
+        [
+         "phoenix"
+        ],
+        [
+         "detroit"
+        ],
+        [
+         "riverside"
+        ]
+       ]
+      },
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 25,
+       "queries": 0,
+       "tokens": 2502,
+       "tries": 1,
+       "rho": 0.711,
+       "ndcg5": 0.895,
+       "ranking": [
+        [
+         "austin"
+        ],
+        [
+         "sf"
+        ],
+        [
+         "seattle"
+        ],
+        [
+         "denver"
+        ],
+        [
+         "boston"
+        ],
+        [
+         "minneapolis"
+        ],
+        [
+         "nyc"
+        ],
+        [
+         "la"
+        ],
+        [
+         "dc"
+        ],
+        [
+         "sandiego"
+        ],
+        [
+         "chicago"
+        ],
+        [
+         "philadelphia"
+        ],
+        [
+         "miami"
+        ],
+        [
+         "atlanta"
+        ],
+        [
+         "stlouis"
+        ],
+        [
+         "baltimore"
+        ],
+        [
+         "dfw"
+        ],
+        [
+         "houston"
+        ],
+        [
+         "charlotte"
+        ],
+        [
+         "tampa"
+        ],
+        [
+         "orlando"
+        ],
+        [
+         "detroit"
+        ],
+        [
+         "phoenix"
+        ],
+        [
+         "sanantonio"
+        ],
+        [
+         "riverside"
+        ]
+       ]
+      }
+     ]
+    },
+    "llmSearch": {
+     "rho": 0.463,
+     "ndcg5": 0.696,
+     "samples": [
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 25,
+       "queries": 4,
+       "tokens": 5643,
+       "tries": 1,
+       "rho": 0.582,
+       "ndcg5": 0.845,
+       "ranking": [
+        [
+         "sf"
+        ],
+        [
+         "seattle"
+        ],
+        [
+         "austin"
+        ],
+        [
+         "boston"
+        ],
+        [
+         "miami"
+        ],
+        [
+         "nyc"
+        ],
+        [
+         "denver"
+        ],
+        [
+         "la"
+        ],
+        [
+         "sandiego"
+        ],
+        [
+         "minneapolis"
+        ],
+        [
+         "atlanta"
+        ],
+        [
+         "chicago"
+        ],
+        [
+         "dc"
+        ],
+        [
+         "philadelphia"
+        ],
+        [
+         "orlando"
+        ],
+        [
+         "tampa"
+        ],
+        [
+         "detroit"
+        ],
+        [
+         "stlouis"
+        ],
+        [
+         "baltimore"
+        ],
+        [
+         "charlotte"
+        ],
+        [
+         "dfw"
+        ],
+        [
+         "houston"
+        ],
+        [
+         "sanantonio"
+        ],
+        [
+         "phoenix"
+        ],
+        [
+         "riverside"
+        ]
+       ]
+      },
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 25,
+       "queries": 16,
+       "tokens": 6254,
+       "tries": 1,
+       "rho": 0.385,
+       "ndcg5": 0.703,
+       "ranking": [
+        [
+         "sf"
+        ],
+        [
+         "seattle"
+        ],
+        [
+         "orlando"
+        ],
+        [
+         "miami"
+        ],
+        [
+         "boston"
+        ],
+        [
+         "la"
+        ],
+        [
+         "denver"
+        ],
+        [
+         "nyc"
+        ],
+        [
+         "chicago"
+        ],
+        [
+         "atlanta"
+        ],
+        [
+         "austin"
+        ],
+        [
+         "minneapolis"
+        ],
+        [
+         "dc"
+        ],
+        [
+         "sandiego"
+        ],
+        [
+         "tampa"
+        ],
+        [
+         "philadelphia"
+        ],
+        [
+         "stlouis"
+        ],
+        [
+         "baltimore"
+        ],
+        [
+         "charlotte"
+        ],
+        [
+         "detroit"
+        ],
+        [
+         "dfw"
+        ],
+        [
+         "houston"
+        ],
+        [
+         "sanantonio"
+        ],
+        [
+         "phoenix"
+        ],
+        [
+         "riverside"
+        ]
+       ]
+      },
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 25,
+       "queries": 16,
+       "tokens": 10566,
+       "tries": 1,
+       "rho": 0.422,
+       "ndcg5": 0.538,
+       "ranking": [
+        [
+         "orlando"
+        ],
+        [
+         "sf"
+        ],
+        [
+         "seattle"
+        ],
+        [
+         "miami"
+        ],
+        [
+         "atlanta"
+        ],
+        [
+         "austin"
+        ],
+        [
+         "boston"
+        ],
+        [
+         "denver"
+        ],
+        [
+         "sandiego"
+        ],
+        [
+         "minneapolis"
+        ],
+        [
+         "la"
+        ],
+        [
+         "nyc"
+        ],
+        [
+         "chicago"
+        ],
+        [
+         "dc"
+        ],
+        [
+         "stlouis"
+        ],
+        [
+         "tampa"
+        ],
+        [
+         "dfw"
+        ],
+        [
+         "philadelphia"
+        ],
+        [
+         "houston"
+        ],
+        [
+         "charlotte"
+        ],
+        [
+         "sanantonio"
+        ],
+        [
+         "baltimore"
+        ],
+        [
+         "detroit"
+        ],
+        [
+         "phoenix"
+        ],
+        [
+         "riverside"
+        ]
+       ]
+      }
+     ]
+    }
+   },
+   "known": {
+    "athena": {
+     "rho": 0.83,
+     "ndcg5": 0.914,
+     "ranking": [
+      [
+       "seattle"
+      ],
+      [
+       "sf"
+      ],
+      [
+       "austin"
+      ],
+      [
+       "minneapolis"
+      ],
+      [
+       "chicago"
+      ],
+      [
+       "la"
+      ],
+      [
+       "denver"
+      ],
+      [
+       "boston"
+      ],
+      [
+       "nyc"
+      ],
+      [
+       "sandiego"
+      ],
+      [
+       "dc"
+      ],
+      [
+       "philadelphia"
+      ],
+      [
+       "stlouis"
+      ],
+      [
+       "dfw"
+      ],
+      [
+       "phoenix"
+      ],
+      [
+       "atlanta"
+      ],
+      [
+       "baltimore"
+      ],
+      [
+       "charlotte"
+      ],
+      [
+       "detroit"
+      ],
+      [
+       "houston"
+      ],
+      [
+       "sanantonio"
+      ],
+      [
+       "tampa"
+      ],
+      [
+       "miami"
+      ],
+      [
+       "orlando"
+      ],
+      [
+       "riverside"
+      ]
+     ]
+    },
+    "naive": {
+     "rho": 0.152,
+     "ndcg5": 0.612,
+     "ranking": [
+      [
+       "la"
+      ],
+      [
+       "nyc"
+      ],
+      [
+       "austin"
+      ],
+      [
+       "dc"
+      ],
+      [
+       "boston"
+      ],
+      [
+       "miami"
+      ],
+      [
+       "chicago",
+       "dfw",
+       "houston",
+       "philadelphia",
+       "atlanta",
+       "phoenix",
+       "riverside",
+       "sf",
+       "detroit",
+       "seattle",
+       "minneapolis",
+       "tampa",
+       "sandiego",
+       "denver",
+       "baltimore",
+       "orlando",
+       "charlotte",
+       "stlouis",
+       "sanantonio"
+      ]
+     ]
+    },
+    "popularity": {
+     "rho": 0.172,
+     "ndcg5": 0.522,
+     "ranking": [
+      [
+       "nyc"
+      ],
+      [
+       "la"
+      ],
+      [
+       "chicago"
+      ],
+      [
+       "dfw"
+      ],
+      [
+       "houston"
+      ],
+      [
+       "dc"
+      ],
+      [
+       "philadelphia"
+      ],
+      [
+       "atlanta"
+      ],
+      [
+       "miami"
+      ],
+      [
+       "phoenix"
+      ],
+      [
+       "boston"
+      ],
+      [
+       "riverside"
+      ],
+      [
+       "sf"
+      ],
+      [
+       "detroit"
+      ],
+      [
+       "seattle"
+      ],
+      [
+       "minneapolis"
+      ],
+      [
+       "tampa"
+      ],
+      [
+       "sandiego"
+      ],
+      [
+       "denver"
+      ],
+      [
+       "baltimore"
+      ],
+      [
+       "stlouis"
+      ],
+      [
+       "orlando"
+      ],
+      [
+       "charlotte"
+      ],
+      [
+       "sanantonio"
+      ],
+      [
+       "austin"
+      ]
+     ]
+    },
+    "llm": {
+     "rho": 0.675,
+     "ndcg5": 0.873,
+     "samples": [
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 25,
+       "queries": 0,
+       "tokens": 2516,
+       "tries": 1,
+       "rho": 0.66,
+       "ndcg5": 0.865,
+       "ranking": [
+        [
+         "austin"
+        ],
+        [
+         "sf"
+        ],
+        [
+         "seattle"
+        ],
+        [
+         "denver"
+        ],
+        [
+         "minneapolis"
+        ],
+        [
+         "boston"
+        ],
+        [
+         "sandiego"
+        ],
+        [
+         "la"
+        ],
+        [
+         "nyc"
+        ],
+        [
+         "dc"
+        ],
+        [
+         "atlanta"
+        ],
+        [
+         "miami"
+        ],
+        [
+         "chicago"
+        ],
+        [
+         "philadelphia"
+        ],
+        [
+         "charlotte"
+        ],
+        [
+         "stlouis"
+        ],
+        [
+         "baltimore"
+        ],
+        [
+         "orlando"
+        ],
+        [
+         "dfw"
+        ],
+        [
+         "houston"
+        ],
+        [
+         "tampa"
+        ],
+        [
+         "phoenix"
+        ],
+        [
+         "sanantonio"
+        ],
+        [
+         "detroit"
+        ],
+        [
+         "riverside"
+        ]
+       ]
+      },
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 25,
+       "queries": 0,
+       "tokens": 2277,
+       "tries": 1,
+       "rho": 0.698,
+       "ndcg5": 0.867,
+       "ranking": [
+        [
+         "sf"
+        ],
+        [
+         "austin"
+        ],
+        [
+         "seattle"
+        ],
+        [
+         "denver"
+        ],
+        [
+         "boston"
+        ],
+        [
+         "sandiego"
+        ],
+        [
+         "la"
+        ],
+        [
+         "nyc"
+        ],
+        [
+         "minneapolis"
+        ],
+        [
+         "dc"
+        ],
+        [
+         "chicago"
+        ],
+        [
+         "miami"
+        ],
+        [
+         "atlanta"
+        ],
+        [
+         "philadelphia"
+        ],
+        [
+         "charlotte"
+        ],
+        [
+         "stlouis"
+        ],
+        [
+         "baltimore"
+        ],
+        [
+         "dfw"
+        ],
+        [
+         "houston"
+        ],
+        [
+         "tampa"
+        ],
+        [
+         "orlando"
+        ],
+        [
+         "detroit"
+        ],
+        [
+         "phoenix"
+        ],
+        [
+         "sanantonio"
+        ],
+        [
+         "riverside"
+        ]
+       ]
+      },
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 25,
+       "queries": 0,
+       "tokens": 2287,
+       "tries": 1,
+       "rho": 0.666,
+       "ndcg5": 0.889,
+       "ranking": [
+        [
+         "austin"
+        ],
+        [
+         "seattle"
+        ],
+        [
+         "sf"
+        ],
+        [
+         "denver"
+        ],
+        [
+         "minneapolis"
+        ],
+        [
+         "boston"
+        ],
+        [
+         "sandiego"
+        ],
+        [
+         "dc"
+        ],
+        [
+         "la"
+        ],
+        [
+         "nyc"
+        ],
+        [
+         "atlanta"
+        ],
+        [
+         "chicago"
+        ],
+        [
+         "miami"
+        ],
+        [
+         "philadelphia"
+        ],
+        [
+         "charlotte"
+        ],
+        [
+         "stlouis"
+        ],
+        [
+         "baltimore"
+        ],
+        [
+         "dfw"
+        ],
+        [
+         "houston"
+        ],
+        [
+         "tampa"
+        ],
+        [
+         "orlando"
+        ],
+        [
+         "detroit"
+        ],
+        [
+         "phoenix"
+        ],
+        [
+         "sanantonio"
+        ],
+        [
+         "riverside"
+        ]
+       ]
+      }
+     ]
+    },
+    "llmSearch": {
+     "rho": 0.635,
+     "ndcg5": 0.861,
+     "samples": [
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 25,
+       "queries": 9,
+       "tokens": 4840,
+       "tries": 1,
+       "rho": 0.552,
+       "ndcg5": 0.789,
+       "ranking": [
+        [
+         "sf"
+        ],
+        [
+         "seattle"
+        ],
+        [
+         "miami"
+        ],
+        [
+         "austin"
+        ],
+        [
+         "minneapolis"
+        ],
+        [
+         "denver"
+        ],
+        [
+         "la"
+        ],
+        [
+         "boston"
+        ],
+        [
+         "sandiego"
+        ],
+        [
+         "atlanta"
+        ],
+        [
+         "nyc"
+        ],
+        [
+         "orlando"
+        ],
+        [
+         "chicago"
+        ],
+        [
+         "dc"
+        ],
+        [
+         "philadelphia"
+        ],
+        [
+         "stlouis"
+        ],
+        [
+         "baltimore"
+        ],
+        [
+         "tampa"
+        ],
+        [
+         "charlotte"
+        ],
+        [
+         "dfw"
+        ],
+        [
+         "detroit"
+        ],
+        [
+         "houston"
+        ],
+        [
+         "sanantonio"
+        ],
+        [
+         "phoenix"
+        ],
+        [
+         "riverside"
+        ]
+       ]
+      },
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 25,
+       "queries": 0,
+       "tokens": 2853,
+       "tries": 1,
+       "rho": 0.669,
+       "ndcg5": 0.895,
+       "ranking": [
+        [
+         "austin"
+        ],
+        [
+         "sf"
+        ],
+        [
+         "seattle"
+        ],
+        [
+         "denver"
+        ],
+        [
+         "boston"
+        ],
+        [
+         "minneapolis"
+        ],
+        [
+         "nyc"
+        ],
+        [
+         "sandiego"
+        ],
+        [
+         "la"
+        ],
+        [
+         "dc"
+        ],
+        [
+         "philadelphia"
+        ],
+        [
+         "chicago"
+        ],
+        [
+         "atlanta"
+        ],
+        [
+         "stlouis"
+        ],
+        [
+         "baltimore"
+        ],
+        [
+         "miami"
+        ],
+        [
+         "charlotte"
+        ],
+        [
+         "orlando"
+        ],
+        [
+         "tampa"
+        ],
+        [
+         "dfw"
+        ],
+        [
+         "houston"
+        ],
+        [
+         "sanantonio"
+        ],
+        [
+         "phoenix"
+        ],
+        [
+         "detroit"
+        ],
+        [
+         "riverside"
+        ]
+       ]
+      },
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 25,
+       "queries": 0,
+       "tokens": 2479,
+       "tries": 1,
+       "rho": 0.682,
+       "ndcg5": 0.897,
+       "ranking": [
+        [
+         "austin"
+        ],
+        [
+         "sf"
+        ],
+        [
+         "seattle"
+        ],
+        [
+         "boston"
+        ],
+        [
+         "denver"
+        ],
+        [
+         "minneapolis"
+        ],
+        [
+         "sandiego"
+        ],
+        [
+         "nyc"
+        ],
+        [
+         "miami"
+        ],
+        [
+         "la"
+        ],
+        [
+         "dc"
+        ],
+        [
+         "chicago"
+        ],
+        [
+         "philadelphia"
+        ],
+        [
+         "atlanta"
+        ],
+        [
+         "stlouis"
+        ],
+        [
+         "baltimore"
+        ],
+        [
+         "charlotte"
+        ],
+        [
+         "detroit"
+        ],
+        [
+         "dfw"
+        ],
+        [
+         "houston"
+        ],
+        [
+         "tampa"
+        ],
+        [
+         "orlando"
+        ],
+        [
+         "phoenix"
+        ],
+        [
+         "sanantonio"
+        ],
+        [
+         "riverside"
+        ]
+       ]
+      }
+     ]
+    }
+   }
+  }
+ },
+ "t2": {
+  "category": "home",
+  "candidates": [
+   "West Elm",
+   "Crate & Barrel",
+   "Anthropologie",
+   "Williams-Sonoma",
+   "Sur La Table",
+   "Nordstrom",
+   "Goop",
+   "Urban Outfitters",
+   "Free People",
+   "CB2",
+   "Pottery Barn",
+   "Target",
+   "Walmart",
+   "Costco",
+   "Kroger"
+  ],
+  "unresolved": [],
+  "stocked": [],
+  "eligible": false
+ },
+ "t3": {
+  "eligible": true,
+  "metroA": "la",
+  "metroB": "nyc",
+  "signal": 42,
+  "stockists": 10,
+  "decoys": 10,
+  "tried": {
+   "a": 80,
+   "b": 100
+  },
+  "coverage": {
+   "resolved": 54,
+   "visible": 10
+  },
+  "match": {
+   "jaccard": 0.607,
+   "dPop": 0.009,
+   "bands": {
+    "0.05": 2,
+    "0.01": 8
+   }
+  },
+  "arms": {
+   "cold": {
+    "athena": {
+     "auc": 0.64,
+     "scoredShare": 0.85
+    },
+    "popularity": {
+     "auc": 0.485
+    },
+    "llm": {
+     "auc": 0.82,
+     "samples": [
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 20,
+       "queries": 0,
+       "tokens": 2586,
+       "tries": 1,
+       "auc": 0.82
+      },
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 20,
+       "queries": 0,
+       "tokens": 3346,
+       "tries": 1,
+       "auc": 0.82
+      },
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 20,
+       "queries": 0,
+       "tokens": 3183,
+       "tries": 1,
+       "auc": 0.82
+      }
+     ]
+    },
+    "llmSearch": {
+     "auc": 0.797,
+     "samples": [
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 20,
+       "queries": 4,
+       "tokens": 4478,
+       "tries": 1,
+       "auc": 0.82
+      },
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 20,
+       "queries": 8,
+       "tokens": 3123,
+       "tries": 1,
+       "auc": 0.78
+      },
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 20,
+       "queries": 4,
+       "tokens": 4076,
+       "tries": 1,
+       "auc": 0.79
+      }
+     ]
+    }
+   },
+   "known": {
+    "athena": {
+     "auc": 0.64,
+     "scoredShare": 0.85
+    },
+    "popularity": {
+     "auc": 0.485
+    },
+    "llm": {
+     "auc": 0.83,
+     "samples": [
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 20,
+       "queries": 0,
+       "tokens": 3114,
+       "tries": 1,
+       "auc": 0.84
+      },
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 20,
+       "queries": 0,
+       "tokens": 3026,
+       "tries": 1,
+       "auc": 0.84
+      },
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 20,
+       "queries": 0,
+       "tokens": 2848,
+       "tries": 1,
+       "auc": 0.81
+      }
+     ]
+    },
+    "llmSearch": {
+     "auc": 0.823,
+     "samples": [
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 20,
+       "queries": 12,
+       "tokens": 3719,
+       "tries": 1,
+       "auc": 0.84
+      },
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 20,
+       "queries": 6,
+       "tokens": 3844,
+       "tries": 1,
+       "auc": 0.78
+      },
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 20,
+       "queries": 12,
+       "tokens": 3491,
+       "tries": 1,
+       "auc": 0.85
+      }
+     ]
+    }
+   }
+  }
+ },
+ "qlooCalls": 460
+}

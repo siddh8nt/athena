@@ -1,0 +1,2725 @@
+{
+ "brand": "Juniper Ridge",
+ "slug": "juniper-ridge",
+ "set": "held-out",
+ "code": "c2e947b",
+ "ranAt": "2026-10-13T03:46:32.822Z",
+ "profile": {
+  "description": "Wild-harvested botanical fragrances and body care: colognes, soaps, deodorants, incense and room sprays distilled from plants gathered in mountains and forests, in simple, outdoorsy packaging. About $15-100. Unisex and natural, for people who love hiking, the outdoors and scents that smell like a real place.",
+  "sells": "Wild-harvested botanical fragrances and body care",
+  "traits": [
+   "botanical fragrance",
+   "wild harvested",
+   "natural body care",
+   "outdoorsy",
+   "premium personal care"
+  ],
+  "lookalikes": [
+   "Patagonia",
+   "Ursa Major",
+   "Aesop",
+   "Filson"
+  ],
+  "retail": "beauty",
+  "tier": "premium",
+  "category": "G3",
+  "motions": [
+   "retail",
+   "partnership"
+  ]
+ },
+ "engine": {
+  "cold": {
+   "ownBrandInSeed": false,
+   "lookalikesInQloo": 3,
+   "tags": 0,
+   "crowds": 3,
+   "signal": 6,
+   "fallback": false
+  },
+  "known": {
+   "ownBrandInSeed": true,
+   "lookalikesInQloo": 3,
+   "tags": 0,
+   "crowds": 2,
+   "signal": 6,
+   "fallback": false
+  }
+ },
+ "t1": {
+  "eligible": true,
+  "metrosCovered": 19,
+  "truth": {
+   "nyc": {
+    "independents": 12,
+    "perMillion": 0.606
+   },
+   "la": {
+    "independents": 22,
+    "perMillion": 1.696
+   },
+   "chicago": {
+    "independents": 2,
+    "perMillion": 0.213
+   },
+   "dfw": {
+    "independents": 2,
+    "perMillion": 0.25
+   },
+   "houston": {
+    "independents": 0,
+    "perMillion": 0
+   },
+   "dc": {
+    "independents": 4,
+    "perMillion": 0.633
+   },
+   "philadelphia": {
+    "independents": 9,
+    "perMillion": 1.435
+   },
+   "atlanta": {
+    "independents": 1,
+    "perMillion": 0.16
+   },
+   "miami": {
+    "independents": 1,
+    "perMillion": 0.16
+   },
+   "phoenix": {
+    "independents": 2,
+    "perMillion": 0.398
+   },
+   "boston": {
+    "independents": 4,
+    "perMillion": 0.808
+   },
+   "riverside": {
+    "independents": 0,
+    "perMillion": 0
+   },
+   "sf": {
+    "independents": 31,
+    "perMillion": 6.674
+   },
+   "detroit": {
+    "independents": 3,
+    "perMillion": 0.685
+   },
+   "seattle": {
+    "independents": 9,
+    "perMillion": 2.216
+   },
+   "minneapolis": {
+    "independents": 10,
+    "perMillion": 2.693
+   },
+   "tampa": {
+    "independents": 1,
+    "perMillion": 0.303
+   },
+   "sandiego": {
+    "independents": 0,
+    "perMillion": 0
+   },
+   "denver": {
+    "independents": 4,
+    "perMillion": 1.332
+   },
+   "baltimore": {
+    "independents": 2,
+    "perMillion": 0.702
+   },
+   "orlando": {
+    "independents": 0,
+    "perMillion": 0
+   },
+   "charlotte": {
+    "independents": 0,
+    "perMillion": 0
+   },
+   "stlouis": {
+    "independents": 1,
+    "perMillion": 0.356
+   },
+   "sanantonio": {
+    "independents": 0,
+    "perMillion": 0
+   },
+   "austin": {
+    "independents": 3,
+    "perMillion": 1.236
+   }
+  },
+  "arms": {
+   "cold": {
+    "athena": {
+     "rho": 0.641,
+     "ndcg5": 0.783,
+     "ranking": [
+      [
+       "seattle"
+      ],
+      [
+       "sf"
+      ],
+      [
+       "minneapolis"
+      ],
+      [
+       "denver"
+      ],
+      [
+       "chicago"
+      ],
+      [
+       "la"
+      ],
+      [
+       "nyc"
+      ],
+      [
+       "boston"
+      ],
+      [
+       "philadelphia"
+      ],
+      [
+       "sandiego"
+      ],
+      [
+       "dc"
+      ],
+      [
+       "austin"
+      ],
+      [
+       "houston"
+      ],
+      [
+       "sanantonio"
+      ],
+      [
+       "phoenix"
+      ],
+      [
+       "tampa"
+      ],
+      [
+       "atlanta"
+      ],
+      [
+       "dfw"
+      ],
+      [
+       "riverside"
+      ],
+      [
+       "detroit"
+      ],
+      [
+       "baltimore"
+      ],
+      [
+       "stlouis"
+      ],
+      [
+       "charlotte"
+      ],
+      [
+       "orlando"
+      ],
+      [
+       "miami"
+      ]
+     ]
+    },
+    "naive": {
+     "rho": 0.234,
+     "ndcg5": 0.644,
+     "ranking": [
+      [
+       "seattle"
+      ],
+      [
+       "sf"
+      ],
+      [
+       "sandiego"
+      ],
+      [
+       "nyc"
+      ],
+      [
+       "la",
+       "chicago",
+       "dfw",
+       "houston",
+       "dc",
+       "philadelphia",
+       "atlanta",
+       "miami",
+       "phoenix",
+       "boston",
+       "riverside",
+       "detroit",
+       "minneapolis",
+       "tampa",
+       "denver",
+       "baltimore",
+       "orlando",
+       "charlotte",
+       "stlouis",
+       "sanantonio",
+       "austin"
+      ]
+     ]
+    },
+    "popularity": {
+     "rho": 0.101,
+     "ndcg5": 0.176,
+     "ranking": [
+      [
+       "nyc"
+      ],
+      [
+       "la"
+      ],
+      [
+       "chicago"
+      ],
+      [
+       "dfw"
+      ],
+      [
+       "houston"
+      ],
+      [
+       "dc"
+      ],
+      [
+       "philadelphia"
+      ],
+      [
+       "atlanta"
+      ],
+      [
+       "miami"
+      ],
+      [
+       "phoenix"
+      ],
+      [
+       "boston"
+      ],
+      [
+       "riverside"
+      ],
+      [
+       "sf"
+      ],
+      [
+       "detroit"
+      ],
+      [
+       "seattle"
+      ],
+      [
+       "minneapolis"
+      ],
+      [
+       "tampa"
+      ],
+      [
+       "sandiego"
+      ],
+      [
+       "denver"
+      ],
+      [
+       "baltimore"
+      ],
+      [
+       "stlouis"
+      ],
+      [
+       "orlando"
+      ],
+      [
+       "charlotte"
+      ],
+      [
+       "sanantonio"
+      ],
+      [
+       "austin"
+      ]
+     ]
+    },
+    "llm": {
+     "rho": 0.717,
+     "ndcg5": 0.654,
+     "samples": [
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 25,
+       "queries": 0,
+       "tokens": 2294,
+       "tries": 1,
+       "rho": 0.738,
+       "ndcg5": 0.608,
+       "ranking": [
+        [
+         "seattle"
+        ],
+        [
+         "denver"
+        ],
+        [
+         "austin"
+        ],
+        [
+         "sf"
+        ],
+        [
+         "sandiego"
+        ],
+        [
+         "minneapolis"
+        ],
+        [
+         "la"
+        ],
+        [
+         "boston"
+        ],
+        [
+         "philadelphia"
+        ],
+        [
+         "chicago"
+        ],
+        [
+         "nyc"
+        ],
+        [
+         "dc"
+        ],
+        [
+         "baltimore"
+        ],
+        [
+         "stlouis"
+        ],
+        [
+         "detroit"
+        ],
+        [
+         "atlanta"
+        ],
+        [
+         "charlotte"
+        ],
+        [
+         "miami"
+        ],
+        [
+         "dfw"
+        ],
+        [
+         "houston"
+        ],
+        [
+         "phoenix"
+        ],
+        [
+         "sanantonio"
+        ],
+        [
+         "tampa"
+        ],
+        [
+         "orlando"
+        ],
+        [
+         "riverside"
+        ]
+       ]
+      },
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 25,
+       "queries": 0,
+       "tokens": 2448,
+       "tries": 1,
+       "rho": 0.724,
+       "ndcg5": 0.643,
+       "ranking": [
+        [
+         "seattle"
+        ],
+        [
+         "denver"
+        ],
+        [
+         "sf"
+        ],
+        [
+         "austin"
+        ],
+        [
+         "sandiego"
+        ],
+        [
+         "minneapolis"
+        ],
+        [
+         "la"
+        ],
+        [
+         "boston"
+        ],
+        [
+         "nyc"
+        ],
+        [
+         "chicago"
+        ],
+        [
+         "philadelphia"
+        ],
+        [
+         "dc"
+        ],
+        [
+         "atlanta"
+        ],
+        [
+         "baltimore"
+        ],
+        [
+         "detroit"
+        ],
+        [
+         "charlotte"
+        ],
+        [
+         "stlouis"
+        ],
+        [
+         "phoenix"
+        ],
+        [
+         "miami"
+        ],
+        [
+         "dfw"
+        ],
+        [
+         "houston"
+        ],
+        [
+         "sanantonio"
+        ],
+        [
+         "tampa"
+        ],
+        [
+         "orlando"
+        ],
+        [
+         "riverside"
+        ]
+       ]
+      },
+      {
+       "model": "gemini-3.8-flash",
+       "parsed": 25,
+       "queries": 0,
+       "tokens": 1661,
+       "tries": 3,
+       "rho": 0.688,
+       "ndcg5": 0.71,
+       "ranking": [
+        [
+         "denver"
+        ],
+        [
+         "seattle"
+        ],
+        [
+         "sf"
+        ],
+        [
+         "austin"
+        ],
+        [
+         "minneapolis"
+        ],
+        [
+         "sandiego"
+        ],
+        [
+         "boston"
+        ],
+        [
+         "la"
+        ],
+        [
+         "nyc"
+        ],
+        [
+         "dc"
+        ],
+        [
+         "chicago"
+        ],
+        [
+         "philadelphia"
+        ],
+        [
+         "atlanta"
+        ],
+        [
+         "phoenix"
+        ],
+        [
+         "miami"
+        ],
+        [
+         "charlotte"
+        ],
+        [
+         "stlouis"
+        ],
+        [
+         "baltimore"
+        ],
+        [
+         "dfw"
+        ],
+        [
+         "houston"
+        ],
+        [
+         "detroit"
+        ],
+        [
+         "tampa"
+        ],
+        [
+         "orlando"
+        ],
+        [
+         "sanantonio"
+        ],
+        [
+         "riverside"
+        ]
+       ]
+      }
+     ]
+    },
+    "llmSearch": {
+     "rho": 0.749,
+     "ndcg5": 0.708,
+     "samples": [
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 25,
+       "queries": 0,
+       "tokens": 2895,
+       "tries": 1,
+       "rho": 0.776,
+       "ndcg5": 0.74,
+       "ranking": [
+        [
+         "seattle"
+        ],
+        [
+         "denver"
+        ],
+        [
+         "sf"
+        ],
+        [
+         "austin"
+        ],
+        [
+         "minneapolis"
+        ],
+        [
+         "sandiego"
+        ],
+        [
+         "la"
+        ],
+        [
+         "boston"
+        ],
+        [
+         "nyc"
+        ],
+        [
+         "philadelphia"
+        ],
+        [
+         "chicago"
+        ],
+        [
+         "dc"
+        ],
+        [
+         "baltimore"
+        ],
+        [
+         "atlanta"
+        ],
+        [
+         "detroit"
+        ],
+        [
+         "stlouis"
+        ],
+        [
+         "charlotte"
+        ],
+        [
+         "phoenix"
+        ],
+        [
+         "miami"
+        ],
+        [
+         "tampa"
+        ],
+        [
+         "dfw"
+        ],
+        [
+         "orlando"
+        ],
+        [
+         "houston"
+        ],
+        [
+         "sanantonio"
+        ],
+        [
+         "riverside"
+        ]
+       ]
+      },
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 25,
+       "queries": 0,
+       "tokens": 2726,
+       "tries": 1,
+       "rho": 0.703,
+       "ndcg5": 0.643,
+       "ranking": [
+        [
+         "seattle"
+        ],
+        [
+         "denver"
+        ],
+        [
+         "sf"
+        ],
+        [
+         "austin"
+        ],
+        [
+         "sandiego"
+        ],
+        [
+         "la"
+        ],
+        [
+         "minneapolis"
+        ],
+        [
+         "boston"
+        ],
+        [
+         "nyc"
+        ],
+        [
+         "chicago"
+        ],
+        [
+         "philadelphia"
+        ],
+        [
+         "dc"
+        ],
+        [
+         "atlanta"
+        ],
+        [
+         "charlotte"
+        ],
+        [
+         "baltimore"
+        ],
+        [
+         "stlouis"
+        ],
+        [
+         "detroit"
+        ],
+        [
+         "phoenix"
+        ],
+        [
+         "dfw"
+        ],
+        [
+         "houston"
+        ],
+        [
+         "miami"
+        ],
+        [
+         "tampa"
+        ],
+        [
+         "sanantonio"
+        ],
+        [
+         "orlando"
+        ],
+        [
+         "riverside"
+        ]
+       ]
+      },
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 25,
+       "queries": 0,
+       "tokens": 3189,
+       "tries": 1,
+       "rho": 0.767,
+       "ndcg5": 0.74,
+       "ranking": [
+        [
+         "seattle"
+        ],
+        [
+         "denver"
+        ],
+        [
+         "sf"
+        ],
+        [
+         "austin"
+        ],
+        [
+         "minneapolis"
+        ],
+        [
+         "sandiego"
+        ],
+        [
+         "boston"
+        ],
+        [
+         "la"
+        ],
+        [
+         "nyc"
+        ],
+        [
+         "philadelphia"
+        ],
+        [
+         "dc"
+        ],
+        [
+         "chicago"
+        ],
+        [
+         "baltimore"
+        ],
+        [
+         "atlanta"
+        ],
+        [
+         "stlouis"
+        ],
+        [
+         "detroit"
+        ],
+        [
+         "charlotte"
+        ],
+        [
+         "phoenix"
+        ],
+        [
+         "miami"
+        ],
+        [
+         "dfw"
+        ],
+        [
+         "houston"
+        ],
+        [
+         "tampa"
+        ],
+        [
+         "orlando"
+        ],
+        [
+         "sanantonio"
+        ],
+        [
+         "riverside"
+        ]
+       ]
+      }
+     ]
+    }
+   },
+   "known": {
+    "athena": {
+     "rho": 0.69,
+     "ndcg5": 0.728,
+     "ranking": [
+      [
+       "seattle"
+      ],
+      [
+       "sf"
+      ],
+      [
+       "denver"
+      ],
+      [
+       "chicago"
+      ],
+      [
+       "la"
+      ],
+      [
+       "nyc"
+      ],
+      [
+       "minneapolis"
+      ],
+      [
+       "austin"
+      ],
+      [
+       "boston"
+      ],
+      [
+       "sandiego"
+      ],
+      [
+       "dc"
+      ],
+      [
+       "dfw"
+      ],
+      [
+       "philadelphia"
+      ],
+      [
+       "houston"
+      ],
+      [
+       "baltimore"
+      ],
+      [
+       "detroit"
+      ],
+      [
+       "sanantonio"
+      ],
+      [
+       "phoenix"
+      ],
+      [
+       "atlanta"
+      ],
+      [
+       "stlouis"
+      ],
+      [
+       "miami"
+      ],
+      [
+       "charlotte"
+      ],
+      [
+       "tampa"
+      ],
+      [
+       "orlando"
+      ],
+      [
+       "riverside"
+      ]
+     ]
+    },
+    "naive": {
+     "rho": 0.454,
+     "ndcg5": 0.822,
+     "ranking": [
+      [
+       "sf"
+      ],
+      [
+       "seattle"
+      ],
+      [
+       "nyc",
+       "la",
+       "chicago",
+       "dfw",
+       "houston",
+       "dc",
+       "philadelphia",
+       "atlanta",
+       "miami",
+       "phoenix",
+       "boston",
+       "riverside",
+       "detroit",
+       "minneapolis",
+       "tampa",
+       "sandiego",
+       "denver",
+       "baltimore",
+       "orlando",
+       "charlotte",
+       "stlouis",
+       "sanantonio",
+       "austin"
+      ]
+     ]
+    },
+    "popularity": {
+     "rho": 0.101,
+     "ndcg5": 0.176,
+     "ranking": [
+      [
+       "nyc"
+      ],
+      [
+       "la"
+      ],
+      [
+       "chicago"
+      ],
+      [
+       "dfw"
+      ],
+      [
+       "houston"
+      ],
+      [
+       "dc"
+      ],
+      [
+       "philadelphia"
+      ],
+      [
+       "atlanta"
+      ],
+      [
+       "miami"
+      ],
+      [
+       "phoenix"
+      ],
+      [
+       "boston"
+      ],
+      [
+       "riverside"
+      ],
+      [
+       "sf"
+      ],
+      [
+       "detroit"
+      ],
+      [
+       "seattle"
+      ],
+      [
+       "minneapolis"
+      ],
+      [
+       "tampa"
+      ],
+      [
+       "sandiego"
+      ],
+      [
+       "denver"
+      ],
+      [
+       "baltimore"
+      ],
+      [
+       "stlouis"
+      ],
+      [
+       "orlando"
+      ],
+      [
+       "charlotte"
+      ],
+      [
+       "sanantonio"
+      ],
+      [
+       "austin"
+      ]
+     ]
+    },
+    "llm": {
+     "rho": 0.737,
+     "ndcg5": 0.881,
+     "samples": [
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 25,
+       "queries": 0,
+       "tokens": 2422,
+       "tries": 3,
+       "rho": 0.716,
+       "ndcg5": 0.861,
+       "ranking": [
+        [
+         "sf"
+        ],
+        [
+         "seattle"
+        ],
+        [
+         "denver"
+        ],
+        [
+         "austin"
+        ],
+        [
+         "sandiego"
+        ],
+        [
+         "minneapolis"
+        ],
+        [
+         "la"
+        ],
+        [
+         "boston"
+        ],
+        [
+         "nyc"
+        ],
+        [
+         "chicago"
+        ],
+        [
+         "dc"
+        ],
+        [
+         "philadelphia"
+        ],
+        [
+         "atlanta"
+        ],
+        [
+         "baltimore"
+        ],
+        [
+         "charlotte"
+        ],
+        [
+         "stlouis"
+        ],
+        [
+         "detroit"
+        ],
+        [
+         "phoenix"
+        ],
+        [
+         "dfw"
+        ],
+        [
+         "houston"
+        ],
+        [
+         "miami"
+        ],
+        [
+         "tampa"
+        ],
+        [
+         "orlando"
+        ],
+        [
+         "sanantonio"
+        ],
+        [
+         "riverside"
+        ]
+       ]
+      },
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 25,
+       "queries": 0,
+       "tokens": 2151,
+       "tries": 1,
+       "rho": 0.752,
+       "ndcg5": 0.861,
+       "ranking": [
+        [
+         "sf"
+        ],
+        [
+         "seattle"
+        ],
+        [
+         "denver"
+        ],
+        [
+         "austin"
+        ],
+        [
+         "sandiego"
+        ],
+        [
+         "minneapolis"
+        ],
+        [
+         "la"
+        ],
+        [
+         "boston"
+        ],
+        [
+         "nyc"
+        ],
+        [
+         "philadelphia"
+        ],
+        [
+         "dc"
+        ],
+        [
+         "chicago"
+        ],
+        [
+         "baltimore"
+        ],
+        [
+         "atlanta"
+        ],
+        [
+         "stlouis"
+        ],
+        [
+         "charlotte"
+        ],
+        [
+         "detroit"
+        ],
+        [
+         "phoenix"
+        ],
+        [
+         "miami"
+        ],
+        [
+         "tampa"
+        ],
+        [
+         "orlando"
+        ],
+        [
+         "dfw"
+        ],
+        [
+         "houston"
+        ],
+        [
+         "sanantonio"
+        ],
+        [
+         "riverside"
+        ]
+       ]
+      },
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 25,
+       "queries": 0,
+       "tokens": 2419,
+       "tries": 1,
+       "rho": 0.743,
+       "ndcg5": 0.922,
+       "ranking": [
+        [
+         "sf"
+        ],
+        [
+         "seattle"
+        ],
+        [
+         "denver"
+        ],
+        [
+         "austin"
+        ],
+        [
+         "la"
+        ],
+        [
+         "sandiego"
+        ],
+        [
+         "minneapolis"
+        ],
+        [
+         "nyc"
+        ],
+        [
+         "boston"
+        ],
+        [
+         "chicago"
+        ],
+        [
+         "dc"
+        ],
+        [
+         "philadelphia"
+        ],
+        [
+         "atlanta"
+        ],
+        [
+         "baltimore"
+        ],
+        [
+         "stlouis"
+        ],
+        [
+         "detroit"
+        ],
+        [
+         "charlotte"
+        ],
+        [
+         "phoenix"
+        ],
+        [
+         "miami"
+        ],
+        [
+         "dfw"
+        ],
+        [
+         "houston"
+        ],
+        [
+         "tampa"
+        ],
+        [
+         "sanantonio"
+        ],
+        [
+         "orlando"
+        ],
+        [
+         "riverside"
+        ]
+       ]
+      }
+     ]
+    },
+    "llmSearch": {
+     "rho": 0.741,
+     "ndcg5": 0.926,
+     "samples": [
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 25,
+       "queries": 0,
+       "tokens": 3319,
+       "tries": 1,
+       "rho": 0.726,
+       "ndcg5": 0.861,
+       "ranking": [
+        [
+         "sf"
+        ],
+        [
+         "seattle"
+        ],
+        [
+         "denver"
+        ],
+        [
+         "austin"
+        ],
+        [
+         "sandiego"
+        ],
+        [
+         "minneapolis"
+        ],
+        [
+         "la"
+        ],
+        [
+         "nyc"
+        ],
+        [
+         "boston"
+        ],
+        [
+         "dc"
+        ],
+        [
+         "chicago"
+        ],
+        [
+         "philadelphia"
+        ],
+        [
+         "baltimore"
+        ],
+        [
+         "stlouis"
+        ],
+        [
+         "atlanta"
+        ],
+        [
+         "detroit"
+        ],
+        [
+         "charlotte"
+        ],
+        [
+         "dfw"
+        ],
+        [
+         "houston"
+        ],
+        [
+         "phoenix"
+        ],
+        [
+         "sanantonio"
+        ],
+        [
+         "miami"
+        ],
+        [
+         "tampa"
+        ],
+        [
+         "orlando"
+        ],
+        [
+         "riverside"
+        ]
+       ]
+      },
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 25,
+       "queries": 0,
+       "tokens": 3199,
+       "tries": 1,
+       "rho": 0.759,
+       "ndcg5": 0.958,
+       "ranking": [
+        [
+         "sf"
+        ],
+        [
+         "seattle"
+        ],
+        [
+         "denver"
+        ],
+        [
+         "austin"
+        ],
+        [
+         "minneapolis"
+        ],
+        [
+         "sandiego"
+        ],
+        [
+         "la"
+        ],
+        [
+         "nyc"
+        ],
+        [
+         "boston"
+        ],
+        [
+         "philadelphia"
+        ],
+        [
+         "chicago"
+        ],
+        [
+         "dc"
+        ],
+        [
+         "baltimore"
+        ],
+        [
+         "atlanta"
+        ],
+        [
+         "stlouis"
+        ],
+        [
+         "detroit"
+        ],
+        [
+         "charlotte"
+        ],
+        [
+         "miami"
+        ],
+        [
+         "phoenix"
+        ],
+        [
+         "dfw"
+        ],
+        [
+         "houston"
+        ],
+        [
+         "sanantonio"
+        ],
+        [
+         "tampa"
+        ],
+        [
+         "orlando"
+        ],
+        [
+         "riverside"
+        ]
+       ]
+      },
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 25,
+       "queries": 0,
+       "tokens": 3504,
+       "tries": 1,
+       "rho": 0.738,
+       "ndcg5": 0.958,
+       "ranking": [
+        [
+         "sf"
+        ],
+        [
+         "seattle"
+        ],
+        [
+         "denver"
+        ],
+        [
+         "austin"
+        ],
+        [
+         "minneapolis"
+        ],
+        [
+         "sandiego"
+        ],
+        [
+         "la"
+        ],
+        [
+         "boston"
+        ],
+        [
+         "nyc"
+        ],
+        [
+         "chicago"
+        ],
+        [
+         "philadelphia"
+        ],
+        [
+         "dc"
+        ],
+        [
+         "baltimore"
+        ],
+        [
+         "atlanta"
+        ],
+        [
+         "charlotte"
+        ],
+        [
+         "stlouis"
+        ],
+        [
+         "detroit"
+        ],
+        [
+         "phoenix"
+        ],
+        [
+         "dfw"
+        ],
+        [
+         "houston"
+        ],
+        [
+         "miami"
+        ],
+        [
+         "sanantonio"
+        ],
+        [
+         "tampa"
+        ],
+        [
+         "orlando"
+        ],
+        [
+         "riverside"
+        ]
+       ]
+      }
+     ]
+    }
+   }
+  }
+ },
+ "t2": {
+  "category": "beauty",
+  "candidates": [
+   "Sephora",
+   "Ulta Beauty",
+   "Credo Beauty",
+   "Goop",
+   "CVS",
+   "Walgreens",
+   "Nordstrom",
+   "Anthropologie",
+   "Free People",
+   "Urban Outfitters",
+   "Erewhon",
+   "Whole Foods Market",
+   "Target",
+   "Walmart",
+   "Costco",
+   "Kroger"
+  ],
+  "unresolved": [],
+  "stocked": [
+   "Erewhon"
+  ],
+  "eligible": true,
+  "arms": {
+   "cold": {
+    "athena": {
+     "auc": 0.533,
+     "p5": 0,
+     "ranking": [
+      [
+       "Free People"
+      ],
+      [
+       "Anthropologie"
+      ],
+      [
+       "Whole Foods Market"
+      ],
+      [
+       "Urban Outfitters"
+      ],
+      [
+       "Goop"
+      ],
+      [
+       "Costco"
+      ],
+      [
+       "Nordstrom"
+      ],
+      [
+       "Erewhon"
+      ],
+      [
+       "Credo Beauty"
+      ],
+      [
+       "Target"
+      ],
+      [
+       "Kroger"
+      ],
+      [
+       "Sephora"
+      ],
+      [
+       "Ulta Beauty"
+      ],
+      [
+       "Walmart"
+      ],
+      [
+       "Walgreens"
+      ],
+      [
+       "CVS"
+      ]
+     ]
+    },
+    "naive": {
+     "auc": 0.533,
+     "p5": 0,
+     "ranking": [
+      [
+       "Anthropologie"
+      ],
+      [
+       "Free People"
+      ],
+      [
+       "Urban Outfitters"
+      ],
+      [
+       "Goop"
+      ],
+      [
+       "Whole Foods Market"
+      ],
+      [
+       "Nordstrom"
+      ],
+      [
+       "Credo Beauty"
+      ],
+      [
+       "Erewhon"
+      ],
+      [
+       "Costco"
+      ],
+      [
+       "Target"
+      ],
+      [
+       "Sephora"
+      ],
+      [
+       "Ulta Beauty"
+      ],
+      [
+       "Kroger"
+      ],
+      [
+       "Walgreens"
+      ],
+      [
+       "Walmart"
+      ],
+      [
+       "CVS"
+      ]
+     ]
+    },
+    "popularity": {
+     "auc": 0,
+     "p5": 0,
+     "ranking": [
+      [
+       "Sephora"
+      ],
+      [
+       "Urban Outfitters"
+      ],
+      [
+       "Ulta Beauty"
+      ],
+      [
+       "Whole Foods Market"
+      ],
+      [
+       "Anthropologie"
+      ],
+      [
+       "Target"
+      ],
+      [
+       "Free People"
+      ],
+      [
+       "Walmart"
+      ],
+      [
+       "Nordstrom"
+      ],
+      [
+       "Goop"
+      ],
+      [
+       "Walgreens"
+      ],
+      [
+       "CVS"
+      ],
+      [
+       "Costco"
+      ],
+      [
+       "Kroger"
+      ],
+      [
+       "Credo Beauty"
+      ],
+      [
+       "Erewhon"
+      ]
+     ]
+    },
+    "llm": {
+     "auc": 0.689,
+     "p5": 0.067,
+     "samples": [
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 16,
+       "queries": 0,
+       "tokens": 2391,
+       "tries": 1,
+       "auc": 0.667,
+       "p5": 0,
+       "ranking": [
+        [
+         "Urban Outfitters"
+        ],
+        [
+         "Free People"
+        ],
+        [
+         "Anthropologie"
+        ],
+        [
+         "Credo Beauty"
+        ],
+        [
+         "Whole Foods Market"
+        ],
+        [
+         "Erewhon"
+        ],
+        [
+         "Goop"
+        ],
+        [
+         "Nordstrom"
+        ],
+        [
+         "Sephora"
+        ],
+        [
+         "Ulta Beauty"
+        ],
+        [
+         "Target"
+        ],
+        [
+         "CVS"
+        ],
+        [
+         "Walgreens"
+        ],
+        [
+         "Kroger"
+        ],
+        [
+         "Walmart"
+        ],
+        [
+         "Costco"
+        ]
+       ]
+      },
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 16,
+       "queries": 0,
+       "tokens": 2457,
+       "tries": 1,
+       "auc": 0.667,
+       "p5": 0,
+       "ranking": [
+        [
+         "Urban Outfitters"
+        ],
+        [
+         "Anthropologie"
+        ],
+        [
+         "Free People"
+        ],
+        [
+         "Credo Beauty"
+        ],
+        [
+         "Whole Foods Market"
+        ],
+        [
+         "Erewhon"
+        ],
+        [
+         "Goop"
+        ],
+        [
+         "Nordstrom"
+        ],
+        [
+         "Sephora"
+        ],
+        [
+         "Ulta Beauty"
+        ],
+        [
+         "Target"
+        ],
+        [
+         "Kroger"
+        ],
+        [
+         "CVS"
+        ],
+        [
+         "Walgreens"
+        ],
+        [
+         "Walmart"
+        ],
+        [
+         "Costco"
+        ]
+       ]
+      },
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 16,
+       "queries": 0,
+       "tokens": 2589,
+       "tries": 1,
+       "auc": 0.733,
+       "p5": 0.2,
+       "ranking": [
+        [
+         "Urban Outfitters"
+        ],
+        [
+         "Anthropologie"
+        ],
+        [
+         "Free People"
+        ],
+        [
+         "Credo Beauty"
+        ],
+        [
+         "Erewhon"
+        ],
+        [
+         "Whole Foods Market"
+        ],
+        [
+         "Goop"
+        ],
+        [
+         "Nordstrom"
+        ],
+        [
+         "Sephora"
+        ],
+        [
+         "Ulta Beauty"
+        ],
+        [
+         "Target"
+        ],
+        [
+         "CVS"
+        ],
+        [
+         "Walgreens"
+        ],
+        [
+         "Kroger"
+        ],
+        [
+         "Walmart"
+        ],
+        [
+         "Costco"
+        ]
+       ]
+      }
+     ]
+    },
+    "llmSearch": {
+     "auc": 0.667,
+     "p5": 0,
+     "samples": [
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 16,
+       "queries": 0,
+       "tokens": 3092,
+       "tries": 1,
+       "auc": 0.667,
+       "p5": 0,
+       "ranking": [
+        [
+         "Whole Foods Market"
+        ],
+        [
+         "Credo Beauty"
+        ],
+        [
+         "Free People"
+        ],
+        [
+         "Anthropologie"
+        ],
+        [
+         "Urban Outfitters"
+        ],
+        [
+         "Erewhon"
+        ],
+        [
+         "Goop"
+        ],
+        [
+         "Sephora"
+        ],
+        [
+         "Nordstrom"
+        ],
+        [
+         "Ulta Beauty"
+        ],
+        [
+         "Target"
+        ],
+        [
+         "Costco"
+        ],
+        [
+         "CVS"
+        ],
+        [
+         "Walgreens"
+        ],
+        [
+         "Kroger"
+        ],
+        [
+         "Walmart"
+        ]
+       ]
+      },
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 16,
+       "queries": 0,
+       "tokens": 2730,
+       "tries": 1,
+       "auc": 0.667,
+       "p5": 0,
+       "ranking": [
+        [
+         "Whole Foods Market"
+        ],
+        [
+         "Anthropologie"
+        ],
+        [
+         "Free People"
+        ],
+        [
+         "Urban Outfitters"
+        ],
+        [
+         "Credo Beauty"
+        ],
+        [
+         "Erewhon"
+        ],
+        [
+         "Goop"
+        ],
+        [
+         "Nordstrom"
+        ],
+        [
+         "Sephora"
+        ],
+        [
+         "Ulta Beauty"
+        ],
+        [
+         "Target"
+        ],
+        [
+         "CVS"
+        ],
+        [
+         "Walgreens"
+        ],
+        [
+         "Kroger"
+        ],
+        [
+         "Walmart"
+        ],
+        [
+         "Costco"
+        ]
+       ]
+      },
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 16,
+       "queries": 0,
+       "tokens": 2529,
+       "tries": 1,
+       "auc": 0.667,
+       "p5": 0,
+       "ranking": [
+        [
+         "Whole Foods Market"
+        ],
+        [
+         "Urban Outfitters"
+        ],
+        [
+         "Free People"
+        ],
+        [
+         "Anthropologie"
+        ],
+        [
+         "Credo Beauty"
+        ],
+        [
+         "Erewhon"
+        ],
+        [
+         "Goop"
+        ],
+        [
+         "Nordstrom"
+        ],
+        [
+         "Sephora"
+        ],
+        [
+         "Ulta Beauty"
+        ],
+        [
+         "Target"
+        ],
+        [
+         "CVS"
+        ],
+        [
+         "Walgreens"
+        ],
+        [
+         "Kroger"
+        ],
+        [
+         "Walmart"
+        ],
+        [
+         "Costco"
+        ]
+       ]
+      }
+     ]
+    }
+   },
+   "known": {
+    "athena": {
+     "auc": 0.533,
+     "p5": 0,
+     "ranking": [
+      [
+       "Free People"
+      ],
+      [
+       "Anthropologie"
+      ],
+      [
+       "Urban Outfitters"
+      ],
+      [
+       "Whole Foods Market"
+      ],
+      [
+       "Goop"
+      ],
+      [
+       "Costco"
+      ],
+      [
+       "Nordstrom"
+      ],
+      [
+       "Erewhon"
+      ],
+      [
+       "Credo Beauty"
+      ],
+      [
+       "Target"
+      ],
+      [
+       "Ulta Beauty"
+      ],
+      [
+       "Kroger"
+      ],
+      [
+       "Sephora"
+      ],
+      [
+       "Walmart"
+      ],
+      [
+       "Walgreens"
+      ],
+      [
+       "CVS"
+      ]
+     ]
+    },
+    "naive": {
+     "auc": 0.667,
+     "p5": 0,
+     "ranking": [
+      [
+       "Anthropologie"
+      ],
+      [
+       "Free People"
+      ],
+      [
+       "Goop"
+      ],
+      [
+       "Credo Beauty"
+      ],
+      [
+       "Urban Outfitters"
+      ],
+      [
+       "Erewhon"
+      ],
+      [
+       "Whole Foods Market"
+      ],
+      [
+       "Nordstrom"
+      ],
+      [
+       "Costco"
+      ],
+      [
+       "Target"
+      ],
+      [
+       "Ulta Beauty"
+      ],
+      [
+       "Sephora"
+      ],
+      [
+       "Kroger"
+      ],
+      [
+       "Walgreens"
+      ],
+      [
+       "Walmart"
+      ],
+      [
+       "CVS"
+      ]
+     ]
+    },
+    "popularity": {
+     "auc": 0,
+     "p5": 0,
+     "ranking": [
+      [
+       "Sephora"
+      ],
+      [
+       "Urban Outfitters"
+      ],
+      [
+       "Ulta Beauty"
+      ],
+      [
+       "Whole Foods Market"
+      ],
+      [
+       "Anthropologie"
+      ],
+      [
+       "Target"
+      ],
+      [
+       "Free People"
+      ],
+      [
+       "Walmart"
+      ],
+      [
+       "Nordstrom"
+      ],
+      [
+       "Goop"
+      ],
+      [
+       "Walgreens"
+      ],
+      [
+       "CVS"
+      ],
+      [
+       "Costco"
+      ],
+      [
+       "Kroger"
+      ],
+      [
+       "Credo Beauty"
+      ],
+      [
+       "Erewhon"
+      ]
+     ]
+    },
+    "llm": {
+     "auc": 0.667,
+     "p5": 0,
+     "samples": [
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 16,
+       "queries": 0,
+       "tokens": 2343,
+       "tries": 2,
+       "auc": 0.667,
+       "p5": 0,
+       "ranking": [
+        [
+         "Whole Foods Market"
+        ],
+        [
+         "Urban Outfitters"
+        ],
+        [
+         "Credo Beauty"
+        ],
+        [
+         "Free People"
+        ],
+        [
+         "Anthropologie"
+        ],
+        [
+         "Erewhon"
+        ],
+        [
+         "Goop"
+        ],
+        [
+         "Nordstrom"
+        ],
+        [
+         "Sephora"
+        ],
+        [
+         "Ulta Beauty"
+        ],
+        [
+         "Target"
+        ],
+        [
+         "Kroger"
+        ],
+        [
+         "CVS"
+        ],
+        [
+         "Walgreens"
+        ],
+        [
+         "Costco"
+        ],
+        [
+         "Walmart"
+        ]
+       ]
+      },
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 16,
+       "queries": 0,
+       "tokens": 2301,
+       "tries": 2,
+       "auc": 0.667,
+       "p5": 0,
+       "ranking": [
+        [
+         "Urban Outfitters"
+        ],
+        [
+         "Free People"
+        ],
+        [
+         "Anthropologie"
+        ],
+        [
+         "Whole Foods Market"
+        ],
+        [
+         "Credo Beauty"
+        ],
+        [
+         "Erewhon"
+        ],
+        [
+         "Goop"
+        ],
+        [
+         "Nordstrom"
+        ],
+        [
+         "Sephora"
+        ],
+        [
+         "Ulta Beauty"
+        ],
+        [
+         "Target"
+        ],
+        [
+         "CVS"
+        ],
+        [
+         "Walgreens"
+        ],
+        [
+         "Kroger"
+        ],
+        [
+         "Walmart"
+        ],
+        [
+         "Costco"
+        ]
+       ]
+      },
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 16,
+       "queries": 0,
+       "tokens": 2284,
+       "tries": 1,
+       "auc": 0.667,
+       "p5": 0,
+       "ranking": [
+        [
+         "Whole Foods Market"
+        ],
+        [
+         "Anthropologie"
+        ],
+        [
+         "Urban Outfitters"
+        ],
+        [
+         "Free People"
+        ],
+        [
+         "Credo Beauty"
+        ],
+        [
+         "Erewhon"
+        ],
+        [
+         "Goop"
+        ],
+        [
+         "Nordstrom"
+        ],
+        [
+         "Sephora"
+        ],
+        [
+         "Ulta Beauty"
+        ],
+        [
+         "Target"
+        ],
+        [
+         "CVS"
+        ],
+        [
+         "Walgreens"
+        ],
+        [
+         "Kroger"
+        ],
+        [
+         "Walmart"
+        ],
+        [
+         "Costco"
+        ]
+       ]
+      }
+     ]
+    },
+    "llmSearch": {
+     "auc": 0.667,
+     "p5": 0.067,
+     "samples": [
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 16,
+       "queries": 6,
+       "tokens": 2178,
+       "tries": 1,
+       "auc": 0.6,
+       "p5": 0,
+       "ranking": [
+        [
+         "Credo Beauty"
+        ],
+        [
+         "Urban Outfitters"
+        ],
+        [
+         "Anthropologie"
+        ],
+        [
+         "Free People"
+        ],
+        [
+         "Whole Foods Market"
+        ],
+        [
+         "Nordstrom"
+        ],
+        [
+         "Erewhon"
+        ],
+        [
+         "Goop"
+        ],
+        [
+         "Sephora"
+        ],
+        [
+         "Ulta Beauty"
+        ],
+        [
+         "Target"
+        ],
+        [
+         "CVS"
+        ],
+        [
+         "Walgreens"
+        ],
+        [
+         "Kroger"
+        ],
+        [
+         "Walmart"
+        ],
+        [
+         "Costco"
+        ]
+       ]
+      },
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 16,
+       "queries": 1,
+       "tokens": 2599,
+       "tries": 2,
+       "auc": 0.733,
+       "p5": 0.2,
+       "ranking": [
+        [
+         "Free People"
+        ],
+        [
+         "Anthropologie"
+        ],
+        [
+         "Urban Outfitters"
+        ],
+        [
+         "Whole Foods Market"
+        ],
+        [
+         "Erewhon"
+        ],
+        [
+         "Credo Beauty"
+        ],
+        [
+         "Goop"
+        ],
+        [
+         "Nordstrom"
+        ],
+        [
+         "Sephora"
+        ],
+        [
+         "Ulta Beauty"
+        ],
+        [
+         "Target"
+        ],
+        [
+         "CVS"
+        ],
+        [
+         "Walgreens"
+        ],
+        [
+         "Kroger"
+        ],
+        [
+         "Walmart"
+        ],
+        [
+         "Costco"
+        ]
+       ]
+      },
+      {
+       "model": "gemini-3.1-pro-preview",
+       "parsed": 16,
+       "queries": 5,
+       "tokens": 2160,
+       "tries": 1,
+       "auc": 0.667,
+       "p5": 0,
+       "ranking": [
+        [
+         "Whole Foods Market"
+        ],
+        [
+         "Urban Outfitters"
+        ],
+        [
+         "Free People"
+        ],
+        [
+         "Anthropologie"
+        ],
+        [
+         "Credo Beauty"
+        ],
+        [
+         "Erewhon"
+        ],
+        [
+         "Goop"
+        ],
+        [
+         "Nordstrom"
+        ],
+        [
+         "Sephora"
+        ],
+        [
+         "Ulta Beauty"
+        ],
+        [
+         "Target"
+        ],
+        [
+         "CVS"
+        ],
+        [
+         "Walgreens"
+        ],
+        [
+         "Kroger"
+        ],
+        [
+         "Walmart"
+        ],
+        [
+         "Costco"
+        ]
+       ]
+      }
+     ]
+    }
+   }
+  }
+ },
+ "t3": {
+  "eligible": false,
+  "reason": "4 stockists in metro B seen by Insights (need 10); 25 signal venues in metro A",
+  "metroA": "sf",
+  "metroB": "la",
+  "signal": 25,
+  "stockists": 4,
+  "decoys": 0,
+  "tried": {
+   "a": 31,
+   "b": 22
+  },
+  "coverage": {
+   "resolved": 9,
+   "visible": 4
+  }
+ },
+ "qlooCalls": 348
+}

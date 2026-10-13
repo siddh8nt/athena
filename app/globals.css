@@ -499,6 +499,8 @@ a.button.big { padding: 11px 20px; font-size: 15px; font-weight: 600; }
 .galaxy-card p { margin: 0; }
 .galaxy-card .react button { font-size: 12px; padding: 4px 6px; }
 .galaxy-card .react .linkish { flex: 0; }
+.galaxy-card .react { flex-wrap: wrap; }
+.galaxy-card .react .probe-btn { flex: 1 0 100%; text-align: left; padding: 2px 0; }
 .galaxy-step { display: flex; align-items: center; gap: 8px; margin: 0; }
 .galaxy-question { border-top: 1px solid var(--line); padding-top: 10px; display: flex; flex-direction: column; gap: 8px; }
 .galaxy-question p { margin: 0; }

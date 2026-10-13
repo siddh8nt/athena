@@ -47,6 +47,11 @@ export const LIMITS = {
     const t = take(`rerun:${ip}`, 20, HOUR);
     return t.ok ? { ok: true as const } : { ok: false as const, message: "I'll keep your answer and use it on your next plan." };
   },
+  /** Click to probe (§13.11): 12 probes per IP per hour, about 6 Qloo calls each. */
+  probe(ip: string) {
+    const t = take(`probe:${ip}`, 12, HOUR);
+    return t.ok ? { ok: true as const } : { ok: false as const, message: `That's 12 probes in an hour, so the map stays as it is for now. More open in about ${t.retryInMin} minutes.` };
+  },
   /** 10 new Without Qloo runs a day in total (cached comparisons don't count). */
   comparison() {
     const t = take("compare:all", 10, DAY);

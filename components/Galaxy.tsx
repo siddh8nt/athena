@@ -63,6 +63,9 @@ function hull(points: [number, number][]): [number, number][] {
   return [...lower.slice(0, -1), ...upper.slice(0, -1)];
 }
 
+/** Click to probe: founder probes per map (the server's MAX_EXTRA). */
+const MAX_PROBES = 4;
+
 const corr = (a: number[], b: number[]) => a.reduce((s, x, i) => s + x * b[i], 0);
 
 const reducedMotion = () => typeof window !== "undefined" && !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
@@ -75,9 +78,14 @@ type Props = {
   onPin: (id: string, name: string, pin: Pin["pin"] | undefined) => void;
   /** What the agent is doing right now, while the galaxy forms. */
   step?: string;
+  /** Click to probe (§13.11): entities the founder probed, and the call to probe one more. */
+  probes?: string[];
+  onProbe?: (id: string, name: string) => void;
+  /** The narrated line while a probe runs. */
+  probing?: string;
 };
 
-export function Galaxy({ galaxy, names, pins, onPin, step }: Props) {
+export function Galaxy({ galaxy, names, pins, onPin, step, probes: yourProbes = [], onProbe, probing }: Props) {
   const sim = useRef<Simulation<SimNode, SimLink> | null>(null);
   const simNodes = useRef(new Map<string, SimNode>());
   const lastTargets = useRef<{ round: number; x: Map<string, number>; y: Map<string, number> } | null>(null);
@@ -207,7 +215,22 @@ export function Galaxy({ galaxy, names, pins, onPin, step }: Props) {
   const probes = galaxy.landmarks.length - 1;
   const crowdName = (c: number) => names?.[c] ?? `Crowd ${c + 1}`;
 
-  const card = focus !== null ? <EntityCard g={galaxy} i={focus} at={pos[focus]} crowdName={crowdName} pin={pins[galaxy.nodes[focus].id]} pinned={sel === focus} onPin={onPin} onClose={() => setSel(null)} /> : null;
+  const canProbe = !!onProbe && galaxy.done && yourProbes.length < MAX_PROBES && !probing;
+  const card =
+    focus !== null ? (
+      <EntityCard
+        g={galaxy}
+        i={focus}
+        at={pos[focus]}
+        crowdName={crowdName}
+        pin={pins[galaxy.nodes[focus].id]}
+        pinned={sel === focus}
+        onPin={onPin}
+        onClose={() => setSel(null)}
+        yours={yourProbes.includes(galaxy.nodes[focus].id)}
+        onProbe={canProbe && !galaxy.nodes[focus].landmark ? () => (onProbe!(galaxy.nodes[focus].id, shortName(galaxy.nodes[focus].name, galaxy.nodes[focus].domain)), setSel(null)) : undefined}
+      />
+    ) : null;
 
   return (
     <section className="galaxy card" aria-label="Taste Galaxy">
@@ -292,6 +315,12 @@ export function Galaxy({ galaxy, names, pins, onPin, step }: Props) {
         </div>
       )}
 
+      {probing && (
+        <p className="galaxy-step small" role="status">
+          <span className="spin" aria-hidden />
+          <span className="shimmer-text">{probing}</span>
+        </p>
+      )}
       {!galaxy.done && step && (
         <p className="galaxy-step small">
           <span className="spin" aria-hidden />
@@ -305,7 +334,7 @@ export function Galaxy({ galaxy, names, pins, onPin, step }: Props) {
 }
 
 /** The hover card: what the entity is, why it sits here (the probes that rank it highest), and the founder's pin. */
-function EntityCard({ g, i, at, crowdName, pin, pinned, onPin, onClose }: { g: GalaxyData; i: number; at: { x?: number; y?: number }; crowdName: (c: number) => string; pin?: Pin; pinned: boolean; onPin: Props["onPin"]; onClose: () => void }) {
+function EntityCard({ g, i, at, crowdName, pin, pinned, onPin, onClose, yours, onProbe }: { g: GalaxyData; i: number; at: { x?: number; y?: number }; crowdName: (c: number) => string; pin?: Pin; pinned: boolean; onPin: Props["onPin"]; onClose: () => void; yours: boolean; onProbe?: () => void }) {
   const n = g.nodes[i];
   const why = g.round > 0 ? whyOf(g, i, 3) : [];
   const left = ((at.x ?? 0) / W) * 100;
@@ -317,7 +346,7 @@ function EntityCard({ g, i, at, crowdName, pin, pinned, onPin, onClose }: { g: G
       <span className="small muted">
         {domainWord(n.domain)}
         {n.crowd >= 0 ? ` · ${g.done && !n.core ? `fringe of ${crowdName(n.crowd)}` : crowdName(n.crowd)}` : ""}
-        {n.landmark ? " · probed" : ""}
+        {n.landmark ? (yours ? " · probed at your request" : " · probed") : ""}
       </span>
       {!!why.length && (
         <p className="small">
@@ -342,6 +371,11 @@ function EntityCard({ g, i, at, crowdName, pin, pinned, onPin, onClose }: { g: G
           <button type="button" className={pin?.pin === "us" ? "on" : ""} aria-pressed={pin?.pin === "us"} onClick={() => onPin(n.id, n.name, pin?.pin === "us" ? undefined : "us")}>Our customers love this</button>
           <button type="button" className={pin?.pin === "not_us" ? "on" : ""} aria-pressed={pin?.pin === "not_us"} onClick={() => onPin(n.id, n.name, pin?.pin === "not_us" ? undefined : "not_us")}>Not us</button>
           <button type="button" className="linkish small" aria-label="Close" onClick={onClose}>✕</button>
+          {onProbe && (
+            <button type="button" className="linkish small probe-btn" onClick={onProbe} title="About 6 Qloo calls">
+              Probe it: re-form the map around its fans
+            </button>
+          )}
         </div>
       ) : (
         <span className="small muted">Click to mark it</span>

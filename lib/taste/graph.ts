@@ -3,9 +3,9 @@ import type { QlooEntity } from "@/lib/qloo/types";
 import { isChainName } from "@/lib/methods/names";
 import { centerColumns, crowdRules } from "./cluster";
 import { MISSING, farthestPoints, percentiles, rowCorrelation } from "./embed";
-import { DOMAINS, type Domain, type Galaxy, type Ref } from "./galaxy";
-import { rng } from "./linalg";
-import { spectral } from "./spectral";
+import { DOMAINS, shortName, type Domain, type Galaxy, type Ref } from "./galaxy";
+import { rng, type Rng } from "./linalg";
+import { spectral, type Spectral } from "./spectral";
 import { adjustedRand, ambiguity, coassociationOf, consensusLabels, membership, nullCertainty, resample } from "./consensus";
 import { specificity } from "./specificity";
 
@@ -66,6 +66,23 @@ export type TasteGraph = {
   calls: number;
   callIds: string[];
   galaxy?: Galaxy;
+  /** What a later probe needs to extend this graph (click to probe, §13.11). Absent when the graph was too thin. */
+  state?: GraphState;
+};
+
+/** The measured matrix behind a finished graph: every entity's percentile under each landmark, and which rows were probed. */
+export type GraphState = {
+  seed: Seed;
+  nodes: Node[];
+  U: number[][];
+  /** Row indices of the entities probed as landmarks, in order; column j + 1 of U belongs to landmarks[j]. */
+  landmarks: number[];
+  domains: Domain[];
+  seedName: string;
+  round: number;
+  callIds: string[];
+  /** Entities the founder probed, in order (click to probe). */
+  extra: string[];
 };
 
 /** Ring 1 per domain: about 150 entities over six domains, at most 25 per pool call. */
@@ -82,6 +99,8 @@ export const NULL_RESAMPLES = 50;
 export const GRAPH_BUDGET = 110;
 /** Below this many calls left on the keys this month, landmarks drop to the first round only. */
 export const QUOTA_LOW = 2000;
+/** Click to probe: at most this many founder probes per graph (about 6 calls each). */
+export const MAX_EXTRA = 4;
 
 /**
  * The seed as a Qloo signal. Tags join only when there are fewer than 2 entities: brands carry taste better than
@@ -124,15 +143,7 @@ export async function buildGraph(qloo: QlooClient, seed: Seed, opts: GraphOption
   if (!sig.entities.length && !sig.tags.length) return empty;
   const exclude = [...sig.entities];
   const rand = rng(hash([...sig.entities, ...sig.tags].join(",")));
-  /** null when the call failed or timed out (its entries stay neutral); [] when Qloo had nothing. */
-  const insights = async (params: Record<string, string | number | string[] | undefined>): Promise<QlooEntity[] | null> => {
-    if (callIds.length >= budget) return null;
-    const call = qloo.insights(params, { priority }).catch(() => undefined);
-    const r = await Promise.race([call, new Promise<undefined>((ok) => setTimeout(() => ok(undefined), RING_TIMEOUT_MS))]);
-    if (!r) return null;
-    callIds.push(r.call.id);
-    return r.status === 200 ? (r.results.entities ?? []) : null;
-  };
+  const insights = caller(qloo, callIds, budget, priority);
 
   // Ring 1: what the seed's crowd loves, per domain. Its order is the first column (the seed as a landmark).
   opts.onStep?.("Reading what this crowd loves across brands, music, TV, film, podcasts and books");
@@ -170,23 +181,7 @@ export async function buildGraph(qloo: QlooClient, seed: Seed, opts: GraphOption
   const domainsPresent = DOMAINS.filter((d) => nodes.some((n) => n.domain === d));
   opts.onRound?.(ringSnapshot(nodes, domainsPresent, seedName, callIds.length));
 
-  /** One landmark: a pool call per domain, each giving that domain's entities a percentile under it. */
-  const probe = async (li: number) => {
-    const col = U[0].length;
-    for (const row of U) row.push(MISSING);
-    landmarks.push(li);
-    U[li][col] = 1;
-    await Promise.all(
-      domainsPresent.map(async (d) => {
-        const pool = nodes.filter((n, i) => n.domain === d && i !== li).map((n) => n.id);
-        if (!pool.length) return;
-        const scored = await insights({ "filter.type": `urn:entity:${d}`, "signal.interests.entities": [nodes[li].id], "filter.results.entities": pool, take: pool.length });
-        if (!scored) return;
-        const pct = percentiles(scored.map((e) => e.entity_id), pool);
-        for (const id of pool) U[index.get(id)!][col] = pct.get(id)!;
-      }),
-    );
-  };
+  const probe = (li: number) => probeInto({ nodes, U, landmarks, domains: domainsPresent }, li, insights, index);
   const callsPerLandmark = domainsPresent.length;
   const room = () => Math.floor((budget - callIds.length) / callsPerLandmark);
 
@@ -220,6 +215,71 @@ export async function buildGraph(qloo: QlooClient, seed: Seed, opts: GraphOption
     if (agree >= STABLE_ARI) break;
   }
 
+  return finish({ seed, nodes, U, landmarks, domains: domainsPresent, seedName, round, callIds, extra: [] }, main, S, rand, opts);
+}
+
+/** null when the call failed or timed out (its entries stay neutral); [] when Qloo had nothing. */
+type Insights = (params: Record<string, string | number | string[] | undefined>) => Promise<QlooEntity[] | null>;
+
+function caller(qloo: QlooClient, callIds: string[], budget: number, priority: Priority): Insights {
+  return async (params) => {
+    if (callIds.length >= budget) return null;
+    const call = qloo.insights(params, { priority }).catch(() => undefined);
+    const r = await Promise.race([call, new Promise<undefined>((ok) => setTimeout(() => ok(undefined), RING_TIMEOUT_MS))]);
+    if (!r) return null;
+    callIds.push(r.call.id);
+    return r.status === 200 ? (r.results.entities ?? []) : null;
+  };
+}
+
+/** One landmark: a pool call per domain, each giving that domain's entities a percentile under it. */
+async function probeInto(st: Pick<GraphState, "nodes" | "U" | "landmarks" | "domains">, li: number, insights: Insights, index: Map<string, number>) {
+  const { nodes, U } = st;
+  const col = U[0].length;
+  for (const row of U) row.push(MISSING);
+  st.landmarks.push(li);
+  U[li][col] = 1;
+  await Promise.all(
+    st.domains.map(async (d) => {
+      const pool = nodes.filter((n, i) => n.domain === d && i !== li).map((n) => n.id);
+      if (!pool.length) return;
+      const scored = await insights({ "filter.type": `urn:entity:${d}`, "signal.interests.entities": [nodes[li].id], "filter.results.entities": pool, take: pool.length });
+      if (!scored) return;
+      const pct = percentiles(scored.map((e) => e.entity_id), pool);
+      for (const id of pool) U[index.get(id)!][col] = pct.get(id)!;
+    }),
+  );
+}
+
+/**
+ * Click to probe (§13.11): the founder's entity becomes one more landmark (about 6 calls, one per domain), and the
+ * crowds are re-formed from the larger matrix with the same confidence checks. The graph's own probes aren't repeated:
+ * they come from its stored matrix. Never throws; an entity it can't probe is skipped.
+ */
+export async function extendGraph(qloo: QlooClient, base: GraphState, ids: string[], opts: GraphOptions = {}): Promise<TasteGraph> {
+  const st: GraphState = { ...base, nodes: base.nodes.map((n) => ({ ...n })), U: base.U.map((r) => [...r]), landmarks: [...base.landmarks], callIds: [...base.callIds], extra: [...base.extra] };
+  const index = new Map(st.nodes.map((n, i) => [n.id, i]));
+  const todo = ids.filter((id, k) => ids.indexOf(id) === k && !st.extra.includes(id)).slice(0, Math.max(0, MAX_EXTRA - st.extra.length));
+  const insights = caller(qloo, st.callIds, st.callIds.length + st.domains.length * todo.length, opts.priority ?? "now");
+  for (const id of todo) {
+    const li = index.get(id);
+    if (li === undefined || st.landmarks.includes(li)) continue;
+    opts.onStep?.(`Probing ${shortName(st.nodes[li].name, st.nodes[li].domain)}: asking Qloo how its fans rank the other ${st.nodes.length - 1} things on the map`);
+    await probeInto(st, li, insights, index);
+    st.extra.push(id);
+    st.round++;
+  }
+  const sig = seedSignal(st.seed);
+  const rand = rng(hash([...sig.entities, ...sig.tags, "|", ...st.extra].join(",")));
+  const S = rowCorrelation(st.U);
+  const main = spectral(S, { rand, kMax: Math.min(4, st.nodes.length - 1) });
+  opts.onStep?.(`Re-forming the crowds from ${st.landmarks.length + 1} probes`);
+  return finish(st, main, S, rand, opts);
+}
+
+/** Crowds with confidence, from the measured matrix (0 calls). */
+function finish(st: GraphState, main: Spectral, S: number[][], rand: Rng, opts: GraphOptions): TasteGraph {
+  const { seed, nodes, U, landmarks, seedName, round, callIds } = st;
   // Crowds with confidence: resample the landmarks, cluster the co-association, apply the crowd rules. The same steps
   // on shuffled probes set the bar for the core (measured 12 Oct: the crowds are real but soft, so only cores are claimed).
   opts.onStep?.(`Checking which crowds hold up across ${BOOTSTRAP} resamples of ${landmarks.length + 1} probes, and against shuffled data`);
@@ -256,6 +316,7 @@ export async function buildGraph(qloo: QlooClient, seed: Seed, opts: GraphOption
     calls: callIds.length,
     callIds,
     galaxy,
+    state: st,
   };
 }
 

@@ -129,32 +129,38 @@ export function Journey() {
     setCrowdSteps([]);
     setForming(undefined);
     setJ((x) => ({ ...x, crowds: undefined, crowdId: undefined, reactions: {}, pins: {} }));
-    void (async () => {
-      try {
-        const res = await fetch("/api/crowds", { method: "POST", headers: { "Content-Type": "application/json" }, body: key });
-        if (!res.body) throw new Error("no stream");
-        const reader = res.body.getReader();
-        const dec = new TextDecoder();
-        let buf = "";
-        for (;;) {
-          const { done, value } = await reader.read();
-          buf += done ? dec.decode() : dec.decode(value, { stream: true });
-          const parts = buf.split("\n\n");
-          buf = parts.pop() ?? "";
-          for (const p of parts) {
-            if (!p.startsWith("data:")) continue;
-            const e = JSON.parse(p.slice(5)) as CrowdsEvent;
-            if (crowdKey.current !== key) return;
-            if (e.type === "status") setCrowdSteps((s) => [...s, e.text]);
-            else if (e.type === "graph") setForming(e.galaxy);
-            else setJ((x) => ({ ...x, crowds: e.result, crowdsFor: key, crowdId: defaultCrowd(e.result.crowds, x.growth) }));
-          }
-          if (done) break;
-        }
-      } catch {
-        if (crowdKey.current === key) setJ((x) => ({ ...x, crowds: { seed: { lookalikes: [], tags: [], missing: [] }, crowds: [], calls: 0, callIds: [], empty: true } }));
-      }
-    })();
+    void crowdStream(key, (e) => {
+      if (crowdKey.current !== key) return false;
+      if (e.type === "status") setCrowdSteps((s) => [...s, e.text]);
+      else if (e.type === "graph") setForming(e.galaxy);
+      else setJ((x) => ({ ...x, crowds: e.result, crowdsFor: key, crowdId: defaultCrowd(e.result.crowds, x.growth) }));
+      return true;
+    }).catch(() => {
+      if (crowdKey.current === key) setJ((x) => ({ ...x, crowds: { seed: { lookalikes: [], tags: [], missing: [] }, crowds: [], calls: 0, callIds: [], empty: true } }));
+    });
+  };
+
+  // Click to probe (§13.11): the founder's entity becomes one more landmark; the crowds re-form around it. The map
+  // stays on screen with one narrated line until the new one arrives, and a failed probe leaves it as it was.
+  const [probing, setProbing] = useState<string>();
+  const probe = (id: string, name: string) => {
+    if (probing || !j.crowds || !j.crowdsFor) return;
+    const key = j.crowdsFor;
+    const probes = [...(j.crowds.probes ?? []), id];
+    setProbing(`Probing ${name}`);
+    void crowdStream(JSON.stringify({ ...JSON.parse(key), probes }), (e) => {
+      if (crowdKey.current !== key) return false;
+      if (e.type === "status") setProbing(e.text);
+      else if (e.type === "result" && e.result.crowds.length)
+        setJ((x) => {
+          const ids = new Set(e.result.crowds.map((c) => c.id));
+          const reactions = Object.fromEntries(Object.entries(x.reactions).filter(([c]) => ids.has(c)));
+          return { ...x, crowds: e.result, reactions, crowdId: x.crowdId && ids.has(x.crowdId) ? x.crowdId : defaultCrowd(e.result.crowds, x.growth) };
+        });
+      return true;
+    })
+      .catch(() => undefined)
+      .finally(() => setProbing(undefined));
   };
   useEffect(() => {
     if (turn.ready) startCrowds();
@@ -375,6 +381,8 @@ export function Journey() {
                 onReact={(id, r) => setJ((x) => react(x, id, r))}
                 onChoose={(id) => setJ((x) => ({ ...x, crowdId: id }))}
                 onPin={(id, name, pin) => setJ((x) => ({ ...x, pins: pinned(x.pins, id, name, pin) }))}
+                onProbe={probe}
+                probing={probing}
               />
             </div>
           )}
@@ -419,6 +427,23 @@ export function Journey() {
       </main>
     </div>
   );
+}
+
+/** Reads the crowds stream (status lines, Galaxy snapshots, one result). The handler returns false to stop listening. */
+async function crowdStream(body: string, on: (e: CrowdsEvent) => boolean): Promise<void> {
+  const res = await fetch("/api/crowds", { method: "POST", headers: { "Content-Type": "application/json" }, body });
+  if (!res.body) throw new Error("no stream");
+  const reader = res.body.getReader();
+  const dec = new TextDecoder();
+  let buf = "";
+  for (;;) {
+    const { done, value } = await reader.read();
+    buf += done ? dec.decode() : dec.decode(value, { stream: true });
+    const parts = buf.split("\n\n");
+    buf = parts.pop() ?? "";
+    for (const p of parts) if (p.startsWith("data:") && !on(JSON.parse(p.slice(5)) as CrowdsEvent)) return;
+    if (done) return;
+  }
 }
 
 /** The crowd the plan follows by default: the main one, or for New crowd the closest adjacent one. */
@@ -670,7 +695,7 @@ function skewLine(s: CrowdCard["skew"]): string | undefined {
 }
 
 /** The Crowd stop (§9.23, J3): 2–3 crowds from Qloo's taste graph; the founder says which sound like their customers. */
-function CrowdStop({ j, steps, forming, onReact, onChoose, onPin }: { j: JourneyState; steps: string[]; forming?: GalaxyData; onReact: (id: string, r: Reaction) => void; onChoose: (id: string) => void; onPin: (id: string, name: string, pin: Pin["pin"] | undefined) => void }) {
+function CrowdStop({ j, steps, forming, onReact, onChoose, onPin, onProbe, probing }: { j: JourneyState; steps: string[]; forming?: GalaxyData; onReact: (id: string, r: Reaction) => void; onChoose: (id: string) => void; onPin: (id: string, name: string, pin: Pin["pin"] | undefined) => void; onProbe: (id: string, name: string) => void; probing?: string }) {
   const r = j.crowds;
   const pins = j.pins ?? {};
   // While the crowds are measured, the Galaxy forms in place of the step list (from the first ring, about 5 s in).
@@ -699,7 +724,7 @@ function CrowdStop({ j, steps, forming, onReact, onChoose, onPin }: { j: Journey
   const from = [r.seed.brand?.name, ...r.seed.lookalikes.map((l) => l.name)].filter(Boolean);
   return (
     <section className="crowds">
-      {r.galaxy && <Galaxy galaxy={r.galaxy} names={r.crowds.map((c) => c.name)} pins={pins} onPin={onPin} />}
+      {r.galaxy && <Galaxy galaxy={r.galaxy} names={r.crowds.map((c) => c.name)} pins={pins} onPin={onPin} probes={r.probes ?? []} onProbe={onProbe} probing={probing} />}
       <header className="card-head">
         <h3>Your crowds</h3>
         <p className="small muted">

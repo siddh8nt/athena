@@ -41,6 +41,8 @@ export type CrowdsResult = {
   empty?: boolean;
   /** The measured taste graph behind the crowds, for the Taste Galaxy (v4.0). */
   galaxy?: Galaxy;
+  /** Entities the founder probed (click to probe, §13.11), in order. */
+  probes?: string[];
 };
 
 export type CrowdsEvent = { type: "status"; text: string } | { type: "graph"; galaxy: Galaxy } | { type: "result"; result: CrowdsResult };

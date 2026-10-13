@@ -2,8 +2,8 @@
  "brand": "Brightland",
  "slug": "brightland",
  "set": "tuning",
- "code": "4e50c46+dirty",
- "ranAt": "2026-10-12T19:35:23.695Z",
+ "code": "824a329",
+ "ranAt": "2026-10-13T02:29:15.421Z",
  "profile": {
   "description": "Premium extra-virgin olive oil and vinegars, pressed from olives grown on small family farms and bottled in opaque, brightly coloured glass bottles designed to stay out on the counter. About $37 a bottle, plus gift sets. For people who cook at home and care about ingredients, design and a good-looking kitchen.",
   "sells": "Premium extra-virgin olive oil and vinegars in colourful glass bottles",
@@ -3311,5 +3311,5 @@
    }
   }
  },
- "qlooCalls": 25
+ "qlooCalls": 0
 }

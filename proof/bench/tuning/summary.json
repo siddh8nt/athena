@@ -4,43 +4,7 @@
   "fishwife"
  ],
  "comparisons": {
-  "PRIMARY t1 rho: Athena − LLM-only (cold)": {
-   "athena": 0.678,
-   "other": 0.736,
-   "n": 2,
-   "diff": -0.059,
-   "lo": -0.159,
-   "hi": 0.041,
-   "pass": false
-  },
-  "PRIMARY t2 auc: Athena − LLM-only (cold)": {
-   "athena": 0.595,
-   "other": 0.727,
-   "n": 2,
-   "diff": -0.132,
-   "lo": -0.141,
-   "hi": -0.123,
-   "pass": false
-  },
-  "PRIMARY t3 auc: Athena − LLM-only (cold)": {
-   "athena": 0.634,
-   "other": 0.795,
-   "n": 2,
-   "diff": -0.16,
-   "lo": -0.186,
-   "hi": -0.135,
-   "pass": false
-  },
-  "t1 rho: Athena − llmSearch (cold)": {
-   "athena": 0.678,
-   "other": 0.726,
-   "n": 2,
-   "diff": -0.048,
-   "lo": -0.162,
-   "hi": 0.066,
-   "pass": false
-  },
-  "t1 rho: Athena − naive (cold)": {
+  "PRIMARY t1 rho: Athena − Qloo-naive (cold)": {
    "athena": 0.678,
    "other": 0.375,
    "n": 2,
@@ -49,7 +13,7 @@
    "hi": 0.367,
    "pass": true
   },
-  "t1 rho: Athena − popularity (cold)": {
+  "PRIMARY t1 rho: Athena − popularity (cold)": {
    "athena": 0.678,
    "other": -0.009,
    "n": 2,
@@ -58,16 +22,52 @@
    "hi": 0.695,
    "pass": true
   },
-  "t1 ndcg5: Athena − llm (cold)": {
-   "athena": 0.699,
-   "other": 0.87,
+  "PRIMARY t2 auc: Athena − Qloo-naive (cold)": {
+   "athena": 0.595,
+   "other": 0.491,
    "n": 2,
-   "diff": -0.171,
-   "lo": -0.266,
-   "hi": -0.077,
+   "diff": 0.104,
+   "lo": 0.075,
+   "hi": 0.133,
+   "pass": true
+  },
+  "PRIMARY t2 auc: Athena − popularity (cold)": {
+   "athena": 0.595,
+   "other": 0.553,
+   "n": 2,
+   "diff": 0.042,
+   "lo": 0.038,
+   "hi": 0.045,
+   "pass": true
+  },
+  "PRIMARY t3 auc: Athena − popularity (cold)": {
+   "athena": 0.634,
+   "other": 0.474,
+   "n": 2,
+   "diff": 0.16,
+   "lo": 0.134,
+   "hi": 0.186,
+   "pass": true
+  },
+  "t1 rho: Athena − LLM + Search (cold)": {
+   "athena": 0.678,
+   "other": 0.726,
+   "n": 2,
+   "diff": -0.048,
+   "lo": -0.162,
+   "hi": 0.066,
    "pass": false
   },
-  "t1 ndcg5: Athena − llmSearch (cold)": {
+  "t1 rho: Athena − LLM-only (cold)": {
+   "athena": 0.678,
+   "other": 0.736,
+   "n": 2,
+   "diff": -0.059,
+   "lo": -0.159,
+   "hi": 0.041,
+   "pass": false
+  },
+  "t1 ndcg5: Athena − LLM + Search (cold)": {
    "athena": 0.699,
    "other": 0.874,
    "n": 2,
@@ -76,7 +76,16 @@
    "hi": -0.075,
    "pass": false
   },
-  "t1 ndcg5: Athena − naive (cold)": {
+  "t1 ndcg5: Athena − LLM-only (cold)": {
+   "athena": 0.699,
+   "other": 0.87,
+   "n": 2,
+   "diff": -0.171,
+   "lo": -0.266,
+   "hi": -0.077,
+   "pass": false
+  },
+  "t1 ndcg5: Athena − Qloo-naive (cold)": {
    "athena": 0.699,
    "other": 0.605,
    "n": 2,
@@ -94,7 +103,7 @@
    "hi": 0.293,
    "pass": true
   },
-  "t2 auc: Athena − llmSearch (cold)": {
+  "t2 auc: Athena − LLM + Search (cold)": {
    "athena": 0.595,
    "other": 0.754,
    "n": 2,
@@ -103,25 +112,16 @@
    "hi": -0.143,
    "pass": false
   },
-  "t2 auc: Athena − naive (cold)": {
+  "t2 auc: Athena − LLM-only (cold)": {
    "athena": 0.595,
-   "other": 0.491,
+   "other": 0.727,
    "n": 2,
-   "diff": 0.104,
-   "lo": 0.075,
-   "hi": 0.133,
-   "pass": true
+   "diff": -0.132,
+   "lo": -0.141,
+   "hi": -0.123,
+   "pass": false
   },
-  "t2 auc: Athena − popularity (cold)": {
-   "athena": 0.595,
-   "other": 0.553,
-   "n": 2,
-   "diff": 0.042,
-   "lo": 0.038,
-   "hi": 0.045,
-   "pass": true
-  },
-  "t2 p5: Athena − llm (cold)": {
+  "t2 p5: Athena − LLM + Search (cold)": {
    "athena": 0.4,
    "other": 0.5,
    "n": 2,
@@ -130,7 +130,7 @@
    "hi": 0,
    "pass": false
   },
-  "t2 p5: Athena − llmSearch (cold)": {
+  "t2 p5: Athena − LLM-only (cold)": {
    "athena": 0.4,
    "other": 0.5,
    "n": 2,
@@ -139,7 +139,7 @@
    "hi": 0,
    "pass": false
   },
-  "t2 p5: Athena − naive (cold)": {
+  "t2 p5: Athena − Qloo-naive (cold)": {
    "athena": 0.4,
    "other": 0.3,
    "n": 2,
@@ -157,7 +157,7 @@
    "hi": 0,
    "pass": false
   },
-  "t3 auc: Athena − llmSearch (cold)": {
+  "t3 auc: Athena − LLM + Search (cold)": {
    "athena": 0.634,
    "other": 0.792,
    "n": 2,
@@ -166,25 +166,16 @@
    "hi": -0.125,
    "pass": false
   },
-  "t3 auc: Athena − popularity (cold)": {
+  "t3 auc: Athena − LLM-only (cold)": {
    "athena": 0.634,
-   "other": 0.474,
+   "other": 0.795,
    "n": 2,
-   "diff": 0.16,
-   "lo": 0.134,
-   "hi": 0.186,
-   "pass": true
-  },
-  "t1 rho: Athena − llm (known)": {
-   "athena": 0.65,
-   "other": 0.744,
-   "n": 2,
-   "diff": -0.094,
-   "lo": -0.171,
-   "hi": -0.017,
+   "diff": -0.16,
+   "lo": -0.186,
+   "hi": -0.135,
    "pass": false
   },
-  "t1 rho: Athena − llmSearch (known)": {
+  "t1 rho: Athena − LLM + Search (known)": {
    "athena": 0.65,
    "other": 0.683,
    "n": 2,
@@ -193,7 +184,16 @@
    "hi": 0.087,
    "pass": false
   },
-  "t1 rho: Athena − naive (known)": {
+  "t1 rho: Athena − LLM-only (known)": {
+   "athena": 0.65,
+   "other": 0.744,
+   "n": 2,
+   "diff": -0.094,
+   "lo": -0.171,
+   "hi": -0.017,
+   "pass": false
+  },
+  "t1 rho: Athena − Qloo-naive (known)": {
    "athena": 0.65,
    "other": 0.441,
    "n": 2,
@@ -211,16 +211,7 @@
    "hi": 0.678,
    "pass": true
   },
-  "t1 ndcg5: Athena − llm (known)": {
-   "athena": 0.649,
-   "other": 0.883,
-   "n": 2,
-   "diff": -0.234,
-   "lo": -0.262,
-   "hi": -0.206,
-   "pass": false
-  },
-  "t1 ndcg5: Athena − llmSearch (known)": {
+  "t1 ndcg5: Athena − LLM + Search (known)": {
    "athena": 0.649,
    "other": 0.814,
    "n": 2,
@@ -229,7 +220,16 @@
    "hi": -0.068,
    "pass": false
   },
-  "t1 ndcg5: Athena − naive (known)": {
+  "t1 ndcg5: Athena − LLM-only (known)": {
+   "athena": 0.649,
+   "other": 0.883,
+   "n": 2,
+   "diff": -0.234,
+   "lo": -0.262,
+   "hi": -0.206,
+   "pass": false
+  },
+  "t1 ndcg5: Athena − Qloo-naive (known)": {
    "athena": 0.649,
    "other": 0.692,
    "n": 2,
@@ -247,16 +247,7 @@
    "hi": 0.266,
    "pass": true
   },
-  "t2 auc: Athena − llm (known)": {
-   "athena": 0.563,
-   "other": 0.768,
-   "n": 2,
-   "diff": -0.205,
-   "lo": -0.213,
-   "hi": -0.197,
-   "pass": false
-  },
-  "t2 auc: Athena − llmSearch (known)": {
+  "t2 auc: Athena − LLM + Search (known)": {
    "athena": 0.563,
    "other": 0.839,
    "n": 2,
@@ -265,7 +256,16 @@
    "hi": -0.259,
    "pass": false
   },
-  "t2 auc: Athena − naive (known)": {
+  "t2 auc: Athena − LLM-only (known)": {
+   "athena": 0.563,
+   "other": 0.768,
+   "n": 2,
+   "diff": -0.205,
+   "lo": -0.213,
+   "hi": -0.197,
+   "pass": false
+  },
+  "t2 auc: Athena − Qloo-naive (known)": {
    "athena": 0.563,
    "other": 0.484,
    "n": 2,
@@ -283,16 +283,7 @@
    "hi": 0.045,
    "pass": false
   },
-  "t2 p5: Athena − llm (known)": {
-   "athena": 0.3,
-   "other": 0.5,
-   "n": 2,
-   "diff": -0.2,
-   "lo": -0.4,
-   "hi": 0,
-   "pass": false
-  },
-  "t2 p5: Athena − llmSearch (known)": {
+  "t2 p5: Athena − LLM + Search (known)": {
    "athena": 0.3,
    "other": 0.567,
    "n": 2,
@@ -301,7 +292,16 @@
    "hi": -0.067,
    "pass": false
   },
-  "t2 p5: Athena − naive (known)": {
+  "t2 p5: Athena − LLM-only (known)": {
+   "athena": 0.3,
+   "other": 0.5,
+   "n": 2,
+   "diff": -0.2,
+   "lo": -0.4,
+   "hi": 0,
+   "pass": false
+  },
+  "t2 p5: Athena − Qloo-naive (known)": {
    "athena": 0.3,
    "other": 0.3,
    "n": 2,
@@ -319,22 +319,22 @@
    "hi": 0,
    "pass": false
   },
-  "t3 auc: Athena − llm (known)": {
-   "athena": 0.634,
-   "other": 0.794,
-   "n": 2,
-   "diff": -0.159,
-   "lo": -0.184,
-   "hi": -0.135,
-   "pass": false
-  },
-  "t3 auc: Athena − llmSearch (known)": {
+  "t3 auc: Athena − LLM + Search (known)": {
    "athena": 0.634,
    "other": 0.807,
    "n": 2,
    "diff": -0.173,
    "lo": -0.199,
    "hi": -0.147,
+   "pass": false
+  },
+  "t3 auc: Athena − LLM-only (known)": {
+   "athena": 0.634,
+   "other": 0.794,
+   "n": 2,
+   "diff": -0.159,
+   "lo": -0.184,
+   "hi": -0.135,
    "pass": false
   },
   "t3 auc: Athena − popularity (known)": {

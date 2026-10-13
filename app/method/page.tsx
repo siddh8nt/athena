@@ -2,11 +2,13 @@ import Link from "next/link";
 import { getCachedComparison } from "@/lib/proof/without-qloo";
 import { DEMO_BRANDS } from "@/lib/playbook/demo";
 import { metroById } from "@/lib/playbook/metros";
+import { benchPrimaries, benchTable } from "@/lib/bench/lines";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Method · Athena" };
 
 const pct = (x: number | undefined) => (x === undefined ? "—" : `${Math.round(x * 100)}%`);
+const num = (x: number | undefined) => (x === undefined ? "—" : x.toFixed(2).replace(/^-/, "−"));
 
 /** The Method page (§2.5, F25): how Athena works, what was tested, and what failed, with computed numbers only. */
 export default async function MethodPage() {
@@ -71,6 +73,24 @@ export default async function MethodPage() {
         </tbody>
       </table>
       <p><strong>Why:</strong> Qloo has about half of the small venues tested; a top 50 is a tiny slice of thousands of venues; in a same-call test real stockists ranked above same-type decoys 61% of the time, but only 12 of 38 were scored. <strong>So Athena makes no hit-count claims.</strong> A pre-registered ranking check on three other brands is the one measured claim we will publish, whatever it shows.</p>
+
+      <h2 id="bench">The Taste Bench: held-out brands (measured)</h2>
+      <p>Registered at the <code>prereg-v2</code> tag before any held-out run: Athena against one raw Qloo call, against plain popularity, and against Gemini 3.1 Pro alone given the same product and candidates, with and without Google Search. Scored against eight held-out brands&apos; real stockists, cold start (the brand&apos;s name withheld). A brand with too little ground truth for a task is left out of it.</p>
+      <table>
+        <thead><tr><th>Question</th><th>Brands</th><th>Athena</th><th>One raw Qloo call</th><th>Popularity</th><th>Gemini alone</th><th>Gemini + Search</th></tr></thead>
+        <tbody>
+          {benchTable().map((r) => (
+            <tr key={r.task}><td>{r.question}, {r.metric}</td><td>{r.n}</td><td>{num(r.athena)}</td><td>{num(r.naive)}</td><td>{num(r.popularity)}</td><td>{num(r.gemini)}</td><td>{num(r.geminiSearch)}</td></tr>
+          ))}
+        </tbody>
+      </table>
+      <p>The registered primary tests, each the mean paired difference over brands with a 95% bootstrap interval; a test passes when the difference is above 0 and the interval excludes 0:</p>
+      <ul>
+        {benchPrimaries().map((p) => (
+          <li key={p.label}>{p.label}: {num(p.diff)} [{num(p.lo)}, {num(p.hi)}], {p.n} brands: <strong>{p.pass ? "passes" : "does not pass"}</strong></li>
+        ))}
+      </ul>
+      <p>What this supports: Athena gets more out of Qloo than one raw call, and Qloo&apos;s taste beats popularity, for cities and retailers. It does not support venues, and Gemini alone scored higher than Athena on all three questions. We don&apos;t claim Athena or Qloo ranks stockists better than an LLM.</p>
 
       <h2 id="ranking-check">The ranking check: the one measured claim</h2>
       <p>For three brands Athena was never tuned on (Fishwife, Rishi Tea, Paddywax), each brand&apos;s real stockists in one city are mixed with look-alike venues of the same types that don&apos;t stock it. Qloo ranks the whole pool from the brand&apos;s other accounts. It passes if real stockists rank higher than chance and higher than simply picking the most popular venues.</p>

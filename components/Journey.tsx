@@ -9,6 +9,7 @@ import { MarketsView, MessageView, MomentsView, PartnersView, PlacesView } from 
 import { Workspace } from "./Workspace";
 import { Galaxy } from "./Galaxy";
 import { CrowdGeography } from "./CrowdGeography";
+import { BenchNote, WithWithout, type AloneRequest } from "./WithWithout";
 import { GUESS, type Turn } from "@/lib/brief/conversation";
 import { briefToInput } from "@/lib/brief/to-input";
 import type { BrandBrief } from "@/lib/brief/types";
@@ -223,6 +224,8 @@ export function Journey() {
   };
   const inputFor = (s: StopId) => ({ ...base, crowd: signalFor(s) });
   const input = inputFor("go");
+  // With / Without (§13.2): every stop's question also goes to Gemini alone, from the same product description.
+  const alone: AloneRequest = { brand: brief.name?.value || "The brand", product: String(base.description ?? "").slice(0, 400) };
 
   // Prefetch (§14.9): the stop after this one starts in the background once its inputs are settled (a crowd, and a
   // city for the stops that use one), so it's ready when the founder arrives. Stays hidden until then.
@@ -384,6 +387,7 @@ export function Journey() {
                 onPin={(id, name, pin) => setJ((x) => ({ ...x, pins: pinned(x.pins, id, name, pin) }))}
                 onProbe={probe}
                 probing={probing}
+                alone={alone}
               />
             </div>
           )}
@@ -391,7 +395,7 @@ export function Journey() {
             .filter((s) => BLOCK_OF[s] && (reached(s) || prefetch(s)))
             .map((s) => (
               <div key={s} id={`stop-${s}`} hidden={!reached(s)}>
-                <StopRunner stop={s} block={BLOCK_OF[s]!} input={CITY_STOPS.has(s) ? inputFor(s) : { ...inputFor(s), city: undefined }} brandName={brief.name?.value ?? "Your brand"} onData={(d) => setStopData((x) => (x[s] === d ? x : { ...x, [s]: d }))} />
+                <StopRunner alone={alone} stop={s} block={BLOCK_OF[s]!} input={CITY_STOPS.has(s) ? inputFor(s) : { ...inputFor(s), city: undefined }} brandName={brief.name?.value ?? "Your brand"} onData={(d) => setStopData((x) => (x[s] === d ? x : { ...x, [s]: d }))} />
               </div>
             ))}
           {stops
@@ -407,6 +411,7 @@ export function Journey() {
                     evidence={[brief.channels?.value ?? "", ...brief.stockists.map((x) => x.value.name), ...brief.notes.map((n) => n.value)].filter(Boolean)}
                     skew={crowd.skew}
                     brandName={brief.name?.value ?? "your brand"}
+                    alone={alone}
                     onData={(d) => setStopData((x) => (x[s] === d ? x : { ...x, [s]: d }))}
                   />
                 ) : (
@@ -696,7 +701,7 @@ function skewLine(s: CrowdCard["skew"]): string | undefined {
 }
 
 /** The Crowd stop (§9.23, J3): 2–3 crowds from Qloo's taste graph; the founder says which sound like their customers. */
-function CrowdStop({ j, steps, forming, onReact, onChoose, onPin, onProbe, probing }: { j: JourneyState; steps: string[]; forming?: GalaxyData; onReact: (id: string, r: Reaction) => void; onChoose: (id: string) => void; onPin: (id: string, name: string, pin: Pin["pin"] | undefined) => void; onProbe: (id: string, name: string) => void; probing?: string }) {
+function CrowdStop({ j, steps, forming, onReact, onChoose, onPin, onProbe, probing, alone }: { j: JourneyState; steps: string[]; forming?: GalaxyData; onReact: (id: string, r: Reaction) => void; onChoose: (id: string) => void; onPin: (id: string, name: string, pin: Pin["pin"] | undefined) => void; onProbe: (id: string, name: string) => void; probing?: string; alone: AloneRequest }) {
   const r = j.crowds;
   // Linked views (§9.26): the crowd under the pointer in the Galaxy, the map or the cards lights up in all three.
   const [lit, setLit] = useState<number | null>(null);
@@ -771,6 +776,7 @@ function CrowdStop({ j, steps, forming, onReact, onChoose, onPin, onProbe, probi
           );
         })}
       </div>
+      <WithWithout stop="crowd" question="Who are this product's customers, and what do they love?" athena={r.crowds.map((c) => ({ name: c.name, why: c.loves.slice(0, 6).map((l) => l.name).join(", ") }))} request={alone} />
       <p className="small muted">{SKEW_LABEL}</p>
     </section>
   );
@@ -780,7 +786,7 @@ type RetailersResult = { picks: { id: string; name: string; affinity: number; ra
 type OnlineResult = { creators: { id: string; name: string; role: string; affinity: number }[]; podcasts: { id: string; name: string; affinity: number }[]; interests: { id: string; name: string }[]; calls: number };
 
 /** Next retailers (§9.25) and Online (§9.24): small stops outside the six blocks, read for the chosen crowd. */
-function ExtraStop({ kind, signal, product, category, evidence, skew, brandName, onData }: { kind: "retailers" | "online"; signal: { id: string; weight: number }[]; product: string; category?: string; evidence: string[]; skew: CrowdCard["skew"]; brandName: string; onData: (d: unknown) => void }) {
+function ExtraStop({ kind, signal, product, category, evidence, skew, brandName, alone, onData }: { kind: "retailers" | "online"; signal: { id: string; weight: number }[]; product: string; category?: string; evidence: string[]; skew: CrowdCard["skew"]; brandName: string; alone: AloneRequest; onData: (d: unknown) => void }) {
   const [data, setData] = useState<RetailersResult | OnlineResult | null>(null);
   const key = JSON.stringify([kind, signal]);
   useEffect(() => {
@@ -830,6 +836,7 @@ function ExtraStop({ kind, signal, product, category, evidence, skew, brandName,
           <p>Every retailer on my list is already one of yours. Add a few you&apos;re eyeing in the chat and I&apos;ll rank them.</p>
         )}
         <p className="small muted">Fit means your crowd loves the retailer, not that a buyer will say yes.</p>
+        {r.picks.length > 1 && <WithWithout stop="retailers" question={`Which of these ${r.picks.length} retailers are most likely to carry this product?`} athena={r.picks.map((p) => ({ id: p.id, name: p.name }))} request={{ ...alone, candidates: r.picks.map((p) => ({ id: p.id, label: p.name })) }} bench="t2" ranked />}
       </section>
     );
   }
@@ -867,13 +874,14 @@ function ExtraStop({ kind, signal, product, category, evidence, skew, brandName,
         </>
       )}
       {skewNote && <p className="small"><strong>Audience to test</strong> Qloo&apos;s taste panel {skewNote.replace(/leans/g, "leans")} for this crowd. Worth testing as an ad audience alongside your current one.</p>}
+      <WithWithout stop="online" question="Online, which creators and podcasts do this product's customers follow, and what should it target in ads?" athena={[...o.creators.map((c) => ({ name: c.name, why: c.role })), ...o.podcasts.map((p) => ({ name: p.name, why: "podcast" })), ...o.interests.slice(0, 5).map((x) => ({ name: x.name, why: "ad interest" }))]} request={alone} />
       <p className="small muted">{SKEW_LABEL}</p>
     </section>
   );
 }
 
 /** One stop on the plan engine: a scoped run of one block for the chosen crowd and city. */
-function StopRunner({ stop, block, input, brandName, onData }: { stop: StopId; block: Block; input: Record<string, unknown>; brandName: string; onData: (d: unknown) => void }) {
+function StopRunner({ stop, block, input, brandName, alone, onData }: { stop: StopId; block: Block; input: Record<string, unknown>; brandName: string; alone: AloneRequest; onData: (d: unknown) => void }) {
   const key = JSON.stringify(input);
   const source: PlanSource = useMemo(() => ({ kind: "custom", input, id: hash(`${block}|${key}`), scope: [block] }), [block, key]); // eslint-disable-line react-hooks/exhaustive-deps
   const plan = usePlan(source);
@@ -909,6 +917,7 @@ function StopRunner({ stop, block, input, brandName, onData }: { stop: StopId; b
             <MapView center={m.target.center} bbox={m.target.bbox} cells={m.heatmap.cells} pins={[]} onSelect={none} />
           </div>
           <MarketsView data={m} meta={b.meta} onTrace={none} />
+          <WithWithout stop="where" question="In which of the 25 largest US metros will this product find the most independent shops to sell it, per resident?" athena={m.metros.map((x) => ({ id: x.metroId, name: x.name }))} request={alone} bench="t1" ranked />
         </section>
       );
     }
@@ -926,15 +935,37 @@ function StopRunner({ stop, block, input, brandName, onData }: { stop: StopId; b
             // Without Qloo (§9.9): the same question to a chatbot with search, side by side; capped (§14.5).
             compare={{ key: `journey-${hash(`${brandName}|${p.metroId}|${p.signal.join()}`)}`, brandName, whatYouSell: String(input.description ?? "").split(".")[0], tier: String(input.tierHint ?? "") }}
           />
+          <BenchNote task="t3" />
         </section>
       );
     }
-    case "partners":
-      return <section className="card stop-block"><PartnersView data={b.data as PartnersData} meta={b.meta} onTrace={none} /></section>;
-    case "message":
-      return <section className="card stop-block"><MessageView data={b.data as MessageData} meta={b.meta} onTrace={none} /></section>;
-    case "moments":
-      return <section className="card stop-block"><MomentsView data={b.data as MomentsData} meta={b.meta} onTrace={none} /></section>;
+    case "partners": {
+      const d = b.data as PartnersData;
+      return (
+        <section className="card stop-block">
+          <PartnersView data={d} meta={b.meta} onTrace={none} />
+          <WithWithout stop="partners" question="Which brands and podcasts should this brand partner with?" athena={[...d.brands, ...d.podcasts].map((x) => ({ name: x.name, why: x.kind }))} request={alone} />
+        </section>
+      );
+    }
+    case "message": {
+      const d = b.data as MessageData;
+      return (
+        <section className="card stop-block">
+          <MessageView data={d} meta={b.meta} onTrace={none} />
+          <WithWithout stop="message" question="How should this brand talk to its customers: which themes, and which shows, films, artists or books to reference?" athena={[...d.themes.slice(0, 6).map((t) => ({ name: t.name, why: "theme" })), ...d.references.slice(0, 4).map((r) => ({ name: r.name, why: "reference" }))]} request={alone} />
+        </section>
+      );
+    }
+    case "moments": {
+      const d = b.data as MomentsData;
+      return (
+        <section className="card stop-block">
+          <MomentsView data={d} meta={b.meta} onTrace={none} />
+          {d.moments.length > 0 && <WithWithout stop="moments" question="Which dated events in this city in the next six months should this brand show up at?" athena={d.moments.map((x) => ({ name: x.name, why: [x.date, x.venue].filter(Boolean).join(" · ") }))} request={{ ...alone, metroId: d.metroId }} />}
+        </section>
+      );
+    }
     default:
       return null;
   }

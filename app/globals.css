@@ -537,3 +537,15 @@ a.button.big { padding: 11px 20px; font-size: 15px; font-weight: 600; }
 .swatch { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex: none; }
 .crowd h4 { display: flex; align-items: center; gap: 8px; }
 @media (prefers-reduced-motion: reduce) { .gnode, .hulls path { transition: none; } }
+
+/* With / Without on every stop (§13.2): the stop's answer beside Gemini alone; the Bench line under measured stops. */
+.ww { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 12px; }
+.ww-flip { margin-bottom: 8px; }
+.ww-split { margin-bottom: 8px; }
+.ww-q { margin: 0 0 8px; }
+.ww-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.ww-cols h4 { margin: 0 0 4px; font-size: 14px; }
+.ww-list li { padding: 5px 0; font-size: 13px; }
+.ww-both { color: var(--pick); }
+.bench-line { margin: 6px 0 0; }
+@media (max-width: 760px) { .ww-cols { grid-template-columns: 1fr; } }

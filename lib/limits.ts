@@ -57,6 +57,13 @@ export const LIMITS = {
     const t = take(`geo:${ip}`, 10, HOUR);
     return t.ok ? { ok: true as const } : { ok: false as const, message: `The map of where your crowds live opens again in about ${t.retryInMin} minutes.` };
   },
+  /** With / Without on every stop (§13.2): 12 new Gemini-alone answers per IP per hour, 150 a day in total (cached ones don't count). */
+  alone(ip: string) {
+    const perIp = take(`alone:${ip}`, 12, HOUR);
+    if (!perIp.ok) return { ok: false as const, message: `Gemini alone has answered 12 of your questions this hour; more open in about ${perIp.retryInMin} minutes.` };
+    const total = take("alone:all", 150, DAY);
+    return total.ok ? { ok: true as const } : { ok: false as const, message: "Today's side-by-side answers from Gemini alone are used up; they reopen tomorrow." };
+  },
   /** 10 new Without Qloo runs a day in total (cached comparisons don't count). */
   comparison() {
     const t = take("compare:all", 10, DAY);

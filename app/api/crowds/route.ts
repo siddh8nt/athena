@@ -60,7 +60,7 @@ export async function POST(req: Request) {
   const input = readInput(raw);
   const probes = readProbes(raw);
   // Taste axes and crowd meetings for crowds a founder already has (§9.27, §9.28): from the stored graph only, never measured.
-  if ((raw as { axesOnly?: unknown } | null)?.axesOnly === true) return Response.json((await storedExtras(baseKey(input))) ?? {});
+  if ((raw as { axesOnly?: unknown } | null)?.axesOnly === true) return Response.json((await storedExtras(baseKey(input), probes)) ?? {});
   const ip = clientIp(req);
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
@@ -95,12 +95,12 @@ type SavedGraph = { state: GraphState; seed: CrowdsResult["seed"]; seedCallIds: 
 
 async function run(input: SeedInput, probes: string[], ip: string, status: (t: string) => void, graphEvent: (g: Galaxy) => void): Promise<CrowdsResult> {
   const base = baseKey(input);
-  const keyOf = (p: string[]) => (p.length ? `${base}|probe:${p.join(",")}` : base);
+  const keyOf = (p: string[]) => probeKey(base, p);
   const cached = async (p: string[]) => (await getStore().get<CrowdsResult>("crowds", keyOf(p)).catch(() => undefined))?.value;
   const hit = await cached(probes);
   if (hit?.crowds?.length) {
-    if ((hit.axes && hit.meetings) || probes.length) return hit;
-    const extras = await storedExtras(base);
+    if (hit.axes && hit.meetings) return hit;
+    const extras = await storedExtras(base, probes);
     return extras ? { ...hit, ...extras } : hit;
   }
 
@@ -119,6 +119,8 @@ async function run(input: SeedInput, probes: string[], ip: string, status: (t: s
     if (!saved) return (await cached([])) ?? { seed: { lookalikes: [], tags: [], missing: [] }, crowds: [], calls: 0, callIds: [], empty: true };
     const graph = await extendGraph(qloo, saved.state, probes, { onStep: status });
     if (graph.galaxy) graphEvent(graph.galaxy);
+    // The probed graph is kept too, so its axes and meetings can be read again without probing.
+    if (graph.state) await getStore().set<SavedGraph>("graph", keyOf(probes), { ...saved, state: graph.state }, TTL).catch(() => undefined);
     const result = await resultOf(qloo, graph, saved.seed, saved.seedCallIds, status);
     if (result.crowds.length) await getStore().set("crowds", keyOf(probes), result, TTL).catch(() => undefined);
     return result;
@@ -175,23 +177,39 @@ const baseKey = (input: SeedInput) => `v4.2|${JSON.stringify([input.brand?.id ??
 
 type Extras = { axes?: TasteAxisCard[]; meetings?: CrowdMeeting[] };
 
+const probeKey = (base: string, probes: string[]) => (probes.length ? `${base}|probe:${probes.join(",")}` : base);
+
 /**
  * Axes and crowd meetings for a result cached before them (§9.27, §9.28): the stored graph is read once (no Qloo
- * calls) and the cached result keeps them. Members come from the cached Galaxy. Undefined when nothing is stored
- * for this seed.
+ * calls) and the cached result keeps them. Members come from the cached Galaxy. A probed result from before its graph
+ * was kept is re-probed once on the stored graph (Qloo's answers are cached, so usually free); its cards don't change.
+ * Undefined when nothing is stored for this seed.
  */
-async function storedExtras(base: string): Promise<Extras | undefined> {
+async function storedExtras(base: string, probes: string[] = []): Promise<Extras | undefined> {
   const store = getStore();
-  const hit = (await store.get<CrowdsResult>("crowds", base).catch(() => undefined))?.value;
+  const key = probeKey(base, probes);
+  const hit = (await store.get<CrowdsResult>("crowds", key).catch(() => undefined))?.value;
   if (hit?.axes && hit.meetings) return { axes: hit.axes, meetings: hit.meetings };
-  const saved = (await store.get<SavedGraph>("graph", base).catch(() => undefined))?.value;
+  const saved = (await store.get<SavedGraph>("graph", key).catch(() => undefined))?.value ?? (probes.length && hit?.crowds?.length ? await reprobed(base, key, probes) : undefined);
   if (!saved) return undefined;
   const axes = hit?.axes ?? (await axesOf(saved.state));
   const meetings = hit?.crowds?.length ? meetingsOf(saved.state, hit.crowds.map((c, i) => ({ id: c.id, main: c.main, members: membersOf(hit, c, i) }))) : undefined;
   // An empty list marks meetings as read, so a seed whose crowds don't meet isn't read again.
   const extras: Extras = { ...(axes ? { axes } : {}), meetings: meetings ?? [] };
-  if (axes && hit?.crowds?.length) await store.set("crowds", base, { ...hit, ...extras }, TTL).catch(() => undefined);
+  if (axes && hit?.crowds?.length) await store.set("crowds", key, { ...hit, ...extras }, TTL).catch(() => undefined);
   return extras;
+}
+
+/** The probed graph behind an older probed result: the stored base graph extended with the same probes, then kept. */
+async function reprobed(base: string, key: string, probes: string[]): Promise<SavedGraph | undefined> {
+  const store = getStore();
+  const saved = (await store.get<SavedGraph>("graph", base).catch(() => undefined))?.value;
+  if (!saved) return undefined;
+  const graph = await extendGraph(getQloo(), saved.state, probes, { priority: "next" }).catch(() => undefined);
+  if (!graph?.state) return undefined;
+  const out = { ...saved, state: graph.state };
+  await store.set<SavedGraph>("graph", key, out, TTL).catch(() => undefined);
+  return out;
 }
 
 /** A cached crowd's members: its Galaxy nodes (crowd index i is card i), else the signal and brands its card holds. */

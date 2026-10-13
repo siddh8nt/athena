@@ -133,11 +133,13 @@ export function Journey() {
     if (j.crowds && j.crowdsFor === key) {
       // Already built for this product (a returning founder). Crowds saved before taste axes (§9.27) pick them up
       // from the server's copy, which factorises the stored graph once; nothing else about the crowds changes.
-      // Probed crowds wait for the next probe: their graph isn't the stored one.
-      if ((!j.crowds.axes || !j.crowds.meetings) && j.crowds.crowds.length && !j.crowds.probes?.length)
-        void fetch("/api/crowds", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...body, axesOnly: true }) })
+      // Probed crowds ask with their probes, so they read their own graph.
+      const probes = j.crowds.probes ?? [];
+      const same = (p?: string[]) => (p ?? []).join(",") === probes.join(",");
+      if ((!j.crowds.axes || !j.crowds.meetings) && j.crowds.crowds.length)
+        void fetch("/api/crowds", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...body, probes, axesOnly: true }) })
           .then((r) => r.json() as Promise<Pick<CrowdsResult, "axes" | "meetings">>)
-          .then(({ axes, meetings }) => (axes?.length || meetings) && setJ((x) => (x.crowds && x.crowdsFor === key && !x.crowds.probes?.length ? { ...x, crowds: { ...x.crowds, ...(axes ? { axes } : {}), ...(meetings ? { meetings } : {}) } } : x)))
+          .then(({ axes, meetings }) => (axes?.length || meetings) && setJ((x) => (x.crowds && x.crowdsFor === key && same(x.crowds.probes) ? { ...x, crowds: { ...x.crowds, ...(axes ? { axes } : {}), ...(meetings ? { meetings } : {}) } } : x)))
           .catch(() => undefined);
       return;
     }

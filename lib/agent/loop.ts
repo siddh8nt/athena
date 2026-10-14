@@ -3,6 +3,7 @@ import type { Env } from "@/lib/env";
 import type { AgentEvent } from "@/lib/blocks/types";
 import { converse, type ConverseResult, type FunctionDeclaration, type Part, type Turn } from "@/lib/llm/vertex";
 import type { BrandBrief } from "@/lib/brief/types";
+import type { Knowledge } from "@/lib/knowledge/types";
 import { timeContext, timeSummary } from "@/lib/time/now";
 import { checkClaims, type Claim } from "./cite";
 import { FINISH, TOOLS, declarations, toolByName, type AgentState, type FounderQuestion, type Tool } from "./tools";
@@ -28,7 +29,9 @@ export type AgentStreamEvent =
   | { type: "ask"; ask: FounderQuestion & { id: string } }
   | { type: "answer"; answer: AgentAnswer; sources: Omit<Source, "data" | "args">[] }
   /** Onboarding's answer (§23.2 step 3): the brief, every fact with its sources. */
-  | { type: "brief"; brief: BrandBrief; assumptions: string[]; dropped: number };
+  | { type: "brief"; brief: BrandBrief; assumptions: string[]; dropped: number }
+  /** What onboarding read (§23.2 step 4): every fact with where it is, the conflicts, and which option is in use. */
+  | { type: "knowledge"; knowledge: Knowledge; settled: Record<string, number> };
 
 /**
  * How a run ends: the function the model calls to finish, and the check its arguments must pass. Problems go back
@@ -50,7 +53,7 @@ export type AgentRun = {
   intro?: string;
   finisher?: Finisher;
   /** Sources the run starts with after s0, such as what the founder said (s1…). */
-  given?: { tool: string; summary: string; data: unknown }[];
+  given?: { tool: string; summary: string; data: unknown; args?: Record<string, unknown> }[];
   budget?: Partial<AgentBudget>;
   qloo: QlooClient;
   env: Env;
@@ -170,7 +173,7 @@ export async function runAgent(run: AgentRun): Promise<{ answered: boolean; reas
   const time = timeContext();
   sources.set("s0", { id: "s0", tool: "today", args: {}, summary: timeSummary(time), data: time, callIds: [] });
   emit({ tool: "today", why: "Planning from today's date", status: "ok", callIds: [], summary: timeSummary(time) });
-  for (const g of run.given ?? []) sources.set(`s${sources.size}`, { id: `s${sources.size}`, tool: g.tool, args: {}, summary: g.summary, data: g.data, callIds: [] });
+  for (const g of run.given ?? []) sources.set(`s${sources.size}`, { id: `s${sources.size}`, tool: g.tool, args: g.args ?? {}, summary: g.summary, data: g.data, callIds: [] });
   emit({ tool: "goal", why: run.goal, status: "ok", callIds: [], summary: `Budget: ${budget.qloo} Qloo calls, ${Math.round(budget.ms / 1000)} s` });
 
   const turns: Turn[] = [{ role: "user", parts: [{ text: run.intro ?? briefOf(run.goal, run.brand, budget) }] }];

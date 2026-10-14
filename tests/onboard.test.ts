@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { runAgent, type AgentStreamEvent } from "@/lib/agent/loop";
-import { ONBOARD_SYSTEM, PASTED, briefFinisher, onboardIntro, onboardTools, ONBOARD_BUDGET, type OnboardInput } from "@/lib/agent/onboard";
+import { ONBOARD_SYSTEM, PASTED, briefFinisher, knownGiven, onboardIntro, onboardTools, ONBOARD_BUDGET, type OnboardInput } from "@/lib/agent/onboard";
 import type { Extracted } from "@/lib/brief/extract";
 import { emptyBrief } from "@/lib/brief/types";
 import type { ConverseResult, Turn } from "@/lib/llm/vertex";
@@ -148,5 +148,33 @@ describe("onboarding", () => {
     expect(brief!.brief.name?.source).toEqual({ kind: "pasted" });
     expect(brief!.brief.sells?.source).toEqual({ kind: "pasted" });
     expect(brief!.brief.notes).toEqual([{ value: "Priority: more grocery stores", source: { kind: "message" } }]);
+  });
+
+  it("works from facts already read: each brief fact carries the slide, cell or page it rests on", async () => {
+    const known: OnboardInput["known"] = [
+      { kind: "file", ref: "deck.pptx", facts: [{ id: "d1", text: "Fishwife: tinned fish, $10 a tin", topic: "product", where: [{ kind: "file", ref: "deck.pptx", at: "slide 3" }] }] },
+      { kind: "website", ref: "eatfishwife.com", facts: [{ id: "w1", text: "Sold at 180 stores", topic: "channel", where: [{ kind: "website", ref: "https://www.eatfishwife.com/pages/stockists" }] }] },
+    ];
+    const input: OnboardInput = { websites: ["https://eatfishwife.com"], files: [], known };
+    // Sources already read leave the website tool out.
+    expect(onboardTools(input).map((t) => t.name)).not.toContain("read_website");
+    expect(onboardIntro(input, ONBOARD_BUDGET, false)).toContain("s1 = deck.pptx (1 facts); s2 = eatfishwife.com (1 facts)");
+    const model = async (): Promise<ConverseResult> =>
+      call([
+        {
+          name: "finish_brief",
+          args: {
+            name: { value: "Fishwife", sources: ["s2"], facts: ["d1"] },
+            sells: { value: "Tinned fish, $10 a tin", sources: ["s1"], facts: ["d1"] },
+            notes: [{ value: "In 180 stores", sources: ["s2"], facts: ["w1"] }],
+            lookalikes: ["Fly By Jing"],
+          },
+        },
+      ]);
+    const { brief } = await onboard(input, model, knownGiven(input));
+    expect(brief!.brief.sells?.source).toEqual({ kind: "file", ref: "deck.pptx", at: "slide 3" });
+    // Cited under the site, resting on a slide: the fact id names the place.
+    expect(brief!.brief.name?.source).toEqual({ kind: "file", ref: "deck.pptx", at: "slide 3" });
+    expect(brief!.brief.notes).toEqual([{ value: "In 180 stores", source: { kind: "website", ref: "eatfishwife.com", at: "/pages/stockists" } }]);
   });
 });

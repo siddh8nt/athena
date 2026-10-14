@@ -4,7 +4,10 @@ import { llmConfigured } from "@/lib/llm/vertex";
 import { LIMITS, clientIp } from "@/lib/limits";
 import { planStream } from "@/lib/agent/server-deps";
 import { runAgent, type AgentStreamEvent } from "@/lib/agent/loop";
-import { ONBOARD_BUDGET, ONBOARD_SYSTEM, briefFinisher, onboardIntro, onboardTools, type OnboardInput } from "@/lib/agent/onboard";
+import { ONBOARD_BUDGET, ONBOARD_SYSTEM, briefFinisher, knownGiven, onboardIntro, onboardTools, type OnboardInput } from "@/lib/agent/onboard";
+import { buildKnowledge, type KnowledgeInput } from "@/lib/knowledge/build";
+import { validWorkspace } from "@/lib/knowledge/uploads";
+import { whereLabel } from "@/lib/knowledge/types";
 import { agentTurn, lookUpBrand } from "@/lib/brief/agent";
 import { readBrief, readFiles } from "@/lib/brief/form";
 import { safeUrl } from "@/lib/agent/intake";
@@ -15,10 +18,40 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 // Onboarding (PRD §23.2 step 3): a website, files, or a summary from the founder's own AI assistant go in; the
-// agent's steps stream back as server-sent events, then the brief, every fact with its source. Files are read in
-// memory and never stored. Steering and answers re-run it with the brief so far.
+// agent's steps stream back as server-sent events, then the brief, every fact with its source. Files arrive as kept
+// uploads (by workspace and hash, §23.2 step 4): code reads every source into located facts and compares them, the
+// founder sees what was kept, and the agent works from those facts. Steering, answers, strikes and settled conflicts
+// re-run it with the brief so far.
 
 const clip = (v: FormDataEntryValue | null, n: number) => (typeof v === "string" ? v.slice(0, n).trim() : "");
+
+const json = <T,>(v: FormDataEntryValue | null, n: number, fallback: T): T => {
+  try {
+    return (JSON.parse(clip(v, n) || "null") as T) ?? fallback;
+  } catch {
+    return fallback;
+  }
+};
+
+/** The kept files, strikes and settled conflicts the browser sends. */
+function readKnowledgeInput(form: FormData, input: OnboardInput): KnowledgeInput {
+  const ws = clip(form.get("ws"), 64);
+  const strs = (v: unknown, n: number) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === "string" && x.length <= 80).slice(0, n) : []);
+  const settledRaw = json<Record<string, unknown>>(form.get("settled"), 8_000, {});
+  const settled = Object.fromEntries(
+    Object.entries(typeof settledRaw === "object" && !Array.isArray(settledRaw) ? settledRaw : {})
+      .filter(([k, v]) => k.length <= 80 && Number.isInteger(v))
+      .slice(0, 50),
+  ) as Record<string, number>;
+  return {
+    ws: validWorkspace(ws) ? ws : undefined,
+    hashes: strs(json(form.get("hashes"), 4_000, []), 40).filter((h) => /^[0-9a-f]{64}$/.test(h)),
+    websites: input.websites,
+    pasted: input.pasted,
+    struck: strs(json(form.get("struck"), 20_000, []), 500),
+    settled,
+  };
+}
 
 function readInput(form: FormData, files: OnboardInput["files"]): OnboardInput {
   const websites = clip(form.get("websites"), 600)
@@ -59,7 +92,8 @@ export const POST = dated(async function post(req: Request) {
       return;
     }
     const input = readInput(form, await readFiles(form));
-    if (!input.websites.length && !input.files.length && !input.pasted && !input.brief && !input.steer) {
+    const kb = readKnowledgeInput(form, input);
+    if (!input.websites.length && !input.files.length && !kb.hashes.length && !input.pasted && !input.brief && !input.steer) {
       send({ type: "event", event: { t: 0, tool: "plan", why: "Give Athena a website, a file or your AI summary to start", status: "needs_input", callIds: [], summary: "" } });
       return;
     }
@@ -81,7 +115,9 @@ export const POST = dated(async function post(req: Request) {
 
     // The fallback, and the run without a model: the one-pass reader the brief chat used.
     const fallback = async () => {
+      const read = (input.known ?? []).flatMap((k) => k.facts.map((f) => `- ${f.text} [${f.where.map(whereLabel).join("; ")}]`));
       const said = [
+        read.length ? `What I read from what you gave me:\n${read.join("\n").slice(0, 40_000)}` : "",
         input.websites.length ? `Website: ${input.websites.join(", ")}` : "",
         input.pasted ? `My AI assistant's summary of my business:\n${input.pasted}` : "",
         input.steer ?? "",
@@ -91,7 +127,8 @@ export const POST = dated(async function post(req: Request) {
         .join("\n\n");
       let brief = input.brief ?? emptyBrief();
       if (llmConfigured()) brief = mergeBrief(brief, (await agentTurn(brief, [], said, input.files)).patch).brief;
-      else brief = mergeBrief(brief, { stockists: input.files.flatMap((f) => f.stockists.map((s) => ({ value: s, source: { kind: "file" as const, ref: f.name } }))) }).brief;
+      const listed = [...input.files.map((f) => ({ ref: f.name, list: f.stockists })), ...(input.stockists ?? [])];
+      brief = mergeBrief(brief, { stockists: listed.flatMap((f) => f.list.map((s) => ({ value: s, source: { kind: "file" as const, ref: f.ref } }))) }).brief;
       ordered({ type: "event", event: { t: 0, tool: "plan", why: "Read what you gave me", status: "ok", callIds: [], summary: brief.name?.value ?? "" } });
       ordered({ type: "brief", brief, assumptions: [], dropped: 0 });
     };
@@ -101,6 +138,20 @@ export const POST = dated(async function post(req: Request) {
       await queue;
       return;
     }
+    // Everything given, read into facts and compared before the agent starts; the founder sees what was kept.
+    if (kb.hashes.length || input.pasted || input.websites.length) {
+      // If the reading itself breaks, the agent still reads the site and summary with its own tools.
+      const k = await buildKnowledge(kb, (event) => ordered({ type: "event", event })).catch(() => undefined);
+      if (k) {
+        ordered({ type: "knowledge", knowledge: k.knowledge, settled: k.settled });
+        input.known = k.sources;
+        input.stockists = k.stockists;
+        input.conflicts = k.knowledge.conflicts.map((c) => {
+          const i = k.settled[c.id];
+          return { about: c.about, value: c.options[i].value, facts: c.options[i].facts, chosen: kb.settled[c.id] === i, others: c.options.filter((_, j) => j !== i).map((o) => o.value) };
+        });
+      }
+    }
     const founder = input.steer || input.answers?.length;
     await runAgent({
       goal: input.brief ? "Update the brief with what you told me" : `Understand ${input.name || "your brand"} and write its brief`,
@@ -108,7 +159,7 @@ export const POST = dated(async function post(req: Request) {
       system: ONBOARD_SYSTEM,
       intro: onboardIntro(input, ONBOARD_BUDGET, !!founder),
       finisher: briefFinisher(input),
-      given: founder ? [{ tool: "founder", summary: "What you told me", data: { steering: input.steer, answers: input.answers } }] : [],
+      given: [...(founder ? [{ tool: "founder", summary: "What you told me", data: { steering: input.steer, answers: input.answers } }] : []), ...knownGiven(input)],
       budget: ONBOARD_BUDGET,
       tools: onboardTools(input),
       qloo,

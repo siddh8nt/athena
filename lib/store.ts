@@ -1,17 +1,18 @@
 import "server-only";
 import { createHash } from "node:crypto";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 // One key-value store for everything Athena caches (§14.4): Qloo responses, festival dates, comparisons,
 // last good results. Locally: JSON files under .cache/store (git-ignored). On Cloud Run: Firestore, because
-// the container's disk is wiped on restart. Every call is best-effort: a store failure never fails a plan.
+// the container's disk is wiped on restart. Every call but delete is best-effort: a store failure never fails a plan, but a delete the founder asked for must say if it didn't happen.
 
 export type Stored<T> = { value: T; at: number; expires: number | null };
 
 export interface Store {
   get<T>(ns: string, key: string): Promise<Stored<T> | undefined>;
   set<T>(ns: string, key: string, value: T, ttlMs?: number): Promise<void>;
+  delete(ns: string, key: string): Promise<void>;
 }
 
 const id = (key: string) => createHash("sha1").update(key).digest("hex");
@@ -35,6 +36,9 @@ class FileStore implements Store {
     } catch {
       // Best effort.
     }
+  }
+  async delete(ns: string, key: string): Promise<void> {
+    await rm(path.join(this.root, ns, `${id(key)}.json`), { force: true });
   }
 }
 
@@ -64,6 +68,9 @@ class FirestoreStore implements Store {
     } catch {
       // Best effort.
     }
+  }
+  async delete(ns: string, key: string): Promise<void> {
+    await (await this.db).collection(ns).doc(id(key)).delete();
   }
 }
 

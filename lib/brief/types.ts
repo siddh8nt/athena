@@ -8,7 +8,8 @@ import type { RetailCategory } from "@/lib/stops/retailers";
 // read it between the lines. Every value shows its source, and the founder corrects anything in plain words.
 // "pasted": the summary the founder brought from their own AI assistant (§23.2 step 3e).
 export type SourceKind = "message" | "file" | "pasted" | "website" | "web" | "qloo" | "inferred" | "agent_guess";
-export type Source = { kind: SourceKind; ref?: string };
+/** at: where inside the source ("slide 4", "Summary!A2", a page), when the fact came from the founder's files or site (§23.2 step 4). */
+export type Source = { kind: SourceKind; ref?: string; at?: string };
 export type Sourced<T> = { value: T; source: Source; confirmed?: boolean };
 export type Stockist = { name: string; address?: string; city?: string };
 

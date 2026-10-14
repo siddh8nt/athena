@@ -625,3 +625,20 @@ a.button.big { padding: 11px 20px; font-size: 15px; font-weight: 600; }
 .question-foot .muted { flex: 1; }
 .onboard-wrote p { margin: 0; }
 .onboard-wrote ul { margin: 4px 0 0; padding-left: 18px; }
+.kb-files { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+.kb-files > li { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 4px 0; border-bottom: 1px solid var(--line); }
+.kb-files > li.kb-left .kb-file-name { color: var(--muted); text-decoration: line-through; }
+.kb-files input[type="checkbox"] { width: auto; margin: 0; }
+.kb-file-name { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.kb-file-note { width: 100%; }
+.kb-meter { margin: 2px 0 0; }
+.kb-over { color: var(--thin); }
+.kb { display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+.kb-head { margin: 0; font-weight: 600; }
+.kb-sources, .kb-facts { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.kb-source { text-align: left; color: var(--fg); }
+.kb-facts { margin: 4px 0 6px 16px; }
+.kb-facts > li { padding: 3px 0; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
+.kb-struck .kb-text { text-decoration: line-through; color: var(--muted); }
+.kb-why { margin: 0; }
+.kb-apply { align-self: flex-start; }

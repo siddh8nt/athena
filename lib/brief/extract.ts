@@ -54,8 +54,10 @@ function unzip(b: Uint8Array, want: (name: string) => boolean): Record<string, s
 const colIndex = (ref: string) => [...(/^[A-Z]+/.exec(ref)?.[0] ?? "A")].reduce((n, c) => n * 26 + c.charCodeAt(0) - 64, 0) - 1;
 const byNumber = (a: string, b: string) => +(/(\d+)\.xml$/.exec(a)?.[1] ?? 0) - +(/(\d+)\.xml$/.exec(b)?.[1] ?? 0);
 
-/** XLSX → one table per sheet (≤ 2,000 rows each). */
-export function readXlsx(b: Uint8Array): { sheet: string; table: Table }[] {
+export type SheetRow = { n: number; cells: { col: string; v: string }[] };
+
+/** XLSX → every non-empty cell of every sheet, with its real row number and column letter. */
+export function readXlsxCells(b: Uint8Array): { sheet: string; rows: SheetRow[] }[] {
   const x = unzip(b, (n) => n === "xl/sharedStrings.xml" || n === "xl/workbook.xml" || /^xl\/worksheets\/sheet\d+\.xml$/.test(n));
   const shared = [...(x["xl/sharedStrings.xml"] ?? "").matchAll(/<si>([\s\S]*?)<\/si>/g)].map((m) => runs(m[1], "t"));
   const names = [...(x["xl/workbook.xml"] ?? "").matchAll(/<sheet\b[^>]*\bname="([^"]*)"/g)].map((m) => decodeXml(m[1]));
@@ -63,43 +65,65 @@ export function readXlsx(b: Uint8Array): { sheet: string; table: Table }[] {
     .filter((n) => n.startsWith("xl/worksheets/"))
     .sort(byNumber)
     .map((n, i) => {
-      const table: Table = [];
-      for (const row of x[n].matchAll(/<row\b[^>]*>([\s\S]*?)<\/row>/g)) {
-        const cells: string[] = [];
-        for (const c of row[1].matchAll(/<c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g)) {
+      const rows: SheetRow[] = [];
+      for (const row of x[n].matchAll(/<row\b([^>]*)>([\s\S]*?)<\/row>/g)) {
+        const num = +(/\br="(\d+)"/.exec(row[1])?.[1] ?? rows.length + 1);
+        const cells: SheetRow["cells"] = [];
+        for (const c of row[2].matchAll(/<c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g)) {
           const attrs = c[1];
           const body = c[2] ?? "";
-          const ref = /\br="([A-Z]+)\d+"/.exec(attrs)?.[1] ?? "";
+          const col = /\br="([A-Z]+)\d+"/.exec(attrs)?.[1] ?? colLetter(cells.length);
           const type = /\bt="(\w+)"/.exec(attrs)?.[1];
           const v = /<v>([^<]*)<\/v>/.exec(body)?.[1];
-          const value = type === "s" ? shared[+(v ?? -1)] ?? "" : type === "inlineStr" ? runs(body, "t") : decodeXml(v ?? "");
-          cells[ref ? colIndex(ref) : cells.length] = value.trim();
+          const value = (type === "s" ? shared[+(v ?? -1)] ?? "" : type === "inlineStr" ? runs(body, "t") : decodeXml(v ?? "")).trim();
+          if (value) cells.push({ col, v: value });
         }
-        if (cells.some(Boolean)) table.push(Array.from(cells, (c) => c ?? ""));
-        if (table.length >= UPLOAD_LIMITS.sheetRows) break;
+        if (cells.length) rows.push({ n: num, cells });
       }
-      return { sheet: names[i] ?? `Sheet ${i + 1}`, table };
+      return { sheet: names[i] ?? `Sheet ${i + 1}`, rows };
     })
-    .filter((s) => s.table.length);
+    .filter((s) => s.rows.length);
 }
 
-/** PPTX → slide text and speaker notes in slide order, plus embedded images (≤ 10, larger first). */
-export function readPptx(b: Uint8Array): { slides: { n: number; text: string; notes: string }[]; images: { mime: string; data: Uint8Array }[] } {
-  const x = unzip(b, (n) => /^ppt\/(slides|notesSlides)\/\w+?\d+\.xml$/.test(n));
+const colLetter = (i: number): string => (i < 26 ? String.fromCharCode(65 + i) : colLetter(Math.floor(i / 26) - 1) + String.fromCharCode(65 + (i % 26)));
+
+/** A sheet's rows as a table, cells in their own columns. */
+export const rowsToTable = (rows: SheetRow[]): Table =>
+  rows.map((r) => {
+    const out: string[] = [];
+    for (const c of r.cells) out[colIndex(c.col)] = c.v;
+    return Array.from(out, (c) => c ?? "");
+  });
+
+/** XLSX → one table per sheet (≤ 2,000 rows each). */
+export function readXlsx(b: Uint8Array): { sheet: string; table: Table }[] {
+  return readXlsxCells(b).map((s) => ({ sheet: s.sheet, table: rowsToTable(s.rows.slice(0, UPLOAD_LIMITS.sheetRows)) }));
+}
+
+/** PPTX → slide text and speaker notes in slide order, plus embedded images (larger first) with the slides they're on. */
+export function readPptx(b: Uint8Array, maxImages: number = UPLOAD_LIMITS.deckImages): { slides: { n: number; text: string; notes: string }[]; images: { mime: string; data: Uint8Array; slides: number[] }[] } {
+  const x = unzip(b, (n) => /^ppt\/(slides|notesSlides)\/\w+?\d+\.xml$/.test(n) || /^ppt\/slides\/_rels\/slide\d+\.xml\.rels$/.test(n));
   const para = (xml: string) => [...xml.matchAll(/<a:p>([\s\S]*?)<\/a:p>/g)].map((m) => runs(m[1], "a:t").trim()).filter(Boolean).join("\n");
   const slides = Object.keys(x)
-    .filter((n) => n.startsWith("ppt/slides/"))
+    .filter((n) => /^ppt\/slides\/slide\d+\.xml$/.test(n))
     .sort(byNumber)
     .map((n) => {
       const num = +(/(\d+)\.xml$/.exec(n)?.[1] ?? 0);
       const notes = x[`ppt/notesSlides/notesSlide${num}.xml`];
       return { n: num, text: para(x[n]), notes: notes ? para(notes).replace(/^\d+$/m, "").trim() : "" };
     });
+  // Which slides show each picture, from each slide's relationships ("../media/image3.png").
+  const onSlides = new Map<string, number[]>();
+  for (const [n, rels] of Object.entries(x)) {
+    const num = /_rels\/slide(\d+)\.xml\.rels$/.exec(n)?.[1];
+    if (!num) continue;
+    for (const m of rels.matchAll(/Target="\.\.\/media\/([^"]+)"/g)) onSlides.set(`ppt/media/${m[1]}`, [...(onSlides.get(`ppt/media/${m[1]}`) ?? []), +num]);
+  }
   const media = unzipSync(b, { filter: (f) => /^ppt\/media\/.+\.(png|jpe?g|webp)$/i.test(f.name) && f.originalSize > 8 * 1024 && f.originalSize < 5 * 1024 * 1024 });
   const images = Object.entries(media)
     .sort((p, q) => q[1].length - p[1].length)
-    .slice(0, UPLOAD_LIMITS.deckImages)
-    .map(([name, data]) => ({ mime: /\.png$/i.test(name) ? "image/png" : /\.webp$/i.test(name) ? "image/webp" : "image/jpeg", data }));
+    .slice(0, maxImages)
+    .map(([name, data]) => ({ mime: /\.png$/i.test(name) ? "image/png" : /\.webp$/i.test(name) ? "image/webp" : "image/jpeg", data, slides: (onSlides.get(name) ?? []).sort((p, q) => p - q) }));
   return { slides, images };
 }
 

@@ -165,6 +165,32 @@ export async function generate(opts: {
   }
 }
 
+/**
+ * Tokens a prompt and its files take, from Vertex's countTokens. [VERIFY 14 Oct, Vertex docs: "There is no charge
+ * or quota restriction for using the CountTokens API", up to 3,000 requests a minute.] Undefined when it can't say.
+ */
+export async function countTokens(opts: { prompt?: string; files?: { mime: string; base64: string }[]; model?: Tier; budgetMs?: number }): Promise<number | undefined> {
+  const cfg = llmConfig();
+  if (!cfg.project) return undefined;
+  const model = opts.model === "pro" ? cfg.pro : opts.model === "lite" ? cfg.lite : cfg.flash;
+  const host = cfg.location === "global" ? "aiplatform.googleapis.com" : `${cfg.location}-aiplatform.googleapis.com`;
+  const parts = [...(opts.files ?? []).map((f) => ({ inlineData: { mimeType: f.mime, data: f.base64 } })), ...(opts.prompt ? [{ text: opts.prompt }] : [])];
+  if (!parts.length) return 0;
+  try {
+    const token = await auth.getAccessToken();
+    const res = await fetch(`https://${host}/v1/projects/${cfg.project}/locations/${cfg.location}/publishers/google/models/${model}:countTokens`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ contents: [{ role: "user", parts }] }),
+      signal: AbortSignal.timeout(opts.budgetMs ?? 20_000),
+    });
+    const data = (await res.json()) as { totalTokens?: number };
+    return res.ok && typeof data.totalTokens === "number" ? data.totalTokens : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 // ---- Function calling (§23.2 step 2: the agent core) -----------------------------------------------
 
 /** One part of a turn. Model parts are sent back exactly as received: Gemini 3 checks their thought signatures. */

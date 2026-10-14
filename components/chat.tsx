@@ -26,7 +26,8 @@ export function sourceLabel(s: Source, confirmed?: boolean): string {
     : s.kind === "qloo" ? "from Qloo"
     : s.kind === "inferred" ? "my read"
     : "Agent · guessed";
-  return confirmed && s.kind !== "message" ? `${base} · you confirmed` : base;
+  const at = s.at && (s.kind === "file" || s.kind === "website" || s.kind === "pasted") ? `, ${s.at}` : "";
+  return confirmed && s.kind !== "message" ? `${base}${at} · you confirmed` : `${base}${at}`;
 }
 
 export function useBriefChat(initial?: { brief: BrandBrief; msgs: Msg[]; turn: Turn }) {

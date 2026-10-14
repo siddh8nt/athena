@@ -42,6 +42,11 @@ export const LIMITS = {
     const t = take(`brief:${ip}`, 30, HOUR);
     return t.ok ? { ok: true as const } : { ok: false as const, message: `That's a lot of messages in an hour. Try again in about ${t.retryInMin} minutes, or explore the demo brands meanwhile.` };
   },
+  /** Files kept for the knowledge base (§23.2 step 4): 40 per IP per hour; each is counted and read once. */
+  upload(ip: string) {
+    const t = take(`upload:${ip}`, 40, HOUR);
+    return t.ok ? { ok: true as const } : { ok: false as const, message: `That's 40 files in an hour. More can be added in about ${t.retryInMin} minutes; the ones you've added are kept.` };
+  },
   /** Re-runs after an inline answer (§6.2.2): 20 per IP per hour, separate from new plans. */
   rerun(ip: string) {
     const t = take(`rerun:${ip}`, 20, HOUR);

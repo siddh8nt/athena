@@ -399,7 +399,7 @@ export function Journey() {
             <div className="row-actions">
               <button type="button" onClick={() => pick.current?.click()}>Add files</button>
               <input ref={pick} type="file" multiple accept={ACCEPT} hidden onChange={(e) => e.target.files && chat.addFiles(e.target.files)} />
-              <span className="muted small">Decks, stockist sheets, photos, PDFs. Read, never stored.</span>
+              <span className="muted small">Decks, stockist sheets, photos, PDFs.</span>
               <button type="submit" className="primary" disabled={(busy && !chat.researching) || !!queued || (first ? !text.trim() : !text.trim() && !chat.files.length)}>Send</button>
             </div>
           </form>

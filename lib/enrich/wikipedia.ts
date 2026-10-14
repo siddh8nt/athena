@@ -41,13 +41,14 @@ async function getJson(url: string): Promise<unknown> {
 
 /** The article a title names, following redirects; or, when there's none, up to 5 nearest titles. */
 async function resolveTitle(title: string): Promise<{ title: string } | { nearest: string[] }> {
-  const q = new URLSearchParams({ action: "query", titles: title, redirects: "1", format: "json", formatversion: "2" });
-  const j = (await getJson(`https://en.wikipedia.org/w/api.php?${q}`)) as { query?: { pages?: { title: string; missing?: boolean }[] } } | undefined;
+  const q = new URLSearchParams({ action: "query", titles: title, redirects: "1", prop: "pageprops", ppprop: "disambiguation", format: "json", formatversion: "2" });
+  const j = (await getJson(`https://en.wikipedia.org/w/api.php?${q}`)) as { query?: { pages?: { title: string; missing?: boolean; pageprops?: { disambiguation?: string } }[] } } | undefined;
   const page = j?.query?.pages?.[0];
-  if (page && !page.missing) return { title: page.title };
-  const s = new URLSearchParams({ action: "opensearch", search: title, limit: "5", namespace: "0", format: "json" });
+  // A disambiguation page isn't the thing itself: its views are people choosing between meanings.
+  if (page && !page.missing && !page.pageprops?.disambiguation) return { title: page.title };
+  const s = new URLSearchParams({ action: "opensearch", search: title, limit: "6", namespace: "0", format: "json" });
   const o = (await getJson(`https://en.wikipedia.org/w/api.php?${s}`)) as [string, string[]] | undefined;
-  return { nearest: o?.[1] ?? [] };
+  return { nearest: (o?.[1] ?? []).filter((t) => t !== page?.title).slice(0, 5) };
 }
 
 const ym = (d: Date) => d.toISOString().slice(0, 7);
@@ -84,4 +85,29 @@ export async function wikipediaMomentum(title: string): Promise<MomentumLookup> 
       monthly: Math.round(last3 / 3),
     },
   };
+}
+
+export type Season = {
+  title: string;
+  url: string;
+  /** Monthly views since July 2015 (the first month Wikimedia counts) up to the last complete month. */
+  months: [string, number][];
+};
+
+export type SeasonLookup = { found: Season } | { missing: string; nearest: string[] };
+
+/** Every month of views on record for one article, for its recurring yearly pattern. Never throws. */
+export async function wikipediaSeason(title: string): Promise<SeasonLookup> {
+  const r = await resolveTitle(title.trim()).catch(() => ({ nearest: [] as string[] }));
+  if (!("title" in r)) return { missing: title, nearest: r.nearest };
+  const at = new Date(Math.min(Date.now(), now().getTime()));
+  const end = new Date(Date.UTC(at.getUTCFullYear(), at.getUTCMonth(), 0));
+  const article = encodeURIComponent(r.title.replace(/ /g, "_"));
+  const stamp = `${end.toISOString().slice(0, 10).replace(/-/g, "")}00`;
+  const j = (await getJson(`https://wikimedia.org/api/rest_v1/metrics/pageviews/per-article/en.wikipedia/all-access/user/${article}/monthly/2015070100/${stamp}`)) as
+    | { items?: { timestamp: string; views: number }[] }
+    | null
+    | undefined;
+  const months = (j?.items ?? []).map((i): [string, number] => [`${i.timestamp.slice(0, 4)}-${i.timestamp.slice(4, 6)}`, i.views]);
+  return { found: { title: r.title, url: `https://en.wikipedia.org/wiki/${article}`, months } };
 }

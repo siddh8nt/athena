@@ -25,6 +25,8 @@ export type GeoCrowd = {
   reach: MetroReach[];
   /** Residents in cells where this crowd's taste leads every other crowd's ("crowd weather"). */
   leads: number;
+  /** Residents of all its significant hot cells (Census): who this crowd can reach. */
+  hotPeople?: number;
 };
 
 /** [geohash, the crowd that leads here (index), its percentile 0–100, bit k set when the cell is hot for crowd k]. */

@@ -44,7 +44,6 @@ for (const c of CASES.filter((x) => !process.env.ONLY || x.label.startsWith(proc
     log(`  ${g.nodes.length} nodes over ${new Set(g.nodes.map((n) => n.domain)).size} domains; landmarks: ${g.landmarks.map((h) => h.name).join(", ")}`);
     const top = [...g.nodes].sort((a, b) => (b.specificity ?? 0) - (a.specificity ?? 0)).slice(0, 6);
     log(`  most specific: ${top.map((n) => `${n.name} (${n.domain}, +${n.specificity}, pop ${n.popularity?.toFixed(2)})`).join(", ")}`);
-    if (g.galaxy?.question) log(`  agent's question: ${g.galaxy.question.name} (between crowds ${g.galaxy.question.crowds.join(" and ")})`);
     if (g.galaxy) log(`  why ${g.galaxy.nodes[0].name}: ${whyOf(g.galaxy, 0).map((w) => `${w.landmark} ${w.pct.toFixed(2)}`).join(", ")}`);
     log(`  ${g.calls} graph calls (${calls} uncached incl. resolution) in ${((Date.now() - t0) / 1000).toFixed(1)} s`);
     for (const cr of g.crowds) {

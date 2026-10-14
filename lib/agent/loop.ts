@@ -9,6 +9,7 @@ import { checkClaims, type Claim } from "./cite";
 import { FINISH, TOOLS, declarations, toolByName, type AgentState, type FounderQuestion, type Tool } from "./tools";
 import type { BrandInput } from "./intake";
 import type { PlanEvent } from "./plan";
+import type { FitsEvent } from "./fits";
 
 // The agent core (PRD §23.2 step 2, problem 0): our own loop on Gemini function calling. The model is given a goal,
 // a budget and the tools; it picks each next step from what the last ones returned. Code holds the hard caps (turns,
@@ -31,7 +32,9 @@ export type AgentStreamEvent =
   /** Onboarding's answer (§23.2 step 3): the brief, every fact with its sources. */
   | { type: "brief"; brief: BrandBrief; assumptions: string[]; dropped: number }
   /** What onboarding read (§23.2 step 4): every fact with where it is, the conflicts, and which option is in use. */
-  | { type: "knowledge"; knowledge: Knowledge; settled: Record<string, number> };
+  | { type: "knowledge"; knowledge: Knowledge; settled: Record<string, number> }
+  /** The most valuable fits (§23.2 step 5): the ranking and calendar from code, sourced reasons from the agent. */
+  | FitsEvent;
 
 /**
  * How a run ends: the function the model calls to finish, and the check its arguments must pass. Problems go back
@@ -39,7 +42,7 @@ export type AgentStreamEvent =
  */
 export type Finisher = {
   declaration: FunctionDeclaration;
-  check: (args: Record<string, unknown>, sources: Map<string, Source>) => { problems?: { feedback: Record<string, unknown>; count: number }; result?: AgentStreamEvent; summary: string };
+  check: (args: Record<string, unknown>, sources: Map<string, Source>, state: AgentState) => { problems?: { feedback: Record<string, unknown>; count: number }; result?: AgentStreamEvent; summary: string };
   /** The narration while checking ("Checking every number against its source"), and once checked. */
   checking: string;
   checked: string;
@@ -55,6 +58,8 @@ export type AgentRun = {
   /** Sources the run starts with after s0, such as what the founder said (s1…). */
   given?: { tool: string; summary: string; data: unknown; args?: Record<string, unknown> }[];
   budget?: Partial<AgentBudget>;
+  /** What the run starts knowing, such as the crowds the journey already measured. */
+  state?: Partial<AgentState>;
   qloo: QlooClient;
   env: Env;
   send: (e: AgentStreamEvent) => void;
@@ -168,7 +173,7 @@ export async function runAgent(run: AgentRun): Promise<{ answered: boolean; reas
     return { qloo_calls: Math.max(0, l.qloo), seconds: Math.max(0, Math.round(l.ms / 1000)) };
   };
 
-  const state: AgentState = { probes: [], asks: 0 };
+  const state: AgentState = { probes: [], asks: 0, ...run.state };
   const sources = new Map<string, Source>();
   const time = timeContext();
   sources.set("s0", { id: "s0", tool: "today", args: {}, summary: timeSummary(time), data: time, callIds: [] });
@@ -176,7 +181,12 @@ export async function runAgent(run: AgentRun): Promise<{ answered: boolean; reas
   for (const g of run.given ?? []) sources.set(`s${sources.size}`, { id: `s${sources.size}`, tool: g.tool, args: g.args ?? {}, summary: g.summary, data: g.data, callIds: [] });
   emit({ tool: "goal", why: run.goal, status: "ok", callIds: [], summary: `Budget: ${budget.qloo} Qloo calls, ${Math.round(budget.ms / 1000)} s` });
 
-  const turns: Turn[] = [{ role: "user", parts: [{ text: run.intro ?? briefOf(run.goal, run.brand, budget) }] }];
+  // The given sources go to the model with the opening message, each cut like a tool result; a source the model
+  // can cite but never sees is one it can only guess at.
+  const opening = [...sources.values()]
+    .filter((s) => s.id !== "s0")
+    .map((s) => ({ text: `Source ${s.id} (${s.tool}): ${s.summary}\n${JSON.stringify(forModel(s.data))}` }));
+  const turns: Turn[] = [{ role: "user", parts: [{ text: run.intro ?? briefOf(run.goal, run.brand, budget) }, ...opening] }];
   let fixedUp = false;
   let idle = 0;
   let stall: string | undefined;
@@ -247,7 +257,7 @@ export async function runAgent(run: AgentRun): Promise<{ answered: boolean; reas
 
     const fin = r.calls.find((c) => c.name === finisher.declaration.name);
     if (fin) {
-      const checked = finisher.check(fin.args, sources);
+      const checked = finisher.check(fin.args, sources, state);
       // One chance to fix what failed the check, when there's time for it.
       const problems = checked.problems;
       if (problems && !fixedUp && left().ms > 10_000) {
@@ -293,6 +303,7 @@ export async function runAgent(run: AgentRun): Promise<{ answered: boolean; reas
           qloo: qloo.withLog((q) => callIds.push(q.id)),
           env: run.env,
           state,
+          sources,
           status: (text: string) => emit({ tool: c.name, why, status: "running", callIds: [...callIds], summary: text }),
           ask: (q: FounderQuestion) => run.send({ type: "ask", ask: { ...q, id: `ask-${state.asks}` } }),
         };

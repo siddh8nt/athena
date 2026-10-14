@@ -82,3 +82,12 @@ export function applyMerge(facts: Fact[], groups: string[][]): Fact[] {
   }
   return [...out.values()];
 }
+
+/** A fact as later runs read it: its text, where it is, and the file or page it came from. */
+export type LiveFact = { id: string; text: string; where: string; source: string };
+
+/** The knowledge base as it stands: facts not struck, and each conflict as settled (its other options left out). */
+export function liveFacts(kb: Knowledge, settled: Record<string, number>): LiveFact[] {
+  const drop = new Set(kb.conflicts.flatMap((c) => c.options.filter((_, i) => i !== (settled[c.id] ?? c.recommended)).flatMap((o) => o.facts)));
+  return kb.facts.filter((f) => !f.struck && !drop.has(f.id)).map((f) => ({ id: f.id, text: f.text, where: f.where.map(whereLabel).join("; "), source: f.where[0]?.ref ?? "the founder" }));
+}

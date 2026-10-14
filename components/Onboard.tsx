@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { AgentEvent } from "@/lib/blocks/types";
 import type { AgentStreamEvent } from "@/lib/agent/loop";
 import type { BrandBrief } from "@/lib/brief/types";
-import type { Knowledge } from "@/lib/knowledge/types";
+import { liveFacts, type Knowledge, type LiveFact } from "@/lib/knowledge/types";
 import type { Upload } from "@/lib/knowledge/uploads";
 import { CONTEXT_PROMPT, PASTED } from "@/lib/agent/context-prompt";
 import { ACCEPT } from "./chat";
@@ -82,7 +82,7 @@ export function Onboard({
   files: File[];
   addFiles: (f: FileList | File[]) => void;
   setFiles: (f: File[]) => void;
-  onBrief: (brief: BrandBrief, assumptions: string[]) => void;
+  onBrief: (brief: BrandBrief, assumptions: string[], facts: LiveFact[]) => void;
 }) {
   const [site, setSite] = useState("");
   const [pasted, setPasted] = useState("");
@@ -210,6 +210,7 @@ export function Onboard({
     setSentStruck([...struck].sort().join());
     setRefiled(false);
     let got = false;
+    let read: { kb: Knowledge; settled: Record<string, number> } | undefined;
     try {
       await stream(form, (e) => {
         if (e.type === "event") {
@@ -225,11 +226,12 @@ export function Onboard({
         } else if (e.type === "knowledge") {
           setKb(e.knowledge);
           setInUse(e.settled);
+          read = { kb: e.knowledge, settled: e.settled };
         } else if (e.type === "ask") setAsks((a) => [...a.filter((x) => x.question !== e.ask.question), e.ask]);
         else if (e.type === "brief") {
           got = true;
           setWrote(e.assumptions);
-          onBrief(e.brief, e.assumptions);
+          onBrief(e.brief, e.assumptions, read ? liveFacts(read.kb, read.settled) : []);
         }
       });
     } catch {

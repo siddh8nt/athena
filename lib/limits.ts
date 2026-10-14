@@ -62,6 +62,11 @@ export const LIMITS = {
     const t = take(`probe:${ip}`, 12, HOUR);
     return t.ok ? { ok: true as const } : { ok: false as const, message: `That's 12 probes in an hour, so the map stays as it is for now. More open in about ${t.retryInMin} minutes.` };
   },
+  /** Most valuable fits (§23.2 step 5): 12 rankings per IP per hour. */
+  fits(ip: string) {
+    const t = take(`fits:${ip}`, 12, HOUR);
+    return t.ok ? { ok: true as const } : { ok: false as const, message: `Athena ranks again in about ${t.retryInMin} minutes; the crowds are still on the map.` };
+  },
   /** Crowd geography (§9.26): 10 new maps per IP per hour, one Qloo call per crowd (cached maps don't count). */
   geography(ip: string) {
     const t = take(`geo:${ip}`, 10, HOUR);

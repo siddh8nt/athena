@@ -129,7 +129,27 @@ export function geographyFrom(crowds: CrowdIn[], heat: (HeatmapCell[] | null)[],
       .filter((x) => x.people > 0)
       .sort((a, b) => b.reach - a.reach)
       .slice(0, REACH);
-    return { id: c.id, name: c.name, cells: p.size, hot: hot[k].size, hotspots, standsOut, reach, leads: Math.round(leads[k]) };
+    const hotPeople = [...hot[k]].reduce((s, gh) => s + people(gh), 0);
+    return { id: c.id, name: c.name, cells: p.size, hot: hot[k].size, hotspots, standsOut, reach, leads: Math.round(leads[k]), hotPeople: Math.round(hotPeople) };
   });
   return { crowds: out, cells, q: FDR, empty: !cells.length || undefined };
+}
+
+/**
+ * Residents of a crowd's hot cells, and those outside the given boxes (minLon, minLat, maxLon, maxLat): the reach
+ * left once places the brand already sells are taken out (§23.2 step 5b). From the cells already measured; 0 calls.
+ */
+export function hotReach(g: Geography, crowdId: string, exclude: [number, number, number, number][], cp: CellPop): { people: number; fresh: number } {
+  const k = g.crowds.findIndex((c) => c.id === crowdId);
+  if (k < 0) return { people: 0, fresh: 0 };
+  let people = 0;
+  let fresh = 0;
+  for (const [gh, , , mask] of g.cells) {
+    if (!(mask & (1 << k))) continue;
+    const n = cp.cells[gh]?.[0] ?? 0;
+    people += n;
+    const [lat, lon] = centre(gh);
+    if (!exclude.some((b) => inBox(b, lat, lon))) fresh += n;
+  }
+  return { people: Math.round(people), fresh: Math.round(fresh) };
 }

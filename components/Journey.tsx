@@ -13,6 +13,11 @@ import { BenchNote, WithWithout, type AloneRequest } from "./WithWithout";
 import { TasteAxes, useLean, type Taste } from "./TasteAxes";
 import { ShowWhy } from "./WhyPath";
 import { Onboard } from "./Onboard";
+import { Fits, tiersFor } from "./Fits";
+import type { Asked } from "./Question";
+import type { AgentStreamEvent } from "@/lib/agent/loop";
+import type { AgentEvent } from "@/lib/blocks/types";
+import type { LiveFact } from "@/lib/knowledge/types";
 import type { Contribution } from "@/lib/qloo/types";
 import { GUESS, type Turn } from "@/lib/brief/conversation";
 import { briefToInput } from "@/lib/brief/to-input";
@@ -20,7 +25,7 @@ import { missingRequired, type BrandBrief } from "@/lib/brief/types";
 import { GROWTH, MAX_PICKS, STOP_LABELS, blockedReason, decisionsFor, labelFor, motionsFor, orderFor, spreadNote, stopsFor, suggest, type Channel, type GrowthType, type StopId } from "@/lib/journey/growth";
 import { crowdIdForStop, crowdSignal } from "@/lib/journey/weights";
 import type { PlaceOption, Resolution } from "@/lib/places/resolve";
-import { emptyJourney, type CrowdCard, type CrowdsEvent, type CrowdsResult, type Journey as JourneyState, type Pin, type Reaction } from "@/lib/journey/types";
+import { emptyJourney, type CrowdCard, type CrowdsEvent, type CrowdsResult, type Journey as JourneyState } from "@/lib/journey/types";
 import type { Galaxy as GalaxyData } from "@/lib/taste/galaxy";
 import { packBySlug } from "@/lib/journey/packs";
 import { takeFor } from "@/lib/journey/takes";
@@ -146,7 +151,7 @@ export function Journey() {
     }
     setCrowdSteps([]);
     setForming(undefined);
-    setJ((x) => ({ ...x, crowds: undefined, crowdId: undefined, reactions: {}, pins: {}, lean: {} }));
+    setJ((x) => ({ ...x, crowds: undefined, crowdId: undefined, crowdChosen: false, reactions: {}, pins: {}, lean: {}, fits: undefined }));
     void crowdStream(key, (e) => {
       if (crowdKey.current !== key) return false;
       if (e.type === "status") setCrowdSteps((s) => [...s, e.text]);
@@ -172,15 +177,49 @@ export function Journey() {
       else if (e.type === "result" && e.result.crowds.length)
         setJ((x) => {
           const ids = new Set(e.result.crowds.map((c) => c.id));
-          const reactions = Object.fromEntries(Object.entries(x.reactions).filter(([c]) => ids.has(c)));
-          // A probe re-factorises the graph, so the axes (and the sliders on them) start over.
-          return { ...x, crowds: e.result, reactions, lean: {}, crowdId: x.crowdId && ids.has(x.crowdId) ? x.crowdId : defaultCrowd(e.result.crowds, x.growth) };
+          // A probe re-factorises the graph, so the axes (and the sliders on them) start over, and the fits rank again.
+          return { ...x, crowds: e.result, lean: {}, crowdId: x.crowdId && ids.has(x.crowdId) ? x.crowdId : defaultCrowd(e.result.crowds, x.growth) };
         });
       return true;
     })
       .catch(() => undefined)
       .finally(() => setProbing(undefined));
   };
+  // Most valuable fits (§23.2 step 5): once the crowds are in and the product is settled, the agent ranks them from the
+  // founder's context. A probe, new facts or an answer to its question ranks again; the last ranking stays up meanwhile.
+  const [fitsSteps, setFitsSteps] = useState<AgentEvent[]>([]);
+  const [fitsRunning, setFitsRunning] = useState(false);
+  const [asks, setAsks] = useState<Asked[]>([]);
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const fitsKey = useRef("");
+  const told: LiveFact[] = asks.filter((q) => answers[q.id]).map((q) => ({ id: `answer-${q.id}`, text: `Asked "${q.question}", the founder answered: ${answers[q.id]}`, where: "your answer", source: "the founder" }));
+  const fitsInput = j.stop !== "product" && j.crowds?.crowds.length && j.crowdsFor ? { seed: JSON.parse(j.crowdsFor) as unknown, probes: j.crowds.probes ?? [], brief, facts: [...(j.facts ?? []), ...told] } : undefined;
+  const fitsFor = fitsInput ? String(hash(JSON.stringify([j.crowdsFor, fitsInput.probes, fitsInput.facts.map((f) => f.id + f.text), brief.name?.value, brief.stockists.length]))) : "";
+  useEffect(() => {
+    if (!fitsInput || j.fits?.key === fitsFor || fitsKey.current === fitsFor) return;
+    const key = fitsFor;
+    fitsKey.current = key;
+    setFitsSteps([]);
+    setFitsRunning(true);
+    const go = (tries: number): Promise<void> =>
+      fitsStream(JSON.stringify(fitsInput), (e) => {
+        if (fitsKey.current !== key) return false;
+        if (e.type === "event") {
+          const ev = e.event;
+          // A finished step replaces its running line.
+          setFitsSteps((s) => {
+            const i = ev.status === "running" ? -1 : s.findIndex((x) => x.status === "running" && x.tool === ev.tool && x.why === ev.why);
+            return i >= 0 ? s.map((x, k) => (k === i ? ev : x)) : [...s, ev];
+          });
+        } else if (e.type === "ask") setAsks((a) => (a.some((x) => x.question === e.ask.question) ? a : [...a, e.ask]));
+        else if (e.type === "fits")
+          setJ((x) => ({ ...x, fits: { key, fits: e.fits, calendar: e.calendar, answer: e.answer, sources: e.sources }, crowdId: x.crowdChosen && x.crowdId ? x.crowdId : (e.fits.fits[0]?.crowd ?? x.crowdId) }));
+        return true;
+      }).catch(() => (tries > 0 && fitsKey.current === key ? go(tries - 1) : undefined));
+    void go(1).finally(() => fitsKey.current === key && setFitsRunning(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fitsFor]);
+
   useEffect(() => {
     if (turn.ready) startCrowds();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -202,7 +241,7 @@ export function Journey() {
       const guess = brief.channel?.value;
       say(guess ? `Looks like ${brief.name?.value ?? "it"} sells ${guess === "both" ? "both online and in stores" : `mostly ${guess}`}. Right? Then pick how you want to grow: up to ${MAX_PICKS}.` : "Do you sell mostly online, mostly in stores and venues, or both? Then pick how you want to grow: up to 3.");
     }
-    if (j.stop === "crowd") say("Here's who your product speaks to, read from Qloo's taste graph: real crowds, each a cluster of brands, music and TV the same people love. Tell me which ones sound like your customers.");
+    if (j.stop === "crowd") say("Here's who your product speaks to, read from Qloo's taste graph: real crowds, each a cluster of brands, music and TV the same people love. I'm ranking them as your most valuable fits: who to win first, who next, and who to watch.");
     if (j.stop === "go") say("That's the plan. Open the full plan to see it all on one screen, work your shortlists and draft outreach.");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [j.stop]);
@@ -233,11 +272,10 @@ export function Journey() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [brief.name?.value, brief.sells?.value, brief.stockists.length, j.growth.join(), j.city],
   );
-  // Each stop's crowd, weighted by the founder's reactions (§9.23 step 7); with New crowd plus other picks, the
-  // which-crowd answer decides which crowd each stop follows (§7.8).
+  // Each stop's crowd; with New crowd plus other picks, the which-crowd answer decides which crowd each stop follows (§7.8).
   const signalFor = (s: StopId) => {
-    const id = j.crowds ? crowdIdForStop(s, { growth: j.growth, crowds: j.crowds.crowds, crowdId: j.crowdId, target: j.crowdTarget, reactions: j.reactions }) : undefined;
-    return id && j.crowds ? crowdSignal(j.crowds.crowds, id, j.reactions, j.pins) : undefined;
+    const id = j.crowds ? crowdIdForStop(s, { growth: j.growth, crowds: j.crowds.crowds, crowdId: j.crowdId, target: j.crowdTarget, reactions: {} }) : undefined;
+    return id && j.crowds ? crowdSignal(j.crowds.crowds, id, {}) : undefined;
   };
   const inputFor = (s: StopId) => ({ ...base, crowd: signalFor(s) });
   const input = inputFor("go");
@@ -257,8 +295,9 @@ export function Journey() {
   // Onboarding (§23.2 step 3): a new founder starts from the three ways in, not a chat. Sample brands and founders
   // who began in the chat keep the chat.
   const onboarding = j.stop === "product" && !start.message && !msgs.some((m) => m.who === "you");
-  const onBrief = (b: BrandBrief, assumptions: string[]) => {
+  const onBrief = (b: BrandBrief, assumptions: string[], facts: LiveFact[]) => {
     chat.setBrief(b);
+    setJ((x) => ({ ...x, facts }));
     const ready = missingRequired(b).length === 0;
     chat.setTurn({ text: "", replies: [], ready });
     setMsgs((m) => [
@@ -421,9 +460,8 @@ export function Journey() {
                 j={j}
                 steps={crowdSteps}
                 forming={forming}
-                onReact={(id, r) => setJ((x) => react(x, id, r))}
-                onChoose={(id) => setJ((x) => ({ ...x, crowdId: id }))}
-                onPin={(id, name, pin) => setJ((x) => ({ ...x, pins: pinned(x.pins, id, name, pin) }))}
+                onChoose={(id) => setJ((x) => ({ ...x, crowdId: id, crowdChosen: true }))}
+                fits={{ steps: fitsSteps, running: fitsRunning, asks, answers, onAnswer: (q, a) => setAnswers((x) => ({ ...x, [q.id]: a })) }}
                 onProbe={probe}
                 probing={probing}
                 alone={alone}
@@ -495,29 +533,27 @@ async function crowdStream(body: string, on: (e: CrowdsEvent) => boolean): Promi
   }
 }
 
+/** Reads the fits stream (the agent's steps, any question, then the ranking). The handler returns false to stop listening. */
+async function fitsStream(body: string, on: (e: AgentStreamEvent) => boolean): Promise<void> {
+  const res = await fetch("/api/fits", { method: "POST", headers: { "Content-Type": "application/json" }, body });
+  if (!res.body) throw new Error("no stream");
+  const reader = res.body.getReader();
+  const dec = new TextDecoder();
+  let buf = "";
+  for (;;) {
+    const { done, value } = await reader.read();
+    buf += done ? dec.decode() : dec.decode(value, { stream: true });
+    const parts = buf.split("\n\n");
+    buf = parts.pop() ?? "";
+    for (const p of parts) if (p.startsWith("data:") && !on(JSON.parse(p.slice(5)) as AgentStreamEvent)) return;
+    if (done) return;
+  }
+}
+
 /** The crowd the plan follows by default: the main one, or for New crowd the closest adjacent one. */
 function defaultCrowd(crowds: CrowdCard[], growth: GrowthType[]): string | undefined {
   if (growth.includes("new_crowd")) return (crowds.find((c) => !c.main) ?? crowds[0])?.id;
   return crowds.find((c) => c.main)?.id ?? crowds[0]?.id;
-}
-
-/** "That's us" picks the crowd; "Partly" blends it in at half weight; "Not us" moves the plan off it and leaves its entities out (§9.23 step 7). */
-function react(x: JourneyState, id: string, r: Reaction): JourneyState {
-  const reactions = { ...x.reactions, [id]: r };
-  const crowds = x.crowds?.crowds ?? [];
-  let crowdId = x.crowdId;
-  // With New crowd, "That's us" marks today's customers; the plan keeps following the new crowd (§7.8).
-  if (r === "us" && !x.growth.includes("new_crowd")) crowdId = id;
-  if (r === "not_us" && crowdId === id) crowdId = crowds.find((c) => reactions[c.id] !== "not_us" && c.id !== id)?.id ?? crowdId;
-  return { ...x, reactions, crowdId };
-}
-
-/** A Galaxy pin set, changed or cleared. */
-function pinned(pins: Record<string, Pin> | undefined, id: string, name: string, pin: Pin["pin"] | undefined): Record<string, Pin> {
-  const next = { ...pins };
-  if (pin) next[id] = { name, pin };
-  else delete next[id];
-  return next;
 }
 
 /** What the growth rules need to know about the brand (§7.8 prerequisites). */
@@ -618,7 +654,7 @@ function Dock(props: {
     const chosen = j.crowds?.crowds.find((c) => c.id === j.crowdId);
     // §7.8: New crowd plus other picks needs one answer: who do the other picks target?
     const which = j.crowds?.crowds.length && chosen ? decisionsFor(j.growth).find((d) => d.id === "which_crowd") : undefined;
-    const current = j.crowds?.crowds.find((c) => j.reactions[c.id] === "us" && c.id !== j.crowdId) ?? j.crowds?.crowds.find((c) => c.main && c.id !== j.crowdId);
+    const current = j.crowds?.crowds.find((c) => c.main && c.id !== j.crowdId);
     return (
       <div className="dock">
         {which && current && (
@@ -743,14 +779,15 @@ function skewLine(s: CrowdCard["skew"]): string | undefined {
   return [topAge && topAge[1] >= 0.1 ? `leans ${ages[topAge[0]] ?? topAge[0]}` : "", g ? `leans ${g}` : ""].filter(Boolean).join(", ");
 }
 
-/** The Crowd stop (§9.23, J3): 2–3 crowds from Qloo's taste graph; the founder says which sound like their customers. */
-function CrowdStop({ j, steps, forming, onReact, onChoose, onPin, onProbe, probing, alone, taste }: { j: JourneyState; steps: string[]; forming?: GalaxyData; onReact: (id: string, r: Reaction) => void; onChoose: (id: string) => void; onPin: (id: string, name: string, pin: Pin["pin"] | undefined) => void; onProbe: (id: string, name: string) => void; probing?: string; alone: AloneRequest; taste?: Taste }) {
+type FitsView = { steps: AgentEvent[]; running: boolean; asks: Asked[]; answers: Record<string, string>; onAnswer: (q: Asked, a: string) => void };
+
+/** The Crowd stop (§9.23, §23.2 step 5): the crowds from Qloo's taste graph, ranked as the brand's most valuable fits. */
+function CrowdStop({ j, steps, forming, onChoose, fits, onProbe, probing, alone, taste }: { j: JourneyState; steps: string[]; forming?: GalaxyData; onChoose: (id: string) => void; fits: FitsView; onProbe: (id: string, name: string) => void; probing?: string; alone: AloneRequest; taste?: Taste }) {
   const r = j.crowds;
   // Linked views (§9.26): the crowd under the pointer in the Galaxy, the map or the cards lights up in all three.
   const [lit, setLit] = useState<number | null>(null);
-  const pins = j.pins ?? {};
   // While the crowds are measured, the Galaxy forms in place of the step list (from the first ring, about 5 s in).
-  if (!r && forming) return <Galaxy galaxy={forming} pins={pins} onPin={onPin} step={steps[steps.length - 1]} />;
+  if (!r && forming) return <Galaxy galaxy={forming} step={steps[steps.length - 1]} />;
   if (!r)
     return (
       <section className="card">
@@ -773,9 +810,12 @@ function CrowdStop({ j, steps, forming, onReact, onChoose, onPin, onProbe, probi
       </section>
     );
   const from = [r.seed.brand?.name, ...r.seed.lookalikes.map((l) => l.name)].filter(Boolean);
+  const decisions = tiersFor(j.fits, r.crowds);
+  const slot = (id: string) => Math.max(0, r.crowds.findIndex((c) => c.id === id)) % 4;
   return (
     <section className="crowds">
-      {r.galaxy && <Galaxy galaxy={r.galaxy} names={r.crowds.map((c) => c.name)} pins={pins} onPin={onPin} probes={r.probes ?? []} onProbe={onProbe} probing={probing} lit={lit} onLight={setLit} />}
+      {r.galaxy && <Galaxy galaxy={r.galaxy} names={r.crowds.map((c) => c.name)} decisions={decisions} probes={r.probes ?? []} onProbe={onProbe} probing={probing} lit={lit} onLight={setLit} />}
+      <Fits run={j.fits} {...fits} crowdId={j.crowdId} onChoose={onChoose} slot={slot} />
       {!probing && <CrowdGeography crowds={r.crowds} lit={lit} onLight={setLit} />}
       <header className="card-head">
         <h3>Your crowds</h3>
@@ -786,11 +826,11 @@ function CrowdStop({ j, steps, forming, onReact, onChoose, onPin, onProbe, probi
       <div className="crowd-grid">
         {r.crowds.map((c, ci) => {
           const chosen = j.crowdId === c.id;
-          const reaction = j.reactions[c.id];
           const skew = skewLine(c.skew);
+          const d = decisions[ci];
           return (
-            <article key={c.id} className={`crowd ${chosen ? "chosen" : ""} ${reaction === "not_us" ? "dimmed" : ""}${lit === ci ? " lit" : ""}`} onMouseEnter={() => setLit(ci)} onMouseLeave={() => setLit(null)}>
-              <p className="crowd-tag">{c.main ? "Closest to your product" : "Next door"}</p>
+            <article key={c.id} className={`crowd ${chosen ? "chosen" : ""} ${d?.watch ? "dimmed" : ""}${lit === ci ? " lit" : ""}`} onMouseEnter={() => setLit(ci)} onMouseLeave={() => setLit(null)}>
+              <p className="crowd-tag">{d ? `${d.tier} · ` : ""}{c.main ? "Closest to your product" : "Next door"}</p>
               <h4>
                 <span className="swatch" style={{ background: `var(--crowd-${ci % 4})` }} aria-hidden />
                 {c.name}
@@ -805,17 +845,8 @@ function CrowdStop({ j, steps, forming, onReact, onChoose, onPin, onProbe, probi
               {!!c.cities.length && <p className="small"><strong>Concentrates in</strong> {c.cities.slice(0, 4).map((x) => x.name).join(", ")}</p>}
               <Meeting r={r} crowd={c} />
               {skew && <p className="small" title={SKEW_LABEL}><strong>Audience</strong> {skew} <span className="muted">· Qloo taste panel, to test</span></p>}
-              <div className="react" role="group" aria-label={`Is ${c.name} your customer?`}>
-                {(["us", "partly", "not_us"] as Reaction[]).map((x) => (
-                  <button key={x} type="button" className={reaction === x ? "on" : ""} aria-pressed={reaction === x} onClick={() => onReact(c.id, x)}>
-                    {x === "us" ? "That's us" : x === "partly" ? "Partly" : "Not us"}
-                  </button>
-                ))}
-              </div>
-              {!chosen && reaction !== "not_us" && <button type="button" className="linkish small" onClick={() => onChoose(c.id)}>Plan for this crowd instead</button>}
+              {!chosen && <button type="button" className="linkish small" onClick={() => onChoose(c.id)}>Plan for this crowd instead</button>}
               {chosen && <p className="small chosen-note">The plan follows this crowd</p>}
-              {!chosen && reaction === "partly" && <p className="small muted">Blended into the plan at half weight</p>}
-              {reaction === "not_us" && <p className="small muted">Left out of every ranking</p>}
             </article>
           );
         })}

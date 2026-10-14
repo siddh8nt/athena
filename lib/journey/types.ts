@@ -1,4 +1,6 @@
 import type { Galaxy } from "@/lib/taste/galaxy";
+import type { Calendar, FitsAnswer, FitsResult, SourceRef } from "@/lib/fits/types";
+import type { LiveFact } from "@/lib/knowledge/types";
 import type { Channel, GrowthType, StopId } from "./growth";
 
 // What the journey's client and server share (PRD §6.2.2, §13). Pure types, no server imports.
@@ -72,16 +74,25 @@ export type Journey = {
   crowds?: CrowdsResult;
   /** The product input those crowds were built from, so a changed product rebuilds them. */
   crowdsFor?: string;
-  /** The crowd the plan follows, and the founder's reactions to each. */
+  /** The crowd the plan follows: the Win first crowd, until the founder plans for another. */
   crowdId?: string;
+  /** The founder chose crowdId themselves ("Plan for this crowd instead"), so a new ranking doesn't move it. */
+  crowdChosen?: boolean;
+  /** Reactions and pins are gone (§23.2 step 5e: taste is Qloo's job); kept empty so older saves still load. */
   reactions: Record<string, Reaction>;
-  /** Entities the founder marked in the Taste Galaxy, by Qloo id. Absent in journeys saved before v4.0. */
   pins?: Record<string, Pin>;
+  /** The founder's knowledge base as onboarding left it (§23.2 step 4), for the fits run. */
+  facts?: LiveFact[];
+  /** The most valuable fits (§23.2 step 5), with the inputs they were ranked from. */
+  fits?: FitsRun;
   /** With New crowd plus other picks: do the other picks target the current crowd or the new one (§7.8)? */
   crowdTarget?: "current" | "new";
   /** The founder's taste-axis sliders (§9.27): they re-rank the current stop's list. */
   lean?: Lean;
   city?: string;
 };
+
+/** One fits run as the journey keeps it; `key` is what it was ranked from. */
+export type FitsRun = { key: string; fits: FitsResult; calendar: Calendar; answer: FitsAnswer; sources: SourceRef[] };
 
 export const emptyJourney = (): Journey => ({ growth: [], stop: "product", done: [], reactions: {}, pins: {} });

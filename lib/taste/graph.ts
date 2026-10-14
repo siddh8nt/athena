@@ -6,7 +6,7 @@ import { MISSING, farthestPoints, percentiles, rowCorrelation } from "./embed";
 import { DOMAINS, shortName, type Domain, type Galaxy, type Ref } from "./galaxy";
 import { rng, type Rng } from "./linalg";
 import { spectral, type Spectral } from "./spectral";
-import { adjustedRand, ambiguity, coassociationOf, consensusLabels, membership, nullCertainty, resample } from "./consensus";
+import { adjustedRand, coassociationOf, consensusLabels, membership, nullCertainty, resample } from "./consensus";
 import { specificity } from "./specificity";
 
 // The taste graph (PRD §9.23, v4.0). Qloo as a measuring instrument: from a seed (the brand, or lookalike brands and
@@ -306,7 +306,6 @@ function finish(st: GraphState, main: Spectral, S: number[][], rand: Rng, opts: 
   const galaxy = snapshot(nodes, U, S, crowdIndex, main, landmarks, seedName, round, true, callIds.length);
   galaxy.nodes.forEach((g, i) => ((g.certainty = nodes[i].certainty ?? 1), (g.core = nodes[i].core ?? true)));
   galaxy.coreAt = round2(coreAt);
-  galaxy.question = question(nodes, m.p.map((row) => order.map((g) => row[ids.indexOf(g)])), crowdIndex);
   opts.onRound?.(galaxy);
   return {
     seed,
@@ -385,29 +384,8 @@ function ringSnapshot(nodes: Node[], domains: Domain[], seedName: string, calls:
   };
 }
 
-/** Founders recognise brands, shows and music fastest, so the agent's question and each crowd's signal lead with them. */
+/** Founders recognise brands, shows and music fastest, so each crowd's signal leads with them. */
 const FAMILIAR: Domain[] = ["brand", "tv_show", "artist"];
-
-/**
- * The agent's one good question (E8): among familiar entities the seed loves (top half), the one most evenly between
- * two crowds, so the founder's answer moves the most.
- */
-function question(nodes: Node[], p: number[][], crowd: number[]): Galaxy["question"] {
-  if ((p[0]?.length ?? 0) < 2) return undefined;
-  const median = [...nodes.map((n) => n.affinity)].sort((a, b) => a - b)[Math.floor(nodes.length / 2)];
-  let best = -1;
-  let score = -1;
-  nodes.forEach((n, i) => {
-    if (n.affinity < median || !FAMILIAR.includes(n.domain)) return;
-    const a = ambiguity(p[i]);
-    if (a > score) (score = a), (best = i);
-  });
-  if (best < 0) return undefined;
-  const ranked = p[best].map((v, c) => ({ v, c })).sort((a, b) => b.v - a.v);
-  const own = crowd[best];
-  const other = ranked.find((x) => x.c !== own)?.c ?? ranked[1].c;
-  return { id: nodes[best].id, name: nodes[best].name, crowds: [own, other] };
-}
 
 function crowdOf(id: string, main: boolean, members: Node[]): Crowd {
   const entities = [...members].sort((a, b) => b.affinity - a.affinity);

@@ -17,6 +17,14 @@ import { ticketmasterShows } from "@/lib/enrich/ticketmaster";
 import { censusMarket } from "@/lib/enrich/census";
 import { generate, type FunctionDeclaration } from "@/lib/llm/vertex";
 import { readWebsite } from "./intake";
+import type { Source } from "./loop";
+import type { Calendar, FitsResult } from "@/lib/fits/types";
+import type { CrowdEvidence } from "@/lib/fits/score";
+import { buildCalendar, type SeasonIn } from "@/lib/fits/calendar";
+import { rankFits } from "@/lib/fits/score";
+import { gatherEvidence, seasonOf } from "@/lib/fits/gather";
+import { PARAMS, type Param, type WeightChange } from "@/lib/fits/types";
+import { timeContext } from "@/lib/time/now";
 
 // The agent's tools (PRD §23.2 step 2a): the code Athena already had, as one registry the agent chooses from.
 // A tool is one entry: what it's for, its arguments, the most Qloo calls it can make, and how it runs. Measuring
@@ -30,6 +38,12 @@ export type AgentState = {
   probes: string[];
   geography?: Geography;
   asks: number;
+  /** The last ranking (§23.2 step 5) and what it was computed from. */
+  fits?: FitsResult;
+  evidence?: CrowdEvidence[];
+  /** Each crowd's yearly attention profile, for the calendar. */
+  seasons?: Record<string, SeasonIn | undefined>;
+  calendar?: Calendar;
 };
 
 export type ToolCtx = {
@@ -37,6 +51,8 @@ export type ToolCtx = {
   qloo: QlooClient;
   env: Env;
   state: AgentState;
+  /** Every source so far, by id: tools that take sourced arguments check them here. */
+  sources: ReadonlyMap<string, Source>;
   /** A short progress line while a slow tool runs. */
   status: (text: string) => void;
   /** Sends a founder question to the client (non-blocking). */
@@ -82,7 +98,7 @@ const r3 = (x: number | undefined) => (typeof x === "number" ? Math.round(x * 10
 const TYPES = ["brand", "artist", "tv_show", "movie", "podcast", "book", "place", "person", "videogame", "destination"];
 
 /** A typed US place as a metro: a named one, else the place resolver's reading (the biggest match when shared). */
-async function metroOf(text: string): Promise<Metro | undefined> {
+export async function metroOf(text: string): Promise<Metro | undefined> {
   if (!text) return undefined;
   const named = metroFor(text);
   if (named) return named;
@@ -109,7 +125,7 @@ const CROWD_KEY =
   "stability: 0–1, how often resampling Qloo's data gives back the same crowd (Hennig); under ~0.6 is soft, worth a probe. core_members: members certain above shuffled-data chance. " +
   "skew: the audience's age and gender lean from Qloo; each value is a relative lean (0 = average), not a share of the audience. cities.venues: venues in that city that score for the crowd.";
 
-function crowdsOut(r: CrowdsResult) {
+export function crowdsOut(r: CrowdsResult) {
   return {
     key: CROWD_KEY,
     seed: { brand: r.seed.brand?.name, lookalikes: r.seed.lookalikes.map((x) => x.name), tags: r.seed.tags.map((x) => x.name), missing: r.seed.missing },
@@ -392,6 +408,151 @@ export const TOOLS: Tool[] = [
       return {
         summary: [site.description, site.products.length ? `sells ${site.products.join(", ")}` : "", site.stockists.length ? `${site.stockists.length} stockists listed` : ""].filter(Boolean).join(" · "),
         data: site,
+      };
+    },
+  },
+  {
+    name: "rank_fits",
+    maxMs: 60_000,
+    description:
+      "Ranks the measured crowds as the brand's most valuable fits: each scored 0–1 on six parameters on fixed scales (brand fit from Qloo; reach: residents of its hot clusters, minus places the brand already sells; efficiency: specificity; cultural momentum: Wikipedia pageviews this year against last; moments: its seasonal attention peaks and Ticketmaster events ahead of today; signal strength: stability and core), combined as a weighted mean, then tiered Win first / Win next / Watch with reasons. " +
+      "Code does the math; you supply the context: where the brand already sells (each place with the source ids that say so), any weight change the founder's context justifies (0.5–2×, with the reason and its source ids; equal weights otherwise), and Wikipedia article titles that stand for each crowd's taste (its artists, shows, scenes, not brands). " +
+      "Call it again with changed context to see how the ranking moves. 1 Qloo call per crowd the first time (geography), then 0. Needs build_taste_graph first.",
+    properties: {
+      already_sell: {
+        type: "array",
+        items: { type: "object", properties: { place: { type: "string" }, sources: { type: "array", items: { type: "string" } } }, required: ["place", "sources"] },
+        description: "US cities or regions where the brand already sells, from the brief or files.",
+      },
+      weights: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: { parameter: { type: "string", enum: [...PARAMS] }, multiplier: { type: "number" }, reason: { type: "string" }, sources: { type: "array", items: { type: "string" } } },
+          required: ["parameter", "multiplier", "reason", "sources"],
+        },
+        description:
+          "How much each parameter counts for this brand, read from what the founder's context says about goals, budget, capacity and constraints. " +
+          "fit: how close the crowd's taste is to the brand. reach: how many new people it opens up, which matters more when the goal is wide growth. " +
+          "efficiency: how little spend leaks past the crowd, which matters more on a tight budget or when broad channels are out of reach. " +
+          "momentum: whether the crowd's taste is rising. moments: dated peaks ahead, which matter more when a launch or sell-in is tied to a date. " +
+          "signal: how sure the measurement is, which matters more when a wrong bet would be costly. Leave it empty only when the context says nothing that bears on these.",
+      },
+      crowd_titles: {
+        type: "array",
+        items: { type: "object", properties: { crowd_id: { type: "string" }, titles: { type: "array", items: { type: "string" } } }, required: ["crowd_id", "titles"] },
+        description: "Up to 2 exact English Wikipedia article titles per crowd that the brand context says stand for it, added to its own top loves (always read). Leave a crowd out to read its own loves only.",
+      },
+    },
+    qloo: (_a, s) => (s.geography ? 0 : (s.crowds?.crowds.length ?? 5)),
+    async run(a, { qloo, env, state, sources, status }) {
+      if (!state.crowds?.crowds.length) return { summary: "build the taste graph first", data: {}, status: "empty" };
+      const known = (v: unknown) => strs(v, 6, 12).filter((id) => sources.has(id));
+      const ignored: string[] = [];
+      // Places: each needs a source that says so, and must be a US place.
+      const places = await Promise.all(
+        (Array.isArray(a.already_sell) ? a.already_sell : []).slice(0, 25).map(async (x) => {
+          const o = x as { place?: unknown; sources?: unknown };
+          const place = str(o.place, 80);
+          const src = known(o.sources);
+          if (!place || !src.length) return void ignored.push(`${place || "a place"}: no valid source`);
+          const metro = await metroOf(place);
+          if (!metro) return void ignored.push(`${place}: not a US place I can map`);
+          return { metro, sources: src };
+        }),
+      );
+      const exclude = places.filter((p): p is NonNullable<typeof p> => !!p).filter((p, i, all) => all.findIndex((q) => q.metro.id === p.metro.id) === i);
+      const changes: WeightChange[] = (Array.isArray(a.weights) ? a.weights : []).slice(0, 6).flatMap((x) => {
+        const o = x as { parameter?: unknown; multiplier?: unknown; reason?: unknown; sources?: unknown };
+        const param = str(o.parameter, 20) as Param;
+        const src = known(o.sources);
+        const reason = str(o.reason, 200);
+        const w = typeof o.multiplier === "number" ? o.multiplier : NaN;
+        if (!PARAMS.includes(param) || !src.length || !reason || !(w >= 0.5 && w <= 2)) {
+          ignored.push(`weight on ${param || "?"}: needs a parameter, a 0.5–2 multiplier, a reason and a valid source`);
+          return [];
+        }
+        return [{ param, weight: w, reason, sources: src }];
+      });
+      const titles = Object.fromEntries(
+        (Array.isArray(a.crowd_titles) ? a.crowd_titles : [])
+          .map((x) => x as { crowd_id?: unknown; titles?: unknown })
+          .map((o) => [str(o.crowd_id, 40), strs(o.titles, 2, 120)] as const)
+          .filter(([id, t]) => id && t.length),
+      );
+      const g = await gatherEvidence({ qloo, crowds: state.crowds, geography: state.geography, exclude: exclude.map((p) => p.metro), titles, ticketmasterKey: env.ticketmasterKey, status });
+      if (g.geography) state.geography = g.geography;
+      const r = rankFits(g.evidence, { date: timeContext().date, changes, excluded: exclude.map((p) => ({ metro: p.metro.name, sources: p.sources })) });
+      state.fits = r;
+      state.evidence = g.evidence;
+      state.seasons = g.seasons;
+      const out = r.fits.map((f) => ({
+        crowd_id: f.crowd,
+        name: f.name,
+        rank: f.rank,
+        tier: f.tier,
+        score: f.score,
+        parameters: Object.fromEntries(PARAMS.map((p) => [p, { score: f.params[p].score === undefined ? null : Math.round(f.params[p].score! * 100) / 100, measured: f.params[p].text }])),
+        reasons: f.reasons,
+        when: f.when,
+        not_measured: f.missing,
+      }));
+      const key = "Each parameter's score is 0–1 on a fixed scale; the crowd's score is their weighted mean over what was measured. measured: what the number was read from, in words you may quote. Tiers come from the scores; never reorder them.";
+      return {
+        summary: r.fits.map((f) => `${f.rank}. ${f.name} (${f.tier.replace("_", " ")}, ${f.score.toFixed(2)})`).join("; "),
+        data: { key, fits: out, weights: r.weights, weight_changes: r.changes, left_out_as_already_sold: r.excluded, ignored },
+      };
+    },
+  },
+  {
+    name: "brand_calendar",
+    description:
+      "The brand's calendar from today: US retail moments (dates by calendar rule), the brand's category seasons and each crowd's attention peaks (both from every year of Wikipedia pageviews since 2015, with the ramp before each peak as its lead time) and its dated events, grouped into now (30 days), next quarter, this season (3–6 months) and the 12-month calendar, plus recurring yearly patterns. " +
+      "You give up to 4 exact Wikipedia article titles for the brand's product categories, and any buying lead times you found (each with the source ids that state it; never estimate one). Call rank_fits first so each crowd's moments are included. 0 Qloo calls.",
+    properties: {
+      category_titles: { type: "array", items: { type: "string" }, description: "e.g. 'Sardine', 'Olive oil', 'Sunscreen'." },
+      lead_times: {
+        type: "array",
+        items: { type: "object", properties: { moment: { type: "string" }, days: { type: "integer" }, sources: { type: "array", items: { type: "string" } } }, required: ["moment", "days", "sources"] },
+        description: "Days before a retail moment that buyers or retailers need the product, only as stated in a source.",
+      },
+    },
+    qloo: () => 0,
+    async run(a, { state, sources }) {
+      const cats = strs(a.category_titles, 4, 120);
+      const categories = await Promise.all(cats.map((t) => seasonOf(t)));
+      const leadTimes = (Array.isArray(a.lead_times) ? a.lead_times : []).slice(0, 12).flatMap((x) => {
+        const o = x as { moment?: unknown; days?: unknown; sources?: unknown };
+        const src = strs(o.sources, 4, 12).filter((id) => sources.has(id) && id !== "s0");
+        const days = int(o.days, 0, 365, 0);
+        const moment = str(o.moment, 60);
+        return moment && days && src.length ? [{ moment, days, basis: src.map((id) => sources.get(id)!.summary.slice(0, 100)).join("; ") }] : [];
+      });
+      const t = timeContext(undefined, 40);
+      const cal = buildCalendar({
+        date: t.date,
+        retail: t.moments,
+        leadTimes,
+        categories: categories.filter((c): c is SeasonIn => !!c),
+        crowds: (state.evidence ?? []).map((e) => ({ id: e.id, name: e.name, season: state.seasons?.[e.id], events: e.events })),
+      });
+      state.calendar = cal;
+      const n = (h: keyof typeof cal.horizons) => cal.horizons[h].length;
+      const missing = cats.filter((_, i) => !categories[i]);
+      const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      const list = (h: keyof typeof cal.horizons) => cal.horizons[h].slice(0, 6).map((m) => ({ name: m.name, kind: m.kind, date: m.date, days: m.days, start_by: m.startBy, lead: m.lead?.basis, detail: m.detail }));
+      return {
+        summary: `${n("now")} now, ${n("next_quarter")} next quarter, ${n("season")} this season, ${n("year")} later in the year${missing.length ? `; no yearly pattern for ${missing.join(", ")}` : ""}`,
+        data: {
+          now: list("now"),
+          next_quarter: list("next_quarter"),
+          season: list("season"),
+          year: list("year"),
+          recurring: cal.recurring.map((r) => ({ title: r.title, crowd: r.crowd, peak_months: r.peaks.map((p) => `${MON[p.month]} ${p.index}×`), years: r.years })),
+          no_pattern: missing,
+          lead_times_used: leadTimes,
+        },
+        status: categories.some(Boolean) || (state.evidence ?? []).length ? "ok" : "thin",
       };
     },
   },

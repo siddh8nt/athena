@@ -42,8 +42,6 @@ export type Galaxy = {
   calls: number;
   /** The bar for the core: the 95th percentile of certainty on shuffled probes. */
   coreAt?: number;
-  /** The entity the agent would ask about: the one most evenly between two crowds (E8). */
-  question?: { id: string; name: string; crowds: [number, number] };
 };
 
 /** Explains one entity's place: the landmarks that rank it highest, from the probes already made (E6, 0 calls). */

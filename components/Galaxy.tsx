@@ -3,15 +3,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { forceCollide, forceLink, forceManyBody, forceSimulation, forceX, forceY, type Simulation, type SimulationLinkDatum, type SimulationNodeDatum } from "d3-force";
 import { domainWord, shortName, whyOf, type Domain, type Galaxy as GalaxyData } from "@/lib/taste/galaxy";
-import type { Pin } from "@/lib/journey/types";
 import { ordinal } from "./Blocks";
 
 // The Taste Galaxy (PRD §13, v4.0): every entity the crowd loves, placed by how the probed landmarks rank it. It forms
 // live, round by round, as the agent probes Qloo; the crowds settle into hulls drawn round their
-// cores. Hover shows why an entity sits where it does (from the probes already made, 0 calls); click marks it as the
-// founder's customers' or not, and that changes every later ranking. Shape is the domain, colour the crowd (never
-// colour alone), size how much more this crowd loves it than its popularity predicts. Solid entities are a crowd's
-// core (placed more surely than shuffled data allows); faint ones are its fringe.
+// cores. Hover shows why an entity sits where it does (from the probes already made, 0 calls); click opens it, to probe
+// it. Taste is Qloo's job, never the founder's (§23.2 step 5e). Once the fits are ranked, the map is a decision surface:
+// each crowd carries its tier, reach, momentum and timing, and Watch crowds fade. Shape is the domain, colour the crowd
+// (never colour alone), size how much more this crowd loves it than its popularity predicts. Solid entities are a
+// crowd's core (placed more surely than shuffled data allows); faint ones are its fringe.
 
 const W = 720;
 const H = 440;
@@ -70,12 +70,15 @@ const corr = (a: number[], b: number[]) => a.reduce((s, x, i) => s + x * b[i], 0
 
 const reducedMotion = () => typeof window !== "undefined" && !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
+/** One crowd's place in the ranking: its tier, a line of reach, momentum and timing, and whether it's on watch. */
+export type CrowdDecision = { tier: string; line: string; watch: boolean };
+
 type Props = {
   galaxy: GalaxyData;
   /** Crowd names by index, once the crowds are named. */
   names?: string[];
-  pins: Record<string, Pin>;
-  onPin: (id: string, name: string, pin: Pin["pin"] | undefined) => void;
+  /** The most valuable fits (§23.2 step 5d), by crowd index, once ranked. */
+  decisions?: (CrowdDecision | undefined)[];
   /** What the agent is doing right now, while the galaxy forms. */
   step?: string;
   /** Click to probe (§13.11): entities the founder probed, and the call to probe one more. */
@@ -88,7 +91,7 @@ type Props = {
   onLight?: (c: number | null) => void;
 };
 
-export function Galaxy({ galaxy, names, pins, onPin, step, probes: yourProbes = [], onProbe, probing, lit = null, onLight }: Props) {
+export function Galaxy({ galaxy, names, decisions, step, probes: yourProbes = [], onProbe, probing, lit = null, onLight }: Props) {
   const sim = useRef<Simulation<SimNode, SimLink> | null>(null);
   const simNodes = useRef(new Map<string, SimNode>());
   const lastTargets = useRef<{ round: number; x: Map<string, number>; y: Map<string, number> } | null>(null);
@@ -183,7 +186,7 @@ export function Galaxy({ galaxy, names, pins, onPin, step, probes: yourProbes = 
   }, [galaxy]);
   const focus = hover ?? sel;
   const near = focus === null ? null : new Set([focus, ...neighbours[focus].map((x) => x.j)]);
-  const dim = (i: number) => (near ? !near.has(i) : lit !== null && galaxy.nodes[i].crowd !== lit);
+  const dim = (i: number) => (near ? !near.has(i) : lit !== null ? galaxy.nodes[i].crowd !== lit : !!decisions?.[galaxy.nodes[i].crowd]?.watch);
   const colour = (c: number) => (c >= 0 ? `var(--crowd-${slotOf.get(c) ?? 0})` : "var(--muted)");
 
   // Hulls around each crowd's core (all its members while forming, or when it has under 3 at the core).
@@ -212,9 +215,6 @@ export function Galaxy({ galaxy, names, pins, onPin, step, probes: yourProbes = 
         .slice(0, 2)
         .forEach(({ i }) => labelled.add(i));
   if (focus !== null) labelled.add(focus);
-  const q = galaxy.question;
-  const qi = q ? galaxy.nodes.findIndex((n) => n.id === q.id) : -1;
-  if (qi >= 0 && !pins[q!.id]) labelled.add(qi);
 
   const probes = galaxy.landmarks.length - 1;
   const crowdName = (c: number) => names?.[c] ?? `Crowd ${c + 1}`;
@@ -227,9 +227,7 @@ export function Galaxy({ galaxy, names, pins, onPin, step, probes: yourProbes = 
         i={focus}
         at={pos[focus]}
         crowdName={crowdName}
-        pin={pins[galaxy.nodes[focus].id]}
         pinned={sel === focus}
-        onPin={onPin}
         onClose={() => setSel(null)}
         yours={yourProbes.includes(galaxy.nodes[focus].id)}
         onProbe={canProbe && !galaxy.nodes[focus].landmark ? () => (onProbe!(galaxy.nodes[focus].id, shortName(galaxy.nodes[focus].name, galaxy.nodes[focus].domain)), setSel(null)) : undefined}
@@ -251,13 +249,13 @@ export function Galaxy({ galaxy, names, pins, onPin, step, probes: yourProbes = 
       </header>
 
       {list ? (
-        <GalaxyList g={galaxy} crowds={crowds} crowdName={crowdName} colour={colour} pins={pins} onPin={onPin} />
+        <GalaxyList g={galaxy} crowds={crowds} crowdName={crowdName} colour={colour} decisions={decisions} />
       ) : (
         <div className="galaxy-stage" onMouseLeave={() => (setHover(null), onLight?.(null))}>
           <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Taste Galaxy: ${galaxy.nodes.length} entities in ${crowds.length || "no"} crowds. Use "Show as a list" for every name.`} onClick={() => setSel(null)}>
             <g className="hulls">
               {hulls.map(({ c, pts }) =>
-                pts.length >= 3 ? <path key={c} d={`M${pts.map((p) => p.join(" ")).join("L")}Z`} style={{ fill: colour(c), stroke: colour(c) }} /> : null,
+                pts.length >= 3 ? <path key={c} className={decisions?.[c]?.watch ? "watch" : ""} d={`M${pts.map((p) => p.join(" ")).join("L")}Z`} style={{ fill: colour(c), stroke: colour(c) }} /> : null,
               )}
             </g>
             {focus !== null &&
@@ -270,11 +268,10 @@ export function Galaxy({ galaxy, names, pins, onPin, step, probes: yourProbes = 
             </g>
             {galaxy.nodes.map((n, i) => {
               const p = pos[i];
-              const pin = pins[n.id]?.pin;
               return (
                 <g
                   key={n.id}
-                  className={`gnode${dim(i) ? " faded" : ""}${pin === "not_us" ? " out" : ""}${sel === i ? " sel" : ""}${n.core ? "" : " fringe"}`}
+                  className={`gnode${dim(i) ? " faded" : ""}${sel === i ? " sel" : ""}${n.core ? "" : " fringe"}`}
                   transform={`translate(${(p.x ?? 0).toFixed(1)},${(p.y ?? 0).toFixed(1)})`}
                   onMouseEnter={() => (setHover(i), onLight?.(n.crowd >= 0 ? n.crowd : null))}
                   onClick={(e) => {
@@ -283,7 +280,7 @@ export function Galaxy({ galaxy, names, pins, onPin, step, probes: yourProbes = 
                   }}
                 >
                   {n.landmark && <circle className="ring" r={p.r + 3.5} />}
-                  <path d={shape(n.domain, p.r)} style={{ fill: colour(n.crowd) }} className={pin === "us" ? "us" : ""} />
+                  <path d={shape(n.domain, p.r)} style={{ fill: colour(n.crowd) }} />
                 </g>
               );
             })}
@@ -308,10 +305,20 @@ export function Galaxy({ galaxy, names, pins, onPin, step, probes: yourProbes = 
               hulls.map(({ c, pts }) => {
                 if (!pts.length) return null;
                 const topPt = pts.reduce((a, b) => (b[1] < a[1] ? b : a));
+                const d = decisions?.[c];
+                const x = Math.min(W - 110, Math.max(110, topPt[0]));
+                const y = Math.max(d ? 28 : 14, topPt[1] - 18);
                 return (
-                  <text key={`h${c}`} className="hull-label" x={Math.min(W - 60, Math.max(60, topPt[0]))} y={Math.max(14, topPt[1] - 18)} textAnchor="middle" style={{ fill: colour(c) }}>
-                    {crowdName(c)}
-                  </text>
+                  <g key={`h${c}`} className={`hull-label${d?.watch ? " watch" : ""}`}>
+                    <text x={x} y={d ? y - 13 : y} textAnchor="middle" style={{ fill: colour(c) }}>
+                      {d ? `${d.tier} · ${crowdName(c)}` : crowdName(c)}
+                    </text>
+                    {d && (
+                      <text x={x} y={y} textAnchor="middle" className="hull-line">
+                        {d.line}
+                      </text>
+                    )}
+                  </g>
                 );
               })}
           </svg>
@@ -331,14 +338,13 @@ export function Galaxy({ galaxy, names, pins, onPin, step, probes: yourProbes = 
           <span className="shimmer-text">{step}</span>
         </p>
       )}
-      {galaxy.done && q && <Question q={q} crowdName={crowdName} pin={pins[q.id]} onPin={onPin} />}
       {!list && <Legend />}
     </section>
   );
 }
 
-/** The hover card: what the entity is, why it sits here (the probes that rank it highest), and the founder's pin. */
-function EntityCard({ g, i, at, crowdName, pin, pinned, onPin, onClose, yours, onProbe }: { g: GalaxyData; i: number; at: { x?: number; y?: number }; crowdName: (c: number) => string; pin?: Pin; pinned: boolean; onPin: Props["onPin"]; onClose: () => void; yours: boolean; onProbe?: () => void }) {
+/** The hover card: what the entity is, and why it sits here (the probes that rank it highest). Clicked, it can be probed. */
+function EntityCard({ g, i, at, crowdName, pinned, onClose, yours, onProbe }: { g: GalaxyData; i: number; at: { x?: number; y?: number }; crowdName: (c: number) => string; pinned: boolean; onClose: () => void; yours: boolean; onProbe?: () => void }) {
   const n = g.nodes[i];
   const why = g.round > 0 ? whyOf(g, i, 3) : [];
   const left = ((at.x ?? 0) / W) * 100;
@@ -372,45 +378,21 @@ function EntityCard({ g, i, at, crowdName, pin, pinned, onPin, onClose, yours, o
       )}
       {pinned ? (
         <div className="react">
-          <button type="button" className={pin?.pin === "us" ? "on" : ""} aria-pressed={pin?.pin === "us"} onClick={() => onPin(n.id, n.name, pin?.pin === "us" ? undefined : "us")}>Our customers love this</button>
-          <button type="button" className={pin?.pin === "not_us" ? "on" : ""} aria-pressed={pin?.pin === "not_us"} onClick={() => onPin(n.id, n.name, pin?.pin === "not_us" ? undefined : "not_us")}>Not us</button>
-          <button type="button" className="linkish small" aria-label="Close" onClick={onClose}>✕</button>
           {onProbe && (
             <button type="button" className="linkish small probe-btn" onClick={onProbe} title="About 6 Qloo calls">
               Probe it: re-form the map around its fans
             </button>
           )}
+          <button type="button" className="linkish small" aria-label="Close" onClick={onClose}>✕</button>
         </div>
       ) : (
-        <span className="small muted">Click to mark it</span>
+        onProbe && <span className="small muted">Click to probe it</span>
       )}
     </div>
   );
 }
 
-/** The agent's one question (E8): the familiar entity most evenly between two crowds, where an answer moves the plan most. */
-function Question({ q, crowdName, pin, onPin }: { q: NonNullable<GalaxyData["question"]>; crowdName: (c: number) => string; pin?: Pin; onPin: Props["onPin"] }) {
-  if (pin)
-    return (
-      <p className="galaxy-question small">
-        Noted: {q.name} {pin.pin === "us" ? "now leads every ranking that follows." : "is left out of every ranking that follows."}{" "}
-        <button type="button" className="linkish small" onClick={() => onPin(q.id, q.name, undefined)}>Undo</button>
-      </p>
-    );
-  return (
-    <div className="galaxy-question">
-      <p>
-        <strong>One question.</strong> Would your customers love <strong>{q.name}</strong>? It sits between {crowdName(q.crowds[0])} and {crowdName(q.crowds[1])}, so your answer tells me which way to lean.
-      </p>
-      <div className="react">
-        <button type="button" onClick={() => onPin(q.id, q.name, "us")}>Yes, they would</button>
-        <button type="button" onClick={() => onPin(q.id, q.name, "not_us")}>Not really</button>
-      </div>
-    </div>
-  );
-}
-
-function GalaxyList({ g, crowds, crowdName, colour, pins, onPin }: { g: GalaxyData; crowds: number[]; crowdName: (c: number) => string; colour: (c: number) => string; pins: Record<string, Pin>; onPin: Props["onPin"] }) {
+function GalaxyList({ g, crowds, crowdName, colour, decisions }: { g: GalaxyData; crowds: number[]; crowdName: (c: number) => string; colour: (c: number) => string; decisions?: Props["decisions"] }) {
   const groups = crowds.length ? crowds : [-1];
   return (
     <div className="galaxy-list">
@@ -418,24 +400,20 @@ function GalaxyList({ g, crowds, crowdName, colour, pins, onPin }: { g: GalaxyDa
         <div key={c}>
           <h4>
             <span className="swatch" style={{ background: colour(c) }} aria-hidden /> {c >= 0 ? crowdName(c) : "Everything so far"}
+            {c >= 0 && decisions?.[c] && <small className="muted"> · {decisions[c]!.tier} · {decisions[c]!.line}</small>}
           </h4>
           <ul>
             {g.nodes
               .map((n, i) => ({ n, i }))
               .filter(({ n }) => n.crowd === c)
               .sort((a, b) => Number(b.n.core) - Number(a.n.core) || b.n.affinity - a.n.affinity)
-              .map(({ n }) => {
-                const pin = pins[n.id]?.pin;
-                return (
-                  <li key={n.id}>
-                    <span className="grow">
-                      {shortName(n.name, n.domain)} <small className="muted">{domainWord(n.domain)}{g.done && !n.core ? ", fringe" : ""}</small>
-                    </span>
-                    <button type="button" className={pin === "us" ? "on" : ""} aria-pressed={pin === "us"} aria-label={`Our customers love ${n.name}`} onClick={() => onPin(n.id, n.name, pin === "us" ? undefined : "us")}>Us</button>
-                    <button type="button" className={pin === "not_us" ? "on" : ""} aria-pressed={pin === "not_us"} aria-label={`${n.name} is not us`} onClick={() => onPin(n.id, n.name, pin === "not_us" ? undefined : "not_us")}>Not us</button>
-                  </li>
-                );
-              })}
+              .map(({ n }) => (
+                <li key={n.id}>
+                  <span className="grow">
+                    {shortName(n.name, n.domain)} <small className="muted">{domainWord(n.domain)}{g.done && !n.core ? ", fringe" : ""}</small>
+                  </span>
+                </li>
+              ))}
           </ul>
         </div>
       ))}

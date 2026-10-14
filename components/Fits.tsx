@@ -1,12 +1,14 @@
 "use client";
 
-import { Fragment } from "react";
+import { Fragment, type ReactNode } from "react";
 import type { AgentEvent } from "@/lib/blocks/types";
 import type { CrowdCard, FitsRun } from "@/lib/journey/types";
 import { HORIZON_LABEL, PARAMS, PARAM_LABEL, TIER_LABEL, type Calendar, type Fit, type FitsAnswer, type Horizon, type Moment, type SourceRef, type Tier } from "@/lib/fits/types";
 import { MONTHS } from "@/lib/fits/score";
 import { Question, type Asked } from "./Question";
 import type { CrowdDecision } from "./Galaxy";
+import { Cites, day } from "./Cites";
+import { StrategyCard, StrategyHead, StrategyPending, type StrategyView } from "./Strategy";
 
 // Most valuable fits (PRD §23.2 step 5): who to win first, next, and who to watch, with the six measures behind each
 // tier, the weights the founder's context moved, and when to move. Code computes the ranking and the calendar; the
@@ -16,24 +18,8 @@ import type { CrowdDecision } from "./Galaxy";
 const TIERS: Tier[] = ["win_first", "win_next", "watch"];
 const HORIZONS: Horizon[] = ["now", "next_quarter", "season", "year"];
 
-const day = (iso: string) => new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
 const away = (days: number) => (days <= 0 ? "today" : days === 1 ? "tomorrow" : `in ${days} days`);
 const people = (n: number) => (n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${Math.round(n / 1e3)}k` : String(n));
-
-/** The source ids a sentence cites, each named on hover. */
-function Cites({ ids, sources }: { ids: string[]; sources: Map<string, SourceRef> }) {
-  const shown = ids.filter((id) => sources.has(id));
-  if (!shown.length) return null;
-  return (
-    <span className="cites">
-      {shown.map((id) => (
-        <span key={id} className="cite" title={sources.get(id)!.summary}>
-          {id}
-        </span>
-      ))}
-    </span>
-  );
-}
 
 /** The map's line for each crowd (§23.2 step 5d): its tier, new reach, momentum and next peak, by crowd index. */
 export function tiersFor(run: FitsRun | undefined, crowds: CrowdCard[]): (CrowdDecision | undefined)[] {
@@ -63,13 +49,13 @@ type Props = {
   asks: Asked[];
   answers: Record<string, string>;
   onAnswer: (q: Asked, answer: string) => void;
-  crowdId?: string;
-  onChoose: (id: string) => void;
+  /** A strategy for every most valuable fit (§23.2 step 6), once the fits are ranked. */
+  strategy?: StrategyView;
   /** Each crowd's colour slot, by id. */
   slot: (id: string) => number;
 };
 
-export function Fits({ run, steps, running, asks, answers, onAnswer, crowdId, onChoose, slot }: Props) {
+export function Fits({ run, steps, running, asks, answers, onAnswer, strategy, slot }: Props) {
   const live = steps.filter((s) => s.why);
   if (!run)
     return (
@@ -93,6 +79,11 @@ export function Fits({ run, steps, running, asks, answers, onAnswer, crowdId, on
   const said = (crowd: string) => answer.reasons.filter((r) => r.crowd === crowd);
   const overall = said("");
   const name = (id?: string) => fits.fits.find((f) => f.crowd === id)?.name;
+  // The strategies cite their own run's sources; while one is planned, every top fit says so.
+  const plan = strategy?.run;
+  const planSources = new Map((plan?.sources ?? []).map((s) => [s.id, s]));
+  const planned = (crowd: string) => plan?.result.strategies.find((s) => s.crowd === crowd);
+  const planning = (f: Fit) => !!strategy?.running && !planned(f.crowd) && (f.tier !== "watch" || f.rank === 1);
 
   return (
     <section className="card fits" aria-label="Your most valuable fits">
@@ -122,11 +113,19 @@ export function Fits({ run, steps, running, asks, answers, onAnswer, crowdId, on
           <div key={t} className={`fits-tier tier-${t}`}>
             <h4 className="crowd-tag">{TIER_LABEL[t]}</h4>
             {inTier.map((f) => (
-              <FitCard key={f.crowd} f={f} said={said(f.crowd)} sources={sources} chosen={crowdId === f.crowd} onChoose={() => onChoose(f.crowd)} slot={slot(f.crowd)} />
+              <FitCard key={f.crowd} f={f} said={said(f.crowd)} sources={sources} slot={slot(f.crowd)}>
+                {planned(f.crowd) ? (
+                  <StrategyCard s={planned(f.crowd)!} said={plan!.answer.lines.filter((l) => l.crowd === f.crowd)} sources={planSources} />
+                ) : planning(f) ? (
+                  <StrategyPending steps={strategy!.steps} />
+                ) : null}
+              </FitCard>
             ))}
           </div>
         );
       })}
+
+      {strategy && <StrategyHead view={strategy} sources={planSources} />}
 
       {(fits.changes.length > 0 || fits.excluded.length > 0) && (
         <div className="fits-context">
@@ -157,9 +156,9 @@ export function Fits({ run, steps, running, asks, answers, onAnswer, crowdId, on
   );
 }
 
-function FitCard({ f, said, sources, chosen, onChoose, slot }: { f: Fit; said: FitsAnswer["reasons"]; sources: Map<string, SourceRef>; chosen: boolean; onChoose: () => void; slot: number }) {
+function FitCard({ f, said, sources, slot, children }: { f: Fit; said: FitsAnswer["reasons"]; sources: Map<string, SourceRef>; slot: number; children?: ReactNode }) {
   return (
-    <article className={`fit${chosen ? " chosen" : ""}`}>
+    <article className="fit">
       <div className="fit-head">
         <span className="rank">{f.rank}</span>
         <h5>
@@ -196,7 +195,7 @@ function FitCard({ f, said, sources, chosen, onChoose, slot }: { f: Fit; said: F
           })}
         </dl>
       </details>
-      {chosen ? <p className="small chosen-note">The plan follows this crowd</p> : <button type="button" className="linkish small" onClick={onChoose}>Plan for this crowd instead</button>}
+      {children}
     </article>
   );
 }

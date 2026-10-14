@@ -671,3 +671,14 @@ a.button.big { padding: 11px 20px; font-size: 15px; font-weight: 600; }
 .when-lead { display: block; color: var(--moment); }
 .when-detail { display: block; }
 @media (max-width: 560px) { .fit-params dl { grid-template-columns: 1fr; } }
+
+/* A strategy for every most valuable fit (§23.2 step 6). */
+.strategy { border-top: 1px solid var(--line); margin-top: 6px; padding-top: 8px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.strategy h6, .strategy-head h5 { margin: 2px 0 0; }
+.strategy-facts { display: grid; grid-template-columns: max-content 1fr; gap: 4px 12px; margin: 0; }
+.strategy-facts dt { font-weight: 600; }
+.strategy-facts dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.strategy-actions { list-style: none; margin: 2px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.strategy-actions li { overflow-wrap: anywhere; }
+.strategy-shaped { font-size: 12px; }
+@media (max-width: 560px) { .strategy-facts { grid-template-columns: 1fr; } .strategy-facts dd { margin-bottom: 4px; } }

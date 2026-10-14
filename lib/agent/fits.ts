@@ -46,7 +46,7 @@ How to work:
 const line = (k: string, v?: string) => (v ? `- ${k}: ${v}` : "");
 
 /** The brief as a source: what the founder's onboarding settled, with stockists counted by city. */
-function briefData(b?: BrandBrief) {
+export function briefData(b?: BrandBrief) {
   if (!b) return {};
   const cities: Record<string, number> = {};
   for (const s of b.stockists) if (s.value.city) cities[s.value.city] = (cities[s.value.city] ?? 0) + 1;
@@ -66,7 +66,7 @@ function briefData(b?: BrandBrief) {
 }
 
 /** Facts grouped by where they came from, files first, each group split so no part is cut when the model reads it. */
-function knowledgeParts(facts: FitsInput["facts"]): { tool: string; summary: string; data: unknown }[] {
+export function knowledgeParts(facts: FitsInput["facts"]): { tool: string; summary: string; data: unknown }[] {
   // A site's pages read as one source (each line keeps its page in `where`); each file is its own.
   const site = (ref: string) => {
     try {

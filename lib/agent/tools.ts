@@ -25,6 +25,8 @@ import { rankFits } from "@/lib/fits/score";
 import { gatherEvidence, seasonOf } from "@/lib/fits/gather";
 import { PARAMS, type Param, type WeightChange } from "@/lib/fits/types";
 import { timeContext } from "@/lib/time/now";
+import { buildStrategies, readContext, type RawContext, type StrategyBase } from "@/lib/strategy/build";
+import { BUDGET_BANDS, type StrategyResult } from "@/lib/strategy/types";
 
 // The agent's tools (PRD §23.2 step 2a): the code Athena already had, as one registry the agent chooses from.
 // A tool is one entry: what it's for, its arguments, the most Qloo calls it can make, and how it runs. Measuring
@@ -44,6 +46,9 @@ export type AgentState = {
   /** Each crowd's yearly attention profile, for the calendar. */
   seasons?: Record<string, SeasonIn | undefined>;
   calendar?: Calendar;
+  /** The strategy run's inputs (§23.2 step 6), and the strategies plan_strategy last built from them. */
+  strategyBase?: StrategyBase;
+  strategies?: StrategyResult;
 };
 
 export type ToolCtx = {
@@ -600,3 +605,73 @@ export const FINISH: FunctionDeclaration = {
 };
 
 export const toolByName = (tools: Tool[]) => new Map(tools.map((t) => [t.name, t]));
+
+const SAID = { type: "string", description: "The founder's own words that say it, quoted from the cited source." };
+const SOURCES = { type: "array", items: { type: "string" }, description: "Source ids that say it (not s0)." };
+const obj = (v: unknown) => (v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : undefined);
+
+/**
+ * The strategy run's tool (§23.2 step 6). Not in TOOLS: only the strategy run builds strategies, from the ranking the
+ * fits run left. The agent reads the founder's context and passes it with source ids; code keeps what a source backs
+ * and builds who, where, through what and when for every top fit.
+ */
+export const PLAN_STRATEGY: Tool = {
+  name: "plan_strategy",
+  maxMs: 20_000,
+  description:
+    "Builds a strategy for every most valuable fit (Win first and Win next): who, where (the crowd's strongest metros the brand isn't in yet), through which channels, and dated actions (now, next, and before each moment on the calendar). " +
+    "Code applies four facts from the founder's context, each only with source ids that say it: stores and retailers the brand is already in (never suggested again; their places leave where), the budget (lean, moderate or ample sets the channel mix), a launch date (nothing starts before it), and capacity (how many regions start at once). " +
+    "Leave out what the context doesn't say; code assumes a lean budget and 2 regions and says so. Call it again with changed context to see the actions move. 0 Qloo calls.",
+  properties: {
+    stockists: {
+      type: "array",
+      items: { type: "object", properties: { name: { type: "string" }, place: { type: "string", description: "Its US city, when the source gives one." }, sources: SOURCES }, required: ["name", "sources"] },
+      description: "Every store, retailer or venue the context says the brand is sold in now.",
+    },
+    budget: {
+      type: "object",
+      properties: { band: { type: "string", enum: [...BUDGET_BANDS] }, said: SAID, sources: SOURCES },
+      required: ["band", "said", "sources"],
+      description: "lean: little or no paid spend; moderate: some paid channels and one retail pitch; ample: room for paid, retail promotion and events. Only when the context says something about money for growth.",
+    },
+    launch: { type: "object", properties: { date: { type: "string", description: "YYYY-MM-DD, as the source states it." }, said: SAID, sources: SOURCES }, required: ["date", "said", "sources"], description: "A launch or go-live date ahead of today." },
+    capacity: { type: "object", properties: { regions: { type: "integer", description: "1–10." }, said: SAID, sources: SOURCES }, required: ["regions", "said", "sources"], description: "How many regions the team can work at once." },
+  },
+  qloo: () => 0,
+  async run(a, { state, sources }) {
+    const base = state.strategyBase;
+    if (!base) return { summary: "nothing to plan from yet", data: {}, status: "empty" };
+    const raw: RawContext = {
+      stockists: (Array.isArray(a.stockists) ? a.stockists : []).map((x) => {
+        const o = obj(x) ?? {};
+        return { name: o.name, metro: o.place, sources: o.sources };
+      }),
+      budget: obj(a.budget),
+      launch: obj(a.launch),
+      capacity: obj(a.capacity),
+    };
+    const { context, dropped } = readContext(raw, sources, base.date);
+    // A stockist's place counts only as a US metro, by the same mapping the fits run uses.
+    const stockists = await Promise.all(
+      context.stockists.map(async (s) => {
+        const m = s.metro ? await metroOf(s.metro).catch(() => undefined) : undefined;
+        return m ? { ...s, metro: m.name } : { name: s.name, sources: s.sources };
+      }),
+    );
+    const result = buildStrategies({ ...base, context: { ...context, stockists, soldIn: base.soldIn } });
+    state.strategies = result;
+    const out = result.strategies.map((s) => ({
+      crowd_id: s.crowd,
+      name: s.name,
+      tier: s.tier,
+      who: s.who.text,
+      where: s.where.map((w) => `${w.metro}${w.now ? " (now)" : ""}`),
+      through: s.through,
+      actions: s.actions.map((x) => ({ when: x.when, start_by: x.startBy, text: x.text.slice(0, 160), shaped_by: x.shapedBy })),
+    }));
+    return {
+      summary: `${result.strategies.length} strategies${result.context.length ? `; ${result.context.length} context lines applied` : ""}${dropped.length ? `; ${dropped.length} left out without a source` : ""}`,
+      data: { key: "Strategies built by code; never reorder or rewrite them. shaped_by: which of your context facts chose or changed the action.", strategies: out, what_context_changed: result.context, assumed: result.assumed, ignored: dropped },
+    };
+  },
+};

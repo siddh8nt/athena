@@ -14,6 +14,7 @@ import { TasteAxes, useLean, type Taste } from "./TasteAxes";
 import { ShowWhy } from "./WhyPath";
 import { Onboard } from "./Onboard";
 import { Fits, tiersFor } from "./Fits";
+import type { StrategyView } from "./Strategy";
 import type { Asked } from "./Question";
 import type { AgentStreamEvent } from "@/lib/agent/loop";
 import type { AgentEvent } from "@/lib/blocks/types";
@@ -25,7 +26,7 @@ import { missingRequired, type BrandBrief } from "@/lib/brief/types";
 import { GROWTH, MAX_PICKS, STOP_LABELS, blockedReason, decisionsFor, labelFor, motionsFor, orderFor, spreadNote, stopsFor, suggest, type Channel, type GrowthType, type StopId } from "@/lib/journey/growth";
 import { crowdIdForStop, crowdSignal } from "@/lib/journey/weights";
 import type { PlaceOption, Resolution } from "@/lib/places/resolve";
-import { emptyJourney, type CrowdCard, type CrowdsEvent, type CrowdsResult, type Journey as JourneyState } from "@/lib/journey/types";
+import { crowdAfterFits, emptyJourney, loadedJourney, reachOf, type CrowdCard, type CrowdsEvent, type CrowdsResult, type Journey as JourneyState } from "@/lib/journey/types";
 import type { Galaxy as GalaxyData } from "@/lib/taste/galaxy";
 import { packBySlug } from "@/lib/journey/packs";
 import { takeFor } from "@/lib/journey/takes";
@@ -95,7 +96,7 @@ export function Journey() {
   const [saved] = useState(() => (start.fresh ? undefined : load()));
   const chat = useBriefChat(saved);
   const { brief, msgs, setMsgs, turn, busy, live, queued, first } = chat;
-  const [j, setJ] = useState<JourneyState>(saved?.journey ?? emptyJourney());
+  const [j, setJ] = useState<JourneyState>(saved?.journey ? loadedJourney(saved.journey) : emptyJourney());
   const [text, setText] = useState(start.message);
   const [drag, setDrag] = useState(false);
   const [view, setView] = useState<"journey" | "dashboard">("journey");
@@ -151,7 +152,7 @@ export function Journey() {
     }
     setCrowdSteps([]);
     setForming(undefined);
-    setJ((x) => ({ ...x, crowds: undefined, crowdId: undefined, crowdChosen: false, reactions: {}, pins: {}, lean: {}, fits: undefined }));
+    setJ((x) => ({ ...x, crowds: undefined, crowdId: undefined, reactions: {}, pins: {}, lean: {}, fits: undefined, strategy: undefined }));
     void crowdStream(key, (e) => {
       if (crowdKey.current !== key) return false;
       if (e.type === "status") setCrowdSteps((s) => [...s, e.text]);
@@ -213,12 +214,44 @@ export function Journey() {
           });
         } else if (e.type === "ask") setAsks((a) => (a.some((x) => x.question === e.ask.question) ? a : [...a, e.ask]));
         else if (e.type === "fits")
-          setJ((x) => ({ ...x, fits: { key, fits: e.fits, calendar: e.calendar, answer: e.answer, sources: e.sources }, crowdId: x.crowdChosen && x.crowdId ? x.crowdId : (e.fits.fits[0]?.crowd ?? x.crowdId) }));
+          setJ((x) => ({ ...x, fits: { key, fits: e.fits, calendar: e.calendar, answer: e.answer, sources: e.sources, reach: reachOf(e.geography) }, crowdId: crowdAfterFits(e.fits, x.crowdId) }));
         return true;
       }).catch(() => (tries > 0 && fitsKey.current === key ? go(tries - 1) : undefined));
     void go(1).finally(() => fitsKey.current === key && setFitsRunning(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fitsFor]);
+
+  // A strategy for every most valuable fit (§23.2 step 6): once the fits are ranked from the current context, the
+  // agent reads that context into who, where, through what and when. A new ranking plans again; the last strategies
+  // stay up meanwhile.
+  const [planSteps, setPlanSteps] = useState<AgentEvent[]>([]);
+  const [planRunning, setPlanRunning] = useState(false);
+  const planKey = useRef("");
+  const strategyFor = fitsInput && j.fits && j.fits.key === fitsFor ? j.fits.key : "";
+  useEffect(() => {
+    if (!strategyFor || !fitsInput || !j.fits || j.strategy?.key === strategyFor || planKey.current === strategyFor) return;
+    const key = strategyFor;
+    const run = j.fits;
+    planKey.current = key;
+    setPlanSteps([]);
+    setPlanRunning(true);
+    const body = JSON.stringify({ ...fitsInput, fits: run.fits, calendar: run.calendar, reach: run.reach });
+    const go = (tries: number): Promise<void> =>
+      agentStream("/api/strategy", body, (e) => {
+        if (planKey.current !== key) return false;
+        if (e.type === "event") {
+          const ev = e.event;
+          setPlanSteps((s) => {
+            const i = ev.status === "running" ? -1 : s.findIndex((x) => x.status === "running" && x.tool === ev.tool && x.why === ev.why);
+            return i >= 0 ? s.map((x, k) => (k === i ? ev : x)) : [...s, ev];
+          });
+        } else if (e.type === "ask") setAsks((a) => (a.some((x) => x.question === e.ask.question) ? a : [...a, e.ask]));
+        else if (e.type === "strategy") setJ((x) => ({ ...x, strategy: { key, result: e.result, answer: e.answer, sources: e.sources } }));
+        return true;
+      }).catch(() => (tries > 0 && planKey.current === key ? go(tries - 1) : undefined));
+    void go(1).finally(() => planKey.current === key && setPlanRunning(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [strategyFor]);
 
   useEffect(() => {
     if (turn.ready) startCrowds();
@@ -460,8 +493,7 @@ export function Journey() {
                 j={j}
                 steps={crowdSteps}
                 forming={forming}
-                onChoose={(id) => setJ((x) => ({ ...x, crowdId: id, crowdChosen: true }))}
-                fits={{ steps: fitsSteps, running: fitsRunning, asks, answers, onAnswer: (q, a) => setAnswers((x) => ({ ...x, [q.id]: a })) }}
+                fits={{ steps: fitsSteps, running: fitsRunning, asks, answers, onAnswer: (q, a) => setAnswers((x) => ({ ...x, [q.id]: a })), strategy: j.fits && (j.strategy || planRunning) ? { run: j.strategy, steps: planSteps, running: planRunning } : undefined }}
                 onProbe={probe}
                 probing={probing}
                 alone={alone}
@@ -498,7 +530,7 @@ export function Journey() {
                 ) : (
                   <section className="card">
                     <h3>{STOP_LABELS[s]}</h3>
-                    <p>This stop reads your crowd. Pick one at the Crowd stop and it fills in here.</p>
+                    <p>This stop reads your Win first crowd, and fills in here once your crowds are ranked.</p>
                   </section>
                 )}
               </div>
@@ -534,8 +566,11 @@ async function crowdStream(body: string, on: (e: CrowdsEvent) => boolean): Promi
 }
 
 /** Reads the fits stream (the agent's steps, any question, then the ranking). The handler returns false to stop listening. */
-async function fitsStream(body: string, on: (e: AgentStreamEvent) => boolean): Promise<void> {
-  const res = await fetch("/api/fits", { method: "POST", headers: { "Content-Type": "application/json" }, body });
+const fitsStream = (body: string, on: (e: AgentStreamEvent) => boolean) => agentStream("/api/fits", body, on);
+
+/** Reads an agent's stream (its steps, any question, then its result). The handler returns false to stop listening. */
+async function agentStream(path: string, body: string, on: (e: AgentStreamEvent) => boolean): Promise<void> {
+  const res = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body });
   if (!res.body) throw new Error("no stream");
   const reader = res.body.getReader();
   const dec = new TextDecoder();
@@ -779,10 +814,10 @@ function skewLine(s: CrowdCard["skew"]): string | undefined {
   return [topAge && topAge[1] >= 0.1 ? `leans ${ages[topAge[0]] ?? topAge[0]}` : "", g ? `leans ${g}` : ""].filter(Boolean).join(", ");
 }
 
-type FitsView = { steps: AgentEvent[]; running: boolean; asks: Asked[]; answers: Record<string, string>; onAnswer: (q: Asked, a: string) => void };
+type FitsView = { steps: AgentEvent[]; running: boolean; asks: Asked[]; answers: Record<string, string>; onAnswer: (q: Asked, a: string) => void; strategy?: StrategyView };
 
-/** The Crowd stop (§9.23, §23.2 step 5): the crowds from Qloo's taste graph, ranked as the brand's most valuable fits. */
-function CrowdStop({ j, steps, forming, onChoose, fits, onProbe, probing, alone, taste }: { j: JourneyState; steps: string[]; forming?: GalaxyData; onChoose: (id: string) => void; fits: FitsView; onProbe: (id: string, name: string) => void; probing?: string; alone: AloneRequest; taste?: Taste }) {
+/** The Crowd stop (§9.23, §23.2 steps 5–6): the crowds from Qloo's taste graph, ranked as the brand's most valuable fits, each top fit with its strategy. */
+function CrowdStop({ j, steps, forming, fits, onProbe, probing, alone, taste }: { j: JourneyState; steps: string[]; forming?: GalaxyData; fits: FitsView; onProbe: (id: string, name: string) => void; probing?: string; alone: AloneRequest; taste?: Taste }) {
   const r = j.crowds;
   // Linked views (§9.26): the crowd under the pointer in the Galaxy, the map or the cards lights up in all three.
   const [lit, setLit] = useState<number | null>(null);
@@ -815,7 +850,7 @@ function CrowdStop({ j, steps, forming, onChoose, fits, onProbe, probing, alone,
   return (
     <section className="crowds">
       {r.galaxy && <Galaxy galaxy={r.galaxy} names={r.crowds.map((c) => c.name)} decisions={decisions} probes={r.probes ?? []} onProbe={onProbe} probing={probing} lit={lit} onLight={setLit} />}
-      <Fits run={j.fits} {...fits} crowdId={j.crowdId} onChoose={onChoose} slot={slot} />
+      <Fits run={j.fits} {...fits} slot={slot} />
       {!probing && <CrowdGeography crowds={r.crowds} lit={lit} onLight={setLit} />}
       <header className="card-head">
         <h3>Your crowds</h3>
@@ -845,8 +880,6 @@ function CrowdStop({ j, steps, forming, onChoose, fits, onProbe, probing, alone,
               {!!c.cities.length && <p className="small"><strong>Concentrates in</strong> {c.cities.slice(0, 4).map((x) => x.name).join(", ")}</p>}
               <Meeting r={r} crowd={c} />
               {skew && <p className="small" title={SKEW_LABEL}><strong>Audience</strong> {skew} <span className="muted">· Qloo taste panel, to test</span></p>}
-              {!chosen && <button type="button" className="linkish small" onClick={() => onChoose(c.id)}>Plan for this crowd instead</button>}
-              {chosen && <p className="small chosen-note">The plan follows this crowd</p>}
             </article>
           );
         })}

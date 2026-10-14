@@ -1,5 +1,7 @@
 import type { Galaxy } from "@/lib/taste/galaxy";
 import type { Calendar, FitsAnswer, FitsResult, SourceRef } from "@/lib/fits/types";
+import type { Geography } from "@/lib/geo/types";
+import type { StrategyRun } from "@/lib/strategy/types";
 import type { LiveFact } from "@/lib/knowledge/types";
 import type { Channel, GrowthType, StopId } from "./growth";
 
@@ -74,9 +76,9 @@ export type Journey = {
   crowds?: CrowdsResult;
   /** The product input those crowds were built from, so a changed product rebuilds them. */
   crowdsFor?: string;
-  /** The crowd the plan follows: the Win first crowd, until the founder plans for another. */
+  /** The crowd the later stops follow: the Win first crowd (§23.2 step 6f). */
   crowdId?: string;
-  /** The founder chose crowdId themselves ("Plan for this crowd instead"), so a new ranking doesn't move it. */
+  /** Retired (§23.2 step 6f: every top fit gets its own strategy, so there's no crowd to choose). Older saves carry it; it's ignored. */
   crowdChosen?: boolean;
   /** Reactions and pins are gone (§23.2 step 5e: taste is Qloo's job); kept empty so older saves still load. */
   reactions: Record<string, Reaction>;
@@ -85,6 +87,8 @@ export type Journey = {
   facts?: LiveFact[];
   /** The most valuable fits (§23.2 step 5), with the inputs they were ranked from. */
   fits?: FitsRun;
+  /** A strategy for every most valuable fit (§23.2 step 6), built from the fits run above and the founder's context. */
+  strategy?: StrategyRun;
   /** With New crowd plus other picks: do the other picks target the current crowd or the new one (§7.8)? */
   crowdTarget?: "current" | "new";
   /** The founder's taste-axis sliders (§9.27): they re-rank the current stop's list. */
@@ -93,6 +97,29 @@ export type Journey = {
 };
 
 /** One fits run as the journey keeps it; `key` is what it was ranked from. */
-export type FitsRun = { key: string; fits: FitsResult; calendar: Calendar; answer: FitsAnswer; sources: SourceRef[] };
+export type FitsRun = {
+  key: string;
+  fits: FitsResult;
+  calendar: Calendar;
+  answer: FitsAnswer;
+  sources: SourceRef[];
+  /** Each crowd's strongest metros by taste-weighted reach, from the run's geography, for the strategies' where. */
+  reach?: Record<string, { metro: string; people: number }[]>;
+};
+
+/** Each crowd's metros by taste-weighted reach, strongest first: the compact part of a geography the strategies read. */
+export function reachOf(g?: Geography): FitsRun["reach"] {
+  if (!g?.crowds.length) return undefined;
+  return Object.fromEntries(g.crowds.map((c) => [c.id, [...c.reach].sort((a, b) => b.reach - a.reach).slice(0, 8).map((m) => ({ metro: m.name, people: m.people }))]));
+}
+
+/** The crowd the later stops follow once fits are ranked: the Win first crowd, whatever an older save chose (§23.2 step 6f). */
+export const crowdAfterFits = (fits: FitsResult, current?: string) => fits.fits[0]?.crowd ?? current;
+
+/** A saved journey as it loads: a crowd an older save chose by hand gives way to the Win first crowd. */
+export function loadedJourney(j: Journey): Journey {
+  const { crowdChosen: _retired, ...rest } = j;
+  return j.fits ? { ...rest, crowdId: crowdAfterFits(j.fits.fits, j.crowdId) } : rest;
+}
 
 export const emptyJourney = (): Journey => ({ growth: [], stop: "product", done: [], reactions: {}, pins: {} });

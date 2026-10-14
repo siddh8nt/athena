@@ -5,11 +5,11 @@ import { LIMITS, clientIp } from "@/lib/limits";
 import { planStream } from "@/lib/agent/server-deps";
 import { runAgent, type AgentStreamEvent } from "@/lib/agent/loop";
 import { FITS_BUDGET, FITS_SYSTEM, defaultCalendar, fitsFinisher, fitsGiven, fitsIntro, fitsTools, type FitsInput } from "@/lib/agent/fits";
+import { readFacts, readSeed, strs } from "@/lib/agent/inputs";
 import { metroOf } from "@/lib/agent/tools";
 import { readBrief } from "@/lib/brief/form";
 import { cachedCrowds } from "@/lib/taste/engine";
 import { MAX_EXTRA } from "@/lib/taste/graph";
-import type { SeedInput } from "@/lib/taste/seed";
 import { gatherEvidence } from "@/lib/fits/gather";
 import { rankFits } from "@/lib/fits/score";
 import { dated, timeContext } from "@/lib/time/now";
@@ -22,32 +22,6 @@ export const runtime = "nodejs";
 // in; the agent's steps stream back, then the ranking, the calendar and sourced reasons. When the agent stalls or
 // there is no model, code ranks with default weights and leaves out the brief's stockist cities, so the founder
 // always gets a ranking.
-
-const strs = (v: unknown, n: number, len = 80) => (Array.isArray(v) ? v : []).filter((x): x is string => typeof x === "string" && !!x.trim()).map((x) => x.trim().slice(0, len)).slice(0, n);
-
-function readSeed(raw: unknown): SeedInput {
-  const b = (raw ?? {}) as Record<string, unknown>;
-  const brand = b.brand as { id?: unknown; name?: unknown } | undefined;
-  return {
-    brand: brand && typeof brand.id === "string" && typeof brand.name === "string" ? { id: brand.id.slice(0, 80), name: brand.name.slice(0, 120) } : undefined,
-    comparables: strs(b.comparables, 5),
-    lookalikes: strs(b.lookalikes, 5),
-    traits: strs(b.traits, 5),
-  };
-}
-
-function readFacts(raw: unknown): FitsInput["facts"] {
-  return (Array.isArray(raw) ? raw : [])
-    .map((x) => x as { id?: unknown; text?: unknown; where?: unknown; source?: unknown })
-    .filter((f) => typeof f.id === "string" && typeof f.text === "string" && f.text.trim())
-    .map((f) => {
-      const where = typeof f.where === "string" ? f.where.slice(0, 200) : "";
-      // The file or site a fact came from; older clients only send where ("deck.pptx, slide 4").
-      const source = (typeof f.source === "string" && f.source.trim() ? f.source : where.split(", ")[0] || "the founder").slice(0, 200);
-      return { id: (f.id as string).slice(0, 80), text: (f.text as string).slice(0, 500), where, source };
-    })
-    .slice(0, 400);
-}
 
 export const POST = dated(async function post(req: Request) {
   const raw = (await req.json().catch(() => ({}))) as Record<string, unknown>;

@@ -10,6 +10,7 @@ import { FINISH, TOOLS, declarations, toolByName, type AgentState, type FounderQ
 import type { BrandInput } from "./intake";
 import type { PlanEvent } from "./plan";
 import type { FitsEvent } from "./fits";
+import type { StrategyEvent } from "./strategy";
 
 // The agent core (PRD §23.2 step 2, problem 0): our own loop on Gemini function calling. The model is given a goal,
 // a budget and the tools; it picks each next step from what the last ones returned. Code holds the hard caps (turns,
@@ -34,7 +35,9 @@ export type AgentStreamEvent =
   /** What onboarding read (§23.2 step 4): every fact with where it is, the conflicts, and which option is in use. */
   | { type: "knowledge"; knowledge: Knowledge; settled: Record<string, number> }
   /** The most valuable fits (§23.2 step 5): the ranking and calendar from code, sourced reasons from the agent. */
-  | FitsEvent;
+  | FitsEvent
+  /** A strategy for every most valuable fit (§23.2 step 6): built by code, sourced sentences from the agent. */
+  | StrategyEvent;
 
 /**
  * How a run ends: the function the model calls to finish, and the check its arguments must pass. Problems go back

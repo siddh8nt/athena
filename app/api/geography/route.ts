@@ -3,6 +3,7 @@ import { getStore } from "@/lib/store";
 import { LIMITS, clientIp } from "@/lib/limits";
 import { crowdGeography, type CrowdIn } from "@/lib/geo/geography";
 import type { Geography } from "@/lib/geo/types";
+import { dated } from "@/lib/time/now";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -29,7 +30,7 @@ function readCrowds(raw: unknown): CrowdIn[] {
 
 const EMPTY: Geography = { crowds: [], cells: [], calls: 0, callIds: [], q: 0.05, empty: true };
 
-export async function POST(req: Request) {
+export const POST = dated(async function post(req: Request) {
   const crowds = readCrowds(await req.json().catch(() => ({})));
   if (!crowds.length) return Response.json(EMPTY);
   const store = getStore();
@@ -48,4 +49,4 @@ export async function POST(req: Request) {
     console.error("geography failed", err);
     return Response.json(EMPTY);
   }
-}
+});

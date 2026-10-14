@@ -4,6 +4,10 @@ import { getStore } from "@/lib/store";
 import { generate, parseJson } from "@/lib/llm/vertex";
 import { LLM_SYSTEM, brandLine, llmPrompt, shuffled, type Item, type Profile } from "@/lib/bench/arms";
 import { METROS, metroById } from "@/lib/playbook/metros";
+import { today } from "@/lib/time/now";
+
+/** A run pinned to another date (§23.2 step 1) gets its own cached answers; real-date keys stay as they were. */
+const pinnedDate = () => (today() === new Date().toISOString().slice(0, 10) ? [] : [today()]);
 
 // With / Without on every stop (§13.2): the stop's question put to Gemini alone, with no Qloo. Where and Next retailers
 // use the Taste Bench's registered prompts over the same candidates (§10.6), so the split shows the Bench's LLM arm;
@@ -31,7 +35,7 @@ const NS = "alone";
 const TTL = 7 * 24 * 3600_000;
 
 export function aloneKey(input: AloneInput): string {
-  const h = createHash("sha256").update(JSON.stringify([input.stop, input.brand, input.product, input.tier, input.metroId, input.candidates?.map((c) => c.id)])).digest("hex");
+  const h = createHash("sha256").update(JSON.stringify([input.stop, input.brand, input.product, input.tier, input.metroId, input.candidates?.map((c) => c.id), ...pinnedDate()])).digest("hex");
   return `v1|${input.stop}|${h.slice(0, 24)}`;
 }
 
@@ -55,7 +59,7 @@ function openPrompt(i: AloneInput): { prompt: string; search: boolean } {
     case "message":
       return { search: false, prompt: `${h}\n\nQuestion: how should this brand talk to its customers? Give its positioning angle in one sentence, then 5 themes to talk about and 3 TV shows, films, artists or books its customers love, to reference.\n\nReturn JSON: {"angle": "...", "items": [{"name": "...", "kind": "theme" or "reference", "why": "at most 12 words"}]}` };
     case "moments":
-      return { search: true, prompt: `${h}\n\nQuestion: which 8 dated events in ${city} in the next 6 months (concerts, festivals, fairs) should this brand show up at? Soonest first. Today is ${new Date().toISOString().slice(0, 10)}.\n\nReply with JSON only: {"items": [{"name": "...", "date": "YYYY-MM-DD", "why": "at most 12 words"}]}` };
+      return { search: true, prompt: `${h}\n\nQuestion: which 8 dated events in ${city} in the next 6 months (concerts, festivals, fairs) should this brand show up at? Soonest first. Today is ${today()}.\n\nReply with JSON only: {"items": [{"name": "...", "date": "YYYY-MM-DD", "why": "at most 12 words"}]}` };
     default:
       throw new Error(`no open question for ${i.stop}`);
   }
@@ -90,7 +94,7 @@ export async function askAlone(input: AloneInput): Promise<AloneAnswer> {
     const pool: Item[] = input.stop === "where" ? METROS.map((m) => ({ id: m.id, label: m.name })) : (input.candidates ?? []);
     if (pool.length < 2) return { stop: input.stop, model: "", ranAt: new Date().toISOString(), items: [], search };
     const shown = shuffled(pool, `${input.brand}|${input.stop}`);
-    const res = await generate({ model: "pro", system: LLM_SYSTEM, prompt: llmPrompt(input.stop === "where" ? "t1" : "t2", head(input), shown), json: true, thinking: "LOW", maxOutputTokens: 8192, budgetMs: 90_000 });
+    const res = await generate({ model: "pro", dated: false, system: LLM_SYSTEM, prompt: llmPrompt(input.stop === "where" ? "t1" : "t2", head(input), shown), json: true, thinking: "LOW", maxOutputTokens: 8192, budgetMs: 90_000 });
     model = res.model;
     const order = (parseJson<{ ranking?: unknown[] }>(res.text)?.ranking ?? []).map((x) => shown[Number(x) - 1]).filter((x): x is Item => !!x);
     items = [...new Map(order.map((x) => [x.id, x])).values()].map((x) => ({ id: x.id, name: x.label }));

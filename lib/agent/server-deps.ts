@@ -42,12 +42,12 @@ export function serverDeps(send: (e: PlanEvent) => void): PlanDeps {
 }
 
 /** Server-sent events over a ReadableStream that always closes with a final "done". */
-export function planStream(run: (send: (e: PlanEvent) => void) => Promise<void>, mode: string): Response {
+export function planStream<E extends { type: string } = PlanEvent>(run: (send: (e: E) => void) => Promise<void>, mode: string): Response {
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
     async start(controller) {
       let done = false;
-      const send = (e: PlanEvent) => {
+      const send = (e: E) => {
         if (e.type === "done") done = true;
         try {
           controller.enqueue(encoder.encode(`data: ${JSON.stringify(e)}\n\n`));
@@ -61,7 +61,7 @@ export function planStream(run: (send: (e: PlanEvent) => void) => Promise<void>,
         // The plan isolates its own failures; this only guards the stream. Logged for Cloud Logging, never shown.
         console.error("plan stream failed", err);
       } finally {
-        if (!done) send({ type: "done", qlooCalls: 0, ms: 0 });
+        if (!done) send({ type: "done", qlooCalls: 0, ms: 0 } as unknown as E);
         try {
           controller.close();
         } catch {

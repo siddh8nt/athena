@@ -3,6 +3,7 @@ import { results } from "@/lib/qloo/client";
 import { bridges as bridgeMath, percentiles } from "@/lib/methods/rank";
 import { generate, llmConfigured, parseJson } from "@/lib/llm/vertex";
 import { validate, type Sentence } from "@/lib/methods/validator";
+import { dated } from "@/lib/time/now";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -22,7 +23,7 @@ export type DraftResponse = {
  * A venue pitch (§9.8, §9.10): shared loves from one Qloo call (the venue's crowd scored over your partner
  * brands), then a Gemini draft whose every name is checked against this evidence. Nothing is ever sent.
  */
-export async function POST(req: Request) {
+export const POST = dated(async function post(req: Request) {
   const b = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   const brand = str(b.brand, 120);
   const product = str(b.product, 200);
@@ -102,4 +103,4 @@ export async function POST(req: Request) {
     }
   }
   return Response.json(fallback());
-}
+});

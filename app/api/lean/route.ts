@@ -3,6 +3,7 @@ import { LIMITS, clientIp } from "@/lib/limits";
 import { MAX_SIGNAL } from "@/lib/journey/weights";
 import { MAX_TAKE } from "@/lib/qloo/client";
 import { contributions, type Contribution } from "@/lib/qloo/types";
+import { dated } from "@/lib/time/now";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -15,7 +16,7 @@ const TYPES = new Set(["brand", "place", "podcast", "artist", "tv_show", "movie"
 
 export type LeanResult = { order: string[]; affinity: Record<string, number>; why?: Record<string, Contribution[]>; callId?: string; note?: string };
 
-export async function POST(req: Request) {
+export const POST = dated(async function post(req: Request) {
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   const type = typeof body.type === "string" && TYPES.has(body.type) ? body.type : undefined;
   const ids = [...new Set((Array.isArray(body.ids) ? body.ids : []).filter((x): x is string => typeof x === "string").map((x) => x.slice(0, 80)))].slice(0, MAX_TAKE);
@@ -42,4 +43,4 @@ export async function POST(req: Request) {
     console.error("lean failed", err);
     return Response.json({ ...keep, note: "Qloo is busy, so the list keeps its order for now. Move the slider again in a moment." });
   }
-}
+});

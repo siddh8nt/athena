@@ -3,6 +3,7 @@ import { LIMITS, clientIp } from "@/lib/limits";
 import { RETAILER_POOLS, nextRetailers, type RetailCategory } from "@/lib/stops/retailers";
 import { onlineStop } from "@/lib/stops/online";
 import { MAX_SIGNAL } from "@/lib/journey/weights";
+import { dated } from "@/lib/time/now";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -10,7 +11,7 @@ export const runtime = "nodejs";
 // The journey's stops that sit outside the six blocks (§9.24, §9.25): Next retailers and Online. Each takes the
 // chosen crowd's signal and returns its data in one response (a few Qloo calls, a few seconds).
 
-export async function POST(req: Request) {
+export const POST = dated(async function post(req: Request) {
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   const kind = body.kind;
   // The signal is ids, or weighted ids from the founder's reactions (§9.23 step 7).
@@ -35,4 +36,4 @@ export async function POST(req: Request) {
     console.error(`stop ${kind} failed`, err);
     return Response.json(kind === "retailers" ? { picks: [], already: [], calls: 0, callIds: [] } : { creators: [], podcasts: [], interests: [], calls: 0, callIds: [] });
   }
-}
+});

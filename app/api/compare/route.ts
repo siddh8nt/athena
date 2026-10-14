@@ -3,6 +3,7 @@ import { llmConfigured } from "@/lib/llm/vertex";
 import { compareWithoutQloo, getCachedComparison, type ComparisonInput } from "@/lib/proof/without-qloo";
 import { isMetroId } from "@/lib/playbook/metros";
 import { LIMITS } from "@/lib/limits";
+import { dated } from "@/lib/time/now";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -11,7 +12,7 @@ const str = (v: unknown, n: number) => (typeof v === "string" ? v.slice(0, n) : 
 const ids = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === "string" && /^[0-9A-Fa-f-]{36}$/.test(x)).slice(0, 50) : []);
 
 /** Without Qloo for Places (§9.9): streams progress steps, then the checked comparison. Never sends an error. */
-export async function POST(req: Request) {
+export const POST = dated(async function post(req: Request) {
   const b = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   const metroId = str(b.metroId, 120);
   const input: ComparisonInput = {
@@ -64,11 +65,11 @@ export async function POST(req: Request) {
     },
   });
   return new Response(stream, { headers: { "Content-Type": "text/event-stream", "Cache-Control": "no-store" } });
-}
+});
 
 /** The cached comparison for the landing line (§2.2); null when none has run yet. */
-export async function GET(req: Request) {
+export const GET = dated(async function get(req: Request) {
   const u = new URL(req.url);
   const c = await getCachedComparison(str(u.searchParams.get("key"), 80), str(u.searchParams.get("metroId"), 120)).catch(() => undefined);
   return Response.json(c ?? null, { headers: { "Cache-Control": "no-store" } });
-}
+});

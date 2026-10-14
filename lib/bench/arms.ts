@@ -396,7 +396,7 @@ export function llmSample(key: string, task: Task, head: string, items: Item[], 
   return cached(`llm/${key}-${task}-${grounding ? "search" : "plain"}-${sample}.json`, async () => {
     let last: LlmSample | undefined;
     for (let tries = 1; tries <= 3; tries++) {
-      const res = await generate({ model: "pro", system: LLM_SYSTEM, prompt, grounding, json: true, maxOutputTokens: 32_768, budgetMs: 300_000 }).catch((err: Error) => ({ text: "", model: `error: ${err.message.slice(0, 120)}`, queries: [] as string[], tokens: undefined, ms: 0 }));
+      const res = await generate({ model: "pro", system: LLM_SYSTEM, prompt, grounding, json: true, dated: false, maxOutputTokens: 32_768, budgetMs: 300_000 }).catch((err: Error) => ({ text: "", model: `error: ${err.message.slice(0, 120)}`, queries: [] as string[], tokens: undefined, ms: 0 }));
       const j = parseJson<{ ranking?: unknown[] }>(res.text);
       const order = (Array.isArray(j?.ranking) ? j.ranking : []).map((x) => shown[Number(x) - 1]?.id).filter((x): x is string => !!x);
       last = { prompt, order: [...new Set(order)], parsed: new Set(order).size, model: res.model, queries: res.queries, tokens: res.tokens, ms: res.ms, tries, text: res.text };

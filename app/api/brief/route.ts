@@ -5,6 +5,7 @@ import { UPLOAD_LIMITS, extractFile, type Extracted } from "@/lib/brief/extract"
 import { agentTurn, lookUpBrand, research, urlsIn, type AgentTurn, type ChatLine } from "@/lib/brief/agent";
 import { GUESS, MAX_CALLS, MAX_RESEARCH, isRepeat, type Turn } from "@/lib/brief/conversation";
 import { emptyBrief, mergeBrief, missingRequired, type BrandBrief } from "@/lib/brief/types";
+import { dated } from "@/lib/time/now";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -86,7 +87,7 @@ async function readFiles(form: FormData): Promise<Extracted[]> {
   return files;
 }
 
-export async function POST(req: Request) {
+export const POST = dated(async function post(req: Request) {
   const form = await req.formData().catch(() => undefined);
   if (!form) return Response.json({ error: "Expected a form" }, { status: 400 });
   const ip = clientIp(req);
@@ -118,7 +119,7 @@ export async function POST(req: Request) {
     },
   });
   return new Response(stream, { headers: { "Content-Type": "text/event-stream", "Cache-Control": "no-cache, no-transform", Connection: "keep-alive" } });
-}
+});
 
 async function run(form: FormData, start: BrandBrief, ip: string, send: (e: BriefEvent) => void): Promise<BrandBrief> {
   let brief = start;

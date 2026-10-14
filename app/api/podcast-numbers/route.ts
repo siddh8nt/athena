@@ -1,5 +1,6 @@
 import { llmConfigured } from "@/lib/llm/vertex";
 import { findPodcastNumbers, type PodcastInput } from "@/lib/enrich/podcast-numbers";
+import { dated } from "@/lib/time/now";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -7,7 +8,7 @@ export const runtime = "nodejs";
 const str = (v: unknown, n: number) => (typeof v === "string" ? v.slice(0, n).trim() : "");
 
 /** Public figures for one podcast (§9.6): streams progress steps, then the checked figures. `fresh` searches again. Never sends an error. */
-export async function POST(req: Request) {
+export const POST = dated(async function post(req: Request) {
   const b = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   const input: PodcastInput = {
     id: str(b.id, 64),
@@ -45,4 +46,4 @@ export async function POST(req: Request) {
     },
   });
   return new Response(stream, { headers: { "Content-Type": "text/event-stream", "Cache-Control": "no-store" } });
-}
+});

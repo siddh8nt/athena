@@ -1,6 +1,7 @@
 import { getQloo } from "@/lib/qloo";
 import { results } from "@/lib/qloo/client";
 import { percentiles, rerank } from "@/lib/methods/rank";
+import { dated } from "@/lib/time/now";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -13,7 +14,7 @@ type Tagged = { id: string; tags: string[] };
  * score = pFit − 0.5·pDec. Items that move 5+ places get a reason from the tags they share with wins or declines.
  * Never errors: on any failure it returns the pool in its previous order.
  */
-export async function POST(req: Request) {
+export const POST = dated(async function post(req: Request) {
   const b = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   const pool = ids(b.pool);
   const signal = ids(b.signal);
@@ -53,4 +54,4 @@ export async function POST(req: Request) {
     console.error("rerank failed", err);
     return Response.json(unchanged);
   }
-}
+});

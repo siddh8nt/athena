@@ -2,6 +2,7 @@ import { llmConfigured } from "@/lib/llm/vertex";
 import { ALONE_STOPS, askAlone, cachedAlone, type AloneInput, type AloneStop } from "@/lib/proof/alone";
 import { isMetroId } from "@/lib/playbook/metros";
 import { LIMITS, clientIp } from "@/lib/limits";
+import { dated } from "@/lib/time/now";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -24,7 +25,7 @@ function readInput(b: Record<string, unknown>): AloneInput | undefined {
   return input.product ? input : undefined;
 }
 
-export async function POST(req: Request) {
+export const POST = dated(async function post(req: Request) {
   const input = readInput((await req.json().catch(() => ({}))) as Record<string, unknown>);
   const none = (note: string) => Response.json({ answer: null, note });
   if (!input) return none("Tell me what you sell and Gemini alone can answer this stop's question too.");
@@ -40,4 +41,4 @@ export async function POST(req: Request) {
     console.error("alone failed", err);
     return none("Gemini is busy right now. Ask again in a minute.");
   }
-}
+});

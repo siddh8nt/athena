@@ -1,5 +1,6 @@
 import "server-only";
 import { GoogleAuth } from "google-auth-library";
+import { timePrompt } from "@/lib/time/now";
 
 // Gemini on Vertex AI (Â§12.8). Global endpoint only: both models returned 404 in us-central1 (8 Oct).
 // Auth: Application Default Credentials (gcloud locally, the service account on Cloud Run). No key stored.
@@ -51,6 +52,12 @@ async function acquire(tier: Tier): Promise<() => void> {
   };
 }
 
+/** The system instruction: the run's date context, then the caller's own system prompt. */
+function systemOf(opts: { system?: string; dated?: boolean }) {
+  const text = [opts.dated === false ? "" : timePrompt(), opts.system ?? ""].filter(Boolean).join("\n\n");
+  return text ? { systemInstruction: { parts: [{ text }] } } : {};
+}
+
 const retryable = (status: number) => status === 429 || status >= 500;
 /** 1 s, 2 s, 4 s, 8 s, capped at 16 s, each with up to 50% jitter. */
 export const backoffMs = (attempt: number) => Math.min(16_000, 1000 * 2 ** attempt) * (1 + Math.random() * 0.5);
@@ -66,7 +73,9 @@ async function send(tier: Tier, makeUrl: (model: string) => string, body: string
     // After two busy answers from Pro, try Flash: it has higher limits and answers the same prompts.
     if (current === "pro" && attempt >= 2) current = "flash";
     const model = current === "pro" ? cfg.pro : current === "lite" ? cfg.lite : cfg.flash;
+    const queued = Date.now();
     const release = await acquire(current);
+    if (Date.now() - queued > 2_000) console.warn(`gemini gate: ${current} call waited ${Date.now() - queued} ms (${inFlight[current]} in flight)`);
     let res: Response;
     try {
       const token = await auth.getAccessToken();
@@ -102,13 +111,18 @@ export async function generate(opts: {
   thinking?: "MINIMAL" | "LOW" | "MEDIUM" | "HIGH";
   /** Total time for the call, retries included (default 90 s). */
   budgetMs?: number;
+  /**
+   * Today's date, the season and the coming retail moments go first in the system instruction (§23.2 step 1).
+   * Default true. Only the Bench passes false: its registered prompts stay exactly as tagged.
+   */
+  dated?: boolean;
 }): Promise<LlmResult> {
   const cfg = llmConfig();
   if (!cfg.project) throw new Error("GOOGLE_CLOUD_PROJECT is not set");
   const host = cfg.location === "global" ? "aiplatform.googleapis.com" : `${cfg.location}-aiplatform.googleapis.com`;
   const urlFor = (model: string) => `https://${host}/v1/projects/${cfg.project}/locations/${cfg.location}/publishers/google/models/${model}:generateContent`;
   const body = {
-    ...(opts.system ? { systemInstruction: { parts: [{ text: opts.system }] } } : {}),
+    ...systemOf(opts),
     contents: [{ role: "user", parts: [...(opts.files ?? []).map((f) => ({ inlineData: { mimeType: f.mime, data: f.base64 } })), { text: opts.prompt }] }],
     ...(opts.grounding || opts.urlContext ? { tools: [...(opts.grounding ? [{ googleSearch: {} }] : []), ...(opts.urlContext ? [{ urlContext: {} }] : [])] } : {}),
     generationConfig: {
@@ -149,6 +163,68 @@ export async function generate(opts: {
       ms: Date.now() - started,
     };
   }
+}
+
+// ---- Function calling (§23.2 step 2: the agent core) -----------------------------------------------
+
+/** One part of a turn. Model parts are sent back exactly as received: Gemini 3 checks their thought signatures. */
+export type Part = {
+  text?: string;
+  thought?: boolean;
+  thoughtSignature?: string;
+  functionCall?: { name: string; args?: Record<string, unknown> };
+  functionResponse?: { name: string; response: Record<string, unknown> };
+};
+export type Turn = { role: "user" | "model"; parts: Part[] };
+export type FunctionDeclaration = { name: string; description: string; parameters: Record<string, unknown> };
+export type ConverseResult = { parts: Part[]; calls: { name: string; args: Record<string, unknown> }[]; text: string; model: string; tokens?: number; ms: number; finishReason?: string };
+
+/**
+ * One model turn with function declarations. `force` limits the model to calling one of these functions (used to
+ * make it finish when the budget runs out). Throws on an API error; the agent loop decides what that means.
+ */
+export async function converse(opts: {
+  model: Tier;
+  system?: string;
+  turns: Turn[];
+  functions: FunctionDeclaration[];
+  force?: string[];
+  thinking?: "MINIMAL" | "LOW" | "MEDIUM" | "HIGH";
+  temperature?: number;
+  maxOutputTokens?: number;
+  budgetMs?: number;
+  dated?: boolean;
+}): Promise<ConverseResult> {
+  const cfg = llmConfig();
+  if (!cfg.project) throw new Error("GOOGLE_CLOUD_PROJECT is not set");
+  const host = cfg.location === "global" ? "aiplatform.googleapis.com" : `${cfg.location}-aiplatform.googleapis.com`;
+  const urlFor = (model: string) => `https://${host}/v1/projects/${cfg.project}/locations/${cfg.location}/publishers/google/models/${model}:generateContent`;
+  const body = {
+    ...systemOf(opts),
+    contents: opts.turns,
+    tools: [{ functionDeclarations: opts.functions }],
+    toolConfig: { functionCallingConfig: opts.force ? { mode: "ANY", allowedFunctionNames: opts.force } : { mode: "AUTO" } },
+    generationConfig: {
+      maxOutputTokens: opts.maxOutputTokens ?? 8192,
+      temperature: opts.temperature ?? 1.0, // Google's recommended setting for Gemini 3
+      ...(opts.thinking ? { thinkingConfig: { thinkingLevel: opts.thinking } } : {}),
+    },
+  };
+  const started = Date.now();
+  const { res, model } = await send(opts.model, urlFor, JSON.stringify(body), started + (opts.budgetMs ?? 60_000));
+  const data = (await res.json()) as { error?: { message: string }; candidates?: { content?: { parts?: Part[] }; finishReason?: string }[]; usageMetadata?: { totalTokenCount?: number } };
+  if (!res.ok || data.error) throw new Error(`Vertex ${res.status}: ${data.error?.message ?? "error"}`);
+  const c = data.candidates?.[0];
+  const parts = c?.content?.parts ?? [];
+  return {
+    parts,
+    calls: parts.filter((p) => p.functionCall).map((p) => ({ name: p.functionCall!.name, args: p.functionCall!.args ?? {} })),
+    text: parts.filter((p) => !p.thought && p.text).map((p) => p.text).join(""),
+    model,
+    tokens: data.usageMetadata?.totalTokenCount,
+    ms: Date.now() - started,
+    finishReason: c?.finishReason,
+  };
 }
 
 /** Pulls the first JSON object or array out of model text (grounded calls can't use JSON mode). */
@@ -214,7 +290,7 @@ export async function generateStream(
   const host = cfg.location === "global" ? "aiplatform.googleapis.com" : `${cfg.location}-aiplatform.googleapis.com`;
   const urlFor = (m: string) => `https://${host}/v1/projects/${cfg.project}/locations/${cfg.location}/publishers/google/models/${m}:streamGenerateContent?alt=sse`;
   const body = {
-    ...(opts.system ? { systemInstruction: { parts: [{ text: opts.system }] } } : {}),
+    ...systemOf(opts),
     contents: [{ role: "user", parts: [...(opts.files ?? []).map((f) => ({ inlineData: { mimeType: f.mime, data: f.base64 } })), { text: opts.prompt }] }],
     ...(opts.grounding || opts.urlContext ? { tools: [...(opts.grounding ? [{ googleSearch: {} }] : []), ...(opts.urlContext ? [{ urlContext: {} }] : [])] } : {}),
     generationConfig: {

@@ -3,6 +3,7 @@ import { getStore } from "@/lib/store";
 import { domainOf, generateStream } from "@/lib/llm/vertex";
 import type { Metro } from "@/lib/playbook/metros";
 import type { DateLookup } from "@/lib/blocks/moments";
+import { today as runToday } from "@/lib/time/now";
 
 // Festival dates (§9.18). Tested 8 Oct on Brightland's LA festivals:
 //   - Search alone: correct answers, but grounding sources came back on only 2 of 6, and never for bare JSON.
@@ -75,13 +76,15 @@ export function groundedFestivalDates(enabled: boolean, opts: { attempts?: numbe
   const warm = attempts > 1;
   return async (festival, metro: Metro, onThought) => {
     const none: Found = { date: null, url: null };
-    const today = new Date().toISOString().slice(0, 10);
+    // Which dates count as future follows the run date; the daily lookup cap follows the real day.
+    const today = runToday();
+    const realDay = new Date().toISOString().slice(0, 10);
     const key = `${festival}|${metro.id}`;
     const hit = (await getStore().get<Found>(NS, key)) as Entry | undefined;
     // A confirmed date stays valid until it passes (refreshed daily by the warm job); misses retry after an hour.
     if (hit?.value.date && hit.value.date >= today && Date.now() - hit.at < 7 * DAY) return hit.value;
     if (!warm && hit && !hit.value.date && Date.now() - hit.at < DAY / 24) return none;
-    if (usedToday.day !== today) usedToday = { day: today, count: 0 };
+    if (usedToday.day !== realDay) usedToday = { day: realDay, count: 0 };
     if (usedToday.count >= DAILY_CAP) return none;
     usedToday.count++;
 

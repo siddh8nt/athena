@@ -4,6 +4,7 @@ import { planStream, serverDeps } from "@/lib/agent/server-deps";
 import { LIMITS, clientIp } from "@/lib/limits";
 import type { Block, Motion, Tier } from "@/lib/playbook/config";
 import { MAX_SIGNAL } from "@/lib/journey/weights";
+import { dated } from "@/lib/time/now";
 
 /** A reaction weight (§9.23 step 7): 1 unless a sane positive number was sent. */
 const weightOf = (w: unknown) => (typeof w === "number" && Number.isFinite(w) && w > 0 && w <= 10 ? w : 1);
@@ -21,7 +22,7 @@ const TIERS = ["mass", "mainstream", "premium", "luxury"] as const;
 const SCOPE = ["card", "markets", "places", "partners", "message", "moments", "act"] as const;
 
 /** Try your own brand (M10, §6.2): POST the brief's input; the plan streams back as server-sent events. */
-export async function POST(req: Request) {
+export const POST = dated(async function post(req: Request) {
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   const name = clip(body.name, 120);
   if (!name) return Response.json({ error: "A brand name is required" }, { status: 400 });
@@ -76,4 +77,4 @@ export async function POST(req: Request) {
     }, "live");
   }
   return planStream((send) => runCustomPlan(input, serverDeps(send), scope), "live");
-}
+});

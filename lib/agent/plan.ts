@@ -17,6 +17,7 @@ import type { AgentEvent, BlockContext, BlockMeta, TagChip } from "@/lib/blocks/
 import type { BrandInput, Classification, WebsiteRead } from "./intake";
 import { results } from "@/lib/qloo/client";
 import { CATEGORY_ANCHORS } from "@/lib/playbook/anchors";
+import { timeSummary } from "@/lib/time/now";
 
 export type ReadCard = {
   brand: string;
@@ -416,6 +417,8 @@ function harness(deps: PlanDeps) {
   let qlooCalls = 0;
   const qloo = deps.qloo.withLog(() => qlooCalls++);
   const emit: Emit = (e) => deps.send({ type: "event", event: { ...e, t: Date.now() - started } });
+  // Every run starts from today's date (§23.2 step 1): the season and the coming retail moments set its timing.
+  emit({ tool: "today", why: "Planning from today's date", status: "ok", callIds: [], summary: timeSummary() });
   return { started, qloo, emit, count: () => qlooCalls };
 }
 

@@ -1,15 +1,10 @@
 import { getQloo } from "@/lib/qloo";
-import { getStore } from "@/lib/store";
 import { LIMITS, clientIp } from "@/lib/limits";
-import { buildSeed, type SeedInput } from "@/lib/taste/seed";
-import { DOMAINS, MAX_EXTRA, buildGraph, extendGraph, seedSignal, shortName, type Crowd, type Domain, type GraphState, type TasteGraph } from "@/lib/taste/graph";
-import type { QlooClient } from "@/lib/qloo/client";
-import { crowdDetails } from "@/lib/taste/crowds";
-import { nameAxes, nameCrowds } from "@/lib/taste/name";
-import { tasteAxes } from "@/lib/taste/axes";
-import { crowdBridges } from "@/lib/taste/bridges";
-import type { CrowdCard, CrowdMeeting, CrowdsEvent, CrowdsResult, Love, TasteAxisCard } from "@/lib/journey/types";
-import type { Galaxy } from "@/lib/taste/graph";
+import type { SeedInput } from "@/lib/taste/seed";
+import { MAX_EXTRA, type Galaxy } from "@/lib/taste/graph";
+import { baseKey, cachedCrowds, measure, probeCrowds, storedExtras } from "@/lib/taste/engine";
+import type { CrowdsEvent, CrowdsResult } from "@/lib/journey/types";
+import { dated } from "@/lib/time/now";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -17,8 +12,6 @@ export const runtime = "nodejs";
 // The Crowd stop's engine (PRD §9.23): product → seed → taste graph → crowds with skew, cities and names.
 // It starts as soon as the product is clear (§14.9), so it's usually ready when the founder reaches the stop.
 // Streams short status lines, then one result. Cached per seed for 7 days, so a repeat brand is instant.
-
-const TTL = 7 * 24 * 3600_000;
 
 function readInput(raw: unknown): SeedInput {
   const b = (raw ?? {}) as Record<string, unknown>;
@@ -38,24 +31,7 @@ function readProbes(raw: unknown): string[] {
   return (Array.isArray(p) ? p : []).filter((x): x is string => typeof x === "string" && /^[\w:-]{1,80}$/.test(x)).slice(0, MAX_EXTRA);
 }
 
-const KIND: Record<Domain, Love["kind"]> = { brand: "brand", artist: "artist", tv_show: "TV", movie: "film", podcast: "podcast", book: "book" };
-
-/**
- * Loves across domains, interleaved so a card shows brands, music, TV, film, podcasts and books, not ten brands. Within a
- * domain: the crowd's core members (placed more surely than shuffled data allows), most specific first (E3).
- */
-function lovesOf(c: Crowd, n = 9): Love[] {
-  const by = DOMAINS.map((d) => {
-    const all = c.entities.filter((e) => e.domain === d);
-    const central = all.filter((e) => e.core ?? true);
-    return (central.length >= 2 ? central : all).sort((a, b) => (b.specificity ?? 0) - (a.specificity ?? 0));
-  });
-  const out: Love[] = [];
-  for (let i = 0; out.length < n && i < 10; i++) for (const list of by) if (list[i] && out.length < n) out.push({ name: shortName(list[i].name, list[i].domain), kind: KIND[list[i].domain] });
-  return out;
-}
-
-export async function POST(req: Request) {
+export const POST = dated(async function post(req: Request) {
   const raw = await req.json().catch(() => ({}));
   const input = readInput(raw);
   const probes = readProbes(raw);
@@ -88,21 +64,13 @@ export async function POST(req: Request) {
     },
   });
   return new Response(stream, { headers: { "Content-Type": "text/event-stream", "Cache-Control": "no-cache, no-transform", Connection: "keep-alive" } });
-}
+});
 
-/** The measured graph behind a result, kept so click to probe adds one landmark instead of re-measuring (§13.11). */
-type SavedGraph = { state: GraphState; seed: CrowdsResult["seed"]; seedCallIds: string[] };
+const EMPTY: CrowdsResult = { seed: { lookalikes: [], tags: [], missing: [] }, crowds: [], calls: 0, callIds: [], empty: true };
 
 async function run(input: SeedInput, probes: string[], ip: string, status: (t: string) => void, graphEvent: (g: Galaxy) => void): Promise<CrowdsResult> {
-  const base = baseKey(input);
-  const keyOf = (p: string[]) => probeKey(base, p);
-  const cached = async (p: string[]) => (await getStore().get<CrowdsResult>("crowds", keyOf(p)).catch(() => undefined))?.value;
-  const hit = await cached(probes);
-  if (hit?.crowds?.length) {
-    if (hit.axes && hit.meetings) return hit;
-    const extras = await storedExtras(base, probes);
-    return extras ? { ...hit, ...extras } : hit;
-  }
+  const hit = await cachedCrowds(input, probes);
+  if (hit) return hit;
 
   const t0 = Date.now();
   const qloo = process.env.ATHENA_DEBUG_QLOO ? getQloo().withLog((c) => console.log(`qloo +${Date.now() - t0}ms ${c.status} ${c.ms}ms ${c.cached ? "cached" : ""} ${c.params["filter.type"] ?? c.endpoint} ${c.params["filter.results.entities"] ? "pool" : ""}`)) : getQloo();
@@ -112,132 +80,11 @@ async function run(input: SeedInput, probes: string[], ip: string, status: (t: s
     const cap = LIMITS.probe(ip);
     if (!cap.ok) {
       status(cap.message);
-      return (await cached(probes.slice(0, -1))) ?? (await cached([])) ?? run(input, [], ip, status, graphEvent);
+      return (await cachedCrowds(input, probes.slice(0, -1))) ?? (await cachedCrowds(input)) ?? run(input, [], ip, status, graphEvent);
     }
-    // A result cached before its graph was kept: measure it again (Qloo's own cache makes repeat calls free for a day).
-    const saved = (await getStore().get<SavedGraph>("graph", base).catch(() => undefined))?.value ?? (await measure(qloo, input, base, status, () => undefined)).saved;
-    if (!saved) return (await cached([])) ?? { seed: { lookalikes: [], tags: [], missing: [] }, crowds: [], calls: 0, callIds: [], empty: true };
-    const graph = await extendGraph(qloo, saved.state, probes, { onStep: status });
-    if (graph.galaxy) graphEvent(graph.galaxy);
-    // The probed graph is kept too, so its axes and meetings can be read again without probing.
-    if (graph.state) await getStore().set<SavedGraph>("graph", keyOf(probes), { ...saved, state: graph.state }, TTL).catch(() => undefined);
-    const result = await resultOf(qloo, graph, saved.seed, saved.seedCallIds, status);
-    if (result.crowds.length) await getStore().set("crowds", keyOf(probes), result, TTL).catch(() => undefined);
-    return result;
+    return (await probeCrowds(qloo, input, probes, status, graphEvent)) ?? (await cachedCrowds(input)) ?? EMPTY;
   }
 
-  if (!LIMITS.ownBrand(ip).ok) return { seed: { lookalikes: [], tags: [], missing: [] }, crowds: [], calls: 0, callIds: [], empty: true };
-  return (await measure(qloo, input, base, status, graphEvent)).result;
-}
-
-/** Seed → taste graph → crowd cards; the result and its graph are stored for a week. */
-async function measure(qloo: QlooClient, input: SeedInput, base: string, status: (t: string) => void, graphEvent: (g: Galaxy) => void): Promise<{ result: CrowdsResult; saved?: SavedGraph }> {
-  status(input.brand ? `Reading ${input.brand.name}'s crowd in Qloo` : "Finding brands like yours in Qloo");
-  const seed = await buildSeed(qloo, input);
-  const graph = await buildGraph(qloo, seed, { onStep: status, onRound: graphEvent });
-  // Report only the tags the graph actually used (they join the signal only when brands are scarce).
-  const used = new Set(seedSignal(seed).tags);
-  seed.tags = seed.tags.filter((t) => used.has(t.id));
-  const seedOut = { brand: seed.brand, lookalikes: seed.lookalikes, tags: seed.tags, missing: seed.missing };
-  const result = await resultOf(qloo, graph, seedOut, seed.callIds, status);
-  const saved: SavedGraph | undefined = graph.state ? { state: graph.state, seed: seedOut, seedCallIds: seed.callIds } : undefined;
-  if (result.crowds.length) {
-    await getStore().set("crowds", base, result, TTL).catch(() => undefined);
-    if (saved) await getStore().set<SavedGraph>("graph", base, saved, TTL).catch(() => undefined);
-  }
-  return { result, saved };
-}
-
-/** Each crowd's card: its skew and cities (2 calls each) and its name (the agent, under the validator). */
-async function resultOf(qloo: QlooClient, graph: TasteGraph, seed: CrowdsResult["seed"], seedCallIds: string[], status: (t: string) => void): Promise<CrowdsResult> {
-  if (!graph.crowds.length) return { seed, crowds: [], calls: seedCallIds.length + graph.calls, callIds: [...seedCallIds, ...graph.callIds], empty: true };
-  status(graph.crowds.length > 1 ? `Found ${graph.crowds.length} distinct crowds; checking where each one lives` : "Checking where this crowd lives");
-  const [details, names, axes] = await Promise.all([Promise.all(graph.crowds.map((c) => crowdDetails(qloo, c, { priority: c.main ? "now" : "next" }))), nameCrowds(graph.crowds), graph.state ? axesOf(graph.state) : undefined]);
-  const crowds: CrowdCard[] = graph.crowds.map((c, i) => ({
-    id: c.id,
-    name: names[i],
-    main: c.main,
-    loves: lovesOf(c),
-    signal: c.signal,
-    brands: c.brands,
-    skew: details[i].skew,
-    cities: details[i].cities,
-    size: c.entities.length,
-    stability: c.stability,
-    core: c.core,
-  }));
-  const callIds = [...seedCallIds, ...graph.callIds, ...details.flatMap((d) => d.callIds)];
-  const meetings = graph.state ? meetingsOf(graph.state, graph.crowds.map((c) => ({ id: c.id, main: c.main, members: new Set(c.entities.map((e) => e.id)) }))) : undefined;
-  return { seed, crowds, calls: callIds.length, callIds, galaxy: graph.galaxy, probes: graph.state?.extra.length ? graph.state.extra : undefined, ...(axes ? { axes } : {}), ...(meetings ? { meetings } : {}) };
-}
-
-// "v4.2": results from the probe-based graph (§9.23, v4.0) carry the Galaxy with null-calibrated cores and each
-// crowd's brand members (for Markets); older ones don't.
-const baseKey = (input: SeedInput) => `v4.2|${JSON.stringify([input.brand?.id ?? "", [...input.comparables].sort(), [...input.lookalikes].sort(), [...input.traits].sort()]).toLowerCase()}`;
-
-type Extras = { axes?: TasteAxisCard[]; meetings?: CrowdMeeting[] };
-
-const probeKey = (base: string, probes: string[]) => (probes.length ? `${base}|probe:${probes.join(",")}` : base);
-
-/**
- * Axes and crowd meetings for a result cached before them (§9.27, §9.28): the stored graph is read once (no Qloo
- * calls) and the cached result keeps them. Members come from the cached Galaxy. A probed result from before its graph
- * was kept is re-probed once on the stored graph (Qloo's answers are cached, so usually free); its cards don't change.
- * Undefined when nothing is stored for this seed.
- */
-async function storedExtras(base: string, probes: string[] = []): Promise<Extras | undefined> {
-  const store = getStore();
-  const key = probeKey(base, probes);
-  const hit = (await store.get<CrowdsResult>("crowds", key).catch(() => undefined))?.value;
-  if (hit?.axes && hit.meetings) return { axes: hit.axes, meetings: hit.meetings };
-  const saved = (await store.get<SavedGraph>("graph", key).catch(() => undefined))?.value ?? (probes.length && hit?.crowds?.length ? await reprobed(base, key, probes) : undefined);
-  if (!saved) return undefined;
-  const axes = hit?.axes ?? (await axesOf(saved.state));
-  const meetings = hit?.crowds?.length ? meetingsOf(saved.state, hit.crowds.map((c, i) => ({ id: c.id, main: c.main, members: membersOf(hit, c, i) }))) : undefined;
-  // An empty list marks meetings as read, so a seed whose crowds don't meet isn't read again.
-  const extras: Extras = { ...(axes ? { axes } : {}), meetings: meetings ?? [] };
-  if (axes && hit?.crowds?.length) await store.set("crowds", key, { ...hit, ...extras }, TTL).catch(() => undefined);
-  return extras;
-}
-
-/** The probed graph behind an older probed result: the stored base graph extended with the same probes, then kept. */
-async function reprobed(base: string, key: string, probes: string[]): Promise<SavedGraph | undefined> {
-  const store = getStore();
-  const saved = (await store.get<SavedGraph>("graph", base).catch(() => undefined))?.value;
-  if (!saved) return undefined;
-  const graph = await extendGraph(getQloo(), saved.state, probes, { priority: "next" }).catch(() => undefined);
-  if (!graph?.state) return undefined;
-  const out = { ...saved, state: graph.state };
-  await store.set<SavedGraph>("graph", key, out, TTL).catch(() => undefined);
-  return out;
-}
-
-/** A cached crowd's members: its Galaxy nodes (crowd index i is card i), else the signal and brands its card holds. */
-function membersOf(hit: CrowdsResult, c: CrowdCard, i: number): Set<string> {
-  const nodes = hit.galaxy?.nodes.filter((n) => n.crowd === i).map((n) => n.id);
-  return new Set(nodes?.length ? nodes : [...c.signal, ...(c.brands ?? [])].map((r) => r.id));
-}
-
-/** Where the main crowd meets each other crowd (§9.28): the entities both love, from U (no Qloo calls). */
-function meetingsOf(state: GraphState, crowds: { id: string; main: boolean; members: Set<string> }[]): CrowdMeeting[] {
-  const main = crowds.find((c) => c.main);
-  if (!main) return [];
-  return crowds.filter((c) => c !== main).flatMap((c) => {
-    const items = crowdBridges(state, main.members, c.members);
-    return items.length ? [{ a: main.id, b: c.id, items }] : [];
-  });
-}
-
-/** The graph's taste axes (§9.27): a factorisation of the measured matrix (no Qloo calls), named by the agent. */
-async function axesOf(state: GraphState): Promise<TasteAxisCard[] | undefined> {
-  const out = tasteAxes(state.U, state.nodes);
-  if (!out) return undefined;
-  const names = await nameAxes(out.axes);
-  return out.axes.map((a, i) => ({
-    id: `axis-${i + 1}`,
-    ...names[i],
-    top: a.top.slice(0, 6).map((n) => ({ id: n.id, name: n.name })),
-    // Only loads that move a weight are sent; anything under 0.05 is treated as 0.
-    load: Object.fromEntries([...a.load].filter(([, x]) => x >= 0.05)),
-  }));
+  if (!LIMITS.ownBrand(ip).ok) return EMPTY;
+  return (await measure(qloo, input, baseKey(input), status, graphEvent)).result;
 }

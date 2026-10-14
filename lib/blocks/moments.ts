@@ -5,6 +5,7 @@ import { metroById, type Metro } from "@/lib/playbook/metros";
 import { blockSignal } from "@/lib/playbook/config";
 import { withCalls } from "./run";
 import type { BlockContext } from "./types";
+import { nowMs } from "@/lib/time/now";
 
 export type Moment = {
   kind: "show" | "festival";
@@ -68,7 +69,7 @@ export function moments(
     const festivals = results(festRes).entities ?? [];
     const pArtist = percentiles(artists.map((a) => a.entity_id));
     const pFest = percentiles(festivals.map((f) => f.entity_id));
-    const soon = (d: string | null) => !!d && new Date(d).getTime() - Date.now() < 30 * DAY;
+    const soon = (d: string | null) => !!d && new Date(d).getTime() - nowMs() < 30 * DAY;
     const artistList = artists.map((a, i) => ({ id: a.entity_id, name: a.name, rank: i + 1 }));
     emit({ tool: "find_moments", why: `Ranking the artists and festivals your crowd loves in ${metro.name}`, status: "ok", callIds: [artistRes.call.id, festRes.call.id], summary: `${artists.length} artists, ${festivals.length} festivals` });
 

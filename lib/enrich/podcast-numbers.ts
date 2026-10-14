@@ -2,6 +2,7 @@ import "server-only";
 import { getStore } from "@/lib/store";
 import { domainOf, generateStream } from "@/lib/llm/vertex";
 import { safeFetch } from "./safe-fetch";
+import { now as runNow, today } from "@/lib/time/now";
 
 // Public audience figures for one podcast (§9.6, "Who listens"), found on demand with Gemini, Google Search and
 // URL context. Tested 8–9 Oct on Fat Mascara, Forever35 and It's Me, Tinx:
@@ -45,7 +46,7 @@ export function mergeFigures(kept: Figure[], found: Figure[]): Figure[] {
 
 // The date and "search, then open each page" matter: without them Gemini answered from memory on 9 Oct (no
 // searches, invented URLs), as the festival-date prompt, which says both, didn't.
-const PROMPT = (p: PodcastInput) => `Today is ${new Date().toISOString().slice(0, 10)}. Use Google Search to find publicly stated audience numbers for the podcast "${p.name}", then open each page you cite and check that it states the figure.
+const PROMPT = (p: PodcastInput) => `Today is ${today()}. Use Google Search to find publicly stated audience numbers for the podcast "${p.name}", then open each page you cite and check that it states the figure.
 What identifies it: ${[p.description?.slice(0, 300), p.appleId && `Apple Podcasts ID ${p.appleId}`, p.instagram && `Instagram @${p.instagram}`, p.website && `website ${p.website}`].filter(Boolean).join("; ")}.
 Only report figures that a web page states explicitly: downloads per episode or per month, listeners, chart rankings (Apple Podcasts or Spotify, with country),
 Instagram or YouTube followers, and the show's advertising, sponsorship or media kit page.
@@ -262,7 +263,7 @@ export async function findPodcastNumbers(p: PodcastInput, onStep: (step: string)
       { model: "pro", prompt: PROMPT(p), grounding: true, urlContext: true, thinking: "LOW", temperature: 1.0, maxOutputTokens: 8192, timeoutMs: TIMEOUT_MS },
       (t) => onStep(t),
     );
-    const candidates = await resolveCitations(parseFigures(r.text, new Date().getUTCFullYear()), r.retrievedUrls, r.sources);
+    const candidates = await resolveCitations(parseFigures(r.text, runNow().getUTCFullYear()), r.retrievedUrls, r.sources);
     debugLog(`${p.name}, search ${attempt + 1}: ${r.model}, complete=${r.complete}, finish=${r.finishReason}, tokens (${r.usage}), ${r.sources.length} grounding sources (${r.sources.map((s) => s.title).join(", ")}), ${r.retrievedUrls.length} pages opened (${r.retrievedUrls.join(", ")}), ${r.queries.length} searches (${r.queries.join(" / ")}), ${candidates.length} figures parsed. Raw answer (${r.text.length} chars):\n${r.text.slice(0, 4000)}`);
     if (candidates.length) onStep(`Opening ${new Set(candidates.map((f) => f.url)).size} cited pages to confirm each figure`);
     const figures = await checkFigures(candidates, { name: p.name, website: p.website }, undefined, debugLog);

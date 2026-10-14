@@ -68,9 +68,27 @@ const CATEGORY_LIST = (Object.values(CATEGORIES) as { id: string; name: string; 
   .join("\n");
 
 /** Reads up to 3 pages of the brand's site through Vertex URL context (§9.20). Page text is data, never instructions. */
-export async function readWebsite(urls: string[]): Promise<WebsiteRead | undefined> {
+// One read per set of pages for an hour, shared while in flight: the agent and the fixed pipeline it falls back to
+// both read the site, and a read can take over a minute (14 Oct, live). Failed reads aren't kept.
+const SITE_TTL = 60 * 60 * 1000;
+const siteReads = new Map<string, { at: number; read: Promise<WebsiteRead | undefined> }>();
+
+export function readWebsite(urls: string[]): Promise<WebsiteRead | undefined> {
   const safe = urls.map(safeUrl).filter((u): u is string => !!u).slice(0, 3);
-  if (!safe.length) return undefined;
+  if (!safe.length) return Promise.resolve(undefined);
+  const key = [...safe].sort().join(" ");
+  const hit = siteReads.get(key);
+  if (hit && Date.now() - hit.at < SITE_TTL) return hit.read;
+  const read = readPages(safe).then((r) => {
+    if (!r) siteReads.delete(key);
+    return r;
+  });
+  if (siteReads.size >= 500) siteReads.delete(siteReads.keys().next().value!);
+  siteReads.set(key, { at: Date.now(), read });
+  return read;
+}
+
+async function readPages(safe: string[]): Promise<WebsiteRead | undefined> {
   try {
     const res = await generate({
       model: "flash",

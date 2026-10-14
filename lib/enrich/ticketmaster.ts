@@ -3,6 +3,7 @@ import { MemoryCache, type ResponseCache } from "@/lib/qloo/client";
 import { norm, seqRatio } from "@/lib/methods/names";
 import type { Metro } from "@/lib/playbook/metros";
 import type { ShowLookup } from "@/lib/blocks/moments";
+import { nowMs } from "@/lib/time/now";
 
 // Ticketmaster Discovery API v2 (§9.18, §11.2). Called only when Moments runs; cached 24 h.
 // Terms: no revenue from the API; link out for tickets; remove content within 24 h on request.
@@ -21,7 +22,8 @@ type TmEvent = {
 export function ticketmasterShows(apiKey: string | undefined): ShowLookup | undefined {
   if (!apiKey) return undefined;
   return async (artist: string, metro: Metro) => {
-    const now = new Date();
+    // From the run date, but never before the real date: Ticketmaster lists only upcoming events.
+    const now = new Date(Math.max(Date.now(), nowMs()));
     const end = new Date(now.getTime() + 120 * DAY);
     const iso = (d: Date) => d.toISOString().replace(/\.\d{3}Z$/, "Z");
     const params = new URLSearchParams({

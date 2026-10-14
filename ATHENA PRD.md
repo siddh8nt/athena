@@ -6,7 +6,7 @@
 
 | | |
 |---|---|
-| Version | 4.1 · 13 Oct 2026 |
+| Version | 5.0 (plan) · 14 Oct 2026 |
 | Owners | Siddhant, Jaiaditya |
 | Event | Qloo Agentic Hackathon, "Agents, but with taste." |
 | Deadline | 31 Oct 2026, 9:15 AM IST (30 Oct, 11:45 PM ET). **We submit on 28 Oct.** |
@@ -31,6 +31,8 @@
 | New in v3.2 | **Crowd reactions now change the plan** (§9.23 step 7): the chosen crowd leads at weight 3, a "Partly" crowd's top 6 entities join at 1.5, a "Not us" crowd's top 8 are excluded from every ranking, and unreacted crowds stay out. **New crowd plus other picks asks one question at the Crowd stop** (§7.8): do the other picks target the current crowd or the new one? |
 | New in v4.0 | **Qloo as a measuring instrument, a measured test against an LLM, and a taste map founders can touch** (12 Oct). (1) **Taste engine** (§9.23): about 100 controlled Qloo probes per brand over 6 domains form a percentile matrix; crowds come from spectral clustering with bootstrap confidence and are checked against shuffled data, so only each crowd's **core** is claimed; **specificity** sorts what a crowd loves beyond its fame. Every method uses only the order within each Qloo response. (2) **The Taste Bench** (§10.6): Athena vs one naive Qloo call vs Gemini alone vs popularity, on where to launch, which retailer next and which venues, scored against the brands' real stockists; registered in `prereg-v2` by 16 Oct and published whatever it shows. (3) **The Taste Galaxy** (§13.11): the crowds as a map that forms live while the agent probes; hover for why, pin "us" or "not us", answer the agent's one question. (4) **Two Qloo keys** (§11.1, §14.9): 10 calls a second and 20,000 a month, routed by headroom with failover. (5) **Planned 17–25 Oct:** crowd geography with hotspots, taste axes, bridges and why-paths (§9.26–9.29), and With / Without on every stop (§13.2). (6) **Cut after live probes on 12 Oct:** trends and compare (§11.1). |
 | New in v4.1 | **The Bench's main tests change, and Markets ranks cities on the crowd's brands** (13 Oct, after the tuning run). (1) **Two layers, stated plainly** (§10.6): Qloo's taste graph makes every measurement and ranking; Gemini reads the brand at the start and writes the plan from Qloo's findings. (2) **The Bench's primary tests** are now Athena vs one raw Qloo call and vs popularity: what Athena's methods add to Qloo, and whether Qloo's taste beats fame. Gemini alone, with and without Search, stays registered as a secondary comparison and is published in full; on the tuning brands it ranked retailers and venues better than Athena (§10.6). (3) **Markets** scores each of the 25 named metros on the crowd's brands, one location-signal call per metro (§9.3): Spearman 0.73 and 0.62 against stockist density on the tuning brands, up from 0.21 and 0.40; any-metro stays in the fallback and in typed places. (4) **The ranking check's pool** pairs each stockist Insights can see with a decoy matched on kind and popularity (§10.3), because random same-type decoys were told apart by fame alone. (5) Ranking-check brands fixed: McClure's, Rishi Tea, Paddywax (§22). |
+| New in v4.2 | **Proposed (14 Oct): the Brand Graph and Plays.** (1) **The Brand Graph** (§13.12) replaces the static "What I understood" card: a slim strip of facts, with Athena's understanding below it as a growing graph built on the Taste Galaxy. It is edited directly or through the chat box, and edits re-run only the plays they touch. (2) **Plays** (§13.13): the journey's entry points, as a catalogue grouped by the founder's question, run from one registry so new features are one entry. §7 stays hidden; plays are the founder's view of it. |
+| New in v5.0 | **Plan for the next version (14 Oct), §23.** The founder's six problems with v4, verbatim (§23.1), and the build order (§23.2): (0) **Athena becomes an agent:** Gemini calls Qloo and real-world tools in a loop with a goal, a budget and hard caps, the fixed pipeline as fallback. (1) **The Galaxy ranks the most valuable fits** on a combined score over six parameters plus timing, with a strategy for each; the question, pins and reactions go. (2) **Date and season awareness** across three calendars and every horizon. (3) **Onboarding becomes an agentic playground** with our own safe crawl, a knowledge base of uploaded files and a bring-your-context prompt; the "server never fetches user URLs" rule is replaced (§9.20, §14). (4) **The Brand Graph** (§13.12) with tiers, sources and timing on nodes. (5) **Goals, not a fixed path:** the agent proposes goals the founder picks; plays become its tools (§13.13). Where §23 conflicts with earlier text, §23 wins. |
 
 **How to read this document**
 
@@ -350,7 +352,7 @@ This stage signal drives **Places** and the **Read card**. When the brand is in 
 
 ---
 
-## 7. Internal playbooks (never shown as a menu)
+## 7. Internal playbooks (never shown as a menu; the founder sees Plays, §13.13)
 
 ### 7.1 How it works
 
@@ -919,7 +921,7 @@ Enrichments attach facts to Qloo results or fill Qloo gaps. They never change an
 ### 9.20 Reading a website (onboarding)
 
 - **Input:** up to 3 URLs the user types (home, about, store locator). Only `https` URLs on public hostnames are accepted. IP addresses, `localhost` and private ranges are rejected before the call.
-- **Call:** Gemini 3.8 Flash on Vertex with the **URL context** tool and these URLs. **Athena's own server never fetches the pages.**
+- **Call:** Gemini 3.8 Flash on Vertex with the **URL context** tool and these URLs. **Athena's own server never fetches the pages.** *(Replaced in v5 by our own safe same-domain crawl, §23.1 problem 3 C.)*
 - **Output schema:** `{category, tier, products[≤5], description ≤ 160 chars, stockists[{name, address, city}] ≤ 50, competitors_mentioned[≤3]}`.
 - **Safety:**
   - Page text is data, never instructions. The system prompt says so, and the schema allows no free-form instructions.
@@ -970,7 +972,7 @@ type BrandBrief = {
 | XLSX | Parsed on the server into CSV, one block per sheet, ≤ 2,000 rows a sheet | Text |
 | PPTX | Unzipped on the server; slide text and speaker notes in slide order; embedded images ≥ 200 px kept (≤ 10 a deck) | Text, plus those images |
 | DOCX | Unzipped on the server; paragraph and table text | Text |
-| URL | Never fetched by Athena's server; read by the URL context tool (§9.20) | Gemini reads it |
+| URL | Never fetched by Athena's server; read by the URL context tool (§9.20). *v5: crawled by our own safe fetcher (§23.1 problem 3 C)* | Gemini reads it |
 
 **Two steps, so tables are never paraphrased:**
 
@@ -1598,6 +1600,66 @@ The crowds as a map the founder can touch. It sits at the top of the Crowd stop,
 - **Planned (17–22 Oct):** linked views with the map (§9.26), axis sliders (§9.27), lasso a custom crowd (P1).
 - **Respects reduced motion:** the layout settles at once.
 
+### 13.12 The Brand Graph (v4.2, proposed 14 Oct; v5 additions in §23.1 problem 4)
+
+What Athena understands about the brand, as one graph the founder can see, edit and grow. It replaces the static "What I understood" card (J1, §6.2) and is built on the Taste Galaxy (§13.11): one graph, not a second one.
+
+- **Two layers:**
+  - **A slim fact strip** above the graph: name, what it sells, channel, tier, stage, home city, each with its source label and edited in place. A graph is a poor way to confirm a fact, so the facts stay as a strip.
+  - **The graph below it:** the brand at the centre; its comparables, competitors and stockists; the crowds (§9.23) and what they love, each a real Qloo entity; and the founder's own facts as small labelled anchors ("premium", "Brooklyn", "sold online").
+- **Small first, then grows:** it opens with about 15–25 nodes (brand, comparables, crowds, top interests). Each play (§13.13) adds its results as new node types: cities, neighbourhoods, venues, retailers, partner brands, podcasts, moments. A node type's nodes fold into a group past 12, so the graph never becomes a tangle.
+- **v5 (§23.1 problems 1–4):** crowd nodes carry their Win first / Win next / Watch tier and reason; every node shows its source (website, a file, Qloo, or you); time-sensitive nodes show when they matter; the list view is the main way to read the graph; stale plays get a one-click re-run.
+- **Edges say why:** comparable of, loved by [crowd], shares fans with (bridges, §9.8), the path from crowd to crowd (why-paths, §9.28), sold at, found by [play]. Hovering an edge shows its reason and source.
+- **Edit directly:**
+  - Click a node to open its card. Remove it (hides it) or mark it wrong (also teaches the agent to stop inferring it). The founder edits facts, never taste: there are no "That's us / Not us" pins (problems.md, problem 1).
+  - Add a node by typing: a comparable, a competitor, a stockist, a city. It is resolved through Qloo (§9.1) or the place resolver (§9.3); nothing is added that can't be resolved.
+- **Edit through chat (implicit):** anything the founder says in the chat box ("we're actually more premium", "we just got into Whole Foods", "skip Austin") goes through the same brief merge as §9.22. The graph updates, and the changed nodes flash once with a one-line note ("Moved to premium: from your message") and Undo. The founder's words always beat a file, which always beats a guess.
+- **Edits re-run only what they touch:** each edit marks the plays whose inputs changed as stale ("Cities may change: you added a comparable. Re-run?"). Nothing re-runs silently, and nothing already decided is thrown away.
+- **No failure states (§2.1):** nodes appear as calls return, and the forming graph is the narration. An unresolved addition becomes a question ("Did you mean Sightglass Coffee, SF?"), never an error.
+- **Extensible:** node and edge types come from one registry (`lib/graph/types.ts`). A new feature registers its node type, shape and edge reasons, with no change to the graph view.
+- **List view:** the same nodes as grouped lists with the same actions. It is the accessible equivalent and the phone layout (< 640 px), as in §13.11.
+- **Library:** the Galaxy's `d3-force` layout, extended with zoom and pan, colour and shape by node type (never colour alone, §13.4), and reduced motion respected.
+
+### 13.13 Plays (v4.2, proposed 14 Oct; changed in v5, §23.1 problem 5)
+
+**v5:** the agent reads the Brand Graph and proposes 3–5 goals for the brand right now; the founder picks one or several (conflicting goals can't be picked together), the recommended one first, or writes their own under Other. Plays become the agent's tools, in seven groups: **Taste, Fans, Where, Shelves, Partners, Events, Insights**. "Prove" becomes a quiet "how we know" link on each result (With / Without, plus the Bench line with Gemini's number). The v4.2 text below stands where it doesn't conflict.
+
+The ways into the journey, laid out as a catalogue grouped by the founder's question. A play is not a separate tool: picking one sets the growth type (§7.8), opens the journey at the right stop, and its results land on the Brand Graph and in the plan. The internal playbooks (§7) stay hidden; plays are the founder's view of them.
+
+| Group | The founder's question | Plays (titled by outcome) |
+|---|---|---|
+| 01 · Know your taste | "Who actually loves us?" | See your brand's taste fingerprint (§9.2) · Meet the crowds that already love you (§9.23) · See what else your crowd loves (§9.8, §9.17) · Find where you sit against rivals (§9.16, §9.27) |
+| 02 · Win more fans | "Who else would love this?" | Find the next crowd to win (New crowd) · See the path from your crowd to theirs (§9.28) · Get the words that land with them (§9.15) · Build a mood board for the crowd (§9.21) |
+| 03 · Go where they are | "Which cities and neighbourhoods?" | Rank the cities where your taste is strongest (§9.3, §9.26) · Name the neighbourhoods to start in (§9.4) · Pick your next city (New city) · Find where to open a store (Own location, Beta) |
+| 04 · Get on shelves | "Where should we be sold?" | Find shops your crowd already shops at (§9.5) · Plan a field day of shop visits (§9.12) · Step up to bigger retailers (§9.25) · Write the pitch to a buyer (draft) |
+| 05 · Borrow an audience | "Who should we team up with?" | Find brands to collab with (§9.6) · Find podcasts your crowd listens to (§9.6) · Write the collab or sponsorship ask (draft) |
+| 06 · Show up and sell online | "When and where do we show up?" | Find the events and moments to be at (§9.18) · Target your crowd online (§9.24) · Write the event inquiry (draft) |
+| 07 · Learn and sharpen | "Is it working?" | Tell Athena what worked (§9.7, §9.29) · See what Qloo changed in your plan (§9.9) |
+
+- **Card anatomy:** outcome title; the feature name as a small label; one line; time ("~20 s"); Qloo calls; status (Ready / Beta / Soon). Prerequisites grey a card out with the reason, never hide it (§7.8).
+- **Filters and search:** one pill per group, plus "In my plan"; a search box. All built from the registry.
+- **Open by design:** every play is one entry in `lib/plays/registry.ts`:
+
+```ts
+type Play = {
+  id: string;
+  group: "taste" | "fans" | "where" | "shelves" | "partners" | "events" | "insights";
+  title: string;              // the outcome, in the founder's words
+  label: string;              // the feature name, shown small
+  blurb: string;
+  estSeconds: number;
+  qlooCalls?: number;
+  growthTypes: GrowthType[];  // §7.8
+  startsAt: StopId;           // where the journey opens
+  adds: NodeType[];           // what it puts on the Brand Graph (§13.12)
+  needs?: Prereq[];           // greyed out with the reason
+  status: "ready" | "beta" | "soon";
+};
+```
+
+  A new feature (for example web search, §11.2) is one new entry; the page, filters and graph pick it up.
+- **Styling** (from the UX audit, `ux-pattern-audit.md`, 14 Oct): one display face for headings, spaced small-caps labels and tabular numerals for data, with our own type pairing (not copied). Light and dark themes come from tokens.
+
 ## 14. Architecture
 
 ### 14.1 Stack
@@ -1674,7 +1736,7 @@ type RankingCheck = { brand: string; metroA: string; metroB: string; aucAthena: 
   - 2,000 Qloo calls a day. Past a cap, the app shows the brand's last live run with a friendly note. Bot traffic is filtered before any run starts.
 - **Key:** in production it lives only in Secret Manager; in development, only in `.env`. Logs and the trace redact it.
 - **Spend:** Cloud Run's maximum instances is 3, and budget alerts fire at $50, $150 and $250 (§14.8). If spend passes $250, the LLM caps are lowered and the app leans on the labelled fallback.
-- **Input:** Athena's server never fetches URLs users supply. Website reading goes only through the Vertex URL context tool, after the URL checks in §9.20.
+- **Input:** *(v5 replaces this rule with the safe crawl in §23.1 problem 3 C: public addresses only, SSRF checks on every redirect, caps, `robots.txt`.)* Athena's server never fetches URLs users supply. Website reading goes only through the Vertex URL context tool, after the URL checks in §9.20.
 - **Uploads:** ≤ 10 files per brief, ≤ 15 MB each, ≤ 40 MB in total. The type is checked from the file's bytes, not its name. Files are processed in memory and never stored; only the brief is kept with the session. Macros and embedded objects in Office files are ignored.
 - **Follow-ups:** ≤ 4 follow-up turns and ≤ 6 Gemini ingestion calls per brief; they count toward the own-brand cap.
 - **Journeys (v3.1):** a whole journey counts **once** against the own-brand cap; its stop runs don't add to it. A dev-only `ATHENA_NO_LIMITS` flag (ignored in production) lifts caps for local testing.
@@ -2135,6 +2197,327 @@ The headings mirror the judging criteria, so both people and automated screeners
 24. **Without Qloo:** **Places only** (v2.11's reason holds).
 25. **Cities:** **any US metro, from the crowd or typed; the 25 largest kept only for the ranking check and the proof** (decided 10 Oct, §9.3).
 26. **Retail step-up:** **part of Deepen; top 5 retailers by crowd fit, excluding ones the brand is already in** (decided 10 Oct, §9.25).
+
+---
+
+## 23. Next version (v5): problems and build plan
+
+Written 14 Oct, after the founder's review of the v4 build. **§23.1 is `problems.md` copied verbatim** (problems 0–5, headings moved under §23.1). §23.2 turns them into the build order for v5. Where §23 conflicts with an earlier section, §23 wins until that section is rewritten during the build.
+
+### 23.1 The problems (verbatim from `problems.md`, 14 Oct)
+
+#### 0. Overarching: Athena is a pipeline, not an agent
+
+**In your words (14 Oct):** "Are we just multiple API calls of Qloo and Gemini patched together, or are we truly agentic? Be brutally honest." And: "This is more of a general, overarching problem; my further problems will discuss this in detail."
+
+**Scope:** this problem sits above all the others. Each later problem (the Galaxy, onboarding and the rest) is a specific place where it shows, and each will be worked out in its own entry. This entry sets the principle they all follow.
+
+**The problem, precisely (checked in the code, 14 Oct):**
+1. **Our code decides every step, never the model.** The journey runs in a fixed order: Product → How to grow → Crowd → Where → Places → Next retailers → Go.
+2. **Gemini has no Qloo tools.** Its only tools are Google Search and reading a URL. It never calls Qloo, never sees a result and decides to dig further, and never changes course. There is no plan → act → observe → re-plan loop anywhere.
+3. **Gemini's jobs are narrow single prompts:** understanding the brief, reading the website, picking lookalikes, naming crowds and axes, and writing a paragraph for each stop.
+4. **The most adaptive part is not an agent.** The taste-graph engine chooses its own probes and when to stop, but by a fixed algorithm (k-center, then a stopping rule).
+5. **It matters for judging.** The theme is "Agents, but with taste". Stage 1 is a pass/fail on fitting it, and a judge reading the code would see a pipeline. The rules accept "functions as an agentic tool" *or* "built using an agent framework", so either route qualifies. A framework is not required.
+
+**What it should be instead:** the agent makes the decisions and the deterministic engine does the measuring.
+- **Tools, not a script.** What is built becomes the agent's tools:
+  - Qloo: search, insights, demographics, build graph, probe, geography, axes
+  - Real world: Wikipedia momentum, Ticketmaster, Census, web search, read website
+- **A goal and a budget,** for example: "Decide who this brand should win first, and how; 150 Qloo calls, 60 s." The agent picks the order.
+- **It reacts to evidence.**
+  - A soft crowd → probe more.
+  - Fading momentum → check the adjacent crowd.
+  - Small reach → follow the bridges.
+- **Every claim cites a tool call.** Code rejects numbers with no source.
+- **The narration is the agent's real steps,** so the no-failure-state rules still hold.
+- **It asks the founder only what only the founder knows:** budget, goals, margins, constraints. Never taste.
+
+**Constraints:**
+- **Hard caps in code:** turns (about 8–12), Qloo calls and seconds.
+- **Fallback:** when the agent stalls, the current fixed pipeline runs instead, so there is no failure state.
+- **Bench methods stay deterministic tools, exactly as registered.** The agent chooses among them and never changes how they score.
+
+**Framework (recommended, not yet decided):** our own loop on Gemini's built-in function calling, about 150–200 lines of TypeScript. The Vercel AI SDK is the alternative. LangGraph is overkill. For Google's ADK, TypeScript support is [VERIFY].
+
+---
+
+#### 1. The Taste Galaxy shows the measurement and asks the founder to finish the job
+
+**In your words (13 Oct):** "You're not supposed to ask me whether my customers would like this or that. You need to evaluate the graph as well as related real-world trends and parameters to create a marketing and growth strategy for the highest predicted yield parts of the taste graph... It should be flipped, that's the whole point."
+
+**The problem, precisely:** the Galaxy shows *how* Athena measured taste, then asks the founder to supply taste judgments. It should show what the measurement *means* for growth and tell the founder what to do.
+
+1. **It's a picture of the instrument, not an answer.** About 150 entities placed by probe rankings put the method on display. The founder is left to interpret it. "These 40 things sit near each other" is not something a brand manager can act on.
+2. **It treats the founder as the oracle.** The agent's one question ("Would your customers love X?"), pins and That's us / Partly / Not us all ask the founder for taste judgments. That is the one thing Qloo knows and the founder doesn't. The question is chosen by uncertainty sampling, which picks whatever would most improve Athena's model: engineering logic, not the founder's.
+3. **Similar is not the same as valuable.** The map's geometry answers "how is this taste organised?", but the founder is asking "where do I grow?" A tight, coherent crowd can still be small, saturated, fading or expensive to reach, and clustering can't tell those apart.
+4. **Nothing on the map shows value.** Colour is the crowd, size is specificity and position is similarity. Nothing shows reach, momentum, timing or spending power, so every part of the map looks equally worth pursuing.
+5. **The default target is where the brand already is.** The "main crowd" is simply the one closest to the seed. That is a defensive default: growth often sits in an adjacent crowd, and nothing makes that case.
+6. **It's a closed world.** The map uses only Qloo's graph, with no real-world trends, events, geography or spending power. Without them it can't say anything about payoff.
+7. **The interactions feed the model, not the founder's decision.** Pin and probe refine the measurement. None of them answers "what if I went after this crowd: who, where, through what, and when?"
+
+**What it should be instead:** a decision surface. It shows the taste map with Athena's judgment over it: where the opportunity is, how strong it is and why. Athena ranks the crowds itself, and every claim traces back to the graph or to a real-world signal. The founder decides strategy and is never the source of taste data.
+
+**Already decided:**
+- **Headline:** "Who to win first", with tiers **Win first · Win next · Watch**, leading into "How to win" for the top crowd.
+- **Removed entirely:** the one question, the That's us / Partly / Not us reactions and pins. Only "Plan for this crowd instead" stays.
+- **No "predicted yield" claim.** There is no sales or outcome data, and the Bench showed Gemini alone ranking stockists better than Athena. Instead, each tier shows its reasons:
+  - brand fit
+  - addressable reach (Census)
+  - efficiency (specificity)
+  - cultural momentum (Wikipedia pageviews; free, checked live 13 Oct)
+  - moments (Ticketmaster tours) [VERIFY key]
+  - signal strength (stability and core)
+- **Target wording: "most valuable fits"** (14 Oct), not "highest predicted yield".
+- **Rank by the combination (14 Oct).** Athena scores each crowd on the strength of all six parameters together and ranks the crowds by that combined score. The ranking must come from real data analysis and math, with Gemini and Qloo supplying awareness of context. It is never a single-parameter sort and never a gut call.
+- **A strategy for every most valuable fit, not just one crowd.** Each top-ranked fit gets its own strategy. "Plan for this crowd instead" assumes one plan for one crowd, so it is superseded; its fate goes in the rework plan.
+- **Other actions per fit:** the founder will list them later. **Remind them** during the rework plan.
+
+
+---
+
+#### 2. Athena doesn't know what time of year it is
+
+**In your words (14 Oct):** "We are not time/date aware while searching for and building brand strategy, so we can't offer time/season-specific opportunities that must be important to decide how the brand could leverage different seasons like holiday season, Halloween season, Black Friday etc. and much more. The examples are arbitrary."
+
+**The problem, precisely (checked in the code, 14 Oct):**
+1. **The strategy has no calendar.** The prompts behind the brief, the crowds, the stops and the plan are never told today's date, so Gemini guesses "now" from its training data. Nothing in the strategy code knows about seasons, holidays or retail moments.
+2. **The only date awareness is local events:**
+   - festival dates for a metro;
+   - Ticketmaster events in the next 120 days;
+   - a "within 30 days" flag on moments.
+
+   None of it is the brand's own calendar.
+3. **So the plan is timeless.** It gives the same advice in October as in March and never answers "when?", even though Q4 (gifting, Halloween, Black Friday/Cyber Monday, the holidays) decides much of a consumer brand's year.
+4. **Taste moves with the seasons too,** and Qloo's graph isn't seasonal.
+
+**Decided (14 Oct):**
+- **All three calendars:**
+  - general retail moments (Black Friday, the holidays);
+  - the brand's own category seasons (grilling, back to school);
+  - the crowds' cultural moments (a show's new season, tour dates).
+- **Every horizon that holds a real opportunity, not one fixed window:**
+  - now (0–30 days);
+  - next quarter (30–90 days);
+  - season (3–6 months, with buying lead times) [VERIFY per retailer];
+  - the 12-month calendar;
+  - recurring patterns ("this crowd peaks every summer").
+- **Every prompt and agent run knows today's date.** Each moment carries a checked date and a lead time saying when to start.
+- **Seasonality and momentum as evidence:**
+  - Wikipedia pageviews: daily views of each crowd's landmark articles since 2015, free with no key. A rising or falling trend shows momentum; years of data show yearly peaks. The limit is that they measure attention, not buying.
+  - Google Trends is the better attention signal, but its official API is an application-only alpha (announced July 2025, not generally available) [VERIFY access]. pytrends is unmaintained, and scraping or paid resellers break our zero-spend and terms rules. **Applied for the alpha on 14 Oct** (project `athena-qloo`). If accepted, we use Trends. If not, Wikipedia pageviews do the job.
+- **"When" feeds the ranking** of the most valuable fits (problem 1). Each strategy says what to do now, what to do next, and what to do before each moment.
+- **Computed live for any brand and any date,** never from a fixed holiday list.
+
+---
+
+#### 3. Onboarding is a static chatbot that makes the founder do the work
+
+**In your words (14 Oct):** the first step "is awfully like a static chatbot with ugly bubbles", and "the onus is on the user to describe in natural language, which is arduous and causes friction".
+
+**The problem, precisely:**
+1. **It looks like a chat window:** a blank text box, speech bubbles and one question at a time. It reads like a support bot, not an agent at work.
+2. **The founder does the work.** They have to know what Athena needs and type it out in prose. Athena's own research is mostly hidden.
+3. **Corrections are slow.** Each one is another round of typing and waiting.
+4. **It comes first,** so every founder and judge meets this friction before any of the taste work.
+5. **It's problem 0 again:** a fixed question loop, not an agent doing the onboarding.
+6. **The website is read thinly.** Gemini's URL context reads only the pages it's handed, with a cap per request. There's no crawl, no structured product data and no catalogue.
+7. **Company knowledge can't come in.** There's no way to add decks, PDFs, spreadsheets, images or notes, or what the founder has already told other AI tools.
+8. **A self-imposed rule blocks a proper crawl.** "The server never fetches user URLs" was Claude's security default against SSRF in the 9 Oct PRD, not a product requirement.
+
+**What it should be instead:**
+
+**A. The interface: an agentic playground**
+- **A small version of the Claude Code interface.** Athena's work streams live as steps you can expand: crawling the site, reading files, searching, Qloo lookups, drafting the brief. There are no chat bubbles.
+- **Chat stays as an optional steering box** under the stream ("focus on wholesale", "we're launching a new line in March").
+- **Questions look like Claude Code's:**
+  - 2–4 options built from Athena's research, with the recommended one first;
+  - "Other" for a custom answer;
+  - more than one choice allowed where that makes sense.
+
+  There are no open-ended questions.
+- **Founder-only questions** (budget, goals, constraints) are optional and take little work. Athena suggests answers from what it found, the founder confirms or skips with one click, and Athena says what it assumed.
+
+**B. Three ways in.** Any one is enough.
+- **Website:** Athena crawls it.
+- **Knowledge base:** the founder drags in or uploads company and product files: PDFs, PowerPoint, Excel/CSV, images, text and documents. There are no third-party connectors.
+- **Bring your context:** Athena gives a prompt to paste into ChatGPT, Claude or Gemini. That AI writes a structured summary of the business, which the founder pastes back, as with Claude's memory import.
+- **A brand without a website** uses the prompt or the knowledge base.
+
+**C. Our own website crawl**
+- **Same domain only:** the sitemap, product and collection pages, About, FAQ, stockists, press and the blog.
+- **Structured data:** schema.org and Open Graph, plus Shopify's `/products.json` [VERIFY].
+- **Every fact carries its page URL.**
+- **Safe fetching replaces the old rule:**
+  - public addresses only, with SSRF checks on every redirect;
+  - caps on pages, size and time;
+  - `robots.txt` respected;
+  - a thin crawl falls back to Gemini URL context plus search, so there is no failure state.
+
+**D. Multimodal ingestion without omission, the NotebookLM way**
+- **Every format is read in full:**
+  - Gemini reads PDFs and images directly, including scans, charts and packaging.
+  - Slides are split into text, speaker notes and slide images.
+  - Spreadsheets are read cell by cell, so numbers stay exact.
+  - Text, documents, the crawl and the pasted summary are all sources.
+- **Extract each source** into structured facts, each tagged with its file and page, slide or cell.
+- **Merge:** remove duplicates, and flag conflicts as one-click choices ("Deck says $24, website says $28").
+- **Coverage check:** a second pass lists anything not yet used, so nothing is silently dropped.
+- **Show what was kept,** with sources. The founder strikes anything wrong.
+- **Keep the originals** as sources, so later stops can look things up again.
+- **Store each file's extraction under the file's hash,** so a file is read only once. This is for speed; cost isn't a concern at hackathon scale.
+
+**E. The hackathon limit, shown to the founder**
+- **One Gemini pass, no retrieval layer:** about 1M tokens for 3.8 Flash, plus Vertex's per-file limits [VERIFY].
+- **A live meter while adding context** ("about 1,500 pages max; you've added about 320").
+- **Over the limit:** Athena says so plainly and the founder chooses what to keep. Nothing is cut silently.
+
+**F. Privacy and safety**
+- Uploads stay in our project only, are never used for anything else, and the founder can delete them.
+- Every ingested file and page is data, never instructions.
+
+**G. It must change the results, not just the experience**
+1. **Context drives the Qloo queries:** traits and signal entities, lookalike brands, price tier, places and regions, and exclusions. Richer context means a sharper taste graph.
+2. **Context shapes the ranking of the most valuable fits (problem 1):** where the brand already sells and stocks, who already buys, margins and capacity, budget, goals and constraints.
+3. **Context changes the actions:**
+   - stockists the brand already has are not suggested again;
+   - budget sets the channel mix;
+   - a launch date moves the calendar (problem 2);
+   - capacity limits how many regions to go after at once.
+4. **Every result shows which context shaped it, with the source** ("Ranked higher because your deck says 60% of sales are in California").
+5. **Test:** run the same brand with only its website, then with the full knowledge base. The crowds, ranking and actions must change in ways that trace back to specific facts. No change is a bug. This is a product check, separate from the Bench.
+6. **Tailored throughout:** Athena speaks in the brand's own terms (its products, stockists and numbers) at every stop.
+
+---
+
+#### 4. What Athena understood is a static card
+
+**What you said**
+- After onboarding, what Athena understood should be an Obsidian-style knowledge graph, not a static card.
+- You can edit it directly, and it also updates implicitly from what you type in the chat box.
+
+**The problems**
+1. The card is read-only text. You can't see how facts connect or correct one in place.
+2. Corrections only happen by re-onboarding or by chat, and you can't see what changed.
+3. The Galaxy (taste) and the brand facts live in separate places.
+4. It looks generic next to the reference product in `ux-pattern-audit.md`.
+
+**The fix**
+- **A. One brand graph:** a strip of key facts plus a graph grown from the Galaxy.
+  - Starts with 15–25 nodes; past 12 nodes of one type, they fold into a group.
+  - Every edge carries its reason.
+  - Every node shows its source: website, a file, Qloo, or you (problem 3 G).
+  - Crowd nodes carry their Win first / Win next / Watch tier and the reason (problem 1).
+  - Time-sensitive nodes show when they matter: moments, seasons, lead times (problem 2).
+  - A list view sits beside it and is the main way to read it.
+- **B. Edit facts, never taste.**
+  - Add a fact by typing it (Athena resolves it via Qloo or the place resolver).
+  - "Remove" only hides a fact. "Wrong" also teaches the agent to stop inferring it.
+  - Chat edits go through the existing merge rules: your words beat files, which beat guesses.
+  - What changed flashes, with an Undo.
+  - No "That's us / Not us" pins (consistent with problem 1).
+  - Plays that relied on a changed fact are flagged stale, with a one-click re-run.
+- **C. Look and feel (from the audit):** a serif display face for headings, small uppercase labels, 16px-radius cards.
+
+---
+
+#### 5. Features sit behind one fixed path
+
+**What you said**
+- Plays should cover all of Athena's features, drop "Prove", and stay open for features added later.
+
+**The problems**
+1. Features are reachable only through one fixed journey, so most of them are invisible.
+2. "Prove" isn't something a founder would choose to do.
+3. Adding a new feature means rewiring the journey.
+4. Fixed plays are scripts, not an agent (problem 0).
+
+**The fix**
+- **A. The agent suggests goals; the founder picks.** The agent reads the graph and proposes 3–5 goals for this brand right now, styled like Claude Code questions:
+  - Pick one or several. Goals that conflict can't be picked together.
+  - The recommended goal comes first.
+  - "Other" lets the founder write a custom goal.
+  - The steering box stays available.
+- **B. Plays become the agent's tools.**
+  - Seven groups: Taste, Fans, Where, Shelves, Partners, Events, Insights.
+  - Each run shows its time, its Qloo calls, and which nodes it adds to the graph.
+- **C. "Prove" becomes a quiet "how we know" link on each result:** With / Without, plus the Bench line with Gemini's number.
+- **D. Registries:** tools and node types each live in one registry file, so a new feature is one new entry and the agent can use it at once.
+
+---
+
+### 23.2 How we build v5
+
+**Order:** the agent core comes first, because every other problem runs on it (problem 0). Then the inputs (onboarding), then the judgment (ranking and calendar), then the surfaces (the Brand Graph, goals). **From step 3 on, every feature is built as agent tools plus a goal, never as a new fixed stop.** Each step ends with a live run on a brand outside the demo packs. Submission stays 28 Oct.
+
+| # | Dates | Problem | Build | Done when |
+|---|---|---|---|---|
+| 1 | 15 Oct | 2 | **Date in every prompt and agent run.** One `now()` context goes into every Gemini call and every agent goal: today's date, the season, and days to the coming retail moments. | Every trace shows today's date, and the same brand run with a different date gets different timing. |
+| 2 | 15–17 Oct | 0 | **The agent core.** (a) **Tools, not a script:** the existing code becomes tools in one registry (`lib/agent/tools.ts`): Qloo search, insights, demographics, build graph, probe, geography, axes; Wikipedia momentum, Ticketmaster, Census, web search, read website. (b) **A goal and a budget** per run (for example "decide who to win first and how; 150 Qloo calls, 60 s"); the agent picks the order. (c) **It reacts to evidence:** the system prompt and tool results let it probe more when a crowd is soft, check the adjacent crowd when momentum fades, and follow the bridges when reach is small. This comes from model context, not hard-coded branches. (d) **Every claim cites a tool call;** code rejects numbers with no source. (e) **The narration is the agent's real steps,** streamed. (f) **It asks the founder only what only the founder knows** (budget, goals, margins, constraints), never taste, through the question component from step 3. (g) **Hard caps** on turns (8–12), Qloo calls and seconds. (h) **Fallback:** if the agent stalls, the current fixed pipeline runs, so there is no failure state. (i) **Bench methods stay deterministic tools, exactly as registered;** the agent chooses among them and never changes how they score. Framework: our own loop on Gemini function calling (default); the Vercel AI SDK is the alternative. | On a brand outside the packs, one goal runs end to end. The trace shows the agent choosing its next tool from evidence, every number has a source, and a forced stall falls back cleanly. |
+| 3 | 17–19 Oct | 3 A, B, F | **Onboarding as an agentic playground** (replaces the chat bubbles). (a) The live stream of expandable steps: crawling, reading files, searching, Qloo lookups, drafting the brief. (b) The optional steering box. (c) **One shared question component, styled like Claude Code:** 2–4 options built from research, the recommended one first, Other for a custom answer, multi-select where it fits, and no open-ended questions. Steps 2, 6 and 8 reuse it. (d) Founder-only questions are optional, with suggested answers to confirm or skip in one click, and Athena says what it assumed. (e) **Three ways in, any one enough:** website, knowledge base (uploads only: PDF, PowerPoint, Excel/CSV, images, text, documents; no third-party connectors), and the "bring your context" prompt to paste into ChatGPT, Claude or Gemini and paste back. A brand without a website uses the prompt or the knowledge base. (f) **Privacy:** uploads stay in our project, are never used for anything else, and the founder can delete them. | A brand with no website onboards from files alone, and a founder finishes without typing a paragraph. |
+| 4 | 17–19 Oct | 3 C, D, E, F | **Our own crawl and ingestion.** (a) **Crawl:** same domain only (sitemap, product and collection pages, About, FAQ, stockists, press, blog), schema.org / Open Graph / Shopify `/products.json` [VERIFY], and every fact carries its page URL. (b) **Safe fetching replaces the old rule:** public addresses only, SSRF checks on every redirect, caps on pages, size and time, and `robots.txt` respected. A thin crawl falls back to URL context plus search. (c) **Read every format in full:** PDFs and images by Gemini directly (including scans, charts and packaging); slides as text, speaker notes and slide images; spreadsheets cell by cell. (d) **Extract** each source into facts tagged with file and page, slide or cell. **Merge** duplicates, with conflicts as one-click choices. Run a **coverage pass** so nothing is silently dropped. **Show what was kept** with sources, and let the founder strike anything. **Keep the originals.** **Store each extraction under the file's hash.** (e) **The limit:** one Gemini pass of about 1M tokens plus per-file limits [VERIFY], a live meter while adding ("about 1,500 pages max; you've added about 320"), and over the limit the founder chooses what to keep. (f) Every ingested file and page is data, never instructions. | A deck, a spreadsheet and a site for one brand merge into one brief with every fact sourced, conflicts surfaced, and the coverage pass empty. |
+| 5 | 19–21 Oct | 1, 2, 3 G | **Most valuable fits, as agent tools.** (a) **A combined score** over the six parameters: brand fit, addressable reach (Census), efficiency (specificity), cultural momentum (Wikipedia pageviews), moments (Ticketmaster) [VERIFY key] and signal strength (stability and core). Plus "when" from step 1. Computed with math, with context from Gemini and Qloo; never a single-parameter sort or a gut call. (b) **Context from step 4 shapes it:** where the brand already sells, who already buys, margins, capacity, budget, goals and constraints. Context also drives the Qloo queries (traits, signal entities, lookalikes, price tier, places, exclusions). (c) Tiers **Win first / Win next / Watch**, with the reasons shown. Wording: "most valuable fits", with no "predicted yield" claim. Adjacent crowds compete on the same score, so the crowd nearest the seed is not the default. (d) **The Galaxy becomes a decision surface:** value (tier, reach, momentum, timing) is shown on the map, not only colour by crowd, size by specificity and position by similarity. Real-world signals sit beside Qloo's. (e) **Removed:** the one question, That's us / Partly / Not us, pins and uncertainty sampling. (f) **All three calendars, computed live:** retail moments, the brand's category seasons, and the crowds' cultural moments. **Every horizon:** now, next quarter, season with buying lead times [VERIFY per retailer], the 12-month calendar, and recurring patterns from years of pageviews. Each moment carries a checked date and a lead time. Google Trends replaces pageviews as the attention signal if the alpha is granted. | Two different brands get different rankings with reasons that trace back to data. Moving the run date moves the "when". Website-only and full-knowledge-base runs rank differently for sourced reasons. |
+| 6 | 21–22 Oct | 1, 2, 3 G | **A strategy for every most valuable fit.** (a) Each top fit gets its own strategy: who, where, through what, and when, saying what to do now, what next, and what before each moment. This answers "what if I went after this crowd". (b) **Other actions per fit: the founder lists them before this step starts.** (c) **Context changes the actions:** stockists the brand already has aren't suggested again, budget sets the channel mix, a launch date moves the calendar, and capacity limits how many regions at once. (d) **Every result shows which context shaped it, with the source** ("Ranked higher because your deck says 60% of sales are in California"). (e) **Tailored throughout:** the brand's own products, stockists and numbers. (f) "Plan for this crowd instead" is removed, because every top fit already has a plan. | Each top fit has its own sourced strategy and actions, and changing one context fact changes the matching action. |
+| 7 | 22–24 Oct | 4 | **The Brand Graph** (§13.12). (a) A fact strip plus the graph grown from the Galaxy: one graph, not two. It starts with 15–25 nodes, folds a type into a group past 12, gives every edge its reason, and shows every node's source. Crowd nodes carry tier and reason; time-sensitive nodes show when they matter. (b) A list view beside it is the main way to read it, and the phone layout. (c) **Edit facts, never taste:** add by typing (resolved through Qloo or the place resolver), "remove" (hides) or "wrong" (also stops the agent inferring it), and no pins. (d) **Chat edits** go through the merge rules (your words beat files, which beat guesses); what changed flashes, with Undo. (e) **Plays that used a changed fact** are flagged stale, with a one-click re-run. (f) **Look and feel from the audit:** a serif display face, small uppercase labels, 16px-radius cards. | An edit in chat and one on the graph each change the right nodes, show what changed, can be undone, and flag the right plays. |
+| 8 | 24–25 Oct | 5 | **Goals, not a fixed path.** (a) The agent reads the Brand Graph and proposes 3–5 goals for the brand right now, through the step 3 question component: pick one or several, with conflicting goals not pickable together, the recommended one first, and Other for a custom goal. The steering box stays. (b) **Plays become the agent's tools** in seven groups: **Taste, Fans, Where, Shelves, Partners, Events, Insights**. Every current feature is reachable as a goal or a play, not only through the old journey. (c) Each run shows its time, its Qloo calls and the nodes it adds to the graph. (d) **"Prove" goes:** a quiet "how we know" link on each result shows With / Without and the Bench line with Gemini's number. (e) **Registries:** tools (`lib/agent/tools.ts`) and node types (`lib/graph/types.ts`) are one entry each. | A new play added as one registry entry appears, and the agent can use it with no other change. |
+| 9 | 26 Oct | 3 G | **The context test:** the same brand with only its website, then with the full knowledge base. The crowds, ranking and actions must change in ways that trace back to specific facts. A product check, separate from the Bench. | The diff is written up per brand; no change is treated as a bug. |
+| 10 | 26–27 Oct | all | QA against the no-failure-state rules, the phone layout, the Cloud Run deploy, re-warming the demo packs, and the write-up and video. The write-up says plainly that Athena is now an agent (problem 0), for Stage 1 judging. | Rehearsed twice end to end, and the coverage table (§23.3) is all ticked. |
+
+### 23.3 Coverage: every problem point and where it's built
+
+| Problem | Point | Step |
+|---|---|---|
+| 0 | 1–4. Code decides every step; Gemini has no Qloo tools; narrow single prompts; the engine follows a fixed algorithm | 2 (tools, goal, loop), then 3–8 are built on it |
+| 0 | 5. Judging: "functions as an agentic tool" | 2, 10 |
+| 0 | Tools; goal and budget; reacts to evidence; cites tool calls; real narration; asks only founder-only questions | 2 a–f |
+| 0 | Hard caps; fallback; Bench methods stay deterministic | 2 g–i |
+| 0 | Framework | 2 (default), open item 3 |
+| 1 | 1, 4. Shows the instrument, not value | 5 d |
+| 1 | 2. The founder as the oracle (question, pins, reactions, uncertainty sampling) | 5 e, 7 c |
+| 1 | 3, 5. Similar is not the same as valuable; the default is the nearest crowd | 5 a, c |
+| 1 | 6. A closed world | 5 a, d, f |
+| 1 | 7. Interactions don't answer "what if" | 6 a |
+| 1 | Headline and tiers; "most valuable fits"; no yield claim; combined score | 5 a, c |
+| 1 | A strategy for every fit; "Plan for this crowd instead" goes | 6 a, f |
+| 1 | Other actions per fit | 6 b, open item 1 |
+| 2 | 1. No date in prompts | 1 |
+| 2 | 2–3. Only local event dates; a timeless plan | 5 f, 6 a |
+| 2 | 4. Taste moves with the seasons | 5 f (pageviews, recurring patterns) |
+| 2 | Three calendars; every horizon; checked dates and lead times; Trends or pageviews; "when" in the ranking; live, no fixed list | 1, 5 a, f |
+| 3 | 1–5. Chat window; founder does the work; slow corrections; comes first; a fixed loop | 3 a–d, on step 2 |
+| 3 | 6, 8. Thin website reading; the URL rule | 4 a, b |
+| 3 | 7. No company knowledge | 3 e, 4 c–d |
+| 3 | A. Playground, steering box, Claude Code questions, founder-only questions | 3 a–d |
+| 3 | B. Three ways in; no website | 3 e |
+| 3 | C. The crawl and safe fetching | 4 a, b |
+| 3 | D. Ingestion without omission | 4 c, d |
+| 3 | E. The limit and meter | 4 e, open item 4 |
+| 3 | F. Privacy; data, not instructions | 3 f, 4 f |
+| 3 | G1–2. Context drives Qloo queries and the ranking | 5 b |
+| 3 | G3–4, 6. Context changes actions; sources shown; tailored | 6 c–e |
+| 3 | G5. The website-only vs full-knowledge-base test | 9 |
+| 4 | 1–3. A read-only card; invisible corrections; Galaxy and facts apart | 7 a, c, d |
+| 4 | 4. Generic look | 7 f |
+| 4 | A–C. Graph, edits, look and feel | 7 a–f |
+| 5 | 1. Features hidden behind one journey | 8 b |
+| 5 | 2. "Prove" | 8 d |
+| 5 | 3. Adding a feature means rewiring | 8 e |
+| 5 | 4. Fixed plays are scripts | 8 a, on step 2 |
+| 5 | A–D. Goals, plays as tools, how we know, registries | 8 a–e |
+
+### 23.4 Rules and open items
+
+**Rules that hold through the build**
+- No failure states; nothing hangs; slow calls are narrated; Qloo copy stays understated.
+- Everything works live for any brand; demo caches are only a speed-up.
+- Understanding bugs are fixed with model context, never keyword rules.
+- No Qloo data in the repo; secrets only in `.env`; zero spend beyond the $300 credit; claims checked and marked [VERIFY].
+- **Bench integrity:** prereg-v2 held-out brands are never re-run or retuned; we never claim Athena or Qloo ranks stockists better than an LLM; every Bench line carries Gemini's number; any method change after the tag is disclosed.
+
+**Open before or during the build**
+1. **Other actions per most valuable fit** (problem 1): the founder lists them before step 6.
+2. **Google Trends alpha** (applied 14 Oct): use it if granted; otherwise Wikipedia pageviews.
+3. **Agent framework:** own loop on Gemini function calling (default) vs the Vercel AI SDK; Google ADK TypeScript support [VERIFY].
+4. **The 1M-token and per-file limits** for Gemini 3.8 Flash on Vertex [VERIFY] before the meter ships.
 
 ---
 

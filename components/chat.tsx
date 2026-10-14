@@ -20,6 +20,7 @@ export function sourceLabel(s: Source, confirmed?: boolean): string {
   const base =
     s.kind === "message" ? "from your message"
     : s.kind === "file" ? `from ${s.ref ?? "your file"}`
+    : s.kind === "pasted" ? "from your AI summary"
     : s.kind === "website" ? "from your website"
     : s.kind === "web" ? `from the web${s.ref ? ` · ${s.ref}` : ""}`
     : s.kind === "qloo" ? "from Qloo"

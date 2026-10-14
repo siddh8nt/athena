@@ -6,7 +6,8 @@ import type { RetailCategory } from "@/lib/stops/retailers";
 
 // "web": found by Athena's own research (Google Search through Gemini); ref is the page. "inferred": Gemini
 // read it between the lines. Every value shows its source, and the founder corrects anything in plain words.
-export type SourceKind = "message" | "file" | "website" | "web" | "qloo" | "inferred" | "agent_guess";
+// "pasted": the summary the founder brought from their own AI assistant (§23.2 step 3e).
+export type SourceKind = "message" | "file" | "pasted" | "website" | "web" | "qloo" | "inferred" | "agent_guess";
 export type Source = { kind: SourceKind; ref?: string };
 export type Sourced<T> = { value: T; source: Source; confirmed?: boolean };
 export type Stockist = { name: string; address?: string; city?: string };
@@ -70,7 +71,7 @@ export const CAPS = { websites: 3, stockists: 200, comparables: 5, competitors: 
 export const emptyBrief = (): BrandBrief => ({ websites: [], stockists: [], comparables: [], competitors: [], notes: [], turns: 0, calls: 0 });
 
 // Typed beats file beats website beats Qloo beats a guess (§9.22). A founder's confirmation lifts any source.
-const RANK: Record<SourceKind, number> = { message: 6, file: 5, website: 4, web: 4, qloo: 3, inferred: 2, agent_guess: 1 };
+const RANK: Record<SourceKind, number> = { message: 6, file: 5, pasted: 5, website: 4, web: 4, qloo: 3, inferred: 2, agent_guess: 1 };
 const rank = (s: Sourced<unknown>) => RANK[s.source.kind] + (s.confirmed ? 10 : 0);
 
 export type Conflict = { field: keyof BrandBrief; kept: Sourced<unknown>; dropped: Sourced<unknown> };

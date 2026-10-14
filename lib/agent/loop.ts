@@ -1,7 +1,8 @@
 import type { QlooClient } from "@/lib/qloo/client";
 import type { Env } from "@/lib/env";
 import type { AgentEvent } from "@/lib/blocks/types";
-import { converse, type ConverseResult, type Part, type Turn } from "@/lib/llm/vertex";
+import { converse, type ConverseResult, type FunctionDeclaration, type Part, type Turn } from "@/lib/llm/vertex";
+import type { BrandBrief } from "@/lib/brief/types";
 import { timeContext, timeSummary } from "@/lib/time/now";
 import { checkClaims, type Claim } from "./cite";
 import { FINISH, TOOLS, declarations, toolByName, type AgentState, type FounderQuestion, type Tool } from "./tools";
@@ -25,11 +26,31 @@ export type AgentAnswer = { headline: string; claims: Claim[]; assumptions: stri
 export type AgentStreamEvent =
   | PlanEvent
   | { type: "ask"; ask: FounderQuestion & { id: string } }
-  | { type: "answer"; answer: AgentAnswer; sources: Omit<Source, "data" | "args">[] };
+  | { type: "answer"; answer: AgentAnswer; sources: Omit<Source, "data" | "args">[] }
+  /** Onboarding's answer (§23.2 step 3): the brief, every fact with its sources. */
+  | { type: "brief"; brief: BrandBrief; assumptions: string[]; dropped: number };
+
+/**
+ * How a run ends: the function the model calls to finish, and the check its arguments must pass. Problems go back
+ * to the model once to fix; after that, what passed is sent. No result means the run stalled.
+ */
+export type Finisher = {
+  declaration: FunctionDeclaration;
+  check: (args: Record<string, unknown>, sources: Map<string, Source>) => { problems?: { feedback: Record<string, unknown>; count: number }; result?: AgentStreamEvent; summary: string };
+  /** The narration while checking ("Checking every number against its source"), and once checked. */
+  checking: string;
+  checked: string;
+};
 
 export type AgentRun = {
   goal: string;
   brand: BrandInput;
+  /** Another job's instructions, opening message and finish (onboarding); the strategy run's by default. */
+  system?: string;
+  intro?: string;
+  finisher?: Finisher;
+  /** Sources the run starts with after s0, such as what the founder said (s1…). */
+  given?: { tool: string; summary: string; data: unknown }[];
   budget?: Partial<AgentBudget>;
   qloo: QlooClient;
   env: Env;
@@ -81,6 +102,42 @@ function briefOf(goal: string, b: BrandInput, budget: AgentBudget): string {
     .join("\n");
 }
 
+/** The strategy run's finish: sourced claims under a headline with no numbers. */
+export const CLAIMS: Finisher = {
+  declaration: FINISH,
+  checking: "Checking every number against its source",
+  checked: "Checked every number against its source",
+  check(args, sources) {
+    const claims = (Array.isArray(args.claims) ? args.claims : [])
+      .map((c) => c as { text?: unknown; sources?: unknown })
+      .map((c) => ({ text: typeof c.text === "string" ? c.text.trim() : "", sources: Array.isArray(c.sources) ? c.sources.filter((s): s is string => typeof s === "string") : [] }))
+      .filter((c) => c.text);
+    const headline = typeof args.headline === "string" ? args.headline.trim() : "";
+    const checked = checkClaims([...claims, ...(headline ? [{ text: headline, sources: [...sources.keys()] }] : [])], sources);
+    const headlineOk = !headline || checked.kept.some((c) => c.text === headline);
+    const kept = checked.kept.filter((c) => c.text !== headline);
+    const rejected = checked.rejected.filter((c) => c.text !== headline);
+    const problems =
+      rejected.length || !headlineOk || !kept.length
+        ? {
+            count: rejected.length + (headlineOk ? 0 : 1),
+            feedback: { rejected: rejected.map((x) => ({ text: x.text, reason: x.reason })), ...(headlineOk ? {} : { headline: "must have no numbers" }), ...(kept.length ? {} : { claims: "at least one claim must cite a source" }) },
+          }
+        : undefined;
+    const answer: AgentAnswer = {
+      headline: headlineOk ? headline : "",
+      claims: kept,
+      assumptions: (Array.isArray(args.assumptions) ? args.assumptions : []).filter((s): s is string => typeof s === "string").slice(0, 8),
+      dropped: rejected.length,
+    };
+    return {
+      problems,
+      result: kept.length ? { type: "answer", answer, sources: [...sources.values()].map(({ data: _d, args: _a, ...s }) => s) } : undefined,
+      summary: rejected.length ? `${kept.length} claims kept; ${rejected.length} left out without a source` : `${kept.length} claims, all sourced`,
+    };
+  },
+};
+
 /** A model turn not back by then gets a second, identical request; the first answer wins. */
 const HEDGE_MS = 10_000;
 
@@ -91,7 +148,8 @@ export async function runAgent(run: AgentRun): Promise<{ answered: boolean; reas
   const budget: AgentBudget = { qloo: clamp(run.budget?.qloo, DEFAULT_BUDGET.qloo, MAX.qloo), ms: clamp(run.budget?.ms, DEFAULT_BUDGET.ms, MAX.ms), turns: clamp(run.budget?.turns, DEFAULT_BUDGET.turns, MAX.turns) };
   const tools = run.tools ?? TOOLS;
   const byName = toolByName(tools);
-  const functions = [...declarations(tools), FINISH];
+  const finisher = run.finisher ?? CLAIMS;
+  const functions = [...declarations(tools), finisher.declaration];
   const model = run.model ?? converse;
   const started = Date.now();
   let spent = 0; // uncached Qloo calls: what the budget counts
@@ -112,9 +170,10 @@ export async function runAgent(run: AgentRun): Promise<{ answered: boolean; reas
   const time = timeContext();
   sources.set("s0", { id: "s0", tool: "today", args: {}, summary: timeSummary(time), data: time, callIds: [] });
   emit({ tool: "today", why: "Planning from today's date", status: "ok", callIds: [], summary: timeSummary(time) });
+  for (const g of run.given ?? []) sources.set(`s${sources.size}`, { id: `s${sources.size}`, tool: g.tool, args: {}, summary: g.summary, data: g.data, callIds: [] });
   emit({ tool: "goal", why: run.goal, status: "ok", callIds: [], summary: `Budget: ${budget.qloo} Qloo calls, ${Math.round(budget.ms / 1000)} s` });
 
-  const turns: Turn[] = [{ role: "user", parts: [{ text: briefOf(run.goal, run.brand, budget) }] }];
+  const turns: Turn[] = [{ role: "user", parts: [{ text: run.intro ?? briefOf(run.goal, run.brand, budget) }] }];
   let fixedUp = false;
   let idle = 0;
   let stall: string | undefined;
@@ -135,7 +194,7 @@ export async function runAgent(run: AgentRun): Promise<{ answered: boolean; reas
     // 14 Oct, live: turns take 3–6 s, but in slow spells one in a few runs past 25 s while the same request sent
     // again lands fast. So a turn not back in 10 s is hedged with a second identical request (first answer wins),
     // and a failed turn gets one retry before the run counts as stalled.
-    const ask = (ms: number) => model({ model: "flash", system: SYSTEM, turns, functions, force: mustFinish ? ["finish"] : undefined, thinking: "LOW", budgetMs: Math.max(5_000, Math.min(ms, 25_000)) });
+    const ask = (ms: number) => model({ model: "flash", system: run.system ?? SYSTEM, turns, functions, force: mustFinish ? [finisher.declaration.name] : undefined, thinking: "LOW", budgetMs: Math.max(5_000, Math.min(ms, 25_000)) });
     const hedged = (ms: number) =>
       new Promise<ConverseResult>((resolve, reject) => {
         let pending = 1;
@@ -183,47 +242,31 @@ export async function runAgent(run: AgentRun): Promise<{ answered: boolean; reas
     }
     idle = 0;
 
-    const fin = r.calls.find((c) => c.name === "finish");
+    const fin = r.calls.find((c) => c.name === finisher.declaration.name);
     if (fin) {
-      const claims = (Array.isArray(fin.args.claims) ? fin.args.claims : [])
-        .map((c) => c as { text?: unknown; sources?: unknown })
-        .map((c) => ({ text: typeof c.text === "string" ? c.text.trim() : "", sources: Array.isArray(c.sources) ? c.sources.filter((s): s is string => typeof s === "string") : [] }))
-        .filter((c) => c.text);
-      const headline = typeof fin.args.headline === "string" ? fin.args.headline.trim() : "";
-      const checked = checkClaims([...claims, ...(headline ? [{ text: headline, sources: [...sources.keys()] }] : [])], sources);
-      const headlineOk = !headline || checked.kept.some((c) => c.text === headline);
-      const kept = checked.kept.filter((c) => c.text !== headline);
-      const rejected = checked.rejected.filter((c) => c.text !== headline);
-      // One chance to fix unsourced numbers, when there's time for it.
-      if ((rejected.length || !headlineOk || !kept.length) && !fixedUp && left().ms > 10_000) {
+      const checked = finisher.check(fin.args, sources);
+      // One chance to fix what failed the check, when there's time for it.
+      const problems = checked.problems;
+      if (problems && !fixedUp && left().ms > 10_000) {
         fixedUp = true;
-        emit({ tool: "check", why: "Checking every number against its source", status: "ok", callIds: [], summary: `${rejected.length + (headlineOk ? 0 : 1)} to fix` });
+        emit({ tool: "check", why: finisher.checking, status: "ok", callIds: [], summary: `${problems.count} to fix` });
         turns.push({
           role: "user",
           parts: r.calls.map((c) => ({
             functionResponse: {
               name: c.name,
-              response:
-                c === fin
-                  ? { accepted: false, rejected: rejected.map((x) => ({ text: x.text, reason: x.reason })), ...(headlineOk ? {} : { headline: "must have no numbers" }), ...(kept.length ? {} : { claims: "at least one claim must cite a source" }), instruction: "Fix or remove these and call finish again." }
-                  : { skipped: "finish was called" },
+              response: c === fin ? { accepted: false, ...problems.feedback, instruction: `Fix or remove these and call ${finisher.declaration.name} again.` } : { skipped: `${finisher.declaration.name} was called` },
             },
           })),
         });
         continue;
       }
-      const answer: AgentAnswer = {
-        headline: headlineOk ? headline : "",
-        claims: kept,
-        assumptions: (Array.isArray(fin.args.assumptions) ? fin.args.assumptions : []).filter((s): s is string => typeof s === "string").slice(0, 8),
-        dropped: rejected.length,
-      };
-      if (!answer.claims.length) {
-        stall = "no sourced claims";
+      if (!checked.result) {
+        stall = "nothing sourced";
         break;
       }
-      emit({ tool: "check", why: "Checked every number against its source", status: "ok", callIds: [], summary: rejected.length ? `${kept.length} claims kept; ${rejected.length} left out without a source` : `${kept.length} claims, all sourced` });
-      run.send({ type: "answer", answer, sources: [...sources.values()].map(({ data: _d, args: _a, ...s }) => s) });
+      emit({ tool: "check", why: finisher.checked, status: "ok", callIds: [], summary: checked.summary });
+      run.send(checked.result);
       run.send({ type: "done", qlooCalls: calls, ms: Date.now() - started });
       return { answered: true };
     }

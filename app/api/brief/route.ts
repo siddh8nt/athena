@@ -1,10 +1,10 @@
 import { getQloo } from "@/lib/qloo";
 import { LIMITS, clientIp } from "@/lib/limits";
 import { llmConfigured } from "@/lib/llm/vertex";
-import { UPLOAD_LIMITS, extractFile, type Extracted } from "@/lib/brief/extract";
+import { readBrief, readFiles } from "@/lib/brief/form";
 import { agentTurn, lookUpBrand, research, urlsIn, type AgentTurn, type ChatLine } from "@/lib/brief/agent";
 import { GUESS, MAX_CALLS, MAX_RESEARCH, isRepeat, type Turn } from "@/lib/brief/conversation";
-import { emptyBrief, mergeBrief, missingRequired, type BrandBrief } from "@/lib/brief/types";
+import { mergeBrief, missingRequired, type BrandBrief } from "@/lib/brief/types";
 import { dated } from "@/lib/time/now";
 
 export const dynamic = "force-dynamic";
@@ -27,32 +27,6 @@ export type BriefEvent =
   /** more: research is still running, and a follow-up (or a quiet card update) will come. An empty text adds no message. */
   | { type: "result"; brief: BrandBrief; turn: Turn; files: { name: string; kind: string; status: string; stockists: number }[]; more?: boolean; followUp?: boolean };
 
-/** The client's copy of the brief, re-capped by merging it into an empty one. */
-function readBrief(raw: string | null): BrandBrief {
-  let b: Partial<BrandBrief> = {};
-  try {
-    b = raw ? (JSON.parse(raw) as Partial<BrandBrief>) : {};
-  } catch {
-    b = {};
-  }
-  const { brief } = mergeBrief(emptyBrief(), b);
-  const str = (v: unknown, n: number) => (typeof v === "string" ? v.slice(0, n) : "");
-  const r = b.research;
-  return {
-    ...brief,
-    qloo: b.qloo,
-    proxies: Array.isArray(b.proxies) ? b.proxies.filter((x) => typeof x === "string").slice(0, 5) : undefined,
-    retail: ["food", "beauty", "home", "fashion", "general"].includes(b.retail as string) ? b.retail : undefined,
-    traits: Array.isArray(b.traits) ? b.traits.filter((x) => typeof x === "string").map((x) => x.slice(0, 40)).slice(0, 6) : undefined,
-    channel: b.channel && ["online", "offline", "both"].includes(b.channel.value) ? b.channel : undefined,
-    research: r && typeof r.for === "string" ? { for: str(r.for, 120), dossier: str(r.dossier, 6000), sources: (r.sources ?? []).slice(0, 8), queries: (r.queries ?? []).slice(0, 6) } : undefined,
-    asked: (Array.isArray(b.asked) ? b.asked : []).map((a) => str(a, 300)).filter(Boolean).slice(-8),
-    researched: Math.max(0, Number(b.researched) || 0),
-    turns: Math.max(0, Number(b.turns) || 0),
-    calls: Math.max(0, Number(b.calls) || 0),
-  };
-}
-
 function readHistory(raw: string | null): ChatLine[] {
   try {
     const h = JSON.parse(raw ?? "[]") as ChatLine[];
@@ -67,25 +41,6 @@ function readHistory(raw: string | null): ChatLine[] {
 
 /** The last question in a reply, kept so Athena never asks it again. */
 const questionIn = (reply: string) => reply.split(/(?<=[.!?])\s+/).filter((s) => s.trim().endsWith("?")).pop();
-
-async function readFiles(form: FormData): Promise<Extracted[]> {
-  const uploads = form.getAll("files").filter((f): f is File => typeof f === "object" && "arrayBuffer" in f).slice(0, UPLOAD_LIMITS.files);
-  const files: Extracted[] = [];
-  let total = 0;
-  for (const f of uploads) {
-    if (f.size > UPLOAD_LIMITS.fileBytes || total + f.size > UPLOAD_LIMITS.totalBytes) {
-      files.push({ name: f.name, kind: "unknown", text: "", parts: [], stockists: [], status: "Over 15 MB; a smaller export (PDF or CSV) works best" });
-      continue;
-    }
-    total += f.size;
-    try {
-      files.push(extractFile(f.name.slice(0, 120), new Uint8Array(await f.arrayBuffer())));
-    } catch {
-      files.push({ name: f.name, kind: "unknown", text: "", parts: [], stockists: [], status: "Athena reads this best as a PDF or CSV export" });
-    }
-  }
-  return files;
-}
 
 export const POST = dated(async function post(req: Request) {
   const form = await req.formData().catch(() => undefined);

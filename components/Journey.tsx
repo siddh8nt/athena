@@ -12,10 +12,11 @@ import { CrowdGeography } from "./CrowdGeography";
 import { BenchNote, WithWithout, type AloneRequest } from "./WithWithout";
 import { TasteAxes, useLean, type Taste } from "./TasteAxes";
 import { ShowWhy } from "./WhyPath";
+import { Onboard } from "./Onboard";
 import type { Contribution } from "@/lib/qloo/types";
 import { GUESS, type Turn } from "@/lib/brief/conversation";
 import { briefToInput } from "@/lib/brief/to-input";
-import type { BrandBrief } from "@/lib/brief/types";
+import { missingRequired, type BrandBrief } from "@/lib/brief/types";
 import { GROWTH, MAX_PICKS, STOP_LABELS, blockedReason, decisionsFor, labelFor, motionsFor, orderFor, spreadNote, stopsFor, suggest, type Channel, type GrowthType, type StopId } from "@/lib/journey/growth";
 import { crowdIdForStop, crowdSignal } from "@/lib/journey/weights";
 import type { PlaceOption, Resolution } from "@/lib/places/resolve";
@@ -253,6 +254,24 @@ export function Journey() {
   if (view === "dashboard")
     return <Workspace slug="" brands={[]} custom={{ brief, input: { ...input, city: j.city } }} onBack={() => setView("journey")} />;
 
+  // Onboarding (§23.2 step 3): a new founder starts from the three ways in, not a chat. Sample brands and founders
+  // who began in the chat keep the chat.
+  const onboarding = j.stop === "product" && !start.message && !msgs.some((m) => m.who === "you");
+  const onBrief = (b: BrandBrief, assumptions: string[]) => {
+    chat.setBrief(b);
+    const ready = missingRequired(b).length === 0;
+    chat.setTurn({ text: "", replies: [], ready });
+    setMsgs((m) => [
+      ...m,
+      {
+        who: "athena",
+        text: ready
+          ? `I've read everything and written your brief: it's on the right, every fact with where it came from.${assumptions.length ? ` I went ahead assuming: ${assumptions.join("; ")}` : ""} Correct anything below, or move on.`
+          : "I've read what you gave me. Tell me your brand's name and what it sells below, and I'll take it from there.",
+      },
+    ]);
+  };
+
   const send = () => {
     if (!text.trim() && !chat.files.length) return;
     void chat.send(text);
@@ -310,7 +329,8 @@ export function Journey() {
 
       <main className="journey-main">
         <section className="chat" aria-live="polite">
-          <ol className="msgs">
+          {onboarding && <Onboard brief={brief} files={chat.files} addFiles={chat.addFiles} setFiles={chat.setFiles} onBrief={onBrief} />}
+          <ol className="msgs" hidden={onboarding}>
             {msgs.map((m, i) => [
               <li key={i} className={`msg msg-${m.who}`}>
                 {m.text}
@@ -341,6 +361,7 @@ export function Journey() {
 
           <form
             className="composer"
+            hidden={onboarding}
             onSubmit={(e) => {
               e.preventDefault();
               send();

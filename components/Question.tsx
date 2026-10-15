@@ -22,7 +22,8 @@ export function Question({ q, answer, onAnswer }: { q: Asked; answer?: string; o
     );
 
   const choose = (label: string) => (q.multi ? setPicked((p) => (p.includes(label) ? p.filter((x) => x !== label) : [...p, label])) : onAnswer(label));
-  const sendOther = () => other.trim() && onAnswer(other.trim());
+  // With several picked, what they type goes with the picks: "both, but mostly the first" is one answer.
+  const sendOther = () => other.trim() && onAnswer([...(q.multi ? picked : []), other.trim()].join(", "));
 
   return (
     <div className="question" role="group" aria-label={q.question}>

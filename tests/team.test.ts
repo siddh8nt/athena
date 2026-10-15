@@ -26,10 +26,10 @@ describe("the team registry", () => {
 });
 
 describe("goals", () => {
-  it("proposes 3–5 goals from the graph's facts, the recommended first, only goals the team can deliver", () => {
+  it("proposes 3–4 goals from the graph's facts, the recommended first, only goals the team can deliver", () => {
     const g = proposeGoals({ channel: "offline", stockists: 2, city: "Fernvale", crowds: true, winNext: false });
     expect(g.length).toBeGreaterThanOrEqual(3);
-    expect(g.length).toBeLessThanOrEqual(5);
+    expect(g.length).toBeLessThanOrEqual(4);
     expect(g[0].recommended).toBe(true);
     expect(g.filter((x) => x.recommended)).toHaveLength(1);
     expect(g.every((x) => x.team.length > 0)).toBe(true);

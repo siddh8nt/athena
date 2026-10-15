@@ -7,7 +7,7 @@ import { compareFacts } from "./merge";
 import { pastedDoc } from "./read";
 import { readSite, type PageRead } from "./site";
 import { KB_TOKENS, listUploads, readUpload, uploadDoc } from "./uploads";
-import { whereLabel, type Conflict, type Coverage, type Fact, type Knowledge } from "./types";
+import { isResolution, keptOptions, whereLabel, type Conflict, type Coverage, type Fact, type Knowledge, type Settled } from "./types";
 
 // Onboarding's reading (PRD §23.2 step 4): everything the founder gave (their kept files, the pasted summary, the
 // website) read into located facts at once, then compared into one knowledge base. Code runs it, so nothing given
@@ -21,13 +21,13 @@ export type KnowledgeInput = {
   pasted?: string;
   /** Facts the founder struck, and the option they picked for each conflict. */
   struck: string[];
-  settled: Record<string, number>;
+  settled: Settled;
 };
 
 /** One source as the agent sees it: its facts in use, each with its id and where it is. */
 export type KnownSource = { kind: Fact["where"][number]["kind"]; ref: string; facts: Fact[] };
 
-export type Known = { knowledge: Knowledge; sources: KnownSource[]; stockists: { ref: string; list: Stockist[] }[]; settled: Record<string, number> };
+export type Known = { knowledge: Knowledge; sources: KnownSource[]; stockists: { ref: string; list: Stockist[] }[]; settled: Settled };
 
 type Read = { facts: Fact[]; coverage: Coverage; stockists?: Stockist[]; pages?: number };
 
@@ -95,9 +95,9 @@ function pageEvent(p: PageRead, under: string, t: number): AgentEvent {
 }
 
 /** Which option of a conflict is in use: the founder's pick, else Athena's. */
-export const inUse = (c: Conflict, settled: Record<string, number>) => {
+export const inUse = (c: Conflict, settled: Settled) => {
   const p = settled[c.id];
-  return Number.isInteger(p) && p >= 0 && p < c.options.length ? p : c.recommended;
+  return typeof p === "number" && Number.isInteger(p) && p >= 0 && p < c.options.length ? p : c.recommended;
 };
 
 export async function buildKnowledge(input: KnowledgeInput, emit: (e: AgentEvent) => void): Promise<Known> {
@@ -204,13 +204,16 @@ export async function buildKnowledge(input: KnowledgeInput, emit: (e: AgentEvent
   };
 
   // The agent sees the facts in use: not struck, and for a disagreement only the option in use.
-  const settled = Object.fromEntries(
+  // The founder's own answer stands as they gave it, keeping only options that still have facts.
+  const settled: Settled = Object.fromEntries(
     merged.conflicts.map((c) => {
+      const s = input.settled[c.id];
+      if (isResolution(s)) return [c.id, { ...s, keep: keptOptions(c, s).filter((i) => c.options[i].facts.length) }];
       const i = inUse(c, input.settled);
       return [c.id, c.options[i].facts.length ? i : c.options.findIndex((o) => o.facts.length)];
     }),
   );
-  const aside = new Set(merged.conflicts.flatMap((c) => c.options.filter((_, i) => i !== settled[c.id]).flatMap((o) => o.facts)));
+  const aside = new Set(merged.conflicts.flatMap((c) => { const keep = keptOptions(c, settled[c.id]); return c.options.filter((_, i) => !keep.includes(i)).flatMap((o) => o.facts); }));
   const live = merged.facts.filter((f) => !f.struck && !aside.has(f.id));
   const sources: KnownSource[] = [];
   for (const f of live) {

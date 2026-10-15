@@ -12,7 +12,7 @@ import { buildKnowledge, type KnowledgeInput } from "@/lib/knowledge/build";
 import { listUploads, validWorkspace } from "@/lib/knowledge/uploads";
 import { quickBrief } from "@/lib/brief/quick";
 import type { AgentEvent } from "@/lib/blocks/types";
-import { whereLabel } from "@/lib/knowledge/types";
+import { isResolution, keptOptions, whereLabel, type Settled, type Settlement } from "@/lib/knowledge/types";
 import { agentTurn, lookUpBrand } from "@/lib/brief/agent";
 import { readBrief, readFiles } from "@/lib/brief/form";
 import { safeUrl } from "@/lib/agent/intake";
@@ -48,11 +48,21 @@ function readKnowledgeInput(form: FormData, input: OnboardInput): KnowledgeInput
   const ws = clip(form.get("ws"), 64);
   const strs = (v: unknown, n: number) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === "string" && x.length <= 80).slice(0, n) : []);
   const settledRaw = json<Record<string, unknown>>(form.get("settled"), 8_000, {});
-  const settled = Object.fromEntries(
+  // An option's index, or the founder's own answer as the model read it.
+  const settlement = (v: unknown): Settlement | undefined => {
+    if (Number.isInteger(v)) return v as number;
+    if (!isResolution(v)) return undefined;
+    const keep = v.keep.filter((i) => Number.isInteger(i)).slice(0, 10);
+    return v.fact.trim() ? { keep, fact: v.fact.trim().slice(0, 400), said: typeof v.said === "string" ? v.said.slice(0, 400) : "" } : undefined;
+  };
+  const settled: Settled = Object.fromEntries(
     Object.entries(typeof settledRaw === "object" && !Array.isArray(settledRaw) ? settledRaw : {})
-      .filter(([k, v]) => k.length <= 80 && Number.isInteger(v))
+      .flatMap(([k, v]) => {
+        const s = k.length <= 80 ? settlement(v) : undefined;
+        return s === undefined ? [] : [[k, s] as const];
+      })
       .slice(0, 50),
-  ) as Record<string, number>;
+  );
   return {
     ws: validWorkspace(ws) ? ws : undefined,
     hashes: strs(json(form.get("hashes"), 4_000, []), 40).filter((h) => /^[0-9a-f]{64}$/.test(h)),
@@ -219,8 +229,12 @@ export const POST = dated(async function post(req: Request) {
       input.known = k.sources;
       input.stockists = k.stockists;
       input.conflicts = k.knowledge.conflicts.map((c) => {
-        const i = k.settled[c.id];
-        return { about: c.about, value: c.options[i].value, facts: c.options[i].facts, chosen: kb.settled[c.id] === i, others: c.options.filter((_, j) => j !== i).map((o) => o.value) };
+        const s = k.settled[c.id];
+        const keep = keptOptions(c, s);
+        const others = c.options.filter((_, j) => !keep.includes(j)).map((o) => o.value);
+        // The founder's own answer, as the model read it, is the value in use.
+        if (isResolution(s)) return { about: c.about, value: s.fact, facts: keep.flatMap((j) => c.options[j].facts), chosen: true, answered: true, others };
+        return { about: c.about, value: c.options[keep[0]].value, facts: c.options[keep[0]].facts, chosen: kb.settled[c.id] === keep[0], others };
       });
     }
     input.lookups = lookups;

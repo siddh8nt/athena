@@ -26,6 +26,23 @@ export type Conflict = {
   why: string;
 };
 
+/**
+ * How the founder settled a conflict: one option by its index, or their own answer as the model read it, which can keep
+ * one option, several (each with its own weight or caveat) or none, as one fact in plain words.
+ */
+export type Resolution = { keep: number[]; fact: string; said: string };
+export type Settlement = number | Resolution;
+export type Settled = Record<string, Settlement>;
+
+export const isResolution = (s: unknown): s is Resolution => !!s && typeof s === "object" && Array.isArray((s as Resolution).keep) && typeof (s as Resolution).fact === "string";
+
+/** The options of a conflict in use: the founder's pick, the ones their answer kept, else Athena's. */
+export function keptOptions(c: Conflict, s: Settlement | undefined): number[] {
+  const ok = (i: unknown): i is number => Number.isInteger(i) && (i as number) >= 0 && (i as number) < c.options.length;
+  if (isResolution(s)) return [...new Set(s.keep.filter(ok))];
+  return [ok(s) ? s : c.recommended];
+}
+
 /** One source's read: what was taken, and whether the coverage pass found nothing left out. */
 export type Coverage = { source: string; facts: number; added: number; clean: boolean };
 
@@ -86,8 +103,9 @@ export function applyMerge(facts: Fact[], groups: string[][]): Fact[] {
 /** A fact as later runs read it: its text, where it is, and the file or page it came from. */
 export type LiveFact = { id: string; text: string; where: string; source: string };
 
-/** The knowledge base as it stands: facts not struck, and each conflict as settled (its other options left out). */
-export function liveFacts(kb: Knowledge, settled: Record<string, number>): LiveFact[] {
-  const drop = new Set(kb.conflicts.flatMap((c) => c.options.filter((_, i) => i !== (settled[c.id] ?? c.recommended)).flatMap((o) => o.facts)));
-  return kb.facts.filter((f) => !f.struck && !drop.has(f.id)).map((f) => ({ id: f.id, text: f.text, where: f.where.map(whereLabel).join("; "), source: f.where[0]?.ref ?? "the founder" }));
+/** The knowledge base as it stands: facts not struck, each conflict as settled, and the founder's own answers as facts. */
+export function liveFacts(kb: Knowledge, settled: Settled): LiveFact[] {
+  const drop = new Set(kb.conflicts.flatMap((c) => { const keep = keptOptions(c, settled[c.id]); return c.options.filter((_, i) => !keep.includes(i)).flatMap((o) => o.facts); }));
+  const said = kb.conflicts.flatMap((c) => { const s = settled[c.id]; return isResolution(s) ? [{ id: `said_${c.id}`, text: s.fact, where: "you told me", source: "the founder" }] : []; });
+  return [...kb.facts.filter((f) => !f.struck && !drop.has(f.id)).map((f) => ({ id: f.id, text: f.text, where: f.where.map(whereLabel).join("; "), source: f.where[0]?.ref ?? "the founder" })), ...said];
 }

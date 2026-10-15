@@ -35,7 +35,7 @@ export type OnboardInput = {
   /** Stockist lists read in code from the founder's files. */
   stockists?: { ref: string; list: Stockist[] }[];
   /** Where sources disagreed: the value in use, and whether the founder chose it. */
-  conflicts?: { about: string; value: string; chosen: boolean; others: string[]; facts?: string[] }[];
+  conflicts?: { about: string; value: string; chosen: boolean; answered?: boolean; others: string[]; facts?: string[] }[];
   /** Lookups code ran alongside the reading (§23.2 step 7.2f): the Qloo search and the web search, as given sources. */
   lookups?: { tool: "qloo_search" | "web_search"; summary: string; data: unknown; args: Record<string, unknown> }[];
 };
@@ -163,7 +163,7 @@ export function onboardIntro(input: OnboardInput, budget: AgentBudget, founderSo
     input.known?.length ? `Already read into facts, each with its id and where it is: ${input.known.map((k, i) => `s${first + i} = ${k.ref} (${k.facts.length} facts)`).join("; ")}.` : "",
     input.stockists?.length ? `Stockist lists read in code (they go into the brief by themselves): ${input.stockists.map((s) => `${s.ref}, ${s.list.length}`).join("; ")}.` : "",
     input.conflicts?.length
-      ? `Where the sources disagreed, the value in use: ${input.conflicts.map((c) => `${c.about}: ${c.value} (${c.facts?.length ? `facts ${c.facts.join(", ")}; ` : ""}${c.chosen ? "the founder chose it" : "recommended; the founder can still choose"}; not ${c.others.join(" or ")})`).join("; ")}.`
+      ? `Where the sources disagreed, the value in use: ${input.conflicts.map((c) => `${c.about}: ${c.value} (${c.facts?.length ? `facts ${c.facts.join(", ")}; ` : ""}${c.answered ? "the founder's own answer, as they put it; keep its weights and caveats" : c.chosen ? "the founder chose it" : "recommended; the founder can still choose"}; not ${c.others.join(" or ")})`).join("; ")}.`
       : "",
     input.lookups?.length ? `Already looked up for you: ${input.lookups.map((l, i) => `s${looked + i} = ${l.tool} for "${String(l.args.query ?? "")}" (${l.summary})`).join("; ")}.` : "",
     plan ? `Your plan on the founder's checklist (update_plan changes the steps to come):\n${plan.items().map((i, n) => `${n + 1}. [${i.state}] ${i.step}${i.result ? `: ${i.result}` : ""}`).join("\n")}` : "",

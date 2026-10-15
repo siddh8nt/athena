@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { whereLabel, type Conflict, type Fact, type Knowledge } from "@/lib/knowledge/types";
+import { isResolution, keptOptions, whereLabel, type Conflict, type Fact, type Knowledge, type Settlement } from "@/lib/knowledge/types";
 
 // What Athena kept from everything the founder gave (PRD §23.2 step 4d): each source's facts with where each one is,
 // struck in one tap; and where the sources disagree, a one-click choice with Athena's pick marked. Choices and strikes
@@ -26,7 +26,8 @@ const host = (s: string) => {
   }
 };
 
-export function Settle({ c, facts, pick, onPick }: { c: Conflict; facts: Fact[]; pick: number; onPick: (i: number) => void }) {
+export function Settle({ c, facts, pick, onPick }: { c: Conflict; facts: Fact[]; pick: Settlement; onPick: (i: number) => void }) {
+  const kept = keptOptions(c, pick);
   const at = (ids: string[]) => ids.map((id) => facts.find((f) => f.id === id)?.where.map(whereLabel).join("; ")).filter(Boolean).join("; ");
   return (
     <div className="question" role="group" aria-label={c.about}>
@@ -35,7 +36,7 @@ export function Settle({ c, facts, pick, onPick }: { c: Conflict; facts: Fact[];
         {c.options.map((o, i) =>
           o.facts.length ? (
             <li key={`${o.value}${i}`}>
-              <button type="button" className={pick === i ? "on" : ""} aria-pressed={pick === i} onClick={() => onPick(i)}>
+              <button type="button" className={kept.includes(i) ? "on" : ""} aria-pressed={kept.includes(i)} onClick={() => onPick(i)}>
                 <span className="question-n">{i + 1}</span>
                 <span>
                   {o.value}
@@ -47,7 +48,7 @@ export function Settle({ c, facts, pick, onPick }: { c: Conflict; facts: Fact[];
           ) : null,
         )}
       </ol>
-      {c.why && <p className="muted small kb-why">{c.why}</p>}
+      {isResolution(pick) ? <p className="small kb-why">You said: {pick.fact}</p> : c.why && <p className="muted small kb-why">{c.why}</p>}
     </div>
   );
 }

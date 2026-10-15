@@ -7,7 +7,7 @@ import type { AgentEvent } from "@/lib/blocks/types";
 import type { BenchTask } from "@/lib/bench/lines";
 import type { AloneStop } from "@/lib/proof/alone";
 import { addEvent, lineDetail, lineText, settleRun, type Line } from "@/lib/agent/transcript";
-import { ATHENA, SPECIALISTS, SPECIALIST_IDS, isSpecialist, nameOf, specialist, type AgentId, type SpecialistId } from "@/lib/agent/specialists";
+import { ATHENA, SPECIALIST_IDS, isSpecialist, nameOf, specialist, type AgentId, type SpecialistId } from "@/lib/agent/specialists";
 import { GOALS, pickGoals, teamFor, teamLine } from "@/lib/agent/goals";
 import { latest, staleRuns, whatsWorking } from "@/lib/agent/outcomes";
 import { nodesAdded } from "@/lib/graph/types";
@@ -51,7 +51,6 @@ export function useTeam(p: {
   latestTeam.current = p.team;
   const run = useRef(0);
   const custom = useRef("");
-  const lastAsk = useRef("");
 
   const handle = (e: TeamEvent, n: number) => {
     if (e.type === "goals") p.setTeam((t) => ({ ...t, proposed: e.goals }));
@@ -139,15 +138,10 @@ export function useTeam(p: {
       if (!close.length || !text) return;
       return start([{ id: `custom_${close.map((g) => g.id).join("_")}`, label: text.slice(0, 80), why: "In your words", team: teamFor(close), conflicts: [], custom: true }]);
     }
-    if (q.id === "athena-route") {
-      const s = SPECIALISTS.find((x) => x.name.toLowerCase() === a.trim().toLowerCase().replace(/^the /, ""));
-      if (s && lastAsk.current) askSpecialist(s.id, lastAsk.current);
-    }
   };
 
   const askAthena = (text: string) => {
     setActive("athena");
-    lastAsk.current = text;
     void post("ask", { text });
   };
   /** A question from a specialist's workspace or "Ask the Analyst about this" (§23.2 step 8i). */

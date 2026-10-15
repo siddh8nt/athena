@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { QlooClient, MemoryCache, type QlooTransport, type RawResult } from "@/lib/qloo/client";
 import { FixtureTransport } from "@/lib/qloo/fixture";
-import { runTeam, toolsFor } from "@/lib/agent/team";
+import { athenaAsk, runTeam, toolsFor } from "@/lib/agent/team";
 import { buildCtx } from "@/lib/agent/team-ctx";
 import { GOALS } from "@/lib/agent/goals";
 import { PLAYS } from "@/lib/agent/plays";
@@ -210,4 +210,13 @@ describe("the team's run record (§23.2 step 8c)", () => {
     expect(back.rev?.analyst).toBe(3);
     expect(readTeam("nonsense")).toEqual(emptyTeam());
   }, 60_000);
+});
+
+describe("a question for Athena", () => {
+  it("is never handed back to the founder to route: with no model she keeps it and says so", async () => {
+    const events: TeamEvent[] = [];
+    await athenaAsk({ question: "Is Austin worth it?", team: {} as never, qloo: {} as never, env: {} as never, send: (e) => events.push(e), llm: false });
+    expect(events.some((e) => e.type === "ask")).toBe(false);
+    expect(events.find((e) => e.type === "reply")).toMatchObject({ text: expect.stringContaining("kept your question") });
+  });
 });

@@ -2,7 +2,7 @@ import type { Goal } from "@/lib/team/types";
 import type { FounderQuestion } from "./tools";
 import { SPECIALISTS, isSpecialist, specialist, type SpecialistId } from "./specialists";
 
-// Goals, not a fixed path (PRD §23.2 step 8a). Athena reads the Brand Graph and proposes 3–5 goals the team can
+// Goals, not a fixed path (PRD §23.2 step 8a). Athena reads the Brand Graph and proposes 3–4 goals the team can
 // deliver; the founder picks one or several. A goal belongs to the founder, with the specialists as the team behind
 // it, never one to one. This is code's proposal from the graph's facts, and the check every proposal passes (the
 // model's too). Client-safe.
@@ -29,9 +29,10 @@ export type GoalFacts = {
   winNext: boolean;
 };
 
-const MAX = 5;
+// At most 4: the goals are asked through step 3's question component, which offers 2–4 options plus Other.
+const MAX = 4;
 
-/** Code's proposal: each goal scored from the facts, the best first and marked recommended, 3–5 in all. */
+/** Code's proposal: each goal scored from the facts, the best first and marked recommended, 3–4 in all. */
 export function proposeGoals(f: GoalFacts): Goal[] {
   const instore = f.channel !== "online";
   const score: Record<string, number> = {

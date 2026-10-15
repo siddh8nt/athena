@@ -5,7 +5,7 @@ import { flushSync } from "react-dom";
 import type { AgentEvent } from "@/lib/blocks/types";
 import type { AgentStreamEvent } from "@/lib/agent/loop";
 import type { BrandBrief } from "@/lib/brief/types";
-import { liveFacts, type Knowledge, type LiveFact } from "@/lib/knowledge/types";
+import { isResolution, liveFacts, whereLabel, type Conflict, type Knowledge, type LiveFact, type Settled, type Settlement } from "@/lib/knowledge/types";
 import type { Upload } from "@/lib/knowledge/uploads";
 import { CONTEXT_PROMPT } from "@/lib/agent/context-prompt";
 import { checklistLine, type CheckItem } from "@/lib/agent/checklist";
@@ -137,8 +137,9 @@ export function Onboard({
   const [sentStruck, setSentStruck] = useState("");
   // Files added or removed since the brief was last written.
   const [refiled, setRefiled] = useState(false);
-  const [picked, setPicked] = useState<Record<string, number>>({});
-  const [inUse, setInUse] = useState<Record<string, number>>({});
+  const [picked, setPicked] = useState<Settled>({});
+  const [inUse, setInUse] = useState<Settled>({});
+  const [typedFor, setTypedFor] = useState<Record<string, string>>({});
   // What the model sorted out of the box, kept for the runs after (§23.2 step 7.2b).
   const [websites, setWebsites] = useState<string[]>([]);
   const [pasted, setPasted] = useState("");
@@ -242,7 +243,7 @@ export function Onboard({
     if (extra.said) setItems(undefined);
     let got = false;
     let early = false;
-    let read: { kb: Knowledge; settled: Record<string, number> } | undefined;
+    let read: { kb: Knowledge; settled: Settled } | undefined;
     try {
       await stream(form, (e) => {
         if (e.type === "event") {
@@ -307,10 +308,26 @@ export function Onboard({
     if (a) setPending((p) => [...p, { question: q.question, answer: a }]);
   };
 
-  const settle = (id: string, i: number) => {
-    if ((picked[id] ?? inUse[id]) === i) return;
-    setPicked((p) => ({ ...p, [id]: i }));
+  const settle = (id: string, s: Settlement) => {
+    if ((picked[id] ?? inUse[id]) === s) return;
+    setPicked((p) => ({ ...p, [id]: s }));
     setAgain(true);
+  };
+
+  // A conflict answered in the transcript: one option exactly is that option; anything else (several, Other, a
+  // mix with caveats) is read by the model into which values still hold and one fact in the founder's terms.
+  const answerConflict = async (c: Conflict, a: string) => {
+    setTypedFor((x) => ({ ...x, [c.id]: a }));
+    if (!a) return;
+    const labels = conflictLabels(c);
+    const exact = labels.findIndex((l) => l === a);
+    if (exact >= 0) return settle(c.id, exact);
+    const parts = a.split(", ");
+    const named = labels.flatMap((l, i) => (parts.includes(l) ? [i] : []));
+    const res = await fetch("/api/settle", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ about: c.about, options: c.options.map((o) => o.value), answer: a, picked: named }) })
+      .then((r) => r.json())
+      .catch(() => undefined);
+    settle(c.id, isResolution(res) ? res : { keep: named, fact: `${c.about}: ${a}`, said: a });
   };
 
   const strike = (id: string) =>
@@ -613,7 +630,7 @@ export function Onboard({
         )}
         {ev.tool === "settle" && (
           <button type="button" className="linkish small ob-line-act" onClick={() => setView("kept")}>
-            Settle them in Kept
+            See them in Conflicts
           </button>
         )}
         {pages.length > 0 && <ol className="ob-pages">{pages.map((p) => row(p, true))}</ol>}
@@ -671,7 +688,7 @@ export function Onboard({
       <nav className="ob-tabs" aria-label="Onboarding">
         {(["transcript", "brand", "kept"] as const).map((v) => (
           <button key={v} type="button" aria-pressed={view === v} className={view === v ? "on" : ""} onClick={() => setView(v)}>
-            {v === "transcript" ? "Transcript" : v === "brand" ? "Brand" : "Kept"}
+            {v === "transcript" ? "Transcript" : v === "brand" ? "Brand" : "Conflicts"}
             {v === "kept" && conflicts > 0 && <span className="ob-badge">{conflicts}</span>}
           </button>
         ))}
@@ -712,6 +729,21 @@ export function Onboard({
             ))}
           </div>
         )}
+        {kb && kb.conflicts.length > 0 && (
+          <div className="onboard-asks" aria-label="Conflicts">
+            {kb.conflicts.map((c) => {
+              const s = picked[c.id] ?? inUse[c.id];
+              return (
+                <Question
+                  key={c.id}
+                  q={conflictQuestion(c, kb)}
+                  answer={isResolution(s) ? s.fact : typedFor[c.id]}
+                  onAnswer={(a) => void answerConflict(c, a)}
+                />
+              );
+            })}
+          </div>
+        )}
         {note && !running && (
           <p className="muted small">
             {note}{" "}
@@ -735,7 +767,7 @@ export function Onboard({
               Brand
             </button>
             <button type="button" role="tab" aria-selected={side === "kept"} className={side === "kept" ? "on" : ""} onClick={() => setView("kept")}>
-              Kept{conflicts > 0 && <span className="ob-badge">{conflicts}</span>}
+              Conflicts{conflicts > 0 && <span className="ob-badge">{conflicts}</span>}
             </button>
           </div>
           <div className="ob-panel-body" hidden={side !== "brand"}>
@@ -754,4 +786,24 @@ export function Onboard({
       )}
     </div>
   );
+}
+
+// A conflict's options as the question component shows them: my pick first, each value once, where it was said.
+function conflictLabels(c: Conflict): string[] {
+  return c.options.map((o, i) => (c.options.findIndex((x) => x.value === o.value) === i ? o.value : `${o.value} (${i + 1})`));
+}
+
+function conflictQuestion(c: Conflict, kb: Knowledge): Asked {
+  const labels = conflictLabels(c);
+  const at = (ids: string[]) => ids.map((id) => kb.facts.find((f) => f.id === id)?.where.map(whereLabel).join("; ")).filter(Boolean).join("; ");
+  const order = c.options.map((_, i) => i).filter((i) => c.options[i].facts.length);
+  order.sort((a, b) => (a === c.recommended ? -1 : b === c.recommended ? 1 : 0));
+  return {
+    id: `conflict_${c.id}`,
+    question: `Your sources disagree: ${c.about}`,
+    why: c.why,
+    options: order.slice(0, 4).map((i) => ({ label: labels[i], hint: at(c.options[i].facts) })),
+    multi: true,
+    assumed: labels[c.recommended],
+  };
 }

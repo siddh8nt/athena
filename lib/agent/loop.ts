@@ -3,7 +3,7 @@ import type { Env } from "@/lib/env";
 import type { AgentEvent } from "@/lib/blocks/types";
 import { converse, type ConverseResult, type FunctionDeclaration, type Part, type Turn } from "@/lib/llm/vertex";
 import type { BrandBrief } from "@/lib/brief/types";
-import type { Knowledge } from "@/lib/knowledge/types";
+import type { Knowledge, Settled } from "@/lib/knowledge/types";
 import { timeContext, timeSummary } from "@/lib/time/now";
 import { checkClaims, type Claim } from "./cite";
 import { FINISH, TOOLS, declarations, toolByName, type AgentState, type FounderQuestion, type Tool } from "./tools";
@@ -40,7 +40,7 @@ export type AgentStreamEvent =
   /** The agent's plan as it stands (§23.2 step 7.2e). */
   | { type: "checklist"; items: CheckItem[] }
   /** What onboarding read (§23.2 step 4): every fact with where it is, the conflicts, and which option is in use. */
-  | { type: "knowledge"; knowledge: Knowledge; settled: Record<string, number> }
+  | { type: "knowledge"; knowledge: Knowledge; settled: Settled }
   /** The most valuable fits (§23.2 step 5): the ranking and calendar from code, sourced reasons from the agent. */
   | FitsEvent
   /** A strategy for every most valuable fit (§23.2 step 6): built by code, sourced sentences from the agent. */

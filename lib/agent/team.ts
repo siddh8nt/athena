@@ -544,7 +544,7 @@ export function goalFacts(t: TeamCtx): GoalFacts {
 }
 
 /**
- * Athena's goals: the model reads the Brand Graph and proposes 3–5 the team can deliver; every proposal passes the
+ * Athena's goals: the model reads the Brand Graph and proposes 3–4 the team can deliver; every proposal passes the
  * registry's check. Fewer than 3 that pass, or no model, and code's proposal stands.
  */
 export async function proposeFor(t: TeamCtx, facts: GoalFacts, llm: boolean, gen: typeof generate = generate): Promise<Goal[]> {
@@ -562,7 +562,7 @@ export async function proposeFor(t: TeamCtx, facts: GoalFacts, llm: boolean, gen
         `The brand: ${JSON.stringify({ name: t.brand.name, sells: t.brand.product, channel: t.brand.channel, stockists: t.brand.stockists.length, in_qloo: !!t.brand.ownId, crowds: t.crowds?.crowds.map((c) => c.name), fits: t.fits?.fits.map((f) => `${f.name} (${f.tier})`) })}\n` +
         `The specialists and what each delivers: ${JSON.stringify(SPECIALISTS.map((s) => ({ id: s.id, delivers: s.delivers })))}\n` +
         `Goals the team knows how to run (ids to reuse when one fits): ${JSON.stringify(GOALS.map((g) => ({ id: g.id, label: g.label, team: g.team, conflicts: g.conflicts })))}\n` +
-        "Propose 3–5 goals for this brand now, the one you recommend first. Each goal is the founder's, with the specialists it takes (usually several). Mark goals that can't be pursued together in conflicts (by id). Only goals the specialists can deliver.\n" +
+        "Propose 3 or 4 goals for this brand now, the one you recommend first. Each goal is the founder's, with the specialists it takes (usually several). Mark goals that can't be pursued together in conflicts (by id). Only goals the specialists can deliver.\n" +
         'Return [{"id","label","why","team":[ids],"conflicts":[ids],"recommended":bool}]',
     });
     const goals = checkGoals(parseJson(res.text));
@@ -598,39 +598,40 @@ export async function customGoal(text: string, t: TeamCtx, llm: boolean, gen: ty
   return { question: customQuestion(text) };
 }
 
-/** A small ask Athena answers herself, with every tool (§23.2 step 8a). Without a model, she asks who should take it. */
+/**
+ * A small ask Athena answers herself, with every tool (§23.2 step 8a). Who takes a question is Athena's call, never the
+ * founder's: a slow model gets one more try, narrated, and past that she keeps the question and says so plainly.
+ */
 export async function athenaAsk(r: { question: string; team: TeamCtx; qloo: QlooClient; env: Env; send: (e: TeamEvent) => void; llm: boolean; model?: AgentRun["model"] }): Promise<void> {
   const t = r.team;
   const status = (st: AgentStatus) => r.send({ type: "status", agent: "athena", status: st });
-  const route = () =>
-    r.send({
-      type: "ask",
-      agent: "athena",
-      ask: { id: "athena-route", question: "Who should take this?", why: `"${r.question.slice(0, 80)}": I'll hand it to the specialist whose work it is.`, options: SPECIALISTS.slice(0, 4).map((s) => ({ label: s.name, hint: s.role })), multi: false, assumed: SPECIALISTS[0].name },
-    });
-  if (!r.llm && !r.model) return route();
+  const later = () => r.send({ type: "reply", text: "I've kept your question; send it again in a moment and I'll answer it with what the team has found." });
+  if (!r.llm && !r.model) return later();
   status({ state: "working", step: "Answering" });
   let answered = false;
-  await runAgent({
-    goal: r.question,
-    brand: { name: t.brand.name },
-    finisher: CLAIMS,
-    given: given(t, { seed: t.seed, crowds: t.crowds, fits: t.fits, probes: t.probes, asks: 0 }),
-    budget: { qloo: 30, ms: 60_000, turns: 5 },
-    state: { seed: t.seed, crowds: t.crowds, fits: t.fits, probes: [...t.probes], team: t },
-    tools: toolsFor("athena"),
-    qloo: r.qloo,
-    env: r.env,
-    model: r.model,
-    send: (e) => {
-      if (e.type === "event") r.send({ type: "step", agent: "athena", event: e.event });
-      else if (e.type === "answer") {
-        answered = true;
-        r.send({ type: "reply", text: [e.answer.headline, ...e.answer.claims.map((c) => c.text)].filter(Boolean).join(" ") });
-      }
-    },
-    fallback: async () => {},
-  }).catch((err) => console.error("athena ask failed", err));
-  if (!answered) route();
-  status({ state: "done", last: "Answered" });
+  for (let attempt = 0; attempt < 2 && !answered; attempt++) {
+    if (attempt) status({ state: "working", step: "Still working on your question" });
+    await runAgent({
+      goal: r.question,
+      brand: { name: t.brand.name },
+      finisher: CLAIMS,
+      given: given(t, { seed: t.seed, crowds: t.crowds, fits: t.fits, probes: t.probes, asks: 0 }),
+      budget: { qloo: 30, ms: 60_000, turns: 5 },
+      state: { seed: t.seed, crowds: t.crowds, fits: t.fits, probes: [...t.probes], team: t },
+      tools: toolsFor("athena"),
+      qloo: r.qloo,
+      env: r.env,
+      model: r.model,
+      send: (e) => {
+        if (e.type === "event") r.send({ type: "step", agent: "athena", event: e.event });
+        else if (e.type === "answer") {
+          answered = true;
+          r.send({ type: "reply", text: [e.answer.headline, ...e.answer.claims.map((c) => c.text)].filter(Boolean).join(" ") });
+        }
+      },
+      fallback: async () => {},
+    }).catch((err) => console.error("athena ask failed", err));
+  }
+  if (!answered) later();
+  status({ state: "done", last: answered ? "Answered" : "Kept your question" });
 }

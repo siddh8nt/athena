@@ -14,6 +14,7 @@ import { ACCEPT } from "./chat";
 import { Question, type Asked } from "./Question";
 import { KnowledgePanel, Settle } from "./Knowledge";
 import { workspace } from "@/lib/knowledge/workspace";
+import { PACKS } from "@/lib/journey/packs";
 
 // Onboarding as a workspace (PRD §23.2 step 7.2). First, one box: the founder types, pastes or drops anything, and
 // the model sorts it (a website, files, notes or an AI summary). On send the box docks at the bottom as the steering
@@ -366,6 +367,12 @@ export function Onboard({
     );
     if (!navigator.clipboard) setShowPrompt(true);
   };
+  // A sample brand: its first message, in our own words with its public links, runs live through this same flow.
+  const sample = (message: string) => {
+    if (running) return;
+    glide(() => setPhase("work"));
+    void run({ said: message });
+  };
   const askSite = () => {
     setHint("website");
     box.current?.focus();
@@ -554,6 +561,18 @@ export function Onboard({
               </button>
             </li>
           </ul>
+          <div className="ob-samples" aria-label="Or try a sample brand">
+            <span className="muted small">Or try a sample brand:</span>
+            <ul>
+              {PACKS.map((p) => (
+                <li key={p.slug}>
+                  <button type="button" onClick={() => sample(p.message)} title={`Built from public info; not affiliated with ${p.name}.`}>
+                    {p.name}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
       </div>
     );

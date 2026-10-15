@@ -1,7 +1,7 @@
 import Link from "next/link";
 import s from "./landing.module.css";
 
-// The landing page: a headline, one line, one way in (/start), and a quiet picture of Athena at work.
+// The landing page: a headline, one line, one way in (/plan), and a quiet picture of Athena at work.
 // The run shown is a fictional example brand, written by hand: no Qloo data.
 
 const PLAN = [
@@ -48,7 +48,7 @@ export default function Landing() {
           </svg>
           Athena
         </span>
-        <Link href="/start" className={s.small}>Get started</Link>
+        <Link href="/plan?new=1" className={s.small}>Get started</Link>
       </header>
 
       <main className={s.main}>
@@ -59,7 +59,7 @@ export default function Landing() {
             &ldquo;Women, 25 to 34&rdquo; never bought anything. Athena finds the people who&apos;d love what you make by what they already love, and
             tells you where they are, who to team up with, and when to show up.
           </p>
-          <Link href="/start" className={s.cta}>Get started <span aria-hidden>→</span></Link>
+          <Link href="/plan?new=1" className={s.cta}>Get started <span aria-hidden>→</span></Link>
         </section>
 
         <figure className={s.shot} aria-label="Athena at work on an example brand">

@@ -303,7 +303,7 @@ function WithoutQloo({ data, request, onResult }: { data: PlacesData; request: C
       </div>
       <p className="note">
         Demonstrated, not measured: {c.model} with Google Search and no Qloo, asked the same question on {new Date(c.ranAt).toLocaleDateString()}; each venue was then looked up in Qloo.
-        &quot;Couldn&apos;t verify&quot; means no match nearby, not that the place is made up. The measured test is the <a href="/method#ranking-check">ranking check</a>.
+        &quot;Couldn&apos;t verify&quot; means no match nearby, not that the place is made up.
       </p>
       <ol className="list">
         {c.llm.map((v, i) => (

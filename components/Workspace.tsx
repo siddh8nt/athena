@@ -317,7 +317,7 @@ export function Workspace({ slug, brands, custom: fromJourney, onBack }: { slug:
       )}
 
       <footer className="foot">
-        <Link href="/method">Method</Link> · <Link href="/sources">Sources</Link> · <Link href="/unknowns">What we don&apos;t know</Link> · Illustrative plan from public data; not affiliated with the brands shown · Data: Qloo · Map © OpenFreeMap, OpenMapTiles, OpenStreetMap contributors
+        Illustrative plan from public data; not affiliated with the brands shown · Data: Qloo · Map © OpenFreeMap, OpenMapTiles, OpenStreetMap contributors
       </footer>
     </div>
   );

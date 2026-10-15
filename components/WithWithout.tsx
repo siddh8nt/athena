@@ -17,7 +17,7 @@ export function BenchNote({ task }: { task: BenchTask }) {
   if (!line) return null;
   return (
     <p className="small muted bench-line">
-      <strong>Taste Bench</strong> {line.text} <a href="/method#bench">How it was run</a>
+      <strong>Taste Bench</strong> {line.text}
     </p>
   );
 }

@@ -9,9 +9,6 @@ export default function Start() {
     <div className="landing">
       <header className="landing-top">
         <Link href="/" className="wordmark">Athena</Link>
-        <nav>
-          <Link href="/method">Method</Link>
-        </nav>
       </header>
       <main className="start">
         <h1>Where do you want to start?</h1>

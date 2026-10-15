@@ -55,6 +55,8 @@ export const MIX: Record<BudgetBand, Channel[]> = {
 const DEFAULT_BAND: BudgetBand = "lean";
 /** Retail moments named per fit, nearest first. */
 const RETAIL_MOMENTS = 2;
+/** Prep before a moment when the calendar gives no sourced lead time: said as an assumption, never as a fact. */
+export const DEFAULT_PREP_DAYS: Record<Moment["kind"], number> = { retail: 28, category: 28, crowd: 28, event: 14 };
 
 const DAY = 86_400_000;
 const addDays = (date: string, n: number) => new Date(new Date(`${date}T12:00:00Z`).getTime() + n * DAY).toISOString().slice(0, 10);
@@ -80,21 +82,40 @@ export type RawContext = {
 
 const text = (v: unknown, n: number) => (typeof v === "string" ? v.trim().slice(0, n) : "");
 
+const norm = (t: string) => t.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+const strings = (v: unknown, out: string[] = []): string[] => {
+  if (typeof v === "string") out.push(v);
+  else if (Array.isArray(v)) v.forEach((x) => strings(x, out));
+  else if (v && typeof v === "object") Object.values(v).forEach((x) => strings(x, out));
+  return out;
+};
+/** The words appear, as written, in a cited source. A question the founder hasn't answered yet (ask_founder) holds nothing they said. */
+function heldBy(words: string, src: string[], sources: ReadonlyMap<string, SourceData>): boolean {
+  const w = norm(words);
+  if (!w) return false;
+  return src.some((id) => {
+    const data = sources.get(id)?.data as { asked?: unknown } | undefined;
+    if (!data || (typeof data === "object" && "asked" in data)) return false;
+    return strings(data).some((x) => ` ${norm(x)} `.includes(` ${w} `));
+  });
+}
+
 /**
- * Keeps each context item only when it cites a known source other than today (s0), and the founder's words it quotes
- * pass the number check against those sources. A capacity outside 1–10, an unknown budget band, or a launch date
+ * Keeps each context item only when it cites a known source other than today (s0), the founder's words it quotes
+ * appear in one of those sources (a stockist's name too) and pass the number check against them. A capacity outside 1–10, an unknown budget band, or a launch date
  * that isn't a date ahead of today is dropped. Returns what was kept and why the rest wasn't.
  */
 export function readContext(raw: RawContext, sources: ReadonlyMap<string, SourceData>, date: string): { context: Omit<StrategyContext, "soldIn">; dropped: string[] } {
   const dropped: string[] = [];
   const ids = (v: unknown) => uniq((Array.isArray(v) ? v : []).filter((x): x is string => typeof x === "string" && x !== "s0" && sources.has(x))).slice(0, 6);
   /** The quoted words must hold up against the sources they cite (numbers and dates as written). */
-  const backed = (said: string, src: string[]) => !!said && src.length > 0 && checkClaims([{ text: said, sources: src }], sources).kept.length === 1;
+  const backed = (said: string, src: string[]) => !!said && src.length > 0 && heldBy(said, src, sources) && checkClaims([{ text: said, sources: src }], sources).kept.length === 1;
 
   const stockists = (raw.stockists ?? []).slice(0, 60).flatMap((s) => {
     const name = text(s?.name, 80);
     const src = ids(s?.sources);
     if (!name || !src.length) return dropped.push(`stockist ${name || "?"}: needs a source`), [];
+    if (!heldBy(name, src, sources)) return dropped.push(`stockist ${name}: its sources don't name it`), [];
     const metro = text(s?.metro, 60);
     return [{ name, ...(metro ? { metro } : {}), sources: src }];
   });
@@ -175,6 +196,8 @@ export function buildStrategies(input: StrategyIn): StrategyResult {
   const capped = ctx.capacity ? (["capacity"] as ContextKey[]) : [];
   const moments = allMoments(input.calendar);
   const picksSrc = src.picks ? [src.picks] : [];
+  // Moments with no sourced lead time, which start a default prep window before; named in what was assumed.
+  const unled = new Set<string>();
 
   const strategies: Strategy[] = topFits(input.fits).map((f) => {
     const card = input.crowds.find((c) => c.id === f.crowd);
@@ -254,7 +277,8 @@ export function buildStrategies(input: StrategyIn): StrategyResult {
     const season = moments.find((m) => m.kind === "category" && m.date >= first);
     const retail = moments.filter((m) => m.kind === "retail" && m.date >= first).slice(0, RETAIL_MOMENTS);
     for (const m of [...mine, ...(season ? [season] : []), ...retail].sort((a, b) => a.date.localeCompare(b.date))) {
-      const prep = m.startBy ?? m.date;
+      if (!m.startBy) unled.add(m.kind === "crowd" ? "each crowd's yearly peak" : m.name);
+      const prep = m.startBy ?? addDays(m.date, -DEFAULT_PREP_DAYS[m.kind]);
       const startBy = later(prep, first);
       add({
         id: `before:${key(m.name)}:${m.date}`,
@@ -272,7 +296,10 @@ export function buildStrategies(input: StrategyIn): StrategyResult {
     return { crowd: f.crowd, name: f.name, tier: f.tier, rank: f.rank, who, where, through: mix.filter((c) => actions.some((a) => a.channel === c)), actions };
   });
 
-  return { strategies, context: contextLines(ctx, mix), assumed: assumed(ctx), date: input.date };
+  // The mix as used: a channel with nothing to suggest for any fit (no creators named yet) isn't claimed.
+  const used = mix.filter((c) => strategies.some((s) => s.through.includes(c)));
+  const shown = used.length ? used : mix;
+  return { strategies, context: contextLines(ctx, shown), assumed: assumed(ctx, shown, [...unled]), date: input.date };
 }
 
 function beforeText(m: Moment, crowd: string, product: string): string {
@@ -290,15 +317,16 @@ function contextLines(ctx: StrategyContext, mix: Channel[]): ContextLine[] {
   const metros = uniq([...ctx.soldIn.map((s) => s.metro), ...ctx.stockists.flatMap((s) => (s.metro ? [s.metro] : []))]);
   if (metros.length)
     out.push({ key: "stockists", text: `You already sell in ${list(metros.slice(0, 6))}${metros.length > 6 ? ` and ${metros.length - 6} more` : ""}, so new regions come first`, sources: uniq([...ctx.soldIn.flatMap((s) => s.sources), ...ctx.stockists.filter((s) => s.metro).flatMap((s) => s.sources)]) });
-  if (ctx.budget) out.push({ key: "budget", text: `“${ctx.budget.said}” reads as a ${ctx.budget.band} budget, so the mix is ${list(mix.map((c) => CHANNEL_LABEL[c].toLowerCase()))}`, sources: ctx.budget.sources });
+  if (ctx.budget) out.push({ key: "budget", text: `“${ctx.budget.said}” reads as ${ctx.budget.band === "ample" ? "an" : "a"} ${ctx.budget.band} budget, so the mix is ${list(mix.map((c) => CHANNEL_LABEL[c].toLowerCase()))}`, sources: ctx.budget.sources });
   if (ctx.launch) out.push({ key: "launch", text: `“${ctx.launch.said}”: nothing starts before ${dayLabel(ctx.launch.date)}`, sources: ctx.launch.sources });
   if (ctx.capacity) out.push({ key: "capacity", text: `“${ctx.capacity.said}”: ${ctx.capacity.regions === 1 ? "one region" : `${ctx.capacity.regions} regions`} at once`, sources: ctx.capacity.sources });
   return out;
 }
 
-function assumed(ctx: StrategyContext): string[] {
+function assumed(ctx: StrategyContext, mix: Channel[], unled: string[]): string[] {
   return [
-    ctx.budget ? "" : `no budget in your context, so a lean mix: ${list(MIX.lean.map((c) => CHANNEL_LABEL[c].toLowerCase()))}`,
+    ctx.budget ? "" : `no budget in your context, so a lean mix: ${list(mix.map((c) => CHANNEL_LABEL[c].toLowerCase()))}`,
     ctx.capacity ? "" : `no capacity in your context, so ${DEFAULT_REGIONS} regions at once`,
+    unled.length ? `no lead time in your sources for ${list(unled.slice(0, 4))}${unled.length > 4 ? ` and ${unled.length - 4} more` : ""}, so prep starts ${DEFAULT_PREP_DAYS.retail / 7} weeks before (2 for events)` : "",
   ].filter(Boolean);
 }

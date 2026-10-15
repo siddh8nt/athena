@@ -3,7 +3,7 @@
 import type { AgentEvent } from "@/lib/blocks/types";
 import type { SourceRef } from "@/lib/fits/types";
 import { CHANNEL_LABEL, CONTEXT_LABEL, WHEN_LABEL, type ActionWhen, type Strategy, type StrategyAnswer, type StrategyRun } from "@/lib/strategy/types";
-import { Cites, day } from "./Cites";
+import { Cites, day, readable } from "./Cites";
 
 // A strategy for every most valuable fit (PRD §23.2 step 6): who, where, through what and when, built by code from
 // the ranking, the calendar and the founder's context; each action says which context fact shaped it. The agent's
@@ -22,7 +22,7 @@ export function StrategyCard({ s, said, sources }: { s: Strategy; said: Strategy
       <h6 className="crowd-tag">Strategy</h6>
       {said.map((l, i) => (
         <p key={i} className="small">
-          {l.text} <Cites ids={l.sources} sources={sources} />
+          {readable(l.text)} <Cites ids={l.sources} sources={sources} />
         </p>
       ))}
       <dl className="strategy-facts small">
@@ -80,15 +80,15 @@ export function StrategyHead({ view, sources }: { view: StrategyView; sources: M
   const run = view.run;
   if (!run) return null;
   const overall = run.answer.lines.filter((l) => !l.crowd);
-  const assumed = [...new Set([...run.result.assumed, ...run.answer.assumptions])];
+  const assumed = [...new Set([...run.result.assumed, ...run.answer.assumptions].map((a) => a.trim().replace(/[.;]+$/, "")).filter(Boolean))];
   return (
     <div className="fits-context strategy-head">
       <h4>Your strategies</h4>
       {view.running && <StrategyPending steps={view.steps} />}
-      {run.answer.headline && <p className="fits-headline">{run.answer.headline}</p>}
+      {run.answer.headline && <p className="fits-headline">{readable(run.answer.headline)}</p>}
       {overall.map((l, i) => (
         <p key={i} className="small">
-          {l.text} <Cites ids={l.sources} sources={sources} />
+          {readable(l.text)} <Cites ids={l.sources} sources={sources} />
         </p>
       ))}
       {run.result.context.length > 0 && (

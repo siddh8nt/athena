@@ -147,6 +147,27 @@ describe("strategy builder", () => {
     expect(r.assumed.join(" ")).toMatch(/lean mix/);
     expect(r.assumed.join(" ")).toMatch(/2 regions/);
   });
+
+  it("starts prep a default window before a moment with no sourced lead time, and says so", () => {
+    const r = buildStrategies(input());
+    const before = r.strategies[1].actions.filter((a) => a.when === "before");
+    const peak = before.find((a) => a.moment?.name === "Trailhead Supper yearly peak")!;
+    expect(peak.startBy).toBe("2027-06-03");
+    const fair = before.find((a) => a.moment?.name === "Lantern Food Fair");
+    if (fair) expect(fair.startBy).toBe("2027-02-24");
+    // A sourced lead time is kept as is.
+    expect(r.strategies[0].actions.find((a) => a.moment?.name === "Black Friday")!.startBy).toBe("2026-10-28");
+    expect(r.assumed.join(" ")).toMatch(/no lead time in your sources for .*each crowd's yearly peak/);
+    expect(r.assumed.join(" ")).not.toMatch(/Black Friday/);
+  });
+
+  it("names only the channels the strategies use", () => {
+    const noCreators = Object.fromEntries(Object.entries(picks).map(([k, p]) => [k, { ...p, creators: [] }]));
+    const r = buildStrategies(input(empty, { picks: noCreators }));
+    expect(r.strategies.every((s) => !s.through.includes("creators"))).toBe(true);
+    expect(r.assumed.join(" ")).toMatch(/lean mix/);
+    expect(r.assumed.join(" ")).not.toMatch(/creators/i);
+  });
 });
 
 describe("strategy context rules (each changes only its own actions)", () => {
@@ -224,7 +245,8 @@ describe("strategy context rules (each changes only its own actions)", () => {
 describe("strategy context guard", () => {
   const sources = new Map<string, { data: unknown }>([
     ["s0", { data: { today: date } }],
-    ["s4", { data: { text: "We have about 2,000 a month to spend. We launch on 2027-01-15 and can run 2 regions." } }],
+    ["s4", { data: { text: "We sell at Greenleaf Grocers. We have about 2,000 a month to spend. We launch on 2027-01-15 and can run 2 regions." } }],
+    ["s5", { data: { asked: true, assumed: "Lean", note: "The founder hasn't answered." } }],
   ]);
 
   it("keeps sourced context and drops the rest", () => {
@@ -260,6 +282,23 @@ describe("strategy context guard", () => {
     expect(readContext({ capacity: { regions: 3, said: "can run 3 regions", sources: ["s4"] } }, sources, date).context.capacity).toBeUndefined();
     expect(readContext({ launch: { date: "2027-02-30", said: "We launch on 2027-01-15", sources: ["s4"] } }, sources, date).context.launch).toBeUndefined();
     expect(readContext({ budget: { band: "lean", said: "a small budget", sources: ["s0"] } }, sources, date).context.budget).toBeUndefined();
+  });
+
+  it("drops words the cited source doesn't hold, an invented stockist, and an unanswered question's assumption", () => {
+    const { context, dropped } = readContext(
+      {
+        stockists: [{ name: "Fishwife stockist", sources: ["s4"] }],
+        budget: { band: "lean", said: "lean budget assumed as context does not specify growth budget", sources: ["s4"] },
+        capacity: { regions: 2, said: "we can run 2 regions", sources: ["s4"] },
+      },
+      sources,
+      date,
+    );
+    expect(context).toEqual({ stockists: [], budget: undefined, launch: undefined, capacity: undefined });
+    expect(dropped).toHaveLength(3);
+    expect(readContext({ budget: { band: "lean", said: "Lean", sources: ["s5"] } }, sources, date).context.budget).toBeUndefined();
+    // Case and punctuation don't matter; the words do.
+    expect(readContext({ capacity: { regions: 2, said: "Can run 2 regions!", sources: ["s4"] } }, sources, date).context.capacity?.regions).toBe(2);
   });
 
   it("dropped context changes nothing", () => {
@@ -337,5 +376,15 @@ describe("no crowd to choose (§23.2 step 6f)", () => {
   it("the choose-a-crowd button is gone from the app", () => {
     const files = readdirSync("components").filter((f) => f.endsWith(".tsx"));
     for (const f of files) expect(readFileSync(`components/${f}`, "utf8")).not.toMatch(/Plan for this crowd instead|The plan follows this crowd/);
+  });
+});
+
+describe("strategy display", () => {
+  it("shows the agent's checked YYYY-MM-DD dates as the founder reads them", async () => {
+    const { readable } = await import("@/components/Cites");
+    const y = new Date().getUTCFullYear();
+    expect(readable(`peaks on ${y + 1}-01-01 in 79 days`)).toBe(`peaks on Jan 1, ${y + 1} in 79 days`);
+    expect(readable(`from ${y}-10-31`)).toBe("from Oct 31");
+    expect(readable("ranked 2026-13-45 oddly")).toBe("ranked 2026-13-45 oddly");
   });
 });

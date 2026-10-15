@@ -92,13 +92,17 @@ it("plans a strategy for every top fit, and each context fact changes its own ac
     for (const l of base.answer.lines.filter((x) => x.crowd === s.crowd)) log(`   says: ${l.text} [${l.sources.join(",")}]`);
   }
 
-  // The first retailer the baseline recommends, so the stockist fact touches a real action.
-  const retail = base.result.strategies.flatMap((s) => s.actions).find((a) => a.channel === "retail")?.where ?? base.result.strategies.flatMap((s) => s.actions).find((a) => a.channel === "indie")?.where;
+  // A store the baseline recommends, named with its city, so the stockist fact touches a real action.
+  const named = base.result.strategies
+    .flatMap((s) => s.actions)
+    .map((a) => (a.channel === "indie" ? a.text.match(/^In (.+?), pitch (.+?) and independent shops like it/) : a.channel === "retail" ? a.text.match(/^Pitch (.+?):/) : null))
+    .find(Boolean);
+  const retail = named ? (named.length > 2 ? `${named[2]} in ${named[1]}` : named[1]) : undefined;
   const launch = new Date(`${base.result.date}T00:00:00Z`);
   launch.setUTCDate(launch.getUTCDate() + 90);
   const fact = (id: string, text: string) => ({ id, text, where: "the founder, in this test", source: "the founder" });
   const flips = [
-    ...(retail ? [{ label: "stockist", fact: fact("t-stockist", `We're already stocked at ${retail}.`) }] : []),
+    ...(retail ? [{ label: "stockist", fact: fact("t-stockist", `We already sell at ${retail}.`) }] : []),
     { label: "budget", fact: fact("t-budget", "We have about $40,000 a month for marketing.") },
     { label: "launch", fact: fact("t-launch", `We launch on ${iso(launch)}.`) },
     { label: "capacity", fact: fact("t-capacity", "Our team can only handle one region at a time.") },

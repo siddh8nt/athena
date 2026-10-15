@@ -196,6 +196,8 @@ export async function runAgent(run: AgentRun): Promise<{ answered: boolean; reas
     .map((s) => ({ text: `Source ${s.id} (${s.tool}): ${s.summary}\n${JSON.stringify(forModel(s.data))}` }));
   const turns: Turn[] = [{ role: "user", parts: [{ text: run.intro ?? briefOf(run.goal, run.brand, budget) }, ...opening] }];
   let fixedUp = false;
+  // An answer that passed the check apart from what it was asked to fix: kept if the fix-up round never comes back.
+  let held: { result: AgentStreamEvent; summary: string } | undefined;
   let idle = 0;
   let stall: string | undefined;
 
@@ -215,7 +217,9 @@ export async function runAgent(run: AgentRun): Promise<{ answered: boolean; reas
     // 14 Oct, live: turns take 3–6 s, but in slow spells one in a few runs past 25 s while the same request sent
     // again lands fast. So a turn not back in 10 s is hedged with a second identical request (first answer wins),
     // and a failed turn gets one retry before the run counts as stalled.
-    const ask = (ms: number) => model({ model: "flash", system: run.system ?? SYSTEM, turns, functions, force: mustFinish ? [finisher.declaration.name] : undefined, thinking: "LOW", budgetMs: Math.max(5_000, Math.min(ms, 25_000)) });
+    // 15 Oct, live: a finishing turn writes the whole answer (onboarding's brief cites dozens of facts), and in slow
+    // spells ran past 25 s twice in a row; it gets 45 s.
+    const ask = (ms: number) => model({ model: "flash", system: run.system ?? SYSTEM, turns, functions, force: mustFinish ? [finisher.declaration.name] : undefined, thinking: "LOW", budgetMs: Math.max(5_000, Math.min(ms, mustFinish ? 45_000 : 25_000)) });
     const hedged = (ms: number) =>
       new Promise<ConverseResult>((resolve, reject) => {
         let pending = 1;
@@ -236,6 +240,7 @@ export async function runAgent(run: AgentRun): Promise<{ answered: boolean; reas
         settle(ask(ms));
         hedge = setTimeout(() => {
           if (left().ms < 20_000) return;
+          emit({ tool: "think", why: mustFinish ? "Still writing the answer; a long one takes a little longer" : "Still choosing the next step", status: "running", callIds: [], summary: "" });
           pending++;
           settle(ask(left().ms - 5_000));
         }, HEDGE_MS);
@@ -270,6 +275,7 @@ export async function runAgent(run: AgentRun): Promise<{ answered: boolean; reas
       const problems = checked.problems;
       if (problems && !fixedUp && left().ms > 10_000) {
         fixedUp = true;
+        if (checked.result) held = { result: checked.result, summary: checked.summary };
         emit({ tool: "check", why: finisher.checking, status: "ok", callIds: [], summary: `${problems.count} to fix` });
         turns.push({
           role: "user",
@@ -333,9 +339,18 @@ export async function runAgent(run: AgentRun): Promise<{ answered: boolean; reas
     turns.push({ role: "user", parts: responses });
   }
 
+  // The fix-up round didn't come back: the answer as checked goes out, without the parts that failed the check.
+  if (held) {
+    console.warn(`agent stalled in the fix-up round (${stall ?? "out of turns"}); sending the checked answer`);
+    emit({ tool: "check", why: finisher.checked, status: "ok", callIds: [], summary: held.summary });
+    run.send(held.result);
+    run.send({ type: "done", qlooCalls: calls, ms: Date.now() - started });
+    return { answered: true, reason: stall ?? "out of turns" };
+  }
+
   // The agent stalled: the fixed pipeline takes over, so the founder still gets a plan (§23.2 step 2h).
   console.warn(`agent stalled (${stall ?? "out of turns"}); running the fixed pipeline`);
-  emit({ tool: "plan", why: "Finishing with the standard plan", status: "ok", callIds: [], summary: "the step-by-step plan takes it from here" });
+  emit({ tool: "plan", why: "Writing the answer from what's been read", status: "ok", callIds: [], summary: "the step-by-step plan takes it from here" });
   await run.fallback().catch((err) => console.error("fallback failed", err));
   return { answered: false, reason: stall ?? "out of turns" };
 }

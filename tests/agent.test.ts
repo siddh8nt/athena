@@ -147,6 +147,20 @@ describe("the agent loop", () => {
     expect(answer?.answer.dropped).toBe(1);
   });
 
+  it("keeps the checked answer when the fix-up round never comes back", async () => {
+    let n = 0;
+    const model = async (): Promise<ConverseResult> => {
+      n++;
+      if (n === 1) return call("measure", { why: "Measure" });
+      if (n === 2) return call("finish", { headline: "Win them", claims: [{ text: "About 3 million people.", sources: ["s1"] }, { text: "About 420,000 people.", sources: ["s1"] }] });
+      throw new Error("The operation was aborted due to timeout");
+    };
+    const run = await runWith({ model });
+    expect(run.fellBack()).toBe(false);
+    expect(run.answer?.answer.claims.map((c) => c.text)).toEqual(["About 420,000 people."]);
+    expect(run.steps.some((e) => e.tool === "plan")).toBe(false);
+  });
+
   it("still gives the fix-up round when finish comes on the last turn", async () => {
     let n = 0;
     const model = async (): Promise<ConverseResult> => {
@@ -209,7 +223,7 @@ describe("the agent loop", () => {
     const stalled = await runWith({ model: reactiveModel([]), stallAt: 2 });
     expect(stalled.fellBack()).toBe(true);
     expect(stalled.answer).toBeUndefined();
-    expect(stalled.steps.at(-1)).toMatchObject({ tool: "plan", why: "Finishing with the standard plan", status: "ok" });
+    expect(stalled.steps.at(-1)).toMatchObject({ tool: "plan", why: "Writing the answer from what's been read", status: "ok" });
     expect(stalled.steps.some((e) => e.status === "error")).toBe(false);
 
     const broken = await runWith({ model: async () => Promise.reject(new Error("Vertex 503")) });

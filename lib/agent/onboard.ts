@@ -262,7 +262,8 @@ function briefSource(ids: string[], sources: ReadonlyMap<string, Source>, factId
     case "read_website":
       return { kind: "website", ref: (s.args.urls as string[] | undefined)?.[0] };
     case "web_search":
-      return { kind: "web", ref: (s.data as { sources?: { uri?: string }[] })?.sources?.[0]?.uri ?? arg("query") };
+      // Search results come back as Google redirect links; the title is the site's own name ("forbes.com").
+      return { kind: "web", ref: (s.data as { sources?: { title?: string }[] })?.sources?.[0]?.title ?? arg("query") };
     case "qloo_search":
       return { kind: "qloo" };
     default:

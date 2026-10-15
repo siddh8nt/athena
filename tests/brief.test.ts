@@ -136,3 +136,13 @@ describe("conversation guardrails (§6.2.1)", () => {
     expect(input.rows).toEqual([{ name: "Erewhon", city: "LA" }]);
   });
 });
+
+describe("where a fact came from", () => {
+  it("names a web source by its site, never a search's redirect link", async () => {
+    const { sourceLabel } = await import("@/lib/brief/source");
+    expect(sourceLabel({ kind: "web", ref: "forbes.com" })).toBe("from the web · forbes.com");
+    expect(sourceLabel({ kind: "web", ref: "https://www.forbes.com/sites/x" })).toBe("from the web · forbes.com");
+    // 15 Oct, live: grounding links are redirects that ran past the Brand panel's edge.
+    expect(sourceLabel({ kind: "web", ref: "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQ" })).toBe("from the web");
+  });
+});

@@ -35,6 +35,14 @@ describe("the checklist", () => {
     expect(checklistLine(c.items())).toBe("Step 3 of 5 · Find you in Qloo");
   });
 
+  it("ticks a lookup step the plan tied to the site, whatever the lookup's own label", () => {
+    // 15 Oct, live: the plan gave "Find you in Qloo" the site's host, the lookup's events say "Qloo", and it never ticked.
+    const c = new Checklist([{ step: "Find you in Qloo", does: "qloo_search", ref: "tidepool.example" }]);
+    c.track(ev("qloo_search", "running", { source: { label: "Qloo" } }));
+    c.track(ev("qloo_search", "thin", { source: { label: "Qloo" }, line: "Looked you up in Qloo: 5 brands by close names, for me to check" }));
+    expect(c.items()[0]).toMatchObject({ state: "done", result: "5 brands by close names, for me to check" });
+  });
+
   it("the agent changes the steps to come; done steps stay; what never came is skipped", () => {
     const c = plan();
     c.track(ev("read_website", "running", { source: { label: "tidepool.example" } }));

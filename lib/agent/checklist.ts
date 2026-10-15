@@ -72,7 +72,8 @@ export class Checklist {
   track(e: AgentEvent): boolean {
     const does = doesOf(e);
     if (!does || e.under) return false;
-    const ref = e.source?.label;
+    // A ref tells apart the reads of different sites and files; a lookup's step matches whatever name the plan gave it.
+    const ref = does.startsWith("read_") ? e.source?.label : undefined;
     const mine = (i: CheckItem) => i.does === does && (!i.ref || !ref || i.ref === ref);
     if (e.status === "running") {
       if (this.list.some((i) => i.state === "now" && mine(i))) return false;

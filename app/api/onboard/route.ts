@@ -207,7 +207,7 @@ export const POST = dated(async function post(req: Request) {
           if (q) out({ type: "brief", brief: q.brief, assumptions: [], dropped: 0, early: true });
           const b = q?.brief;
           const found = b ? [b.name && `Name: ${b.name.value}`, b.sells && `Sells: ${b.sells.value}`, b.channels && `Sold: ${b.channels.value}`, b.tierHint && `Tier: ${b.tierHint.value}`].filter((x): x is string => !!x) : [];
-          emit({ tool: "quick_brief", why, status: b ? "ok" : "thin", callIds: [], summary: found.join("; "), source, found, line: b ? `Wrote a first brief: ${b.sells?.value ?? b.name?.value}; the full read keeps adding to it` : "The first pages say little on their own; the full read will fill in the brief" });
+          emit({ tool: "quick_brief", why, status: b ? "ok" : "thin", callIds: [], summary: found.join("; "), source, found, line: b ? `Wrote a first brief: ${(b.sells?.value ?? b.name?.value ?? "").replace(/[.;:,\s]+$/, "")}; the full read keeps adding to it` : "The first pages say little on their own; the full read will fill in the brief" });
           return q;
         })()
       : Promise.resolve(undefined);

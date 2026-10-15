@@ -46,9 +46,6 @@ function hull(points: [number, number][]): [number, number][] {
   return [...lower.slice(0, -1), ...upper.slice(0, -1)];
 }
 
-/** Click to probe: founder probes per map (the server's MAX_EXTRA). */
-const MAX_PROBES = 4;
-
 const corr = (a: number[], b: number[]) => a.reduce((s, x, i) => s + x * b[i], 0);
 
 const reducedMotion = () => typeof window !== "undefined" && !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
@@ -64,17 +61,17 @@ type Props = {
   decisions?: (CrowdDecision | undefined)[];
   /** What the agent is doing right now, while the galaxy forms. */
   step?: string;
-  /** Click to probe (§13.11): entities the founder probed, and the call to probe one more. */
+  /** Entities probed at the founder's question; "Ask the Analyst about this" puts a question about one in the steering box (§23.2 step 8i). */
   probes?: string[];
-  onProbe?: (id: string, name: string) => void;
-  /** The narrated line while a probe runs. */
+  onAsk?: (id: string, name: string) => void;
+  /** The narrated line while the Analyst probes. */
   probing?: string;
   /** Linked views (§9.26): the crowd lit from the map or the crowd cards, and the crowd under the pointer here. */
   lit?: number | null;
   onLight?: (c: number | null) => void;
 };
 
-export function Galaxy({ galaxy, names, decisions, step, probes: yourProbes = [], onProbe, probing, lit = null, onLight }: Props) {
+export function Galaxy({ galaxy, names, decisions, step, probes: yourProbes = [], onAsk, probing, lit = null, onLight }: Props) {
   const sim = useRef<Simulation<SimNode, SimLink> | null>(null);
   const simNodes = useRef(new Map<string, SimNode>());
   const lastTargets = useRef<{ round: number; x: Map<string, number>; y: Map<string, number> } | null>(null);
@@ -202,7 +199,8 @@ export function Galaxy({ galaxy, names, decisions, step, probes: yourProbes = []
   const probes = galaxy.landmarks.length - 1;
   const crowdName = (c: number) => names?.[c] ?? `Crowd ${c + 1}`;
 
-  const canProbe = !!onProbe && galaxy.done && yourProbes.length < MAX_PROBES && !probing;
+  // The founder asks; the Analyst judges whether a probe would change anything.
+  const canAsk = !!onAsk && galaxy.done && !probing;
   const card =
     focus !== null ? (
       <EntityCard
@@ -213,7 +211,7 @@ export function Galaxy({ galaxy, names, decisions, step, probes: yourProbes = []
         pinned={sel === focus}
         onClose={() => setSel(null)}
         yours={yourProbes.includes(galaxy.nodes[focus].id)}
-        onProbe={canProbe && !galaxy.nodes[focus].landmark ? () => (onProbe!(galaxy.nodes[focus].id, shortName(galaxy.nodes[focus].name, galaxy.nodes[focus].domain)), setSel(null)) : undefined}
+        onAsk={canAsk ? () => (onAsk!(galaxy.nodes[focus].id, shortName(galaxy.nodes[focus].name, galaxy.nodes[focus].domain)), setSel(null)) : undefined}
       />
     ) : null;
 
@@ -326,8 +324,8 @@ export function Galaxy({ galaxy, names, decisions, step, probes: yourProbes = []
   );
 }
 
-/** The hover card: what the entity is, and why it sits here (the probes that rank it highest). Clicked, it can be probed. */
-function EntityCard({ g, i, at, crowdName, pinned, onClose, yours, onProbe }: { g: GalaxyData; i: number; at: { x?: number; y?: number }; crowdName: (c: number) => string; pinned: boolean; onClose: () => void; yours: boolean; onProbe?: () => void }) {
+/** The hover card: what the entity is, and why it sits here (the probes that rank it highest). Clicked, the Analyst can be asked about it. */
+function EntityCard({ g, i, at, crowdName, pinned, onClose, yours, onAsk }: { g: GalaxyData; i: number; at: { x?: number; y?: number }; crowdName: (c: number) => string; pinned: boolean; onClose: () => void; yours: boolean; onAsk?: () => void }) {
   const n = g.nodes[i];
   const why = g.round > 0 ? whyOf(g, i, 3) : [];
   const left = ((at.x ?? 0) / W) * 100;
@@ -361,15 +359,15 @@ function EntityCard({ g, i, at, crowdName, pinned, onClose, yours, onProbe }: { 
       )}
       {pinned ? (
         <div className="react">
-          {onProbe && (
-            <button type="button" className="linkish small probe-btn" onClick={onProbe} title="About 6 Qloo calls">
-              Probe it: re-form the map around its fans
+          {onAsk && (
+            <button type="button" className="linkish small probe-btn" onClick={onAsk}>
+              Ask the Analyst about this
             </button>
           )}
           <button type="button" className="linkish small" aria-label="Close" onClick={onClose}>✕</button>
         </div>
       ) : (
-        onProbe && <span className="small muted">Click to probe it</span>
+        onAsk && <span className="small muted">Click to ask the Analyst about it</span>
       )}
     </div>
   );

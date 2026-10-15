@@ -401,6 +401,15 @@ describe("reading a chat message", () => {
     expect(r.reply).toBe("Moved you to premium and took Kestrel Kitchen off the graph.");
   });
 
+  it("hands a request for the team to Athena, keeping any facts the same message states", async () => {
+    vi.mocked(generateStreamHedged).mockResolvedValueOnce({ text: JSON.stringify({ ops: [{ op: "set", field: "tierHint", value: "premium" }], reply: "", team: true }) } as never);
+    const r = (await interpret("we're premium now; who should we pitch in Portland?", { brief: brief(), nodes, history: [] }))!;
+    expect(r.team).toBe(true);
+    expect(r.ops).toEqual([{ op: "set", field: "tierHint", value: "premium" }]);
+    vi.mocked(generateStreamHedged).mockResolvedValueOnce({ text: JSON.stringify({ ops: [], reply: "Noted.", team: "yes" }) } as never);
+    expect((await interpret("noted", { brief: brief(), nodes, history: [] }))!.team).toBeUndefined();
+  });
+
   it("returns nothing when the model doesn't answer, so the route can point at the graph", async () => {
     vi.mocked(generateStreamHedged).mockResolvedValueOnce({ text: "" } as never);
     expect(await interpret("hi", { brief: brief(), nodes, history: [] }).catch(() => undefined)).toBeUndefined();

@@ -28,18 +28,22 @@ export function Question({ q, answer, onAnswer }: { q: Asked; answer?: string; o
     <div className="question" role="group" aria-label={q.question}>
       <p className="question-text">{q.question}</p>
       <ol className="question-options">
-        {q.options.map((o, i) => (
-          <li key={o.label}>
-            <button type="button" className={picked.includes(o.label) ? "on" : ""} aria-pressed={q.multi ? picked.includes(o.label) : undefined} onClick={() => choose(o.label)}>
-              <span className="question-n">{i + 1}</span>
-              <span>
-                {o.label}
-                {i === 0 && <small className="muted"> · recommended</small>}
-                {o.hint && <small className="question-hint">{o.hint}</small>}
-              </span>
-            </button>
-          </li>
-        ))}
+        {q.options.map((o, i) => {
+          // An option that can't go with one already picked stays visible, with the reason.
+          const clash = q.multi && !picked.includes(o.label) ? (o.conflicts ?? []).find((c) => picked.includes(c)) : undefined;
+          return (
+            <li key={o.label}>
+              <button type="button" className={picked.includes(o.label) ? "on" : ""} disabled={!!clash} aria-pressed={q.multi ? picked.includes(o.label) : undefined} onClick={() => choose(o.label)}>
+                <span className="question-n">{i + 1}</span>
+                <span>
+                  {o.label}
+                  {i === 0 && <small className="muted"> · recommended</small>}
+                  {clash ? <small className="question-hint">Not with “{clash}”: they pull opposite ways.</small> : o.hint && <small className="question-hint">{o.hint}</small>}
+                </span>
+              </button>
+            </li>
+          );
+        })}
         <li>
           {typing ? (
             <form

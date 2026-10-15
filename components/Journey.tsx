@@ -16,6 +16,7 @@ import { TasteAxes, useLean, type Taste } from "./TasteAxes";
 import { ShowWhy } from "./WhyPath";
 import { Onboard } from "./Onboard";
 import { Fits, tiersFor } from "./Fits";
+import { GoalsBar, SpecialistWorkspace, TeamAsks, TeamPanel, WhatsWorking, useTeam } from "./Team";
 import type { StrategyView } from "./Strategy";
 import type { Asked } from "./Question";
 import type { AgentStreamEvent } from "@/lib/agent/loop";
@@ -43,6 +44,8 @@ import type { PlacesData } from "@/lib/blocks/places";
 import type { PartnersData } from "@/lib/blocks/partners";
 import type { MessageData } from "@/lib/blocks/message";
 import type { MomentsData } from "@/lib/blocks/moments";
+import { emptyTeam } from "@/lib/team/types";
+import { isSpecialist, nameOf } from "@/lib/agent/specialists";
 
 const MapView = dynamic(() => import("./MapView").then((m) => m.MapView), { ssr: false, loading: () => <div className="map map-loading" /> });
 
@@ -121,7 +124,8 @@ export function Journey() {
   // The Brand Graph (§23.2 step 7): the brand's one source of truth, made at onboarding and read by every run below.
   // A run that already ran is held on the inputs it ran on when an edit moves what it reads, until it's re-run.
   const g = graphState(j.graph);
-  const gInput: GraphInput = { brief, facts: j.facts ?? [], crowds: j.crowds, fits: j.fits, strategy: j.strategy, hidden: g.hidden };
+  const team = j.team ?? emptyTeam();
+  const gInput: GraphInput = { brief, facts: j.facts ?? [], crowds: j.crowds, fits: j.fits, strategy: j.strategy, team, hidden: g.hidden };
   const ran: RunId[] = [
     ...(j.crowds || turn.ready ? ["crowds" as const] : []),
     ...(j.fits ? ["fits" as const] : []),
@@ -200,28 +204,17 @@ export function Journey() {
     });
   };
 
-  // Click to probe (§13.11): the founder's entity becomes one more landmark; the crowds re-form around it. The map
-  // stays on screen with one narrated line until the new one arrives, and a failed probe leaves it as it was.
-  const [probing, setProbing] = useState<string>();
-  const probe = (id: string, name: string) => {
-    if (probing || !j.crowds || !j.crowdsFor) return;
-    const key = j.crowdsFor;
-    const probes = [...(j.crowds.probes ?? []), id];
-    setProbing(`Probing ${name}`);
-    void crowdStream(JSON.stringify({ ...JSON.parse(key), probes }), (e) => {
-      if (crowdKey.current !== key) return false;
-      if (e.type === "status") setProbing(e.text);
-      else if (e.type === "result" && e.result.crowds.length)
-        setJ((x) => {
-          const ids = new Set(e.result.crowds.map((c) => c.id));
-          // A probe re-factorises the graph, so the axes (and the sliders on them) start over, and the fits rank again.
-          return { ...x, crowds: e.result, lean: {}, crowdId: x.crowdId && ids.has(x.crowdId) ? x.crowdId : defaultCrowd(e.result.crowds, x.growth) };
-        });
-      return true;
-    })
-      .catch(() => undefined)
-      .finally(() => setProbing(undefined));
-  };
+  // Probing belongs to the Analyst (§23.2 step 8i): "Ask the Analyst about this" on a Galaxy node puts a question in the
+  // steering box; the Analyst probes on evidence, and what it measured comes back here as the journey's crowds. The
+  // fits rank again from the new probes below, with the last ranking up meanwhile.
+  const onMemory = (m: { crowds?: CrowdsResult; probes: string[] }) =>
+    setJ((x) => {
+      if (!m.crowds?.crowds.length) return x;
+      const crowds = { ...m.crowds, probes: m.probes };
+      const ids = new Set(crowds.crowds.map((c) => c.id));
+      const changed = (x.crowds?.probes ?? []).join(",") !== m.probes.join(",");
+      return { ...x, crowds, crowdsFor: x.crowdsFor ?? crowdKey.current, ...(changed ? { lean: {} } : {}), crowdId: x.crowdId && ids.has(x.crowdId) ? x.crowdId : defaultCrowd(crowds.crowds, x.growth) };
+    });
   // Most valuable fits (§23.2 step 5): once the crowds are in and the product is settled, the agent ranks them from the
   // founder's context. A probe, new facts or an answer to its question ranks again; the last ranking stays up meanwhile.
   const [fitsSteps, setFitsSteps] = useState<AgentEvent[]>([]);
@@ -373,12 +366,43 @@ export function Journey() {
   const nextStop = stops[stops.indexOf(j.stop) + 1];
   const prefetch = (s: StopId) => s === nextStop && j.done.includes("growth") && !!crowd && (!NEEDS_CITY.has(s) || !!j.city);
 
+  // Athena and her six specialists (§23.2 step 8): goals from the Brand Graph, worked by the team. The old stops below
+  // stay; every one of them is also a specialist's work, reachable as a goal.
+  const onboarding = j.stop === "product" && !start.message && !msgs.some((m) => m.who === "you");
+  const tm = useTeam({
+    team,
+    setTeam: (f) => setJ((x) => ({ ...x, team: f(x.team ?? emptyTeam()) })),
+    body: () => ({
+      seed: j.crowdsFor ? (JSON.parse(j.crowdsFor) as unknown) : JSON.parse(crowdKey.current || "{}"),
+      probes: j.crowds?.probes ?? [],
+      brief,
+      ...(j.fits ? { fits: j.fits.fits } : {}),
+    }),
+    graphRev: g.log.length,
+    onMemory,
+    say,
+  });
+  // "Ask the Analyst about this" from a Galaxy node: the Analyst's workspace opens with the question in the steering box.
+  const [about, setAbout] = useState<{ id: string; name: string }>();
+  const askAbout = (id: string, name: string) => {
+    tm.setActive("analyst");
+    setAbout({ id, name });
+    setText(`Where does ${name} fit with us?`);
+  };
+  const proposedOnce = useRef(false);
+  useEffect(() => {
+    if (!turn.ready || onboarding || !j.crowds || team.proposed || proposedOnce.current) return;
+    proposedOnce.current = true;
+    void tm.propose();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [turn.ready, onboarding, !!j.crowds]);
+  const inWorkspace = isSpecialist(tm.active) ? tm.active : undefined;
+
   if (view === "dashboard")
     return <Workspace slug="" brands={[]} custom={{ brief, input: { ...input, city: j.city } }} onBack={() => setView("journey")} />;
 
   // Onboarding (§23.2 step 3): a new founder starts from the three ways in, not a chat. Sample brands and founders
-  // who began in the chat keep the chat.
-  const onboarding = j.stop === "product" && !start.message && !msgs.some((m) => m.who === "you");
+  // who began in the chat keep the chat. (`onboarding` is read above, before the team's hooks.)
   const onBrief = (b: BrandBrief, assumptions: string[], facts: LiveFact[], early = false) => {
     chat.setBrief(b);
     // A new brief from onboarding: earlier graph edits stay in the log, but can't be undone onto it.
@@ -415,7 +439,7 @@ export function Journey() {
     if (a) commit(a.brief, a.facts, a.state);
     return a;
   };
-  type Reply = { ops: Op[]; questions: EditQuestion[]; reply: string };
+  type Reply = { ops: Op[]; questions: EditQuestion[]; reply: string; team?: boolean };
   /** One call to the graph's edit route, with a hard time limit; past it, the reply points at the graph. */
   const post = async (body: Record<string, unknown>): Promise<Reply> => {
     const { input } = latest.current;
@@ -423,7 +447,7 @@ export function Journey() {
     try {
       const res = await fetch("/api/graph", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...body, brief: input.brief, nodes }), signal: AbortSignal.timeout(60_000) });
       const r = (await res.json()) as Partial<Reply>;
-      return { ops: Array.isArray(r.ops) ? r.ops : [], questions: Array.isArray(r.questions) ? r.questions : [], reply: typeof r.reply === "string" ? r.reply : "" };
+      return { ops: Array.isArray(r.ops) ? r.ops : [], questions: Array.isArray(r.questions) ? r.questions : [], reply: typeof r.reply === "string" ? r.reply : "", ...(r.team === true ? { team: true } : {}) };
     } catch {
       return { ops: [], questions: [], reply: POINTER };
     }
@@ -453,6 +477,11 @@ export function Journey() {
     const history = msgs.filter((m) => m.text && !m.card).slice(-8).map(({ who, text }) => ({ who, text }));
     const r = await post({ message, history });
     setWorking(undefined);
+    // A request for the team (who to pitch, where to launch, what's working) goes to Athena, who answers or hands it on.
+    if (r.team) {
+      if (r.ops.length || r.questions.length || r.reply) take(r, "chat");
+      return void tm.askAthena(message);
+    }
     take(r, "chat");
   };
   const resolveThen = (ops: Op[], by: "chat" | "graph") => {
@@ -523,7 +552,10 @@ export function Journey() {
       chat.setFiles([]);
       if (fs.length) setMsgs((m) => [...m, { who: "you", text: message, files: fs.map((f) => f.name) }]);
       if (fs.length) void readFiles(fs);
-      if (message) void graphSend(message, fs.length > 0);
+      // In a specialist's workspace, the steering box asks that specialist.
+      if (message && inWorkspace) tm.askSpecialist(inWorkspace, message, inWorkspace === "analyst" ? about : undefined);
+      else if (message) void graphSend(message, fs.length > 0);
+      setAbout(undefined);
       return;
     }
     void chat.send(text);
@@ -579,21 +611,8 @@ export function Journey() {
     >
       <header className="topbar journey-top">
         <Link href="/" className="wordmark-link"><strong>Athena</strong></Link>
-        {/* Hidden through onboarding (§23.2 step 7.2a); step 8 replaces it with goals. */}
-        <ol className="progress" aria-label="Your journey" hidden={onboarding}>
-          {stops.map((s, i) => (
-            <li key={s} className={j.stop === s ? "now" : j.done.includes(s) ? "done" : ""}>
-              <button
-                type="button"
-                disabled={!reached(s)}
-                onClick={() => document.getElementById(`stop-${s}`)?.scrollIntoView({ behavior: "smooth", block: "start" })}
-                aria-current={j.stop === s ? "step" : undefined}
-              >
-                <span className="dot">{j.done.includes(s) ? "✓" : i + 1}</span> {STOP_LABELS[s]}
-              </button>
-            </li>
-          ))}
-        </ol>
+        {/* Hidden through onboarding (§23.2 step 7.2a); the goals take the progress rail's place (step 8a). */}
+        {!onboarding && <GoalsBar goals={team.goals} onChange={turn.ready && !tm.live.running ? () => (tm.setActive("athena"), void tm.propose()) : undefined} />}
         <div className="top-actions">
           {j.done.includes("crowd") && <button type="button" onClick={() => setView("dashboard")}>View full plan</button>}
           <button
@@ -618,8 +637,18 @@ export function Journey() {
           <Onboard brief={brief} files={chat.files} addFiles={chat.addFiles} setFiles={chat.setFiles} onBrief={onBrief} onFacts={(facts) => setJ((x) => ({ ...x, facts }))} graph={graphEl} dock={dockEl} />
         </main>
       ) : (
-        <main className="journey-main">
+        <main className="journey-main journey-team">
+          <TeamPanel live={tm.live} team={team} active={tm.active} onOpen={(id) => (tm.setActive(id), setAbout(undefined))} />
           <section className="chat" aria-live="polite">
+            {inWorkspace ? (
+              <div className="msgs spec-wrap">
+                <button type="button" className="linkish small" onClick={() => tm.setActive("athena")}>
+                  ← Back to Athena
+                </button>
+                <SpecialistWorkspace id={inWorkspace} live={tm.live} team={team} alone={alone} onMark={(item, m) => tm.mark(inWorkspace, item, m)} onAnswer={tm.answer} />
+                <div ref={end} />
+              </div>
+            ) : (
             <ol className="msgs">
               {msgs.map((m, i) => [
                 <li key={i} className={`msg msg-${m.who}`}>
@@ -636,6 +665,11 @@ export function Journey() {
                   <Question q={q} onAnswer={(a) => answer(q, a)} />
                 </li>
               ))}
+              {tm.live.asks.some((q) => q.agent === "athena") && (
+                <li className="msg-question">
+                  <TeamAsks live={tm.live} agent="athena" onAnswer={tm.answer} />
+                </li>
+              )}
               {preview && (
                 <li className="msg msg-athena graph-preview">
                   <p>{preview.line}</p>
@@ -657,6 +691,7 @@ export function Journey() {
               )}
               <div ref={end} />
             </ol>
+            )}
 
             {dockEl}
 
@@ -681,7 +716,7 @@ export function Journey() {
                 rows={first ? 3 : 2}
                 value={text}
                 maxLength={8000}
-                placeholder={first ? "e.g. We're Fishwife: premium tinned fish with playful packaging, about $9 a tin. Sold online and in 1,500 shops. eatfishwife.com" : j.stop === "product" ? "Reply, or drop in a file" : "Ask or change anything: \"drop gyms\", \"what about Austin?\""}
+                placeholder={first ? "e.g. We're Fishwife: premium tinned fish with playful packaging, about $9 a tin. Sold online and in 1,500 shops. eatfishwife.com" : inWorkspace ? `Ask the ${nameOf(inWorkspace)}` : j.stop === "product" ? "Reply, or drop in a file" : "Ask or change anything: \"drop gyms\", \"what about Austin?\""}
                 onChange={(e) => setText(e.target.value)}
                 onPaste={(e) => {
                   if (e.clipboardData.files.length) {
@@ -706,6 +741,7 @@ export function Journey() {
           </section>
 
           <section className="journey-canvas" aria-label="Your plan so far">
+            <WhatsWorking team={team} graphRev={g.log.length} busy={tm.live.running > 0} onRefresh={tm.refresh} />
             <div id="stop-product">
               {graphEl}
             </div>
@@ -723,8 +759,8 @@ export function Journey() {
                   steps={crowdSteps}
                   forming={forming}
                   fits={{ steps: fitsSteps, running: fitsRunning, asks, answers, onAnswer: (q, a) => setAnswers((x) => ({ ...x, [q.id]: a })), strategy: j.fits && (j.strategy || planRunning) ? { run: j.strategy, steps: planSteps, running: planRunning } : undefined }}
-                  onProbe={probe}
-                  probing={probing}
+                  onAsk={askAbout}
+                  probing={tm.live.status.analyst?.state === "working" ? tm.live.status.analyst.step : undefined}
                   alone={alone}
                   taste={taste}
                 />
@@ -1050,7 +1086,7 @@ function skewLine(s: CrowdCard["skew"]): string | undefined {
 type FitsView = { steps: AgentEvent[]; running: boolean; asks: Asked[]; answers: Record<string, string>; onAnswer: (q: Asked, a: string) => void; strategy?: StrategyView };
 
 /** The Crowd stop (§9.23, §23.2 steps 5–6): the crowds from Qloo's taste graph, ranked as the brand's most valuable fits, each top fit with its strategy. */
-function CrowdStop({ j, steps, forming, fits, onProbe, probing, alone, taste }: { j: JourneyState; steps: string[]; forming?: GalaxyData; fits: FitsView; onProbe: (id: string, name: string) => void; probing?: string; alone: AloneRequest; taste?: Taste }) {
+function CrowdStop({ j, steps, forming, fits, onAsk, probing, alone, taste }: { j: JourneyState; steps: string[]; forming?: GalaxyData; fits: FitsView; onAsk: (id: string, name: string) => void; probing?: string; alone: AloneRequest; taste?: Taste }) {
   const r = j.crowds;
   // Linked views (§9.26): the crowd under the pointer in the Galaxy, the map or the cards lights up in all three.
   const [lit, setLit] = useState<number | null>(null);
@@ -1082,7 +1118,7 @@ function CrowdStop({ j, steps, forming, fits, onProbe, probing, alone, taste }: 
   const slot = (id: string) => Math.max(0, r.crowds.findIndex((c) => c.id === id)) % 4;
   return (
     <section className="crowds">
-      {r.galaxy && <Galaxy galaxy={r.galaxy} names={r.crowds.map((c) => c.name)} decisions={decisions} probes={r.probes ?? []} onProbe={onProbe} probing={probing} lit={lit} onLight={setLit} />}
+      {r.galaxy && <Galaxy galaxy={r.galaxy} names={r.crowds.map((c) => c.name)} decisions={decisions} probes={r.probes ?? []} onAsk={onAsk} probing={probing} lit={lit} onLight={setLit} />}
       <Fits run={j.fits} {...fits} slot={slot} />
       {!probing && <CrowdGeography crowds={r.crowds} lit={lit} onLight={setLit} />}
       <header className="card-head">

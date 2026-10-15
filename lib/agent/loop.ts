@@ -12,6 +12,7 @@ import type { PlanEvent } from "./plan";
 import type { FitsEvent } from "./fits";
 import type { StrategyEvent } from "./strategy";
 import type { CheckItem } from "./checklist";
+import type { Work, WorkItem } from "@/lib/team/types";
 
 // The agent core (PRD §23.2 step 2, problem 0): our own loop on Gemini function calling. The model is given a goal,
 // a budget and the tools; it picks each next step from what the last ones returned. Code holds the hard caps (turns,
@@ -24,7 +25,8 @@ export const DEFAULT_BUDGET: AgentBudget = { qloo: 150, ms: 150_000, turns: 10 }
 /** Hard limits, whatever a caller asks for. */
 const MAX: AgentBudget = { qloo: 400, ms: 180_000, turns: 12 };
 
-export type Source = { id: string; tool: string; args: Record<string, unknown>; summary: string; data: unknown; callIds: string[] };
+/** items: the results a specialist can name from this source (§23.2 step 8), each backed by it. */
+export type Source = { id: string; tool: string; args: Record<string, unknown>; summary: string; data: unknown; callIds: string[]; items?: WorkItem[] };
 export type AgentAnswer = { headline: string; claims: Claim[]; assumptions: string[]; dropped: number };
 
 export type AgentStreamEvent =
@@ -42,7 +44,9 @@ export type AgentStreamEvent =
   /** The most valuable fits (§23.2 step 5): the ranking and calendar from code, sourced reasons from the agent. */
   | FitsEvent
   /** A strategy for every most valuable fit (§23.2 step 6): built by code, sourced sentences from the agent. */
-  | StrategyEvent;
+  | StrategyEvent
+  /** A specialist's finished work (§23.2 step 8); the team runner fills in who, when, the time and the calls. */
+  | { type: "work"; work: Work };
 
 /**
  * How a run ends: the function the model calls to finish, and the check its arguments must pass. Problems go back
@@ -73,8 +77,8 @@ export type AgentRun = {
   send: (e: AgentStreamEvent) => void;
   /** The fixed pipeline, run when the agent stalls (§23.2 step 2h). */
   fallback: () => Promise<void>;
-  /** For tests: the model and tools. */
-  model?: (opts: Parameters<typeof converse>[0]) => Promise<ConverseResult>;
+  /** For tests, and code's decider (§23.2 step 8b): the model, which may read the run's state and sources; and the tools. */
+  model?: (opts: Parameters<typeof converse>[0], run: { state: AgentState; sources: ReadonlyMap<string, Source> }) => Promise<ConverseResult>;
   tools?: Tool[];
   /** For the stall test: the turn at which the model is treated as stalled. */
   stallAt?: number;
@@ -160,13 +164,13 @@ const HEDGE_MS = 10_000;
 const clamp = (v: number | undefined, d: number, max: number) => (typeof v === "number" && Number.isFinite(v) && v > 0 ? Math.min(v, max) : d);
 
 /** Runs one goal. Resolves when the answer (or the fallback's plan) has been sent; never throws. */
-export async function runAgent(run: AgentRun): Promise<{ answered: boolean; reason?: string }> {
+export async function runAgent(run: AgentRun): Promise<{ answered: boolean; reason?: string; state: AgentState; qlooCalls: number; ms: number }> {
   const budget: AgentBudget = { qloo: clamp(run.budget?.qloo, DEFAULT_BUDGET.qloo, MAX.qloo), ms: clamp(run.budget?.ms, DEFAULT_BUDGET.ms, MAX.ms), turns: clamp(run.budget?.turns, DEFAULT_BUDGET.turns, MAX.turns) };
   const tools = run.tools ?? TOOLS;
   const byName = toolByName(tools);
   const finisher = run.finisher ?? CLAIMS;
   const functions = [...declarations(tools), finisher.declaration];
-  const model = run.model ?? converse;
+  const model: NonNullable<AgentRun["model"]> = run.model ?? ((opts) => converse(opts));
   const started = Date.now();
   let spent = 0; // uncached Qloo calls: what the budget counts
   let calls = 0; // every Qloo call, for the run line
@@ -181,7 +185,8 @@ export async function runAgent(run: AgentRun): Promise<{ answered: boolean; reas
     return { qloo_calls: Math.max(0, l.qloo), seconds: Math.max(0, Math.round(l.ms / 1000)) };
   };
 
-  const state: AgentState = { probes: [], asks: 0, ...run.state };
+  const state: AgentState = { probes: [], asks: 0, ...run.state, ran: [] };
+  const ended = (answered: boolean, reason?: string) => ({ answered, reason, state, qlooCalls: calls, ms: Date.now() - started });
   const sources = new Map<string, Source>();
   const time = timeContext();
   sources.set("s0", { id: "s0", tool: "today", args: {}, summary: timeSummary(time), data: time, callIds: [] });
@@ -219,7 +224,7 @@ export async function runAgent(run: AgentRun): Promise<{ answered: boolean; reas
     // and a failed turn gets one retry before the run counts as stalled.
     // 15 Oct, live: a finishing turn writes the whole answer (onboarding's brief cites dozens of facts), and in slow
     // spells ran past 25 s twice in a row; it gets 45 s.
-    const ask = (ms: number) => model({ model: "flash", system: run.system ?? SYSTEM, turns, functions, force: mustFinish ? [finisher.declaration.name] : undefined, thinking: "LOW", budgetMs: Math.max(5_000, Math.min(ms, mustFinish ? 45_000 : 25_000)) });
+    const ask = (ms: number) => model({ model: "flash", system: run.system ?? SYSTEM, turns, functions, force: mustFinish ? [finisher.declaration.name] : undefined, thinking: "LOW", budgetMs: Math.max(5_000, Math.min(ms, mustFinish ? 45_000 : 25_000)) }, { state, sources });
     const hedged = (ms: number) =>
       new Promise<ConverseResult>((resolve, reject) => {
         let pending = 1;
@@ -295,7 +300,7 @@ export async function runAgent(run: AgentRun): Promise<{ answered: boolean; reas
       emit({ tool: "check", why: finisher.checked, status: "ok", callIds: [], summary: checked.summary });
       run.send(checked.result);
       run.send({ type: "done", qlooCalls: calls, ms: Date.now() - started });
-      return { answered: true };
+      return ended(true);
     }
 
     // Tools run in parallel; each result gets the next source id.
@@ -331,9 +336,13 @@ export async function runAgent(run: AgentRun): Promise<{ answered: boolean; reas
           return respond({ error: out === "timeout" ? "ran past the time budget" : "the tool failed", note: "carry on with what you have" });
         }
         const id = `s${sources.size}`;
-        sources.set(id, { id, tool: c.name, args: c.args, summary: out.summary, data: out.data, callIds });
+        const items = out.items?.map((x) => ({ ...x, sources: [id], callIds }));
+        sources.set(id, { id, tool: c.name, args: c.args, summary: out.summary, data: out.data, callIds, ...(items ? { items } : {}) });
+        state.ran?.push(c.name);
         emit({ tool: c.name, why, status: out.status ?? "ok", callIds, summary: out.summary });
-        return respond({ source: id, summary: out.summary, data: forModel(out.data) });
+        // Results a specialist may name in finish_work, compact and first, so they're never cut with the data.
+        const named = items?.slice(0, 20).map((x) => ({ name: x.name, why: x.why, ...(x.group ? { group: x.group } : {}) }));
+        return respond({ source: id, summary: out.summary, ...(named ? { results: named } : {}), data: forModel(out.data) });
       }),
     );
     turns.push({ role: "user", parts: responses });
@@ -345,12 +354,12 @@ export async function runAgent(run: AgentRun): Promise<{ answered: boolean; reas
     emit({ tool: "check", why: finisher.checked, status: "ok", callIds: [], summary: held.summary });
     run.send(held.result);
     run.send({ type: "done", qlooCalls: calls, ms: Date.now() - started });
-    return { answered: true, reason: stall ?? "out of turns" };
+    return ended(true, stall ?? "out of turns");
   }
 
   // The agent stalled: the fixed pipeline takes over, so the founder still gets a plan (§23.2 step 2h).
   console.warn(`agent stalled (${stall ?? "out of turns"}); running the fixed pipeline`);
   emit({ tool: "plan", why: "Writing the answer from what's been read", status: "ok", callIds: [], summary: "the step-by-step plan takes it from here" });
   await run.fallback().catch((err) => console.error("fallback failed", err));
-  return { answered: false, reason: stall ?? "out of turns" };
+  return ended(false, stall ?? "out of turns");
 }

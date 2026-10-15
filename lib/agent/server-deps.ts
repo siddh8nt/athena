@@ -24,6 +24,7 @@ async function cachedHooks(ev: HookEvidence): Promise<Hooks | undefined> {
   return fresh;
 }
 import type { PlanDeps, PlanEvent } from "./plan";
+import type { TeamEnrich } from "./plays";
 
 /** Everything a plan needs on the server. Enrichments and LLM steps run only in live mode; fixtures stay synthetic. */
 export function serverDeps(send: (e: PlanEvent) => void): PlanDeps {
@@ -38,6 +39,21 @@ export function serverDeps(send: (e: PlanEvent) => void): PlanDeps {
     lastRun,
     enrich: live ? { shows: ticketmasterShows(env.ticketmasterKey), markets: { census: censusMarket(env.censusKey), neighbourhoods: overtureNeighbourhoods }, festivalDate: groundedFestivalDates(llm), websites: addWikidataWebsites, podcastDetails: addApplePodcastDetails } : {},
     intake: llm ? { readWebsite, classify: classifyBusiness, parseAccounts, chooseComparables, writeHooks: cachedHooks } : undefined,
+  };
+}
+
+/** The team's enrichers (§23.2 step 8): the plan's live ones, with checked hooks for the drafts; empty with fixtures. */
+export function teamEnrich(): TeamEnrich {
+  const env = readEnv();
+  if (getQloo().mode !== "live") return {};
+  const llm = llmConfigured();
+  return {
+    shows: ticketmasterShows(env.ticketmasterKey),
+    markets: { census: censusMarket(env.censusKey), neighbourhoods: overtureNeighbourhoods },
+    festivalDate: groundedFestivalDates(llm),
+    websites: addWikidataWebsites,
+    podcastDetails: addApplePodcastDetails,
+    ...(llm ? { writeHooks: cachedHooks } : {}),
   };
 }
 

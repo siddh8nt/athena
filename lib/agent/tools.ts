@@ -23,10 +23,15 @@ import type { CrowdEvidence } from "@/lib/fits/score";
 import { buildCalendar, type SeasonIn } from "@/lib/fits/calendar";
 import { rankFits } from "@/lib/fits/score";
 import { gatherEvidence, seasonOf } from "@/lib/fits/gather";
-import { PARAMS, type Param, type WeightChange } from "@/lib/fits/types";
+import { PARAMS, TIER_LABEL, type Param, type WeightChange } from "@/lib/fits/types";
 import { timeContext } from "@/lib/time/now";
 import { buildStrategies, readContext, type RawContext, type StrategyBase } from "@/lib/strategy/build";
 import { BUDGET_BANDS, type StrategyResult } from "@/lib/strategy/types";
+import type { WorkItem } from "@/lib/team/types";
+import type { SpecialistId } from "./specialists";
+import type { TeamCtx } from "./plays";
+import { crowdSignature, graphWhen, probeWhen, rankWhen } from "./evidence";
+import { itemId } from "./outcomes";
 
 // The agent's tools (PRD §23.2 step 2a): the code Athena already had, as one registry the agent chooses from.
 // A tool is one entry: what it's for, its arguments, the most Qloo calls it can make, and how it runs. Measuring
@@ -49,6 +54,11 @@ export type AgentState = {
   /** The strategy run's inputs (§23.2 step 6), and the strategies plan_strategy last built from them. */
   strategyBase?: StrategyBase;
   strategies?: StrategyResult;
+  /** The team's shared memory (§23.2 step 8b): the brand, what each specialist found, the outcomes. Shared by reference. */
+  team?: TeamCtx;
+  /** The specialist running, and the tools it has run so far this run (the loop fills `ran`). */
+  agent?: SpecialistId;
+  ran?: string[];
 };
 
 export type ToolCtx = {
@@ -65,9 +75,17 @@ export type ToolCtx = {
 };
 
 /** A founder question (§23.2 step 2f, shown by step 3's question component): 2–4 options, the recommended first. */
-export type FounderQuestion = { question: string; why: string; options: { label: string; hint?: string }[]; multi: boolean; assumed: string };
+/** `conflicts` names the options (by label) that can't be picked with this one. */
+export type FounderQuestion = { question: string; why: string; options: { label: string; hint?: string; conflicts?: string[] }[]; multi: boolean; assumed: string };
 
-export type ToolResult = { summary: string; data: unknown; status?: "ok" | "empty" | "thin" };
+/** `items`: the results a specialist can return from this call, ranked; finish_work names them from here. */
+export type ToolResult = { summary: string; data: unknown; status?: "ok" | "empty" | "thin"; items?: Omit<WorkItem, "sources" | "callIds">[] };
+
+/**
+ * What code's decider does with a tool now (§23.2 step 8b): call it with these args and why, or skip it and say why.
+ * `need`: what another specialist (or the founder) must supply first; it becomes the run's handoff to Athena.
+ */
+export type Decision = { args: Record<string, unknown>; why: string } | { skip: string; need?: string };
 
 export type Tool = {
   name: string;
@@ -80,6 +98,13 @@ export type Tool = {
   run: (args: Record<string, unknown>, ctx: ToolCtx) => Promise<ToolResult>;
   /** The longest one call may take before the loop moves on without it (default 30 s). */
   maxMs?: number;
+  /** The specialists that own this tool (§23.2 step 8e). A new play is one entry with `for`: its specialist picks it up. */
+  for?: SpecialistId[];
+  /**
+   * The evidence rule, for code's decider when the model isn't there (and for the trace): call now with these args,
+   * skip with the reason, or undefined when it doesn't apply yet. The model reads the same rules as plain words.
+   */
+  when?: (state: AgentState) => Decision | undefined;
 };
 
 const WHY = { type: "string", description: "One short sentence for the founder: why this call, now. Shown as the step's narration." };
@@ -153,6 +178,10 @@ export function crowdsOut(r: CrowdsResult) {
   };
 }
 
+/** The crowds as results a specialist can return (§23.2 step 8b). */
+const crowdItems = (r: CrowdsResult) =>
+  r.crowds.map((c) => ({ id: itemId("crowd", c.name), kind: "crowd", name: c.name, why: `${c.main ? "Your main crowd" : "A crowd"} of ${c.size}, loving ${c.loves.slice(0, 3).map((l) => l.name).join(", ")}`, group: "crowd", ref: c.id }));
+
 const crowdLine = (r: CrowdsResult) =>
   r.crowds.length ? `${r.crowds.length} crowd${r.crowds.length > 1 ? "s" : ""}: ${r.crowds.map((c) => `${c.name}${c.stability !== undefined ? ` (stability ${c.stability.toFixed(2)})` : ""}`).join("; ")}` : "no crowds: the seed had too little Qloo knows";
 
@@ -164,6 +193,7 @@ const GRAPH_COLD = GRAPH_BUDGET + 25;
 export const TOOLS: Tool[] = [
   {
     name: "qloo_search",
+    for: ["analyst", "matchmaker"],
     description: "Find entities in Qloo by name: brands, artists, TV shows, films, podcasts, books, places. Returns Qloo ids, popularity and a short description. 1 Qloo call.",
     properties: { query: { type: "string" }, type: { type: "string", enum: TYPES } },
     required: ["query", "type"],
@@ -177,6 +207,7 @@ export const TOOLS: Tool[] = [
   },
   {
     name: "qloo_insights",
+    for: ["analyst", "scout"],
     description:
       "Qloo's recommendations: what people who love the signal entities also love, of one entity type, optionally within a US metro or place. Affinity is how strongly the signal predicts each result. 1 Qloo call.",
     properties: {
@@ -199,6 +230,7 @@ export const TOOLS: Tool[] = [
   },
   {
     name: "qloo_demographics",
+    for: ["analyst"],
     description: "Who loves the signal entities: age and gender skew against the US average (positive = over-indexes). 1 Qloo call.",
     properties: { signal_ids: { type: "array", items: { type: "string" }, description: "Qloo ids, at most 10." } },
     required: ["signal_ids"],
@@ -216,6 +248,7 @@ export const TOOLS: Tool[] = [
   },
   {
     name: "build_taste_graph",
+    for: ["analyst"],
     maxMs: 75_000, // 14 Oct, live: ~35 s cold
     description:
       "Measures the taste graph around the brand and splits it into crowds: who they are, what they love across brands, music, TV, film, podcasts and books, their age and gender skew, the cities where they cluster, how stable each crowd is (0–1; under 0.6 is soft), the taste axes and where crowds meet. " +
@@ -229,6 +262,7 @@ export const TOOLS: Tool[] = [
     },
     required: ["lookalikes", "traits"],
     qloo: () => GRAPH_COLD,
+    when: graphWhen,
     async run(a, { qloo, state, status }) {
       const id = str(a.brand_id, 80);
       const seed: SeedInput = {
@@ -242,11 +276,12 @@ export const TOOLS: Tool[] = [
       state.crowds = r;
       state.probes = [];
       state.geography = undefined;
-      return { summary: crowdLine(r), data: crowdsOut(r), status: r.crowds.length ? "ok" : "empty" };
+      return { summary: crowdLine(r), data: crowdsOut(r), status: r.crowds.length ? "ok" : "empty", items: crowdItems(r) };
     },
   },
   {
     name: "probe_entity",
+    for: ["analyst"],
     maxMs: 60_000,
     description:
       "Adds entities to the measured graph as landmarks, to firm up a soft crowd or test where an entity sits. Re-splits the crowds and returns them with their new stability. " +
@@ -254,21 +289,28 @@ export const TOOLS: Tool[] = [
     properties: { entity_ids: { type: "array", items: { type: "string" }, description: "Qloo ids to probe." } },
     required: ["entity_ids"],
     qloo: (a, s) => 6 * Math.min(strs(a.entity_ids, MAX_EXTRA).length, MAX_EXTRA - s.probes.length) + 2 * (s.crowds?.crowds.length ?? 4) + 2,
+    when: probeWhen,
     async run(a, { qloo, state, status }) {
       if (!state.seed || !state.crowds) return { summary: "build the taste graph first", data: {}, status: "empty" };
       const fresh = strs(a.entity_ids, MAX_EXTRA, 80).filter((id) => !state.probes.includes(id));
       const probes = [...state.probes, ...fresh].slice(0, MAX_EXTRA);
       if (probes.length === state.probes.length) return { summary: `the graph already holds its ${MAX_EXTRA} probes`, data: crowdsOut(state.crowds), status: "thin" };
+      // Probe results are cached by brand and probe set (cachedCrowds), so asking again costs nothing.
       const r = (await cachedCrowds(state.seed, probes)) ?? (await probeCrowds(qloo, state.seed, probes, status));
+      const unchanged = !r?.crowds.length || crowdSignature(r) === crowdSignature(state.crowds);
+      if (state.team) state.team.probe = { ran: state.team.probe.ran + 1, unchanged };
       if (!r?.crowds.length) return { summary: "the probe didn't change the crowds", data: crowdsOut(state.crowds), status: "thin" };
       state.crowds = r;
       state.probes = probes;
       state.geography = undefined;
-      return { summary: crowdLine(r), data: crowdsOut(r) };
+      // New crowds make the ranking stale: it's re-run on the new ones.
+      if (!unchanged) state.fits = undefined;
+      return { summary: `${unchanged ? "the crowds held: " : ""}${crowdLine(r)}`, data: { ...crowdsOut(r), changed: !unchanged }, items: crowdItems(r) };
     },
   },
   {
     name: "crowd_geography",
+    for: ["analyst", "navigator"],
     description:
       "Where each crowd lives across the US: hot clusters that love its taste more than chance allows (with residents), the clusters where it leads every other crowd, and its strongest metros by taste-weighted reach. 1 Qloo call per crowd, about 10–13 s. Needs build_taste_graph first.",
     properties: { crowd_ids: { type: "array", items: { type: "string" }, description: "Crowd ids; all crowds when empty." } },
@@ -299,6 +341,7 @@ export const TOOLS: Tool[] = [
   },
   {
     name: "taste_axes",
+    for: ["analyst", "scout"],
     description: "The directions the measured taste pulls along (named axes with the entities at each end), read from the graph already measured. 0 Qloo calls.",
     properties: {},
     qloo: () => 0,
@@ -314,6 +357,7 @@ export const TOOLS: Tool[] = [
   },
   {
     name: "crowd_bridges",
+    for: ["analyst", "scout"],
     description: "Where two crowds meet: the entities both love, with each side's percentile and a bridge score. The way to reach an adjacent crowd from the one the brand already has. 0 Qloo calls.",
     properties: { crowd_id: { type: "string", description: "The other crowd; the main crowd is the first side." } },
     required: ["crowd_id"],
@@ -327,6 +371,7 @@ export const TOOLS: Tool[] = [
   },
   {
     name: "wikipedia_momentum",
+    for: ["analyst"],
     description:
       "Cultural momentum: monthly English Wikipedia pageviews for up to 6 articles over the last 25 complete months, with yoy (last 3 months against the same 3 a year earlier) and recent (last 3 against the 3 before). Use exact article titles; when one isn't found, the nearest titles come back. 0 Qloo calls.",
     properties: { titles: { type: "array", items: { type: "string" } } },
@@ -346,6 +391,7 @@ export const TOOLS: Tool[] = [
   },
   {
     name: "ticketmaster_events",
+    for: ["promoter"],
     description: "Upcoming Ticketmaster music events in the next 120 days for up to 5 artists within 50 miles of a US metro. 0 Qloo calls.",
     properties: { artists: { type: "array", items: { type: "string" } }, location: { type: "string" } },
     required: ["artists", "location"],
@@ -361,6 +407,7 @@ export const TOOLS: Tool[] = [
   },
   {
     name: "census_market",
+    for: ["navigator"],
     description: "US Census (ACS 2020–2024) population and median household income for up to 8 US metros or places. 0 Qloo calls.",
     properties: { locations: { type: "array", items: { type: "string" } } },
     required: ["locations"],
@@ -380,6 +427,7 @@ export const TOOLS: Tool[] = [
   },
   {
     name: "web_search",
+    for: ["promoter"],
     description: "Google Search through Gemini, for facts outside Qloo: news, launches, retail calendars, festival dates, prices. Returns a short answer with its sources. 0 Qloo calls, about 5–10 s.",
     properties: { query: { type: "string" } },
     required: ["query"],
@@ -402,6 +450,7 @@ export const TOOLS: Tool[] = [
   },
   {
     name: "read_website",
+    for: ["analyst"],
     maxMs: 20_000, // 14 Oct, live: one unreadable site held a run for 90 s
     description: "Reads up to 3 pages of the brand's own website: what it sells, price tier, stockists listed, competitors mentioned. 0 Qloo calls, about 5–15 s.",
     properties: { urls: { type: "array", items: { type: "string" } } },
@@ -418,6 +467,7 @@ export const TOOLS: Tool[] = [
   },
   {
     name: "rank_fits",
+    for: ["analyst"],
     maxMs: 60_000,
     description:
       "Ranks the measured crowds as the brand's most valuable fits: each scored 0–1 on six parameters on fixed scales (brand fit from Qloo; reach: residents of its hot clusters, minus places the brand already sells; efficiency: specificity; cultural momentum: Wikipedia pageviews this year against last; moments: its seasonal attention peaks and Ticketmaster events ahead of today; signal strength: stability and core), combined as a weighted mean, then tiered Win first / Win next / Watch with reasons. " +
@@ -450,6 +500,7 @@ export const TOOLS: Tool[] = [
       },
     },
     qloo: (_a, s) => (s.geography ? 0 : (s.crowds?.crowds.length ?? 5)),
+    when: rankWhen,
     async run(a, { qloo, env, state, sources, status }) {
       if (!state.crowds?.crowds.length) return { summary: "build the taste graph first", data: {}, status: "empty" };
       const known = (v: unknown) => strs(v, 6, 12).filter((id) => sources.has(id));
@@ -506,11 +557,13 @@ export const TOOLS: Tool[] = [
       return {
         summary: r.fits.map((f) => `${f.rank}. ${f.name} (${f.tier.replace("_", " ")}, ${f.score.toFixed(2)})`).join("; "),
         data: { key, fits: out, weights: r.weights, weight_changes: r.changes, left_out_as_already_sold: r.excluded, ignored },
+        items: r.fits.map((f) => ({ id: itemId("crowd", f.name), kind: "crowd", name: f.name, why: `${TIER_LABEL[f.tier]}${f.reasons[0] ? `: ${f.reasons[0]}` : ""}`, group: TIER_LABEL[f.tier], ref: f.crowd })),
       };
     },
   },
   {
     name: "brand_calendar",
+    for: ["promoter"],
     description:
       "The brand's calendar from today: US retail moments (dates by calendar rule), the brand's category seasons and each crowd's attention peaks (both from every year of Wikipedia pageviews since 2015, with the ramp before each peak as its lead time) and its dated events, grouped into now (30 days), next quarter, this season (3–6 months) and the 12-month calendar, plus recurring yearly patterns. " +
       "You give up to 4 exact Wikipedia article titles for the brand's product categories, and any buying lead times you found (each with the source ids that state it; never estimate one). Call rank_fits first so each crowd's moments are included. 0 Qloo calls.",
@@ -563,6 +616,7 @@ export const TOOLS: Tool[] = [
   },
   {
     name: "ask_founder",
+    for: ["analyst", "scout", "navigator", "rep", "matchmaker", "promoter"],
     description:
       "Asks the founder something only they know: budget, goals, margins, capacity, constraints, where they sell now. Never taste (Qloo answers that). Give 2–4 options built from what you've found, the one you recommend first. " +
       "The founder answers later; you carry on now with your recommended option as an assumption and say so. At most 2 per run.",

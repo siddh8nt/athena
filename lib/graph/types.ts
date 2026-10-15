@@ -4,6 +4,8 @@ import type { CrowdsResult, FitsRun } from "@/lib/journey/types";
 import type { StrategyRun } from "@/lib/strategy/types";
 import { TIER_LABEL, type Moment } from "@/lib/fits/types";
 import type { ShapeName } from "./shapes";
+import type { TeamState, Work } from "@/lib/team/types";
+import { nameOf } from "@/lib/agent/specialists";
 
 // The Brand Graph's registry (PRD §13.12, §23.2 step 7): every node type and edge type in one place. A new feature
 // registers its node type here (label, shape, colour, how it folds, what an edit to it changes, and how its nodes come
@@ -19,6 +21,8 @@ export type GraphInput = {
   crowds?: CrowdsResult;
   fits?: FitsRun;
   strategy?: StrategyRun;
+  /** What Athena's specialists found (§23.2 step 8c): each run's results become nodes, cited to its tool calls. */
+  team?: TeamState;
   /** Nodes the founder removed: hidden from the view, still read by the agents. */
   hidden?: string[];
 };
@@ -78,6 +82,7 @@ export const EDGE_TYPES = {
   sold_at: "sold at",
   grows_in: "grows in",
   found_by: "found by",
+  found_for: "found for",
   crowd_of: "crowd of",
   shares_fans: "shares fans with",
   loved_by: "loved by",
@@ -126,6 +131,15 @@ function moments(input: GraphInput): Moment[] {
   const h = input.fits?.calendar.horizons;
   return h ? [...h.now, ...h.next_quarter].slice(0, 4) : [];
 }
+
+/** Result kinds that are someone to reach: the team's leads on the graph (crowds, cities and moments have their own types). */
+const LEAD_KINDS = new Set(["venue", "retailer", "partner", "podcast", "event", "audience", "creator"]);
+/** Leads per specialist on the graph; the rest stay in its workspace. */
+const LEADS_PER_WORK = 6;
+
+/** The nodes a specialist's run adds to the Brand Graph (§23.2 step 8c): its leads, and the Navigator's cities. */
+export const nodesAdded = (w: Pick<Work, "agent" | "results">) =>
+  w.results.filter((x) => LEAD_KINDS.has(x.kind)).slice(0, LEADS_PER_WORK).length + (w.agent === "navigator" ? w.results.filter((x) => x.kind === "city").length : 0);
 
 export const NODE_TYPES: Record<string, NodeType> = {
   brand: {
@@ -270,6 +284,15 @@ export const NODE_TYPES: Record<string, NodeType> = {
           if (cr) out.edges.push(edge("found_by", cr.id, id, `Found by the strategy for ${s.name}: ${w.now ? "start here now" : "go here next"}`, QLOO));
         }
       }
+      const nav = input.team?.works.navigator;
+      for (const r of nav?.results.filter((x) => x.kind === "city") ?? []) {
+        const id = itemKey.city(r.name);
+        if (!seen.has(id)) {
+          seen.add(id);
+          out.nodes.push({ id, type: "city", label: r.name, detail: r.why, source: QLOO, from: "from the Navigator, by Qloo" });
+        }
+        out.edges.push(edge("grows_in", BRAND, id, `The Navigator's pick: ${r.why}`, QLOO));
+      }
       return out;
     },
   },
@@ -353,6 +376,29 @@ export const NODE_TYPES: Record<string, NodeType> = {
         out.nodes.push({ id, type: "moment", label: m.name, detail: m.detail, source, from, when: `${day(m.date)}${m.startBy ? `, start by ${day(m.startBy)}` : ""}` });
         const cr = m.crowd ? crowds.get(m.crowd) : undefined;
         out.edges.push(edge("matters_to", id, cr?.id ?? BRAND, `Matters to ${cr ? cr.c.name : brandName(input.brief)} on ${day(m.date)}`, source));
+      }
+      return out;
+    },
+  },
+  lead: {
+    label: "Found by the team",
+    plural: "What the team found",
+    shape: "pill",
+    colour: "var(--graph-shop)",
+    size: 4,
+    ring: 3,
+    order: 8.5,
+    fold: 2,
+    edit: "none",
+    from: ({ team }) => {
+      const out: Graph = { nodes: [], edges: [] };
+      for (const w of Object.values(team?.works ?? {})) {
+        if (!w) continue;
+        for (const r of w.results.filter((x) => LEAD_KINDS.has(x.kind)).slice(0, LEADS_PER_WORK)) {
+          const id = `lead:${r.id}`;
+          out.nodes.push({ id, type: "lead", label: r.name, detail: r.why, source: QLOO, from: `from the ${nameOf(w.agent)}, by Qloo` });
+          out.edges.push(edge("found_for", id, BRAND, `${nameOf(w.agent)}: ${r.why}`, QLOO));
+        }
       }
       return out;
     },

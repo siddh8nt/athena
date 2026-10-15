@@ -1,5 +1,6 @@
 import type { Galaxy } from "@/lib/taste/galaxy";
 import type { GraphState } from "@/lib/graph/edit";
+import type { TeamState } from "@/lib/team/types";
 import type { Calendar, FitsAnswer, FitsResult, SourceRef } from "@/lib/fits/types";
 import type { Geography } from "@/lib/geo/types";
 import type { StrategyRun } from "@/lib/strategy/types";
@@ -97,6 +98,8 @@ export type Journey = {
   city?: string;
   /** The Brand Graph's edits (§23.2 step 7): hidden nodes, the edit log with Undo, and the runs held until re-run. */
   graph?: GraphState;
+  /** Athena's team (§23.2 step 8): the goals, each specialist's work and the founder's outcome marks. */
+  team?: TeamState;
 };
 
 /** One fits run as the journey keeps it; `key` is what it was ranked from. */

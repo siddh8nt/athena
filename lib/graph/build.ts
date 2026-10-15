@@ -8,7 +8,7 @@ import { NODE_TYPES, typesInOrder, type Graph, type GraphEdge, type GraphInput, 
 export const FOLD_AT = 12;
 
 /** How many nodes the graph shows before it folds more types: it grows as each run adds its results. */
-export const budgetFor = (input: GraphInput) => 25 + (input.fits ? 6 : 0) + (input.strategy ? 6 : 0);
+export const budgetFor = (input: GraphInput) => 25 + (input.fits ? 6 : 0) + (input.strategy ? 6 : 0) + (input.team && Object.keys(input.team.works).length ? 8 : 0);
 
 /** The label a node's source shows: "from your website", "from deck.pdf, slide 4", "from Qloo", "from you". */
 export const fromLabel = (n: GraphNode) => n.from ?? sourceLabel(n.source, n.confirmed);

@@ -80,6 +80,11 @@ export const LIMITS = {
     const t = take(`strategy:${ip}`, 12, HOUR);
     return t.ok ? { ok: true as const } : { ok: false as const, message: `Athena reads your context again in about ${t.retryInMin} minutes; the strategies below are built from what you've given.` };
   },
+  /** The team's runs (§23.2 step 8): 12 model-led runs per IP per hour; past it, the specialists decide by code's evidence rules. */
+  team(ip: string) {
+    const t = take(`team:${ip}`, 12, HOUR);
+    return t.ok ? { ok: true as const } : { ok: false as const, message: "" };
+  },
   /** Crowd geography (§9.26): 10 new maps per IP per hour, one Qloo call per crowd (cached maps don't count). */
   geography(ip: string) {
     const t = take(`geo:${ip}`, 10, HOUR);

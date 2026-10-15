@@ -44,8 +44,15 @@ Athena is a Qloo hackathon entry; submission is **28 Oct**, the only real date. 
 | 4 Crawl and ingestion | done, verified live | 8a631fb |
 | 5 Most valuable fits | done, verified live | 70a18af |
 | 6 A strategy for every most valuable fit | done, verified live (cloud build, then local fixes) | 38165ff, 2ffd839 |
-| **7 The Brand Graph** | **not started: build this** | none |
-| 8–10 | not started; **out of scope here** | none |
+| 7 The Brand Graph, 7.1, 7.2 | done, verified locally | 743c5e7, 22bf521, 475e995 |
+| **8 Goals: Athena leads six specialists** | **built and unit-tested on fixtures (15 Oct); awaiting the founder's live run; not committed** | none |
+| 9–10 | not started; **out of scope here** | none |
+
+**Step 8 state (15 Oct):**
+- Built: `/api/team` (propose, custom, run, ask, analyst); `lib/agent/{specialists,goals,plays,team,team-ctx,outcomes,evidence,draft}.ts`; `lib/team/`; `components/Team.tsx`; Journey wiring (goals bar, left panel, workspaces, What's working, "Ask the Analyst about this").
+- Tested: `tests/team.test.ts` and `tests/team-run.test.ts` cover two brands' paths, the weak crowd, the empty city (the Rep widens to the Navigator's next city), the one-way partner (dropped, the ask goes to the next), outcomes changing the next run, a new play as one registry entry, home-city goals, run records. 382 tests, tsc clean, build clean; browser check at 1280 and 375 on fixtures.
+- Fixes found by the tests: picked goals with a comma in the label ("Win more of Portland, OR") were lost; "win more of home" chose a new city; `t.goals` held labels, so step-up never triggered; result refs and the pitch used item ids instead of Qloo ids.
+- Still needs a live run: the model deciding (not code's rules), real neighbourhood names, mutual fit on live Qloo, re-runs after a live probe.
 
 **Step 6's live result** (Fishwife, about 113 Qloo calls per run):
 - every top fit gets its own sourced strategy;

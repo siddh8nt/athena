@@ -56,7 +56,10 @@ vi.mock("@/lib/knowledge/extract", () => ({
   extractDoc: async () => ({ facts: [], rounds: 1, added: 0, clean: true, ms: 1 }),
 }));
 vi.mock("@/lib/knowledge/site", () => ({
-  readSite: async () => ({
+  readSite: async (_site: string, opts: { page?: (p: { url: string; title?: string; state: string; facts?: unknown[] }) => void } = {}) => ({
+    ...(opts.page?.({ url: "https://www.eatfishwife.com/pages/about", title: "Our Story | Fishwife", state: "running" }),
+    opts.page?.({ url: "https://www.eatfishwife.com/pages/about", title: "Our Story | Fishwife", state: "ok", facts: [fact("w1", "Tinned fish from the Pacific Northwest", "website", "https://www.eatfishwife.com/pages/about")] }),
+    {}),
     facts: [fact("w1", "Tinned fish from the Pacific Northwest", "website", "https://www.eatfishwife.com/pages/about")],
     coverage: { source: "https://eatfishwife.com", facts: 1, added: 0, clean: true },
   }),
@@ -88,6 +91,12 @@ describe("building the knowledge base", () => {
       expect(steps).toContain(`running ${why}`);
       expect(steps).toContain(`ok ${why}`);
     }
+    // Each page is its own line under the site's step, named for the page and saying what it found.
+    const pages = events.filter((e) => e.tool === "read_page");
+    expect(pages.map((e) => e.status)).toEqual(["running", "ok"]);
+    expect(pages.every((e) => e.under === "Reading eatfishwife.com" && e.source?.url === "https://www.eatfishwife.com/pages/about")).toBe(true);
+    expect(pages[1].line).toMatch(/^Read the Our Story page: /);
+    expect(pages[1].found).toEqual(["Tinned fish from the Pacific Northwest"]);
     expect(k.knowledge.conflicts).toHaveLength(1);
     expect(k.knowledge.coverage.every((c) => c.clean)).toBe(true);
     // Athena's pick is in use; the other side is set aside, not given to the agent.

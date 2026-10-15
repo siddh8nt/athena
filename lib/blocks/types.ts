@@ -35,6 +35,14 @@ export type AgentEvent = {
   status: "running" | "ok" | "empty" | "thin" | "error" | "needs_input";
   callIds: string[];
   summary: string;
+  /** Onboarding's transcript (§23.2 step 7.2d): the step as a finished sentence ("Read the About page: founded 2018 in Oakland"). */
+  line?: string;
+  /** The step this one sits under (its why), so a site's pages fold under reading the site. */
+  under?: string;
+  /** What it read, for the line's "source" when it opens: a site or page, a file, the summary. */
+  source?: { label: string; url?: string };
+  /** A few of the facts it found, shown when the line opens. */
+  found?: string[];
 };
 
 export type BlockContext = {

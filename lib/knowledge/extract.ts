@@ -79,7 +79,7 @@ const clean = (raw: unknown): Taken[] =>
 const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9$%.]+/g, " ").trim();
 
 /** One piece (a text chunk or a batch of parts): read it, then the coverage rounds. */
-async function readPiece(doc: Doc, text: string, parts: Part[], left: () => number): Promise<{ facts: Taken[]; rounds: number; added: number; clean: boolean }> {
+async function readPiece(doc: Doc, text: string, parts: Part[], left: () => number, most = ROUNDS): Promise<{ facts: Taken[]; rounds: number; added: number; clean: boolean }> {
   const files = parts.map((p) => ({ mime: p.mime, base64: b64(p.data) }));
   const head = `Source: ${doc.ref} (${doc.kind}${doc.fileKind ? `, ${doc.fileKind}` : ""})${doc.note ? `\n${doc.note}` : ""}${parts.length ? `\nAttached, in order: ${parts.map((p, i) => `${i + 1}) ${p.label}`).join("; ")}` : ""}`;
   const body = text ? `\n\n${text}` : "";
@@ -91,7 +91,7 @@ async function readPiece(doc: Doc, text: string, parts: Part[], left: () => numb
   let rounds = 0;
   let added = 0;
   let empty = false;
-  while (rounds < ROUNDS && left() > 15_000) {
+  while (rounds < most && left() > 15_000) {
     rounds++;
     const seen = new Set(facts.map((f) => norm(f.text)));
     const more = (await ask(`${SYSTEM}\n\n${COVER}`, `${head}${body}\n\nFacts already taken:\n${facts.map((f) => `- ${f.text}${f.at ? ` [${f.at}]` : ""}`).join("\n")}`)).filter((f) => !seen.has(norm(f.text)));
@@ -109,7 +109,7 @@ async function readPiece(doc: Doc, text: string, parts: Part[], left: () => numb
  * Reads a source into located facts, from the store when this exact source was read before. `scope` keeps one
  * founder's extractions apart from another's (their workspace), so deleting a file deletes only theirs.
  */
-export async function extractDoc(doc: Doc, opts: { scope: string; status?: (s: string) => void; ms?: number }): Promise<Extraction> {
+export async function extractDoc(doc: Doc, opts: { scope: string; status?: (s: string) => void; ms?: number; rounds?: number }): Promise<Extraction> {
   const t0 = Date.now();
   const key = `${opts.scope}:${doc.hash}`;
   const store = getStore();
@@ -121,7 +121,7 @@ export async function extractDoc(doc: Doc, opts: { scope: string; status?: (s: s
   const done: Awaited<ReturnType<typeof readPiece>>[] = [];
   let next = 0;
   const worker = async () => {
-    for (let i = next++; i < pieces.length; i = next++) done[i] = await readPiece(doc, pieces[i].text, pieces[i].parts, left).catch(() => ({ facts: [] as Taken[], rounds: 0, added: 0, clean: false }));
+    for (let i = next++; i < pieces.length; i = next++) done[i] = await readPiece(doc, pieces[i].text, pieces[i].parts, left, opts.rounds).catch(() => ({ facts: [] as Taken[], rounds: 0, added: 0, clean: false }));
   };
   await Promise.all(Array.from({ length: Math.min(AT_ONCE, pieces.length) }, worker));
   const out: Extraction = {
@@ -156,32 +156,45 @@ export function toFacts(doc: Doc, x: Extraction, pages: string[] = []): Fact[] {
 
 // ---- The website ------------------------------------------------------------------------------------------
 
-/** A crawl as one located document: each page under its URL, with its title, description and schema.org data. */
-export function siteDoc(c: Crawl): Doc {
-  // Menus and footers repeat on every page: keep each repeated line once, on the first page it's on.
+/** What tells a reader about the store's catalogue, given with every page when the products were read in code. */
+const catalogueNote = (c: Crawl) =>
+  c.products.length
+    ? `The store's catalogue (${c.products.length} products, each with its price) is already recorded from the catalogue itself: name a product or price only to say something the catalogue doesn't, such as what sells best or how the range is grouped.`
+    : undefined;
+
+/**
+ * A crawl as one located document per page (§23.2 step 7.2f: a site is read page by page, so each page reports as it
+ * lands): each under its URL, with its title, description and schema.org data. Menus and footers repeat on every
+ * page, so each repeated line is kept once, on the first page it's on.
+ */
+export function pageDocs(c: Crawl): Doc[] {
   const on = new Map<string, number>();
   for (const p of c.pages) for (const l of new Set(p.text.split("\n").map((s) => s.trim()).filter(Boolean))) on.set(l, (on.get(l) ?? 0) + 1);
   const shared = (l: string) => (on.get(l) ?? 0) >= Math.max(3, c.pages.length * 0.4);
   const kept = new Set<string>();
-  const text = c.pages
-    .map((page) => {
-      const body = page.text
-        .split("\n")
-        .map((s) => s.trim())
-        .filter((l) => l && (!shared(l) || (!kept.has(l) && kept.add(l))))
-        .join("\n");
-      const p = { ...page, text: body };
-      const ld = p.jsonld
-        .filter((j) => /Organization|Brand|Product|Offer|Store|LocalBusiness|FAQ/i.test(String(j["@type"])))
-        .slice(0, 6)
-        .map((j) => JSON.stringify(j).slice(0, 1_500))
-        .filter((j) => !kept.has(j) && kept.add(j));
-      return [`[${p.url}]`, p.title ? `Title: ${p.title}` : "", p.description ? `Description: ${p.description}` : "", ...ld.map((j) => `schema.org: ${j}`), p.text].filter(Boolean).join("\n");
-    })
+  const note = catalogueNote(c);
+  return c.pages.map((page) => {
+    const body = page.text
+      .split("\n")
+      .map((s) => s.trim())
+      .filter((l) => l && (!shared(l) || (!kept.has(l) && kept.add(l))))
+      .join("\n");
+    const ld = page.jsonld
+      .filter((j) => /Organization|Brand|Product|Offer|Store|LocalBusiness|FAQ/i.test(String(j["@type"])))
+      .slice(0, 6)
+      .map((j) => JSON.stringify(j).slice(0, 1_500))
+      .filter((j) => !kept.has(j) && kept.add(j));
+    const text = [`[${page.url}]`, page.title ? `Title: ${page.title}` : "", page.description ? `Description: ${page.description}` : "", ...ld.map((j) => `schema.org: ${j}`), body].filter(Boolean).join("\n");
+    return { kind: "website" as const, ref: page.url, hash: sha256(`${note ?? ""}\n${text}`), text, note, parts: [], stockists: [], status: "Read the page" };
+  });
+}
+
+/** A crawl as one located document: its pages one after another. */
+export function siteDoc(c: Crawl): Doc {
+  const text = pageDocs(c)
+    .map((d) => d.text)
     .join("\n\n");
-  const note = c.products.length
-    ? `The store's catalogue (${c.products.length} products, each with its price) is already recorded from the catalogue itself: name a product or price only to say something the catalogue doesn't, such as what sells best or how the range is grouped.`
-    : undefined;
+  const note = catalogueNote(c);
   return { kind: "website", ref: c.site, hash: sha256(`${note ?? ""}\n${text}`), text, note, parts: [], stockists: [], status: `Read ${c.pages.length} page${c.pages.length === 1 ? "" : "s"}${c.products.length ? ` and ${c.products.length} products` : ""}` };
 }
 

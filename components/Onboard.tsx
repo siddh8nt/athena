@@ -1,38 +1,32 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { flushSync } from "react-dom";
 import type { AgentEvent } from "@/lib/blocks/types";
 import type { AgentStreamEvent } from "@/lib/agent/loop";
 import type { BrandBrief } from "@/lib/brief/types";
 import { liveFacts, type Knowledge, type LiveFact } from "@/lib/knowledge/types";
 import type { Upload } from "@/lib/knowledge/uploads";
-import { CONTEXT_PROMPT, PASTED } from "@/lib/agent/context-prompt";
+import { CONTEXT_PROMPT } from "@/lib/agent/context-prompt";
+import { checklistLine, type CheckItem } from "@/lib/agent/checklist";
+import { addEvent, lineDetail, lineText, settleRun, type Line } from "@/lib/agent/transcript";
 import { ACCEPT } from "./chat";
 import { Question, type Asked } from "./Question";
 import { KnowledgePanel, Settle } from "./Knowledge";
 import { workspace } from "@/lib/knowledge/workspace";
 
-// Onboarding (PRD §23.2 steps 3–4, problem 3): three ways in (a website, files, a summary from the founder's own AI
-// assistant), then Athena does the work while the founder watches each real step. Files are kept for the founder
-// as soon as they're added (in their workspace, until they remove them) and read straight away; a meter shows how
-// much fits. After the read, "What I kept" lists every fact with where it is, to strike; where sources disagree,
-// a one-click choice. Questions arrive as cards that never block; a steering box re-runs with a nudge.
+// Onboarding as a workspace (PRD §23.2 step 7.2). First, one box: the founder types, pastes or drops anything, and
+// the model sorts it (a website, files, notes or an AI summary). On send the box docks at the bottom as the steering
+// box, the live transcript fills the middle with the agent's checklist pinned on top, and the Brand Graph slides in
+// from the right; what Athena kept and the conflicts to settle sit beside it. On a phone the three are tabs. Files
+// are kept for the founder as soon as they're added and read on the next run; questions arrive as cards that never
+// block, and anything typed mid-run goes in as soon as the run in progress is done.
 
-type Step = AgentEvent & { key: string; seen: number };
 type Answer = { question: string; answer: string };
 type Kept = Upload & { kept?: boolean };
 type Meter = { tokens: number; max: number; pages: number; maxPages: number; over: boolean };
-
-const TOOL_LABEL: Record<string, string> = {
-  read_file: "Read",
-  read_website: "Website",
-  web_search: "Web",
-  qloo_search: "Qloo",
-  ask_founder: "Question",
-  compare: "Compare",
-  check: "Check",
-  plan: "Read",
-};
+type View = "transcript" | "brand" | "kept";
+type Hint = "website" | "context" | "words";
 
 /** One SSE stream, event by event. */
 async function stream(body: FormData, on: (e: AgentStreamEvent) => void) {
@@ -55,6 +49,41 @@ async function stream(body: FormData, on: (e: AgentStreamEvent) => void) {
 }
 
 const fmt = (n: number) => n.toLocaleString("en-US");
+const said = (tool: string, why: string, found?: string[]): AgentEvent => ({ t: 0, tool, why, status: "ok", callIds: [], summary: "", found });
+
+/** Small line icons, drawn in the text colour. */
+const ICONS = {
+  file: "M7 3h7l5 5v13H7zM14 3v5h5",
+  globe: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z",
+  spark: "M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM18.5 15.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z",
+  pen: "M4 20l4-1 11-11-3-3L5 16zM14 6l3 3",
+  up: "M12 19V5M6 11l6-6 6 6",
+};
+function Icon({ d, size = 16 }: { d: keyof typeof ICONS; size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d={ICONS[d]} />
+    </svg>
+  );
+}
+
+/** Athena's small mark. */
+export function Mark({ size = 22 }: { size?: number }) {
+  return (
+    <svg className="ob-mark" width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden>
+      <circle cx="12" cy="12" r="10.5" stroke="currentColor" strokeWidth="1.3" />
+      <path d="M7.5 16.5L12 7l4.5 9.5M9.3 13h5.4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+/** Runs the switch to the workspace as one glide of the box, where the browser can. */
+function glide(go: () => void) {
+  const doc = document as Document & { startViewTransition?: (f: () => void) => unknown };
+  const still = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+  if (doc.startViewTransition && !still) doc.startViewTransition(() => flushSync(go));
+  else go();
+}
 
 export function Onboard({
   brief,
@@ -62,29 +91,41 @@ export function Onboard({
   addFiles,
   setFiles,
   onBrief,
+  onFacts,
+  graph,
+  dock,
 }: {
   brief: BrandBrief;
   files: File[];
   addFiles: (f: FileList | File[]) => void;
   setFiles: (f: File[]) => void;
-  onBrief: (brief: BrandBrief, assumptions: string[], facts: LiveFact[]) => void;
+  /** early: the first brief from the home and About pages, replaced in place by the full one. */
+  onBrief: (brief: BrandBrief, assumptions: string[], facts: LiveFact[], early?: boolean) => void;
+  /** Everything read, into the graph as soon as it's read, before the brief is written. */
+  onFacts: (facts: LiveFact[]) => void;
+  graph: ReactNode;
+  dock: ReactNode;
 }) {
-  const [site, setSite] = useState("");
-  const [pasted, setPasted] = useState("");
-  const [bring, setBring] = useState(false);
+  const had = !!brief.name;
+  const [phase, setPhase] = useState<"first" | "work">(had ? "work" : "first");
+  const [text, setText] = useState("");
+  const [hint, setHint] = useState<Hint>();
   const [copied, setCopied] = useState(false);
-  const [steps, setSteps] = useState<Step[]>([]);
+  const [showPrompt, setShowPrompt] = useState(false);
+  const [lines, setLines] = useState<Line[]>([]);
+  const [thinking, setThinking] = useState<string>();
+  const [items, setItems] = useState<CheckItem[]>();
+  const [planOpen, setPlanOpen] = useState(false);
+  const [open, setOpen] = useState<Set<string>>(new Set());
   const [running, setRunning] = useState(false);
-  const [started, setStarted] = useState(0);
-  const [now, setNow] = useState(0);
   const [asks, setAsks] = useState<Asked[]>([]);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [pending, setPending] = useState<Answer[]>([]);
+  const [queued, setQueued] = useState<string[]>([]);
   const [again, setAgain] = useState(false);
-  const [steer, setSteer] = useState("");
-  const [open, setOpen] = useState<string>();
   const [note, setNote] = useState("");
-  const [wrote, setWrote] = useState<string[]>();
+  const [briefNote, setBriefNote] = useState("");
+  const [view, setView] = useState<View>("transcript");
   const [ws, setWs] = useState("");
   const [kept, setKept] = useState<Kept[]>([]);
   const [meter, setMeter] = useState<Meter>();
@@ -98,8 +139,15 @@ export function Onboard({
   const [refiled, setRefiled] = useState(false);
   const [picked, setPicked] = useState<Record<string, number>>({});
   const [inUse, setInUse] = useState<Record<string, number>>({});
+  // What the model sorted out of the box, kept for the runs after (§23.2 step 7.2b).
+  const [websites, setWebsites] = useState<string[]>([]);
+  const [pasted, setPasted] = useState("");
   const pick = useRef<HTMLInputElement>(null);
-  const had = !!brief.name;
+  const box = useRef<HTMLTextAreaElement>(null);
+  const runs = useRef(0);
+  const sent = useRef<Set<string>>(new Set());
+  const busy = useRef(false);
+  const end = useRef<HTMLDivElement>(null);
 
   // The workspace and the files already kept in it.
   useEffect(() => {
@@ -114,7 +162,8 @@ export function Onboard({
       .catch(() => undefined);
   }, []);
 
-  // Files dropped or chosen anywhere go up one by one: kept, counted and read while the founder carries on.
+  // Files dropped, pasted or chosen anywhere go up one by one: kept, counted and read on the next run. Mid-run, the
+  // next run starts as soon as this one is done.
   useEffect(() => {
     if (!ws || !files.length) return;
     const batch = files;
@@ -128,7 +177,10 @@ export function Onboard({
         try {
           const j = (await (await fetch("/api/uploads", { method: "POST", body: form })).json()) as { file: Kept & { kept: boolean; status: string }; files: Kept[]; meter: Meter };
           if (j.files) setKept(j.files);
-          if (j.file?.kept) setRefiled(true);
+          if (j.file?.kept) {
+            setRefiled(true);
+            if (busy.current) setAgain(true);
+          }
           if (j.meter) setMeter(j.meter);
           if (!j.file?.kept) setNotes((n) => ({ ...n, [f.name]: j.file?.status ?? "Send it again in a moment" }));
         } catch {
@@ -157,86 +209,98 @@ export function Onboard({
     }
   }
 
-  // A clock on the running step: slow reads are narrated, never silent.
-  useEffect(() => {
-    if (!running) return;
-    const t = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(t);
-  }, [running]);
-
   // Over the limit, the founder chooses: files are in until they leave one out.
   const chosen = kept.filter((u) => !left.has(u.hash));
   const chosenTokens = chosen.reduce((n, u) => n + u.tokens, 0);
   const over = !!meter && chosenTokens > meter.max;
-  const any = !!site.trim() || !!chosen.length || !!pasted.trim();
 
-  async function run(extra: { steer?: string; answers?: Answer[] } = {}) {
-    if (running) return;
+  async function run(extra: { said?: string; answers?: Answer[] } = {}) {
+    if (busy.current) return;
+    busy.current = true;
+    const n = ++runs.current;
+    const fresh = chosen.filter((u) => !sent.current.has(u.hash));
     const form = new FormData();
-    form.set("websites", site);
-    if (pasted.trim()) form.set("pasted", pasted);
+    form.set("websites", websites.join(" "));
+    if (pasted) form.set("pasted", pasted);
+    if (extra.said) form.set("said", extra.said);
     form.set("ws", ws);
     form.set("hashes", JSON.stringify(chosen.map((u) => u.hash)));
     form.set("struck", JSON.stringify([...struck]));
     form.set("settled", JSON.stringify(picked));
-    if (extra.steer) form.set("steer", extra.steer);
     if (extra.answers?.length) form.set("answers", JSON.stringify(extra.answers));
     if (brief.name) {
       form.set("brief", JSON.stringify(brief));
       form.set("name", brief.name.value);
     }
+    for (const u of chosen) sent.current.add(u.hash);
     setRunning(true);
-    setStarted(Date.now());
-    setNow(Date.now());
-    setSteps([]);
     setNote("");
-    setOpen(undefined);
-    setWrote(undefined);
     setSentStruck([...struck].sort().join());
     setRefiled(false);
+    if (extra.said || fresh.length)
+      setLines((l) => [...l, { key: `${n}:you`, run: n, ev: said("you", extra.said ?? "", fresh.map((u) => u.name)), pages: [] }]);
+    if (extra.said) setItems(undefined);
     let got = false;
+    let early = false;
     let read: { kb: Knowledge; settled: Record<string, number> } | undefined;
     try {
       await stream(form, (e) => {
         if (e.type === "event") {
           const ev = e.event;
-          setSteps((s) => {
-            // A finished step replaces its running line; "think" lines are only ever the latest.
-            const rest = s.filter((x) => x.tool !== "think");
-            const i = ev.status === "running" ? -1 : rest.findIndex((x) => x.status === "running" && x.tool === ev.tool && x.why === ev.why);
-            const step = { ...ev, key: `${ev.tool}:${ev.why}:${ev.t}`, seen: Date.now() };
-            if (i >= 0) return rest.map((x, k) => (k === i ? { ...step, key: x.key, seen: x.seen } : x));
-            return [...rest, step];
-          });
-        } else if (e.type === "knowledge") {
+          if (ev.tool === "think") return setThinking(ev.status === "running" ? ev.why : undefined);
+          setThinking(undefined);
+          setLines((l) => addEvent(l, ev, n));
+        } else if (e.type === "sorted") {
+          setWebsites(e.websites);
+          setPasted(e.pasted ?? "");
+        } else if (e.type === "checklist") setItems(e.items);
+        else if (e.type === "knowledge") {
           setKb(e.knowledge);
           setInUse(e.settled);
           read = { kb: e.knowledge, settled: e.settled };
+          onFacts(liveFacts(e.knowledge, e.settled));
+          if (e.knowledge.conflicts.length)
+            setLines((l) => addEvent(l, said("settle", `Your sources disagree on ${e.knowledge.conflicts.length === 1 ? "one thing" : `${e.knowledge.conflicts.length} things`}: my pick is in use until you choose`), n));
         } else if (e.type === "ask") setAsks((a) => [...a.filter((x) => x.question !== e.ask.question), e.ask]);
-        else if (e.type === "brief") {
+        else if (e.type === "brief" && e.early) {
+          early = true;
+          onBrief(e.brief, [], read ? liveFacts(read.kb, read.settled) : [], true);
+          setBriefNote("A first brief from your home and About pages; the full read keeps adding to it.");
+        } else if (e.type === "brief") {
           got = true;
-          setWrote(e.assumptions);
           onBrief(e.brief, e.assumptions, read ? liveFacts(read.kb, read.settled) : []);
+          setBriefNote(early ? "Updated in place with everything I read." : "");
+          setLines((l) =>
+            addEvent(l, said("brief", early || had ? "Updated your brief: every fact with where it came from" : "Wrote your brief: every fact with where it came from", e.assumptions.map((a) => `Assumed: ${a}`)), n),
+          );
         }
       });
     } catch {
       // Never a failure state: the inputs stay as they are, and one tap tries again.
     }
+    busy.current = false;
     setRunning(false);
-    setSteps((s) => s.filter((x) => x.tool !== "think" && x.status !== "running"));
+    setThinking(undefined);
+    setLines((l) => settleRun(l, n));
     if (!got) setNote("Send it again and I'll pick up from here.");
   }
 
-  // Answers and choices given while a run is going wait for it, then go in together.
+  // Messages, answers, choices and files given while a run is going wait for it, then go in together.
   useEffect(() => {
-    if (!running && (pending.length || again)) {
+    if (!running && (pending.length || queued.length || again)) {
       const a = pending;
+      const q = queued;
       setPending([]);
+      setQueued([]);
       setAgain(false);
-      void run({ answers: a });
+      void run({ answers: a, said: q.join("\n") || undefined });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [running, pending, again]);
+  }, [running, pending, queued, again]);
+
+  useEffect(() => {
+    end.current?.scrollIntoView({ block: "end", behavior: "smooth" });
+  }, [lines.length, asks.length]);
 
   const answer = (q: Asked, a: string) => {
     setAnswers((x) => ({ ...x, [q.id]: a }));
@@ -256,18 +320,65 @@ export function Onboard({
       return n;
     });
 
-  const secs = (ms: number) => `${Math.max(0, Math.round(ms / 1000))} s`;
-  const last = steps.at(-1);
   const restruck = [...struck].sort().join() !== sentStruck;
+  const any = !!text.trim() || chosen.some((u) => !sent.current.has(u.hash));
 
-  // The kept files, each with ✕ to remove it and everything read from it; shown before and after the brief.
-  const fileList = (
+  function send() {
+    const t = text.trim();
+    if (adding.length || over || (!t && !any)) return;
+    setText("");
+    setHint(undefined);
+    if (phase === "first") glide(() => setPhase("work"));
+    if (running) {
+      // Steering mid-run: shown now, read as soon as this run is done.
+      if (t) {
+        setLines((l) => [...l, { key: `${runs.current}:later:${l.length}`, run: runs.current, ev: { ...said("you", t), summary: "I'll take this in as soon as this pass is done" }, pages: [] }]);
+        setQueued((q) => [...q, t]);
+      }
+      return;
+    }
+    void run({ said: t || undefined });
+  }
+
+  const copyPrompt = () => {
+    setHint("context");
+    box.current?.focus();
+    void navigator.clipboard?.writeText(CONTEXT_PROMPT).then(
+      () => setCopied(true),
+      () => setShowPrompt(true),
+    );
+    if (!navigator.clipboard) setShowPrompt(true);
+  };
+  const askSite = () => {
+    setHint("website");
+    box.current?.focus();
+  };
+  const askWords = () => {
+    setHint("words");
+    box.current?.focus();
+  };
+
+  const docked = phase === "work";
+  const placeholder =
+    hint === "website"
+      ? "Paste your website, like yourbrand.com, and anything else I should know"
+      : hint === "context"
+        ? "Paste your assistant's answer here"
+        : hint === "words"
+          ? "e.g. We make tinned fish with playful packaging, about $9 a tin, sold online and in 1,500 shops"
+          : docked
+            ? running
+              ? "Steer me, or add files, while I work"
+              : "Anything to correct or focus on? Or drop more files"
+            : "Type or paste anything about your brand";
+
+  const chips = (
     <>
       {(!!kept.length || !!adding.length) && (
-        <ul className="kb-files">
+        <ul className="ob-files" aria-label="Your files">
           {kept.map((u) => (
-            <li key={u.hash} className={left.has(u.hash) ? "kb-left" : ""}>
-              {over || left.has(u.hash) ? (
+            <li key={u.hash} className={`ob-file ${left.has(u.hash) ? "ob-file-left" : ""}`}>
+              {(over || left.has(u.hash)) && (
                 <input
                   type="checkbox"
                   checked={!left.has(u.hash)}
@@ -280,117 +391,257 @@ export function Onboard({
                     })
                   }
                 />
-              ) : null}
-              <span className="kb-file-name">{u.name}</span>
-              <small className="muted">
-                {u.status} · about {fmt(u.pages)} page{u.pages === 1 ? "" : "s"}
-              </small>
+              )}
+              <Icon d="file" size={13} />
+              <span className="ob-file-name" title={`${u.status} · about ${fmt(u.pages)} page${u.pages === 1 ? "" : "s"}`}>{u.name}</span>
               <button type="button" className="linkish" aria-label={`Remove ${u.name}`} title="Remove the file and everything read from it" onClick={() => void remove(u)}>
                 ✕
               </button>
-              {notes[u.name] && <small className="muted kb-file-note">{notes[u.name]}</small>}
             </li>
           ))}
           {adding.map((n, i) => (
-            <li key={`${n}${i}`}>
-              <span className="spin" aria-hidden />
-              <span className="kb-file-name">{n}</span>
-              <small className="muted">Keeping and counting it</small>
+            <li key={`${n}${i}`} className="ob-file ob-file-adding">
+              <Icon d="file" size={13} />
+              <span className="ob-file-name">{n}</span>
+              <small className="muted">keeping it</small>
             </li>
           ))}
         </ul>
       )}
-      {Object.entries(notes)
-        .filter(([n]) => !kept.some((u) => u.name === n))
-        .map(([n, t]) => (
-          <small key={n} className="muted">
-            {n}: {t}
-          </small>
-        ))}
-      {meter && kept.length > 0 && (
-        <p className={`muted small kb-meter ${over ? "kb-over" : ""}`}>
-          About {fmt(meter.maxPages)} pages max; you&apos;ve added about {fmt(chosen.reduce((n, u) => n + u.pages, 0))}.
-          {over && " That's more than I can read at once: untick what to leave out this time."}
-        </p>
+      {Object.entries(notes).map(([n, t]) => (
+        <small key={n} className="muted ob-file-note">
+          {n}: {t}
+        </small>
+      ))}
+      {over && meter && (
+        <small className="muted ob-file-note">
+          That&apos;s more than I can read at once (about {fmt(meter.maxPages)} pages): untick what to leave out this time.
+        </small>
       )}
     </>
   );
 
-  return (
-    <div className="onboard">
-      <input
-        ref={pick}
-        type="file"
-        multiple
-        accept={ACCEPT}
-        hidden
-        onChange={(e) => {
-          if (e.target.files) addFiles(e.target.files);
-          e.target.value = "";
+  const composer = (
+    <form
+      className={`ob-box ${docked ? "ob-box-docked" : ""}`}
+      onSubmit={(e) => {
+        e.preventDefault();
+        send();
+      }}
+    >
+      {chips}
+      <textarea
+        ref={box}
+        autoFocus={!docked}
+        rows={docked ? 1 : 4}
+        value={text}
+        maxLength={30_000}
+        aria-label="Tell Athena about your brand"
+        placeholder={placeholder}
+        onChange={(e) => setText(e.target.value)}
+        onPaste={(e) => {
+          if (e.clipboardData.files.length) {
+            e.preventDefault();
+            addFiles(e.clipboardData.files);
+          }
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            send();
+          }
         }}
       />
-      {!had && !running && (
-        <div className="onboard-ways">
-          <p className="onboard-lead">Give me whatever you have. I&apos;ll read it all, look you up, and only ask what I can&apos;t find.</p>
-          <label className="onboard-way">
-            <span>Your website</span>
-            <input type="text" inputMode="url" value={site} placeholder="yourbrand.com (skip if you don't have one)" onChange={(e) => setSite(e.target.value)} />
-          </label>
-          <div className="onboard-way">
-            <span>Files</span>
-            <div className="onboard-drop" onClick={() => pick.current?.click()} role="button" tabIndex={0} onKeyDown={(e) => e.key === "Enter" && pick.current?.click()}>
-              Drop or choose decks, line sheets, stockist lists, sales exports, photos
-              <small className="muted">PDF, slides, sheets, docs, images. Kept for you and read in full; remove any of them any time.</small>
-            </div>
-            {fileList}
-          </div>
-          <div className="onboard-way">
-            <button type="button" className="linkish onboard-bring" aria-expanded={bring} onClick={() => setBring((b) => !b)}>
-              {bring ? "▾" : "▸"} Bring your context from ChatGPT, Claude or Gemini
+      <div className="ob-box-row">
+        <button type="button" className="ob-chip" onClick={() => pick.current?.click()}>
+          <Icon d="file" size={14} /> Files
+        </button>
+        {!docked && (
+          <>
+            <button type="button" className={`ob-chip ${hint === "website" ? "on" : ""}`} onClick={askSite}>
+              <Icon d="globe" size={14} /> Website
             </button>
-            {bring && (
-              <div className="onboard-bring-body">
-                <p className="muted small">Paste this into the assistant you&apos;ve talked to about your business, then paste its answer below.</p>
-                <pre className="onboard-prompt">{CONTEXT_PROMPT}</pre>
-                <button
-                  type="button"
-                  onClick={() => {
-                    void navigator.clipboard?.writeText(CONTEXT_PROMPT).then(() => setCopied(true));
-                  }}
-                >
-                  {copied ? "Copied" : "Copy the prompt"}
-                </button>
-                <textarea rows={5} value={pasted} maxLength={30_000} placeholder="Paste its answer here" onChange={(e) => setPasted(e.target.value)} />
-              </div>
-            )}
-          </div>
-          <button type="button" className="primary onboard-start" disabled={!any || over || adding.length > 0} onClick={() => void run()}>
-            {adding.length ? "Keeping your files…" : "Start"}
+            <button type="button" className={`ob-chip ${hint === "context" ? "on" : ""}`} onClick={copyPrompt} title="Copies a prompt for your AI assistant">
+              <Icon d="spark" size={14} /> {copied ? "Prompt copied" : "Bring your context from ChatGPT, Claude or Gemini"}
+            </button>
+          </>
+        )}
+        <span className="ob-box-gap" />
+        <button type="submit" className="ob-send" aria-label="Send" disabled={!!adding.length || over || (!text.trim() && !any)} title={adding.length ? "Keeping your files…" : "Send"}>
+          <Icon d="up" size={16} />
+        </button>
+      </div>
+      {hint === "context" && (
+        <p className="ob-hint">
+          {copied ? "Copied. " : ""}Paste the prompt into ChatGPT, Claude or Gemini, then paste its answer here.{" "}
+          <button type="button" className="linkish" aria-expanded={showPrompt} onClick={() => setShowPrompt((s) => !s)}>
+            {showPrompt ? "Hide the prompt" : "See the prompt"}
           </button>
+        </p>
+      )}
+      {hint === "context" && showPrompt && <pre className="onboard-prompt">{CONTEXT_PROMPT}</pre>}
+      {hint === "website" && <p className="ob-hint">I&apos;ll read it page by page, the home and About pages first.</p>}
+    </form>
+  );
+
+  const picker = (
+    <input
+      ref={pick}
+      type="file"
+      multiple
+      accept={ACCEPT}
+      hidden
+      onChange={(e) => {
+        if (e.target.files) addFiles(e.target.files);
+        e.target.value = "";
+      }}
+    />
+  );
+
+  if (phase === "first")
+    return (
+      <div className="ob ob-first">
+        {picker}
+        <div className="ob-hero">
+          <Mark size={28} />
+          <h1>Tell me about your brand</h1>
+          <p className="muted">Type, paste or drop anything. I&apos;ll read it all, look you up, and only ask what I can&apos;t find.</p>
+          {composer}
+          <ul className="ob-cards">
+            <li>
+              <button type="button" onClick={askSite}>
+                <Icon d="globe" />
+                <strong>Your website</strong>
+                <span>I read it page by page</span>
+              </button>
+            </li>
+            <li>
+              <button type="button" onClick={() => pick.current?.click()}>
+                <Icon d="file" />
+                <strong>Decks and sheets</strong>
+                <span>Line sheets, stockist lists, sales exports, photos</span>
+              </button>
+            </li>
+            <li>
+              <button type="button" onClick={copyPrompt}>
+                <Icon d="spark" />
+                <strong>From your AI assistant</strong>
+                <span>Copy a prompt, paste back its summary</span>
+              </button>
+            </li>
+            <li>
+              <button type="button" onClick={askWords}>
+                <Icon d="pen" />
+                <strong>In your words</strong>
+                <span>What you sell, where, and what matters now</span>
+              </button>
+            </li>
+          </ul>
         </div>
-      )}
+      </div>
+    );
 
-      {(running || steps.length > 0) && (
-        <ol className="onboard-steps" aria-live="polite">
-          {steps.map((s) => {
-            const live = s.status === "running";
-            const label = s.tool === "read_file" && (s.summary.startsWith("Read the summary") || s.why === "Reading your AI summary") ? PASTED : TOOL_LABEL[s.tool];
-            return (
-              <li key={s.key} className={`onboard-step ${live ? "live" : ""}`}>
-                <button type="button" className="onboard-step-head" disabled={!s.summary} onClick={() => setOpen((o) => (o === s.key ? undefined : s.key))}>
-                  <span className={live ? "spin" : "onboard-tick"} aria-hidden>{live ? "" : "✓"}</span>
-                  {label && <span className="onboard-tool">{label}</span>}
-                  <span className="onboard-why">{s.why}</span>
-                  {live && s === last && <span className="muted small">{secs(now - s.seen)}</span>}
-                </button>
-                {open === s.key && s.summary && <p className="onboard-summary">{s.summary}</p>}
-              </li>
-            );
-          })}
-        </ol>
-      )}
-      {running && <p className="muted small onboard-clock">Working · {secs(now - started)}</p>}
+  // The workspace.
+  const panel = had || !!kb;
+  const now = items?.find((i) => i.state === "now");
+  const lastLive = [...lines].reverse().find((l) => l.ev.status === "running");
+  const status = running ? (now?.step ?? (lastLive ? lineText(lastLive.ev) : thinking ?? "Reading what you gave me")) : had ? "Your brief is written" : "Ready when you are";
+  const conflicts = kb?.conflicts.length ?? 0;
+  const toggle = (k: string) =>
+    setOpen((o) => {
+      const n = new Set(o);
+      if (!n.delete(k)) n.add(k);
+      return n;
+    });
+  const side: View = view === "kept" ? "kept" : "brand";
 
+  const row = (l: Line, page = false): ReactNode => {
+    const ev = l.ev;
+    const live = ev.status === "running";
+    const done = ev.status === "ok";
+    const detail = lineDetail(ev);
+    const more = !!(detail || ev.found?.length || ev.source || l.pages.length);
+    // A finished step folds to one line; while it runs, its latest pages show under it.
+    const opened = open.has(l.key);
+    const pages = live ? l.pages.slice(-4) : opened ? l.pages : [];
+    if (ev.tool === "you")
+      return (
+        <li key={l.key} className="ob-line ob-you">
+          {ev.why && <p>{ev.why}</p>}
+          {!!ev.found?.length && (
+            <span className="ob-you-files">
+              {ev.found.map((f) => (
+                <span key={f} className="ob-file">
+                  <Icon d="file" size={12} /> {f}
+                </span>
+              ))}
+            </span>
+          )}
+          {ev.summary && <small className="muted">{ev.summary}</small>}
+        </li>
+      );
+    return (
+      <li key={l.key} className={`ob-line ${live ? "ob-live" : done ? "ob-done" : "ob-quiet"} ${page ? "ob-page" : ""}`}>
+        <button type="button" className="ob-line-head" aria-expanded={more ? opened : undefined} disabled={!more} onClick={() => toggle(l.key)}>
+          <span className="ob-dot" aria-hidden />
+          <span className="ob-line-text">
+            {lineText(ev)}
+            {live && ev.summary && <small className="muted"> · {ev.summary}</small>}
+            {!live && l.pages.length > 0 && !opened && <small className="muted"> · {l.pages.length} page{l.pages.length === 1 ? "" : "s"}</small>}
+          </span>
+          {more && !live && <span className="ob-caret" aria-hidden>{opened ? "▾" : "▸"}</span>}
+        </button>
+        {opened && !live && (detail || ev.found?.length || ev.source) && (
+          <div className="ob-line-body">
+            {detail && <p>{detail}</p>}
+            {!!ev.found?.length && (
+              <ul>
+                {ev.found.map((f) => (
+                  <li key={f}>{f}</li>
+                ))}
+              </ul>
+            )}
+            {ev.source &&
+              (ev.source.url ? (
+                <a href={ev.source.url} target="_blank" rel="noreferrer" className="ob-source">
+                  {ev.source.label} ↗
+                </a>
+              ) : (
+                <span className="ob-source">{ev.source.label}</span>
+              ))}
+          </div>
+        )}
+        {ev.tool === "settle" && (
+          <button type="button" className="linkish small ob-line-act" onClick={() => setView("kept")}>
+            Settle them in Kept
+          </button>
+        )}
+        {pages.length > 0 && <ol className="ob-pages">{pages.map((p) => row(p, true))}</ol>}
+        {live && l.pages.length > 4 && <small className="muted ob-more">and {l.pages.length - 4} more pages read</small>}
+      </li>
+    );
+  };
+
+  const plan = items && items.length > 0 && (
+    <div className="ob-plan" aria-label="Athena's plan">
+      <button type="button" className="ob-plan-line" aria-expanded={planOpen} onClick={() => setPlanOpen((o) => !o)}>
+        {checklistLine(items)} <span aria-hidden>{planOpen ? "▴" : "▾"}</span>
+      </button>
+      <ol className={`ob-plan-list ${planOpen ? "open" : ""}`}>
+        {items.map((i) => (
+          <li key={i.id} className={`ob-plan-${i.state}`}>
+            <span className="ob-check" aria-hidden>{i.state === "done" ? "✓" : ""}</span>
+            <span className="ob-plan-step">{i.step}</span>
+            {i.result && i.state === "done" && <small className="muted">{i.result}</small>}
+            {i.state === "skipped" && <small className="muted">not needed</small>}
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+
+  const keptTab = (
+    <div className="ob-kept">
       {kb && kb.conflicts.length > 0 && (
         <div className="onboard-asks">
           {kb.conflicts.map((c) => (
@@ -398,70 +649,108 @@ export function Onboard({
           ))}
         </div>
       )}
-
-      {asks.length > 0 && (
-        <div className="onboard-asks">
-          {asks.map((q) => (
-            <Question key={q.id} q={q} answer={answers[q.id]} onAnswer={(a) => answer(q, a)} />
-          ))}
-        </div>
-      )}
-
-      {wrote && !running && (
-        <div className="onboard-wrote">
-          <p>Your brief is on the right, every fact with where it came from.</p>
-          {wrote.length > 0 && (
-            <ul className="muted small">
-              {wrote.map((a) => (
-                <li key={a}>Assumed: {a}</li>
-              ))}
-            </ul>
-          )}
-        </div>
-      )}
-
-      {kb && kb.facts.length > 0 && (
-        <>
-          <KnowledgePanel kb={kb} struck={struck} onStrike={strike} />
-        </>
-      )}
-
-      {had && !running && (
-        <div className="onboard-way kb-kept">
-          <span>Your files</span>
-          {fileList}
-          <button type="button" className="linkish" onClick={() => pick.current?.click()}>
-            + Add files
-          </button>
-        </div>
-      )}
-      {(restruck || refiled) && had && !running && (
+      {kb && kb.facts.length > 0 ? <KnowledgePanel kb={kb} struck={struck} onStrike={strike} /> : <p className="muted small">What I keep from your sources lands here as I read, each fact with where it is.</p>}
+      <div className="ob-kept-files">
+        <span className="small">Your files</span>
+        {kept.length ? chips : <small className="muted">None yet.</small>}
+        <button type="button" className="linkish small" onClick={() => pick.current?.click()}>
+          + Add files
+        </button>
+      </div>
+      {(restruck || refiled) && !running && (
         <button type="button" className="kb-apply" disabled={over || adding.length > 0} onClick={() => void run()}>
           {refiled ? "Update the brief with your files" : "Update the brief without what you struck"}
         </button>
       )}
+    </div>
+  );
 
-      {note && !running && (
-        <p className="muted small">
-          {note}{" "}
-          <button type="button" className="linkish" onClick={() => void run()}>Send again</button>
-        </p>
+  return (
+    <div className={`ob ob-work ${panel ? "ob-has-panel" : ""}`} data-view={view}>
+      {picker}
+      <nav className="ob-tabs" aria-label="Onboarding">
+        {(["transcript", "brand", "kept"] as const).map((v) => (
+          <button key={v} type="button" aria-pressed={view === v} className={view === v ? "on" : ""} onClick={() => setView(v)}>
+            {v === "transcript" ? "Transcript" : v === "brand" ? "Brand" : "Kept"}
+            {v === "kept" && conflicts > 0 && <span className="ob-badge">{conflicts}</span>}
+          </button>
+        ))}
+      </nav>
+
+      {/* Reserved for Athena and the six specialists (§23.2 step 8f); for now, Athena alone. */}
+      <aside className="ob-team" aria-label="Who's working">
+        <div className={`ob-agent ${running ? "ob-agent-live" : ""}`}>
+          <Mark size={20} />
+          <div>
+            <strong>Athena</strong>
+            <small className="muted">{status}</small>
+          </div>
+        </div>
+      </aside>
+
+      <section className="ob-centre" aria-label="Transcript">
+        {plan}
+        <ol className="ob-transcript" aria-live="polite">
+          {lines.map((l) => row(l))}
+          {running && thinking && (
+            <li className="ob-line ob-think">
+              <span className="ob-dot" aria-hidden />
+              <span className="ob-line-text">{thinking}</span>
+            </li>
+          )}
+          {running && !lines.some((l) => l.run === runs.current && l.ev.tool !== "you") && !thinking && (
+            <li className="ob-line ob-live">
+              <span className="ob-dot" aria-hidden />
+              <span className="ob-line-text">Reading what you gave me</span>
+            </li>
+          )}
+        </ol>
+        {asks.length > 0 && (
+          <div className="onboard-asks">
+            {asks.map((q) => (
+              <Question key={q.id} q={q} answer={answers[q.id]} onAnswer={(a) => answer(q, a)} />
+            ))}
+          </div>
+        )}
+        {note && !running && (
+          <p className="muted small">
+            {note}{" "}
+            <button type="button" className="linkish" onClick={() => void run()}>
+              Send again
+            </button>
+          </p>
+        )}
+        <div ref={end} />
+      </section>
+
+      <div className="ob-dock">
+        <div className="ob-dock-actions">{dock}</div>
+        {composer}
+      </div>
+
+      {panel && (
+        <aside className="ob-panel" aria-label={side === "kept" ? "What I kept" : "Your Brand Graph"}>
+          <div className="ob-panel-tabs" role="tablist">
+            <button type="button" role="tab" aria-selected={side === "brand"} className={side === "brand" ? "on" : ""} onClick={() => setView("brand")}>
+              Brand
+            </button>
+            <button type="button" role="tab" aria-selected={side === "kept"} className={side === "kept" ? "on" : ""} onClick={() => setView("kept")}>
+              Kept{conflicts > 0 && <span className="ob-badge">{conflicts}</span>}
+            </button>
+          </div>
+          <div className="ob-panel-body" hidden={side !== "brand"}>
+            {briefNote && <p className="ob-brief-note">{briefNote}</p>}
+            {graph}
+          </div>
+          <div className="ob-panel-body" hidden={side !== "kept"}>
+            {keptTab}
+          </div>
+        </aside>
       )}
-
-      {had && !running && (
-        <form
-          className="onboard-steer"
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (!steer.trim()) return;
-            const s = steer.trim();
-            setSteer("");
-            void run({ steer: s });
-          }}
-        >
-          <input value={steer} maxLength={1000} placeholder="Anything to correct or focus on? e.g. “we're mostly wholesale”" onChange={(e) => setSteer(e.target.value)} />
-          <button type="submit" disabled={!steer.trim()}>Update</button>
-        </form>
+      {!panel && (view === "brand" || view === "kept") && (
+        <aside className="ob-panel ob-panel-empty">
+          <p className="muted small">Your Brand Graph fills in here as I read.</p>
+        </aside>
       )}
     </div>
   );

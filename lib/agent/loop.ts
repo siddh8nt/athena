@@ -11,6 +11,7 @@ import type { BrandInput } from "./intake";
 import type { PlanEvent } from "./plan";
 import type { FitsEvent } from "./fits";
 import type { StrategyEvent } from "./strategy";
+import type { CheckItem } from "./checklist";
 
 // The agent core (PRD §23.2 step 2, problem 0): our own loop on Gemini function calling. The model is given a goal,
 // a budget and the tools; it picks each next step from what the last ones returned. Code holds the hard caps (turns,
@@ -30,8 +31,12 @@ export type AgentStreamEvent =
   | PlanEvent
   | { type: "ask"; ask: FounderQuestion & { id: string } }
   | { type: "answer"; answer: AgentAnswer; sources: Omit<Source, "data" | "args">[] }
-  /** Onboarding's answer (§23.2 step 3): the brief, every fact with its sources. */
-  | { type: "brief"; brief: BrandBrief; assumptions: string[]; dropped: number }
+  /** Onboarding's answer (§23.2 step 3): the brief, every fact with its sources. early: the first brief from the home and About pages (§23.2 step 7.2f), replaced in place by the full one. */
+  | { type: "brief"; brief: BrandBrief; assumptions: string[]; dropped: number; early?: boolean }
+  /** What the model read in the one box (§23.2 step 7.2b): websites and pasted text the client keeps for later runs. */
+  | { type: "sorted"; websites: string[]; pasted?: string }
+  /** The agent's plan as it stands (§23.2 step 7.2e). */
+  | { type: "checklist"; items: CheckItem[] }
   /** What onboarding read (§23.2 step 4): every fact with where it is, the conflicts, and which option is in use. */
   | { type: "knowledge"; knowledge: Knowledge; settled: Record<string, number> }
   /** The most valuable fits (§23.2 step 5): the ranking and calendar from code, sourced reasons from the agent. */

@@ -15,13 +15,16 @@ import { RUN_LABEL, staleLine, type RunId } from "@/lib/graph/stale";
 import { BRAND, EDGE_TYPES, NODE_TYPES, type GraphEdge, type GraphInput, type GraphNode } from "@/lib/graph/types";
 
 // The Brand Graph (PRD §13.12, §23.2 step 7): the brand's one source of truth, first made at onboarding and read by
-// every step after it. A fact strip on top, then the list (the main way to read it, and the only view on a phone)
-// or the graph grown from the Galaxy. The founder edits facts, never taste: a fact is edited in place, added by typing
+// every step after it. One view (§23.2 step 7.1): the fact strip on top, then the graph grown from the Galaxy, then
+// the list from "Brands like you" down, the same order on a phone. The founder edits facts, never taste: a fact is
+// edited in place, added by typing
 // (resolved first), hidden ("Remove") or marked wrong (which also stops every agent inferring it). What an edit
 // changed flashes, with one Undo; the runs it moved are flagged, each with a one-click re-run.
 
 const W = 720;
 const H = 460;
+/** On a phone the graph is drawn taller than wide, so the rings still fit a narrow screen. */
+const NARROW = { w: 560, h: 520 };
 const RING = [0, 120, 185, 225];
 const FLASH_MS = 2400;
 
@@ -65,8 +68,6 @@ const reducedMotion = () => typeof window !== "undefined" && !!window.matchMedia
 export function BrandGraph(props: Props) {
   const { input, state, chips, busy, working, questions, onEdit, onAnswer, onUndo, onRerun } = props;
   const narrow = useNarrow();
-  const [view, setView] = useState<"list" | "graph">("list");
-  const shown = narrow ? "list" : view;
   const last = state.log.at(-1);
   const [flash, setFlash] = useState<Set<string>>(new Set());
   const [undid, setUndid] = useState<string>();
@@ -90,15 +91,6 @@ export function BrandGraph(props: Props) {
           <p className="bg-kicker">Brand Graph</p>
           <h2 className="bg-title">{b.name?.value || (busy ? "Reading your brand…" : "Your brand")}</h2>
         </div>
-        {!narrow && (
-          <div className="seg bg-views" role="radiogroup" aria-label="View">
-            {(["list", "graph"] as const).map((v) => (
-              <button key={v} type="button" role="radio" aria-checked={view === v} className={view === v ? "on" : ""} onClick={() => setView(v)}>
-                {v === "list" ? "List" : "Graph"}
-              </button>
-            ))}
-          </div>
-        )}
       </header>
 
       <FactStrip input={input} busy={busy} flash={flash} onEdit={onEdit} />
@@ -116,7 +108,9 @@ export function BrandGraph(props: Props) {
         <Question key={q.id} q={q} onAnswer={(a) => onAnswer(q, a)} />
       ))}
 
-      {shown === "graph" ? <GraphView input={input} flash={flash} onEdit={onEdit} /> : <ListView input={input} flash={flash} onEdit={onEdit} />}
+      {/* The graph and the list read the same input and edit through the same onEdit, so an edit in either shows in both. */}
+      <GraphView input={input} flash={flash} narrow={narrow} onEdit={onEdit} />
+      <ListView input={input} flash={flash} onEdit={onEdit} />
 
       {!!b.research?.sources.length && (
         <details className="small research">
@@ -270,7 +264,7 @@ function reasonOf(n: GraphNode, edges: GraphEdge[]): string | undefined {
   return e?.reason;
 }
 
-/** The list view: the main way to read the graph (§23.2 step 7b), every type in the registry's order. */
+/** The list: the main way to read the graph (§23.2 step 7b), every type in the registry's order, below the graph (7.1). */
 function ListView({ input, flash, onEdit }: { input: GraphInput; flash: Set<string>; onEdit: (ops: Op[]) => void }) {
   const groups = listGroups(input);
   const edges = useMemo(() => allNodes(input).edges, [input]);
@@ -315,8 +309,12 @@ function ListView({ input, flash, onEdit }: { input: GraphInput; flash: Set<stri
 type SimNode = SimulationNodeDatum & { id: string; r: number; ring: number };
 type SimLink = SimulationLinkDatum<SimNode> & { id: string };
 
-/** The graph view: grown from the Galaxy (d3-force, zoom and pan), shape and colour by type, never colour alone. */
-function GraphView({ input, flash, onEdit }: { input: GraphInput; flash: Set<string>; onEdit: (ops: Op[]) => void }) {
+/**
+ * The graph: grown from the Galaxy (d3-force, zoom and pan), shape and colour by type, never colour alone. It sits
+ * inside the scrolling list, so it never traps the page: a mouse zooms with Ctrl or ⌘ held (a trackpad pinch sends
+ * that), and a finger pans the page while two fingers pan and pinch the graph.
+ */
+function GraphView({ input, flash, narrow, onEdit }: { input: GraphInput; flash: Set<string>; narrow: boolean; onEdit: (ops: Op[]) => void }) {
   const g = useMemo(() => buildGraph(input), [input]);
   const svg = useRef<SVGSVGElement>(null);
   const wrap = useRef<HTMLDivElement>(null);
@@ -367,7 +365,11 @@ function GraphView({ input, flash, onEdit }: { input: GraphInput; flash: Set<str
   useEffect(() => {
     if (!svg.current) return;
     const s = select(svg.current);
-    s.call(zoom<SVGSVGElement, unknown>().scaleExtent([0.5, 4]).on("zoom", (e: { transform: ZoomTransform }) => setT(e.transform)));
+    const z = zoom<SVGSVGElement, unknown>()
+      .scaleExtent([0.5, 4])
+      .filter((e: MouseEvent & TouchEvent & WheelEvent) => (e.type === "wheel" ? e.ctrlKey || e.metaKey : e.type.startsWith("touch") ? e.touches.length > 1 : !e.button))
+      .on("zoom", (e: { transform: ZoomTransform }) => setT(e.transform));
+    s.call(z);
     return () => void s.on(".zoom", null);
   }, []);
 
@@ -380,7 +382,7 @@ function GraphView({ input, flash, onEdit }: { input: GraphInput; flash: Set<str
 
   return (
     <div className="bg-graph" ref={wrap}>
-      <svg ref={svg} viewBox={`${-W / 2} ${-H / 2} ${W} ${H}`} role="img" aria-label={`The Brand Graph: ${g.nodes.length} nodes. The list view reads the same graph.`} onClick={(e) => e.target === svg.current && setPicked(undefined)}>
+      <svg ref={svg} viewBox={narrow ? `${-NARROW.w / 2} ${-NARROW.h / 2} ${NARROW.w} ${NARROW.h}` : `${-W / 2} ${-H / 2} ${W} ${H}`} role="img" aria-label={`The Brand Graph: ${g.nodes.length} nodes. The list below reads the same graph.`} onClick={(e) => e.target === svg.current && setPicked(undefined)}>
         <g transform={t.toString()}>
           {g.edges.map((e) => {
             const a = at(e.from);
@@ -438,7 +440,7 @@ function GraphView({ input, flash, onEdit }: { input: GraphInput; flash: Set<str
         {types.map((type) => <li key={type}><Swatch type={type} /> {NODE_TYPES[type].plural}</li>)}
         <li><svg className="bg-swatch" width="14" height="14" viewBox="-7 -7 14 14" aria-hidden><path d={shapePath("circle", 4.5)} fill="none" stroke="var(--muted)" strokeDasharray="2 2" strokeWidth={1.5} /></svg> My read, not yet yours</li>
       </ul>
-      <p className="small muted bg-hint">Drag to pan, scroll or pinch to zoom. Tap a node for its card, hover a line for why it&apos;s there.</p>
+      <p className="small muted bg-hint">{narrow ? "Pinch to zoom, two fingers to pan. Tap a node for its card." : "Drag to pan; pinch, or scroll with Ctrl or ⌘ held, to zoom. Click a node for its card, hover a line for why it's there."}</p>
       {node && <NodeCard n={node} edges={g.edges} names={byId} onEdit={(ops) => (setPicked(undefined), onEdit(ops))} onPick={setPicked} />}
     </div>
   );

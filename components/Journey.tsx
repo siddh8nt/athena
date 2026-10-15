@@ -379,13 +379,15 @@ export function Journey() {
   // Onboarding (§23.2 step 3): a new founder starts from the three ways in, not a chat. Sample brands and founders
   // who began in the chat keep the chat.
   const onboarding = j.stop === "product" && !start.message && !msgs.some((m) => m.who === "you");
-  const onBrief = (b: BrandBrief, assumptions: string[], facts: LiveFact[]) => {
+  const onBrief = (b: BrandBrief, assumptions: string[], facts: LiveFact[], early = false) => {
     chat.setBrief(b);
     // A new brief from onboarding: earlier graph edits stay in the log, but can't be undone onto it.
     setJ((x) => {
       const gs = graphState(x.graph);
-      return { ...x, facts, graph: { ...gs, log: gs.log.map(({ before: _b, ...e }) => e) } };
+      return { ...x, facts: facts.length || !early ? facts : x.facts, graph: { ...gs, log: gs.log.map(({ before: _b, ...e }) => e) } };
     });
+    // The first brief fills the graph while the full read goes on; only the full one moves the journey on.
+    if (early) return;
     const ready = missingRequired(b).length === 0;
     chat.setTurn({ text: "", replies: [], ready });
     setMsgs((m) => [
@@ -528,9 +530,42 @@ export function Journey() {
     setText("");
   };
 
+  // The Brand Graph and the stop's choices, shared by onboarding's workspace and the journey.
+  const graphEl = (
+    <BrandGraph
+      input={gInput}
+      state={g}
+      chips={[...chat.chips, ...graphChips]}
+      busy={busy}
+      working={working?.by === "graph" ? working.text : undefined}
+      questions={editQs.filter((q) => q.by === "graph")}
+      onEdit={onGraphEdit}
+      onAnswer={(q, a) => answer({ ...q, by: "graph" }, a)}
+      onUndo={onUndo}
+      onRerun={onRerun}
+    />
+  );
+  const dockEl = (
+    <Dock
+      j={j}
+      setJ={setJ}
+      brief={brief}
+      turn={turn}
+      busy={busy}
+      researching={chat.researching}
+      onReply={(r) => void chat.send(r)}
+      onNext={next}
+      onMove={move}
+      say={say}
+      stopData={stopData}
+      crowdReady={!!j.crowds}
+      onDashboard={() => setView("dashboard")}
+    />
+  );
+
   return (
     <div
-      className={`journey ${drag ? "dragging" : ""}`}
+      className={`journey ${drag ? "dragging" : ""} ${onboarding ? "ob-on" : ""}`}
       onDragOver={(e) => {
         e.preventDefault();
         setDrag(true);
@@ -544,7 +579,8 @@ export function Journey() {
     >
       <header className="topbar journey-top">
         <Link href="/" className="wordmark-link"><strong>Athena</strong></Link>
-        <ol className="progress" aria-label="Your journey">
+        {/* Hidden through onboarding (§23.2 step 7.2a); step 8 replaces it with goals. */}
+        <ol className="progress" aria-label="Your journey" hidden={onboarding}>
           {stops.map((s, i) => (
             <li key={s} className={j.stop === s ? "now" : j.done.includes(s) ? "done" : ""}>
               <button
@@ -577,191 +613,170 @@ export function Journey() {
         </div>
       </header>
 
-      <main className="journey-main">
-        <section className="chat" aria-live="polite">
-          {onboarding && <Onboard brief={brief} files={chat.files} addFiles={chat.addFiles} setFiles={chat.setFiles} onBrief={onBrief} />}
-          <ol className="msgs" hidden={onboarding}>
-            {msgs.map((m, i) => [
-              <li key={i} className={`msg msg-${m.who}`}>
-                {m.text}
-                {!!m.files?.length && <span className="msg-files">{m.files.map((f) => <span key={f} className="chip">{f}</span>)}</span>}
-              </li>,
-              m.trail && <TrailView key={`t${i}`} trail={m.trail} />,
-            ])}
-            {busy && live && <li className="msg msg-athena streaming">{live}</li>}
-            {queued && <li className="msg msg-athena typing">Finishing my research, then I&apos;ll read that…</li>}
-            {working?.by === "chat" && <li className="msg msg-athena typing">{working.text}</li>}
-            {editQs.filter((q) => q.by === "chat").map((q) => (
-              <li key={q.id} className="msg-question">
-                <Question q={q} onAnswer={(a) => answer(q, a)} />
-              </li>
-            ))}
-            {preview && (
-              <li className="msg msg-athena graph-preview">
-                <p>{preview.line}</p>
-                <div className="replies">
-                  <button
-                    type="button"
-                    className="primary"
-                    onClick={() => {
-                      const a = apply(preview.ops, preview.by);
-                      setPreview(undefined);
-                      if (preview.by === "chat") say(a?.edit.note ?? "That's already on your graph.");
-                    }}
-                  >
-                    Apply
-                  </button>
-                  <button type="button" onClick={() => setPreview(undefined)}>Not now</button>
-                </div>
-              </li>
-            )}
-            <div ref={end} />
-          </ol>
+      {onboarding ? (
+        <main className="journey-main ob-main">
+          <Onboard brief={brief} files={chat.files} addFiles={chat.addFiles} setFiles={chat.setFiles} onBrief={onBrief} onFacts={(facts) => setJ((x) => ({ ...x, facts }))} graph={graphEl} dock={dockEl} />
+        </main>
+      ) : (
+        <main className="journey-main">
+          <section className="chat" aria-live="polite">
+            <ol className="msgs">
+              {msgs.map((m, i) => [
+                <li key={i} className={`msg msg-${m.who}`}>
+                  {m.text}
+                  {!!m.files?.length && <span className="msg-files">{m.files.map((f) => <span key={f} className="chip">{f}</span>)}</span>}
+                </li>,
+                m.trail && <TrailView key={`t${i}`} trail={m.trail} />,
+              ])}
+              {busy && live && <li className="msg msg-athena streaming">{live}</li>}
+              {queued && <li className="msg msg-athena typing">Finishing my research, then I&apos;ll read that…</li>}
+              {working?.by === "chat" && <li className="msg msg-athena typing">{working.text}</li>}
+              {editQs.filter((q) => q.by === "chat").map((q) => (
+                <li key={q.id} className="msg-question">
+                  <Question q={q} onAnswer={(a) => answer(q, a)} />
+                </li>
+              ))}
+              {preview && (
+                <li className="msg msg-athena graph-preview">
+                  <p>{preview.line}</p>
+                  <div className="replies">
+                    <button
+                      type="button"
+                      className="primary"
+                      onClick={() => {
+                        const a = apply(preview.ops, preview.by);
+                        setPreview(undefined);
+                        if (preview.by === "chat") say(a?.edit.note ?? "That's already on your graph.");
+                      }}
+                    >
+                      Apply
+                    </button>
+                    <button type="button" onClick={() => setPreview(undefined)}>Not now</button>
+                  </div>
+                </li>
+              )}
+              <div ref={end} />
+            </ol>
 
-          <Dock
-            j={j}
-            setJ={setJ}
-            brief={brief}
-            turn={turn}
-            busy={busy}
-            researching={chat.researching}
-            onReply={(r) => void chat.send(r)}
-            onNext={next}
-            onMove={move}
-            say={say}
-            stopData={stopData}
-            crowdReady={!!j.crowds}
-            onDashboard={() => setView("dashboard")}
-          />
+            {dockEl}
 
-          <form
-            className="composer"
-            hidden={onboarding}
-            onSubmit={(e) => {
-              e.preventDefault();
-              send();
-            }}
-          >
-            {!!chat.files.length && (
-              <ul className="chips">
-                {chat.files.map((f, i) => (
-                  <li key={`${f.name}${i}`} className="chip">
-                    {f.name} <button type="button" className="linkish" aria-label={`Remove ${f.name}`} onClick={() => chat.setFiles(chat.files.filter((_, k) => k !== i))}>✕</button>
-                  </li>
-                ))}
-              </ul>
-            )}
-            <textarea
-              autoFocus
-              rows={first ? 3 : 2}
-              value={text}
-              maxLength={8000}
-              placeholder={first ? "e.g. We're Fishwife: premium tinned fish with playful packaging, about $9 a tin. Sold online and in 1,500 shops. eatfishwife.com" : j.stop === "product" ? "Reply, or drop in a file" : "Ask or change anything: \"drop gyms\", \"what about Austin?\""}
-              onChange={(e) => setText(e.target.value)}
-              onPaste={(e) => {
-                if (e.clipboardData.files.length) {
-                  e.preventDefault();
-                  chat.addFiles(e.clipboardData.files);
-                }
+            <form
+              className="composer"
+              onSubmit={(e) => {
+                e.preventDefault();
+                send();
               }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  send();
-                }
-              }}
-            />
-            <div className="row-actions">
-              <button type="button" onClick={() => pick.current?.click()}>Add files</button>
-              <input ref={pick} type="file" multiple accept={ACCEPT} hidden onChange={(e) => e.target.files && chat.addFiles(e.target.files)} />
-              <span className="muted small">Decks, stockist sheets, photos, PDFs.</span>
-              <button type="submit" className="primary" disabled={(busy && !chat.researching) || !!queued || (first ? !text.trim() : !text.trim() && !chat.files.length)}>Send</button>
-            </div>
-          </form>
-        </section>
-
-        <section className="journey-canvas" aria-label="Your plan so far">
-          <div id="stop-product">
-            <BrandGraph
-              input={gInput}
-              state={g}
-              chips={[...chat.chips, ...graphChips]}
-              busy={busy}
-              working={working?.by === "graph" ? working.text : undefined}
-              questions={editQs.filter((q) => q.by === "graph")}
-              onEdit={onGraphEdit}
-              onAnswer={(q, a) => answer({ ...q, by: "graph" }, a)}
-              onUndo={onUndo}
-              onRerun={onRerun}
-            />
-          </div>
-          {reached("growth") && j.growth.length > 0 && j.done.includes("growth") && (
-            <section id="stop-growth" className="card">
-              <h3>How you&apos;ll grow</h3>
-              <p>{j.channel === "online" ? "Mostly online" : j.channel === "offline" ? "Mostly in stores and venues" : "Online and in stores"} · {j.growth.map((g) => labelFor(g, j.channel)).join(", ")}</p>
-            </section>
-          )}
-          {reached("crowd") && (
-            <div id="stop-crowd">
-              {(["crowds", "fits", "strategy"] as const).map((r) => g.held[r] && <StaleFlag key={r} run={r} line={staleLine(r, g.held[r]!)} onRerun={() => onRerun(r)} />)}
-              <CrowdStop
-                j={j}
-                steps={crowdSteps}
-                forming={forming}
-                fits={{ steps: fitsSteps, running: fitsRunning, asks, answers, onAnswer: (q, a) => setAnswers((x) => ({ ...x, [q.id]: a })), strategy: j.fits && (j.strategy || planRunning) ? { run: j.strategy, steps: planSteps, running: planRunning } : undefined }}
-                onProbe={probe}
-                probing={probing}
-                alone={alone}
-                taste={taste}
+            >
+              {!!chat.files.length && (
+                <ul className="chips">
+                  {chat.files.map((f, i) => (
+                    <li key={`${f.name}${i}`} className="chip">
+                      {f.name} <button type="button" className="linkish" aria-label={`Remove ${f.name}`} onClick={() => chat.setFiles(chat.files.filter((_, k) => k !== i))}>✕</button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <textarea
+                autoFocus
+                rows={first ? 3 : 2}
+                value={text}
+                maxLength={8000}
+                placeholder={first ? "e.g. We're Fishwife: premium tinned fish with playful packaging, about $9 a tin. Sold online and in 1,500 shops. eatfishwife.com" : j.stop === "product" ? "Reply, or drop in a file" : "Ask or change anything: \"drop gyms\", \"what about Austin?\""}
+                onChange={(e) => setText(e.target.value)}
+                onPaste={(e) => {
+                  if (e.clipboardData.files.length) {
+                    e.preventDefault();
+                    chat.addFiles(e.clipboardData.files);
+                  }
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    send();
+                  }
+                }}
               />
+              <div className="row-actions">
+                <button type="button" onClick={() => pick.current?.click()}>Add files</button>
+                <input ref={pick} type="file" multiple accept={ACCEPT} hidden onChange={(e) => e.target.files && chat.addFiles(e.target.files)} />
+                <span className="muted small">Decks, stockist sheets, photos, PDFs.</span>
+                <button type="submit" className="primary" disabled={(busy && !chat.researching) || !!queued || (first ? !text.trim() : !text.trim() && !chat.files.length)}>Send</button>
+              </div>
+            </form>
+          </section>
+
+          <section className="journey-canvas" aria-label="Your plan so far">
+            <div id="stop-product">
+              {graphEl}
             </div>
-          )}
-          {stops
-            .filter((s) => BLOCK_OF[s] && (reached(s) || prefetch(s)))
-            .map((s) => (
-              <div key={s} id={`stop-${s}`} hidden={!reached(s)}>
-                {g.held[s as RunId] && <StaleFlag run={s as RunId} line={staleLine(s as RunId, g.held[s as RunId]!)} onRerun={() => onRerun(s as RunId)} />}
-                <StopRunner alone={alone} taste={taste} stop={s} block={BLOCK_OF[s]!} input={CITY_STOPS.has(s) ? inputFor(s) : { ...inputFor(s), city: undefined }} rev={g.rev[s as RunId]} brandName={brief.name?.value ?? "Your brand"} onData={(d) => setStopData((x) => (x[s] === d ? x : { ...x, [s]: d }))} />
+            {reached("growth") && j.growth.length > 0 && j.done.includes("growth") && (
+              <section id="stop-growth" className="card">
+                <h3>How you&apos;ll grow</h3>
+                <p>{j.channel === "online" ? "Mostly online" : j.channel === "offline" ? "Mostly in stores and venues" : "Online and in stores"} · {j.growth.map((g) => labelFor(g, j.channel)).join(", ")}</p>
+              </section>
+            )}
+            {reached("crowd") && (
+              <div id="stop-crowd">
+                {(["crowds", "fits", "strategy"] as const).map((r) => g.held[r] && <StaleFlag key={r} run={r} line={staleLine(r, g.held[r]!)} onRerun={() => onRerun(r)} />)}
+                <CrowdStop
+                  j={j}
+                  steps={crowdSteps}
+                  forming={forming}
+                  fits={{ steps: fitsSteps, running: fitsRunning, asks, answers, onAnswer: (q, a) => setAnswers((x) => ({ ...x, [q.id]: a })), strategy: j.fits && (j.strategy || planRunning) ? { run: j.strategy, steps: planSteps, running: planRunning } : undefined }}
+                  onProbe={probe}
+                  probing={probing}
+                  alone={alone}
+                  taste={taste}
+                />
               </div>
-            ))}
-          {stops
-            .filter((s) => (s === "retailers" || s === "online") && (reached(s) || prefetch(s)))
-            .map((s) => (
-              <div key={s} id={`stop-${s}`} hidden={!reached(s)}>
-                {g.held[s as RunId] && <StaleFlag run={s as RunId} line={staleLine(s as RunId, g.held[s as RunId]!)} onRerun={() => onRerun(s as RunId)} />}
-                {crowd ? (
-                  <ExtraStop
-                    kind={s as "retailers" | "online"}
-                    signal={(signalFor(s)?.signal ?? crowd.signal.map((x) => ({ ...x, weight: 1 }))).map((x) => ({ id: x.id, weight: x.weight }))}
-                    crowdName={signalFor(s)?.name ?? crowd.name}
-                    names={Object.fromEntries((signalFor(s)?.signal ?? crowd.signal).map((x) => [x.id, x.name]))}
-                    product={[extraBrief(s).sells?.value, ...(extraBrief(s).traits ?? [])].filter(Boolean).join(", ")}
-                    category={extraBrief(s).retail}
-                    evidence={[extraBrief(s).channels?.value ?? "", ...extraBrief(s).stockists.map((x) => x.value.name), ...extraBrief(s).notes.map((n) => n.value)].filter(Boolean)}
-                    rev={g.rev[s as RunId]}
-                    skew={crowd.skew}
-                    brandName={brief.name?.value ?? "your brand"}
-                    alone={alone}
-                    taste={taste}
-                    onData={(d) => setStopData((x) => (x[s] === d ? x : { ...x, [s]: d }))}
-                  />
-                ) : (
-                  <section className="card">
-                    <h3>{STOP_LABELS[s]}</h3>
-                    <p>This stop reads your Win first crowd, and fills in here once your crowds are ranked.</p>
-                  </section>
-                )}
-              </div>
-            ))}
-          {reached("go") && (
-            <section id="stop-go" className="card go-card">
-              <h3>Your plan is ready</h3>
-              <p>Everything you chose, on one screen: the crowd, the map, your shortlists, the message and the calendar. Work the pipeline there.</p>
-              <button type="button" className="primary" onClick={() => setView("dashboard")}>Open the full plan</button>
-            </section>
-          )}
-        </section>
-      </main>
+            )}
+            {stops
+              .filter((s) => BLOCK_OF[s] && (reached(s) || prefetch(s)))
+              .map((s) => (
+                <div key={s} id={`stop-${s}`} hidden={!reached(s)}>
+                  {g.held[s as RunId] && <StaleFlag run={s as RunId} line={staleLine(s as RunId, g.held[s as RunId]!)} onRerun={() => onRerun(s as RunId)} />}
+                  <StopRunner alone={alone} taste={taste} stop={s} block={BLOCK_OF[s]!} input={CITY_STOPS.has(s) ? inputFor(s) : { ...inputFor(s), city: undefined }} rev={g.rev[s as RunId]} brandName={brief.name?.value ?? "Your brand"} onData={(d) => setStopData((x) => (x[s] === d ? x : { ...x, [s]: d }))} />
+                </div>
+              ))}
+            {stops
+              .filter((s) => (s === "retailers" || s === "online") && (reached(s) || prefetch(s)))
+              .map((s) => (
+                <div key={s} id={`stop-${s}`} hidden={!reached(s)}>
+                  {g.held[s as RunId] && <StaleFlag run={s as RunId} line={staleLine(s as RunId, g.held[s as RunId]!)} onRerun={() => onRerun(s as RunId)} />}
+                  {crowd ? (
+                    <ExtraStop
+                      kind={s as "retailers" | "online"}
+                      signal={(signalFor(s)?.signal ?? crowd.signal.map((x) => ({ ...x, weight: 1 }))).map((x) => ({ id: x.id, weight: x.weight }))}
+                      crowdName={signalFor(s)?.name ?? crowd.name}
+                      names={Object.fromEntries((signalFor(s)?.signal ?? crowd.signal).map((x) => [x.id, x.name]))}
+                      product={[extraBrief(s).sells?.value, ...(extraBrief(s).traits ?? [])].filter(Boolean).join(", ")}
+                      category={extraBrief(s).retail}
+                      evidence={[extraBrief(s).channels?.value ?? "", ...extraBrief(s).stockists.map((x) => x.value.name), ...extraBrief(s).notes.map((n) => n.value)].filter(Boolean)}
+                      rev={g.rev[s as RunId]}
+                      skew={crowd.skew}
+                      brandName={brief.name?.value ?? "your brand"}
+                      alone={alone}
+                      taste={taste}
+                      onData={(d) => setStopData((x) => (x[s] === d ? x : { ...x, [s]: d }))}
+                    />
+                  ) : (
+                    <section className="card">
+                      <h3>{STOP_LABELS[s]}</h3>
+                      <p>This stop reads your Win first crowd, and fills in here once your crowds are ranked.</p>
+                    </section>
+                  )}
+                </div>
+              ))}
+            {reached("go") && (
+              <section id="stop-go" className="card go-card">
+                <h3>Your plan is ready</h3>
+                <p>Everything you chose, on one screen: the crowd, the map, your shortlists, the message and the calendar. Work the pipeline there.</p>
+                <button type="button" className="primary" onClick={() => setView("dashboard")}>Open the full plan</button>
+              </section>
+            )}
+          </section>
+        </main>
+      )}
     </div>
   );
 }

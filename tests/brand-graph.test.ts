@@ -12,11 +12,11 @@ import { PREVIEW_AT, applyEdit, applyFiles, dropWrong, emptyGraphState, fillOthe
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/methods/resolve", () => ({ resolveBrand: vi.fn(), resolveVenue: vi.fn() }));
 vi.mock("@/lib/places/location", () => ({ resolveTyped: vi.fn() }));
-vi.mock("@/lib/llm/vertex", () => ({ generate: vi.fn(), parseJson: (s: string) => JSON.parse(s) }));
+vi.mock("@/lib/llm/vertex", () => ({ generateStreamHedged: vi.fn(), parseJson: (s: string) => JSON.parse(s) }));
 
 import { resolveBrand, resolveVenue } from "@/lib/methods/resolve";
 import { resolveTyped } from "@/lib/places/location";
-import { generate } from "@/lib/llm/vertex";
+import { generateStreamHedged } from "@/lib/llm/vertex";
 import { interpret, resolveOps } from "@/lib/graph/interpret";
 
 // The Brand Graph (PRD §13.12, §23.2 step 7) on a fictional brand: the registry, the graph's size and folding, sources
@@ -225,6 +225,12 @@ describe("done when: an edit in chat and one on the graph", () => {
     expect(u.state.held).toEqual({});
   });
 
+  it("names on each run's flag only the changes that run reads", () => {
+    const a = applyEdit(input({ crowds, fits }), emptyGraphState(), [{ op: "set", field: "tierHint", value: "premium" }, { op: "set", field: "channel", value: "online" }], { by: "chat", ran, at: 1 })!;
+    expect(staleLine("fits", a.state.held.fits!)).toBe("Most valuable fits may change: you moved it to premium and you changed where it mostly sells.");
+    expect(staleLine("where", a.state.held.where!)).toBe("Cities may change: you moved it to premium.");
+  });
+
   it("flags only the runs that already ran", () => {
     const a = applyEdit(input(), emptyGraphState(), [{ op: "add", type: "comparable", value: "Moss & Tide", id: "Q-fake-1" }], { by: "graph", ran: ["crowds"] })!;
     expect(Object.keys(a.state.held)).toEqual(["crowds"]);
@@ -244,6 +250,13 @@ describe("done when: an edit in chat and one on the graph", () => {
   it("an edit that changes nothing isn't an edit", () => {
     expect(applyEdit(input(), emptyGraphState(), [{ op: "set", field: "tierHint", value: "mainstream" }], { by: "chat", ran })).toBeUndefined();
     expect(applyEdit(input(), emptyGraphState(), [{ op: "add", type: "comparable", value: "gullwing  pantry" }], { by: "chat", ran })).toBeUndefined();
+  });
+
+  it("says which item made room when a long edit fills a list", () => {
+    const cities = ["Austin, TX", "Denver, CO", "Chicago, IL", "Boston, MA", "Atlanta, GA", "Miami, FL", "Seattle, WA", "Phoenix, AZ", "Nashville, TN"];
+    const a = applyEdit({ brief: brief(), facts }, emptyGraphState(), cities.map((value) => ({ op: "add", type: "city", value, id: value }) as Op), { by: "chat", ran: [] })!;
+    expect(a.brief.cities).toHaveLength(8);
+    expect(a.edit.note).toBe("Added Austin, TX as a city to grow in and 8 more; Phoenix, AZ made room: from your message");
   });
 
   it("keeps Undo for the latest three edits", () => {
@@ -285,7 +298,7 @@ describe("big edits", () => {
     expect(previewLine(p)).toMatch(/^This changes 10 things: Added “Fact number 1” as a fact; .*; and 6 more\. Apply\?$/);
     const a = applyEdit(input(), emptyGraphState(), ops, { by: "chat", ran: [] })!;
     expect(a.state.log).toHaveLength(1);
-    expect(a.edit.note).toBe("Added “Fact number 1” as a fact and 9 more: from your message");
+    expect(a.edit.note).toBe("Added “Fact number 1” as a fact and 9 more; Wants to be in 50 shops by next year made room: from your message");
   });
 });
 
@@ -374,7 +387,7 @@ describe("reading a chat message", () => {
   const nodes = allNodes(input({ crowds, fits })).nodes;
 
   it("keeps the model's fact edits, drops its taste edits, and turns what it's unsure of into a question", async () => {
-    vi.mocked(generate).mockResolvedValueOnce({
+    vi.mocked(generateStreamHedged).mockResolvedValueOnce({
       text: JSON.stringify({
         ops: [{ op: "set", field: "tierHint", value: "premium" }, { op: "wrong", node: "crowd:c1" }, { op: "remove", node: "comparable:kestrel kitchen" }],
         unsure: [{ question: "Did you mean the Seattle shop?", options: [{ label: "The Pantry Box, Seattle", ops: [{ op: "wrong", node: "stockist:the pantry box seattle" }] }, { label: "A crowd", ops: [{ op: "wrong", node: "crowd:c2" }] }] }],
@@ -389,7 +402,7 @@ describe("reading a chat message", () => {
   });
 
   it("returns nothing when the model doesn't answer, so the route can point at the graph", async () => {
-    vi.mocked(generate).mockResolvedValueOnce({ text: "" } as never);
+    vi.mocked(generateStreamHedged).mockResolvedValueOnce({ text: "" } as never);
     expect(await interpret("hi", { brief: brief(), nodes, history: [] }).catch(() => undefined)).toBeUndefined();
   });
 });

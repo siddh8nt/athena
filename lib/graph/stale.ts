@@ -86,14 +86,14 @@ export const changedKeys = (a: Snapshot, b: Snapshot): InputKey[] => READS.fits.
  * now differs (its flag says why, from the latest edit), and let go when nothing it reads differs any more (an undo
  * puts it back as it was).
  */
-export function settle(held: Partial<Record<RunId, Held>>, ran: RunId[], before: Snapshot, after: Snapshot, why: string): Partial<Record<RunId, Held>> {
+export function settle(held: Partial<Record<RunId, Held>>, ran: RunId[], before: Snapshot, after: Snapshot, why: string | ((run: RunId) => string)): Partial<Record<RunId, Held>> {
   const out: Partial<Record<RunId, Held>> = { ...held };
   const moved = changedKeys(before, after);
   for (const run of ran) {
     const was: Snapshot = held[run] ?? before;
     const differs = READS[run].some((k) => keyValue(was, k) !== keyValue(after, k));
     if (!differs) delete out[run];
-    else if (READS[run].some((k) => moved.includes(k))) out[run] = { brief: was.brief, facts: was.facts, why };
+    else if (READS[run].some((k) => moved.includes(k))) out[run] = { brief: was.brief, facts: was.facts, why: typeof why === "string" ? why : why(run) };
   }
   return out;
 }

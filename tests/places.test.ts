@@ -31,6 +31,10 @@ describe("typed locations", () => {
     expect((r as { options: { label: string }[] }).options.map((o) => o.label)).toEqual(expect.arrayContaining(["Portland, OR", "Portland, ME"]));
     expect((await go("Springfield")).status).toBe("ask");
   });
+  it("reads a consolidated city-county as the one city it is", async () => {
+    expect(okLabel(await go("Denver"))).toBe("Denver, CO");
+    expect(okLabel(await go("San Francisco"))).toBe("San Francisco, CA");
+  });
   it("counties and zip codes", async () => {
     expect(okLabel(await go("Cook County, IL"))).toBe("Cook County, IL");
     const z = await go("11211");

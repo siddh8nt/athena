@@ -3,7 +3,7 @@ import type { Tier } from "@/lib/playbook/config";
 import type { LiveFact } from "@/lib/knowledge/types";
 import type { FounderQuestion } from "@/lib/agent/tools";
 import { allNodes } from "./build";
-import { changedKeys, settle, type Held, type RunId, type Snapshot } from "./stale";
+import { READS, changedKeys, settle, type Held, type RunId, type Snapshot } from "./stale";
 import { NODE_TYPES, factKey, type GraphInput, type GraphNode, type InputKey } from "./types";
 
 // Edits to the Brand Graph (PRD §13.12, §23.2 step 7c–e): one set of operations for a click on the graph and for a
@@ -168,7 +168,7 @@ function makeRoom<T>(list: Sourced<T>[], cap: number, name: (v: T) => string): {
   return { list: list.filter((_, i) => i !== at), out: name(list[at].value) };
 }
 
-type Step = { note: string; why: string };
+type Step = { note: string; why: string; out?: string };
 
 /** One operation applied: the brief, the facts and the hidden nodes after it, and its note. Undefined when it changes nothing. */
 function step(cur: { brief: BrandBrief; facts: LiveFact[]; hidden: string[] }, op: Op, nodes: GraphNode[], source: Source): (typeof cur & Step) | undefined {
@@ -221,7 +221,7 @@ function step(cur: { brief: BrandBrief; facts: LiveFact[]; hidden: string[] }, o
       patch = { notes: [sourced(op.value)] };
     }
     const label = op.type === "note" ? `“${op.value.length > 48 ? `${op.value.slice(0, 47)}…` : op.value}”` : op.value;
-    return { brief: merge(patch, b), facts, hidden, note: `Added ${label} as ${what}${out ? `, in place of ${out}` : ""}`, why };
+    return { brief: merge(patch, b), facts, hidden, note: `Added ${label} as ${what}${out ? `, in place of ${out}` : ""}`, why, ...(out ? { out } : {}) };
   }
   const n = nodes.find((m) => m.id === op.node);
   if (!n) return undefined;
@@ -257,23 +257,30 @@ export function applyEdit(input: GraphInput, state: GraphState, ops: Op[], ctx: 
   const nodes = allNodes(input).nodes;
   const source: Source = ctx.by === "graph" ? { kind: "message", ref: "you" } : { kind: "message" };
   let cur = { brief: input.brief, facts: input.facts, hidden: state.hidden };
-  const steps: Step[] = [];
+  const steps: (Step & { keys: InputKey[] })[] = [];
   for (const op of ops) {
     const s = step(cur, op, nodes, source);
     if (!s) continue;
+    const keys = changedKeys(cur, s);
     cur = { brief: s.brief, facts: s.facts, hidden: s.hidden };
-    steps.push(s);
+    steps.push({ ...s, keys });
   }
   if (!steps.length) return undefined;
   const before: Snapshot = { brief: input.brief, facts: input.facts };
   const after: Snapshot = { brief: cur.brief, facts: cur.facts };
-  const whys = [...new Set(steps.map((s) => s.why).filter(Boolean))];
-  const why = whys.length > 2 ? `${whys.slice(0, 2).join(", ")} and more` : whys.join(" and ");
+  const whyOf = (of: typeof steps) => {
+    const whys = [...new Set(of.map((s) => s.why).filter(Boolean))];
+    return whys.length > 2 ? `${whys.slice(0, 2).join(", ")} and more` : whys.join(" and ");
+  };
+  const why = whyOf(steps);
+  // Each run's flag names only the changes it reads ("Cities may change: you moved it to premium", not also the channel).
+  const whyFor = (run: RunId) => whyOf(steps.filter((s) => s.keys.some((k) => READS[run].includes(k)))) || why;
   const at = ctx.at ?? Date.now();
   const edit: GraphEdit = {
     id: `edit-${at}-${state.log.length}`,
     at,
-    note: `${joinMore(steps.map((s) => s.note))}: ${ctx.by === "graph" ? "from you" : "from your message"}`,
+    // A full list that made room says so even when its step is folded into "and N more".
+    note: `${joinMore(steps.map((s) => s.note))}${steps.length > 1 && steps.some((s) => s.out) ? `; ${steps.flatMap((s) => (s.out ? [s.out] : [])).join(", ")} made room` : ""}: ${ctx.by === "graph" ? "from you" : "from your message"}`,
     why,
     by: ctx.by,
     changed: changedNodes({ ...input, hidden: state.hidden }, { ...input, ...after, hidden: cur.hidden }),
@@ -281,7 +288,7 @@ export function applyEdit(input: GraphInput, state: GraphState, ops: Op[], ctx: 
     before: { brief: input.brief, facts: input.facts, hidden: state.hidden },
   };
   const log = [...state.log, edit].slice(-LOG).map((e, i, all) => (i < all.length - UNDOABLE ? { ...e, before: undefined } : e));
-  return { ...after, state: { ...state, hidden: cur.hidden, log, held: why ? settle(state.held, ctx.ran, before, after, why) : state.held }, edit };
+  return { ...after, state: { ...state, hidden: cur.hidden, log, held: why ? settle(state.held, ctx.ran, before, after, whyFor) : state.held }, edit };
 }
 
 /** Undoes the latest edit that can be: the brief, the facts and the hidden nodes go back, and runs it held let go. */

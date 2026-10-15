@@ -38,7 +38,9 @@ export const POST = dated(async function post(req: Request) {
     const read = await interpret(message, { brief, nodes, history });
     if (!read) return Response.json({ ...none, reply: POINTER });
     const resolved = await resolveOps(qloo, read.ops, brief);
-    return Response.json({ ...resolved, questions: [...read.questions, ...resolved.questions], reply: read.reply });
+    // The model replies before its additions are looked up. When one comes back as a question, its reply would
+    // overstate ("I've added those nine cities"), so the edit's own note says what changed and the question asks the rest.
+    return Response.json({ ...resolved, questions: [...read.questions, ...resolved.questions], reply: resolved.questions.length ? "" : read.reply });
   } catch (err) {
     console.error("graph edit failed", err);
     return Response.json({ ...none, reply: POINTER });

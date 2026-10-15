@@ -201,7 +201,11 @@ export async function resolvePlace(text: string, data: { rows: PlaceRow[]; outli
   if (found.length) {
     const ranked = found.sort((a, b) => weight(b) - weight(a));
     const top = weight(ranked[0]);
-    const rivals = ranked.filter((r) => weight(r) >= Math.max(RIVAL_FLOOR, top * RIVAL_SHARE));
+    // A consolidated city-county (Denver, San Francisco) is one place listed twice, as a city and a county of the same
+    // name, state and population: the city stands for both.
+    const twin = (c: PlaceRow) => c[1] === "c" && ranked.some((l) => l[1] === "l" && l[2] === c[2] && norm(l[0]) === norm(c[0]) && l[3] === c[3]);
+    const rivals = ranked.filter((r) => !twin(r) && weight(r) >= Math.max(RIVAL_FLOOR, top * RIVAL_SHARE));
+    if (rivals.length === 1) return ok(rivals[0]);
     if (rivals.length > 1) {
       return {
         status: "ask",

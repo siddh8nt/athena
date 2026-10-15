@@ -57,11 +57,17 @@ export function briefData(b?: BrandBrief) {
     mostly: b.channel?.value,
     price_tier: b.tierHint?.value,
     stage: b.stageHint?.value,
+    home_city: b.activeCity?.value,
+    comparables: b.comparables.map((c) => c.value),
     lookalikes: b.proxies,
     competitors: b.competitors.map((c) => c.value),
     stockists: b.stockists.length,
     stockist_cities: cities,
     notes: b.notes.map((n) => n.value),
+    // From the Brand Graph (§23.2 step 7c): cities the founder wants to grow in, and what they marked wrong, which no
+    // ranking or strategy may rest on.
+    ...(b.cities?.length ? { cities_to_grow_in: b.cities.map((c) => c.value.name) } : {}),
+    ...(b.wrong?.length ? { marked_wrong_never_use: b.wrong.map((w) => w.text) } : {}),
   };
 }
 

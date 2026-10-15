@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { OPENING, type Turn } from "@/lib/brief/conversation";
 import type { BriefEvent } from "@/app/api/brief/route";
-import { emptyBrief, type BrandBrief, type Source, type Sourced } from "@/lib/brief/types";
+import { emptyBrief, type BrandBrief } from "@/lib/brief/types";
+import { sourceLabel } from "@/lib/brief/source";
 
 // Chapter 1's conversation (§6.2.1): the founder describes the product; the server turns everything into one brief.
 // Shared by the journey; the server streams status lines, Athena's reply as it's written, and the result.
@@ -16,19 +17,7 @@ export type FileChip = { name: string; status: string; busy: boolean };
 
 export const ACCEPT = ".png,.jpg,.jpeg,.webp,.pdf,.txt,.csv,.tsv,.xlsx,.pptx,.docx,image/*";
 
-export function sourceLabel(s: Source, confirmed?: boolean): string {
-  const base =
-    s.kind === "message" ? "from your message"
-    : s.kind === "file" ? `from ${s.ref ?? "your file"}`
-    : s.kind === "pasted" ? "from your AI summary"
-    : s.kind === "website" ? "from your website"
-    : s.kind === "web" ? `from the web${s.ref ? ` · ${s.ref}` : ""}`
-    : s.kind === "qloo" ? "from Qloo"
-    : s.kind === "inferred" ? "my read"
-    : "Agent · guessed";
-  const at = s.at && (s.kind === "file" || s.kind === "website" || s.kind === "pasted") ? `, ${s.at}` : "";
-  return confirmed && s.kind !== "message" ? `${base}${at} · you confirmed` : `${base}${at}`;
-}
+export { sourceLabel };
 
 export function useBriefChat(initial?: { brief: BrandBrief; msgs: Msg[]; turn: Turn }) {
   const [brief, setBrief] = useState<BrandBrief>(initial?.brief ?? emptyBrief());
@@ -174,70 +163,5 @@ export function TrailView({ trail }: { trail: Trail }) {
         </div>
       )}
     </li>
-  );
-}
-
-function Field({ label, s, show, busy }: { label: string; s?: Sourced<unknown>; show?: (v: unknown) => string; busy?: boolean }) {
-  const shown = s ? (show ? show(s.value) : String(s.value)) : "";
-  return (
-    <div className={`fact ${s ? "" : "fact-missing"}`}>
-      <dt>{label}</dt>
-      <dd key={shown} className={s ? "fact-in" : ""}>
-        {s ? shown : busy ? <span className="shimmer-bar" aria-label="Working on it" /> : <span className="muted">not yet</span>}
-        {s && <small className={`src src-${s.source.kind}`}>{sourceLabel(s.source, s.confirmed)}</small>}
-      </dd>
-    </div>
-  );
-}
-
-const CHANNEL_WORDS = { online: "Mostly online", offline: "Mostly offline", both: "Online and offline" } as const;
-
-/** "What I understood" (§6.2.1): every field with where it came from. */
-export function Understood({ brief, chips, busy }: { brief: BrandBrief; chips: FileChip[]; busy: boolean }) {
-  const stockistFrom = [...new Set(brief.stockists.map((s) => sourceLabel(s.source)))];
-  return (
-    <section className="understood card" aria-label="What I understood">
-      <h3>What I understood</h3>
-      <dl>
-        <Field label="Brand" s={brief.name} busy={busy} />
-        <Field label="Product" s={brief.sells} busy={busy} />
-        {brief.channels && <Field label="Sold" s={brief.channels} />}
-        {brief.channel && <Field label="Mostly" s={brief.channel} show={(v) => CHANNEL_WORDS[v as keyof typeof CHANNEL_WORDS]} />}
-        {brief.tierHint && <Field label="Price tier" s={brief.tierHint} />}
-        {brief.stageHint && <Field label="Stage" s={brief.stageHint} />}
-      </dl>
-      {!!brief.traits?.length && (
-        <p className="small"><strong>Traits I&apos;ll read into Qloo</strong> {brief.traits.join(" · ")} <small className="src src-inferred">my read</small></p>
-      )}
-      {!!brief.research?.sources.length && (
-        <details className="small research">
-          <summary>Researched {brief.research.sources.length} pages</summary>
-          <ul>
-            {brief.research.sources.map((s, i) => (
-              <li key={i}>{s.uri ? <a href={s.uri} target="_blank" rel="noreferrer noopener">{s.title ?? s.uri}</a> : s.title}</li>
-            ))}
-          </ul>
-        </details>
-      )}
-      {brief.qloo && <p className="small muted">{brief.qloo.match ? `In Qloo as ${brief.qloo.match.name}` : "Not in Qloo yet, which is normal for a young brand: I'll read brands like it"}</p>}
-      {!!brief.stockists.length && (
-        <p className="small">
-          <strong>{brief.stockists.length} stockists</strong> <span className="muted">{stockistFrom.join(", ")}</span>
-        </p>
-      )}
-      {!!brief.websites.length && <p className="small"><strong>Websites</strong> {brief.websites.map((w) => w.value.replace(/^https:\/\//, "")).join(", ")}</p>}
-      {!!brief.comparables.length && <p className="small"><strong>Brands like you</strong> {brief.comparables.map((c) => c.value).join(", ")}</p>}
-      {!!brief.competitors.length && <p className="small"><strong>Competitors</strong> {brief.competitors.map((c) => c.value).join(", ")}</p>}
-      {!!brief.notes.length && (
-        <ul className="notes small">
-          {brief.notes.map((n, i) => <li key={i}>{n.value} <small className="src">{sourceLabel(n.source)}</small></li>)}
-        </ul>
-      )}
-      {!!chips.length && (
-        <ul className="file-chips">
-          {chips.map((c, i) => <li key={i} className={c.busy ? "busy" : ""}><strong>{c.name}</strong> <span className="muted">{c.status}</span></li>)}
-        </ul>
-      )}
-    </section>
   );
 }

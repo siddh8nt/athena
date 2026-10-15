@@ -3,7 +3,9 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import { ACCEPT, TrailView, Understood, useBriefChat, type Msg } from "./chat";
+import { ACCEPT, TrailView, useBriefChat, type FileChip, type Msg } from "./chat";
+import { BrandGraph, StaleFlag } from "./BrandGraph";
+import { Question } from "./Question";
 import { usePlan, type PlanSource } from "./usePlan";
 import { MarketsView, MessageView, MomentsView, PartnersView, PlacesView } from "./Blocks";
 import { Workspace } from "./Workspace";
@@ -22,7 +24,12 @@ import type { LiveFact } from "@/lib/knowledge/types";
 import type { Contribution } from "@/lib/qloo/types";
 import { GUESS, type Turn } from "@/lib/brief/conversation";
 import { briefToInput } from "@/lib/brief/to-input";
-import { missingRequired, type BrandBrief } from "@/lib/brief/types";
+import { itemKey, missingRequired, type BrandBrief } from "@/lib/brief/types";
+import { allNodes } from "@/lib/graph/build";
+import { POINTER, PREVIEW_AT, applyEdit, applyFiles, fillOther, graphState, previewLine, previewOf, rerun, undo, type EditQuestion, type GraphState, type Op } from "@/lib/graph/edit";
+import { staleLine, type RunId } from "@/lib/graph/stale";
+import type { GraphInput } from "@/lib/graph/types";
+import { keepFile, workspace } from "@/lib/knowledge/workspace";
 import { GROWTH, MAX_PICKS, STOP_LABELS, blockedReason, decisionsFor, labelFor, motionsFor, orderFor, spreadNote, stopsFor, suggest, type Channel, type GrowthType, type StopId } from "@/lib/journey/growth";
 import { crowdIdForStop, crowdSignal } from "@/lib/journey/weights";
 import type { PlaceOption, Resolution } from "@/lib/places/resolve";
@@ -81,6 +88,9 @@ const NEEDS_CITY = new Set<StopId>(["places", "moments"]);
 /** The blocks a stop runs on the plan engine. */
 const BLOCK_OF: Partial<Record<StopId, Block>> = { where: "markets", places: "places", partners: "partners", message: "message", moments: "moments" };
 
+/** The journey's stops that are runs the Brand Graph can hold (§23.2 step 7e). */
+const STOP_RUNS = ["where", "places", "partners", "message", "moments", "retailers", "online"] as const satisfies readonly (StopId & RunId)[];
+
 const hash = (s: string) => {
   let h = 2166136261;
   for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619);
@@ -108,6 +118,25 @@ export function Journey() {
   const pick = useRef<HTMLInputElement>(null);
   const end = useRef<HTMLDivElement>(null);
 
+  // The Brand Graph (§23.2 step 7): the brand's one source of truth, made at onboarding and read by every run below.
+  // A run that already ran is held on the inputs it ran on when an edit moves what it reads, until it's re-run.
+  const g = graphState(j.graph);
+  const gInput: GraphInput = { brief, facts: j.facts ?? [], crowds: j.crowds, fits: j.fits, strategy: j.strategy, hidden: g.hidden };
+  const ran: RunId[] = [
+    ...(j.crowds || turn.ready ? ["crowds" as const] : []),
+    ...(j.fits ? ["fits" as const] : []),
+    ...(j.strategy ? ["strategy" as const] : []),
+    ...STOP_RUNS.filter((s) => stopData[s] !== undefined),
+  ];
+  // Async replies (a resolved addition, a file read) apply to the graph as it is when they land.
+  const latest = useRef({ input: gInput, state: g, ran });
+  latest.current = { input: gInput, state: g, ran };
+  const crowdsBrief = g.held.crowds?.brief ?? brief;
+  const [editQs, setEditQs] = useState<(EditQuestion & { by: "chat" | "graph" })[]>([]);
+  const [preview, setPreview] = useState<{ ops: Op[]; line: string; by: "chat" | "graph" }>();
+  const [working, setWorking] = useState<{ text: string; by: "chat" | "graph" }>();
+  const [graphChips, setGraphChips] = useState<FileChip[]>([]);
+
   useEffect(() => {
     try {
       if (msgs.length > 1) localStorage.setItem(STORE, JSON.stringify({ brief, msgs: msgs.slice(-40), turn, journey: j } satisfies Saved));
@@ -128,11 +157,13 @@ export function Journey() {
 
   // The taste graph starts as soon as the product is clear (§14.9), while the founder answers the next questions.
   const startCrowds = () => {
+    // Held by a Brand Graph edit, the crowds stay on the brief they were built from until the founder re-runs them.
+    const b = crowdsBrief;
     const body = {
-      brand: brief.qloo?.match,
-      comparables: brief.comparables.map((c) => c.value),
-      lookalikes: brief.proxies ?? [],
-      traits: brief.traits ?? [],
+      brand: b.qloo?.match,
+      comparables: b.comparables.map((c) => c.value),
+      lookalikes: b.proxies ?? [],
+      traits: b.traits ?? [],
     };
     const key = JSON.stringify(body);
     if (crowdKey.current === key) return;
@@ -152,7 +183,12 @@ export function Journey() {
     }
     setCrowdSteps([]);
     setForming(undefined);
-    setJ((x) => ({ ...x, crowds: undefined, crowdId: undefined, reactions: {}, pins: {}, lean: {}, fits: undefined, strategy: undefined }));
+    setJ((x) => {
+      // The crowds build again, and the fits and the strategies with them: nothing of theirs is held any more.
+      const gs = graphState(x.graph);
+      const { crowds: _c, fits: _f, strategy: _s, ...held } = gs.held;
+      return { ...x, crowds: undefined, crowdId: undefined, reactions: {}, pins: {}, lean: {}, fits: undefined, strategy: undefined, graph: { ...gs, held } };
+    });
     void crowdStream(key, (e) => {
       if (crowdKey.current !== key) return false;
       if (e.type === "status") setCrowdSteps((s) => [...s, e.text]);
@@ -194,8 +230,11 @@ export function Journey() {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const fitsKey = useRef("");
   const told: LiveFact[] = asks.filter((q) => answers[q.id]).map((q) => ({ id: `answer-${q.id}`, text: `Asked "${q.question}", the founder answered: ${answers[q.id]}`, where: "your answer", source: "the founder" }));
-  const fitsInput = j.stop !== "product" && j.crowds?.crowds.length && j.crowdsFor ? { seed: JSON.parse(j.crowdsFor) as unknown, probes: j.crowds.probes ?? [], brief, facts: [...(j.facts ?? []), ...told] } : undefined;
-  const fitsFor = fitsInput ? String(hash(JSON.stringify([j.crowdsFor, fitsInput.probes, fitsInput.facts.map((f) => f.id + f.text), brief.name?.value, brief.stockists.length]))) : "";
+  // Held by a Brand Graph edit, the fits stay on the brief and facts they were ranked from; a re-run ranks again.
+  const fitsBrief = g.held.fits?.brief ?? brief;
+  const fitsFacts = g.held.fits?.facts ?? j.facts ?? [];
+  const fitsInput = j.stop !== "product" && j.crowds?.crowds.length && j.crowdsFor ? { seed: JSON.parse(j.crowdsFor) as unknown, probes: j.crowds.probes ?? [], brief: fitsBrief, facts: [...fitsFacts, ...told] } : undefined;
+  const fitsFor = fitsInput ? String(hash(JSON.stringify([j.crowdsFor, fitsInput.probes, fitsInput.facts.map((f) => f.id + f.text), fitsBrief.name?.value, fitsBrief.stockists.length, ...(g.rev.fits ? [g.rev.fits] : [])]))) : "";
   useEffect(() => {
     if (!fitsInput || j.fits?.key === fitsFor || fitsKey.current === fitsFor) return;
     const key = fitsFor;
@@ -227,7 +266,9 @@ export function Journey() {
   const [planSteps, setPlanSteps] = useState<AgentEvent[]>([]);
   const [planRunning, setPlanRunning] = useState(false);
   const planKey = useRef("");
-  const strategyFor = fitsInput && j.fits && j.fits.key === fitsFor ? j.fits.key : "";
+  const strategyFor = fitsInput && j.fits && j.fits.key === fitsFor ? `${j.fits.key}${g.rev.strategy ? `:${g.rev.strategy}` : ""}` : "";
+  const stratBrief = g.held.strategy?.brief ?? brief;
+  const stratFacts = g.held.strategy?.facts ?? j.facts ?? [];
   useEffect(() => {
     if (!strategyFor || !fitsInput || !j.fits || j.strategy?.key === strategyFor || planKey.current === strategyFor) return;
     const key = strategyFor;
@@ -235,7 +276,10 @@ export function Journey() {
     planKey.current = key;
     setPlanSteps([]);
     setPlanRunning(true);
-    const body = JSON.stringify({ ...fitsInput, fits: run.fits, calendar: run.calendar, reach: run.reach });
+    // A city the founder marked wrong on the Brand Graph is never a place to start.
+    const wrong = new Set((stratBrief.wrong ?? []).map((w) => w.key));
+    const reach = run.reach && Object.fromEntries(Object.entries(run.reach).map(([id, ms]) => [id, ms.filter((m) => !wrong.has(itemKey.city(m.metro)))]));
+    const body = JSON.stringify({ ...fitsInput, brief: stratBrief, facts: [...stratFacts, ...told], fits: run.fits, calendar: run.calendar, reach });
     const go = (tries: number): Promise<void> =>
       agentStream("/api/strategy", body, (e) => {
         if (planKey.current !== key) return false;
@@ -256,7 +300,7 @@ export function Journey() {
   useEffect(() => {
     if (turn.ready) startCrowds();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [turn.ready, brief.qloo?.match?.id, (brief.traits ?? []).join(), (brief.proxies ?? []).join()]);
+  }, [turn.ready, crowdsBrief.qloo?.match?.id, (crowdsBrief.traits ?? []).join(), (crowdsBrief.proxies ?? []).join(), g.rev.crowds]);
 
   // Each stop's card comes into view as the stop opens.
   useEffect(() => {
@@ -295,22 +339,29 @@ export function Journey() {
   }, [j.stop, stopData, j.crowds]);
 
   const crowd = j.crowds?.crowds.find((c) => c.id === j.crowdId);
+  const baseFor = (b: BrandBrief) => ({
+    ...briefToInput(b),
+    comparables: (b.comparables.length ? b.comparables.map((c) => c.value) : (b.proxies ?? [])).slice(0, 5),
+    motions: motionsFor(j.growth),
+    city: j.city,
+  });
   const base = useMemo(
-    () => ({
-      ...briefToInput(brief),
-      comparables: (brief.comparables.length ? brief.comparables.map((c) => c.value) : (brief.proxies ?? [])).slice(0, 5),
-      motions: motionsFor(j.growth),
-      city: j.city,
-    }),
+    () => baseFor(brief),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [brief.name?.value, brief.sells?.value, brief.stockists.length, j.growth.join(), j.city],
   );
+  // Held by a Brand Graph edit, a stop reads the brief it ran on; re-run, it reads the brief as it is now.
+  const baseOf = (s: StopId) => {
+    const h = g.held[s as RunId];
+    return h ? baseFor(h.brief) : g.rev[s as RunId] ? baseFor(brief) : base;
+  };
+  const extraBrief = (s: StopId) => g.held[s as RunId]?.brief ?? brief;
   // Each stop's crowd; with New crowd plus other picks, the which-crowd answer decides which crowd each stop follows (§7.8).
   const signalFor = (s: StopId) => {
     const id = j.crowds ? crowdIdForStop(s, { growth: j.growth, crowds: j.crowds.crowds, crowdId: j.crowdId, target: j.crowdTarget, reactions: {} }) : undefined;
     return id && j.crowds ? crowdSignal(j.crowds.crowds, id, {}) : undefined;
   };
-  const inputFor = (s: StopId) => ({ ...base, crowd: signalFor(s) });
+  const inputFor = (s: StopId) => ({ ...baseOf(s), crowd: signalFor(s) });
   const input = inputFor("go");
   // With / Without (§13.2): every stop's question also goes to Gemini alone, from the same product description.
   const alone: AloneRequest = { brand: brief.name?.value || "The brand", product: String(base.description ?? "").slice(0, 400) };
@@ -330,7 +381,11 @@ export function Journey() {
   const onboarding = j.stop === "product" && !start.message && !msgs.some((m) => m.who === "you");
   const onBrief = (b: BrandBrief, assumptions: string[], facts: LiveFact[]) => {
     chat.setBrief(b);
-    setJ((x) => ({ ...x, facts }));
+    // A new brief from onboarding: earlier graph edits stay in the log, but can't be undone onto it.
+    setJ((x) => {
+      const gs = graphState(x.graph);
+      return { ...x, facts, graph: { ...gs, log: gs.log.map(({ before: _b, ...e }) => e) } };
+    });
     const ready = missingRequired(b).length === 0;
     chat.setTurn({ text: "", replies: [], ready });
     setMsgs((m) => [
@@ -344,8 +399,131 @@ export function Journey() {
     ]);
   };
 
+  // Edits to the Brand Graph (§23.2 step 7c–d), from a click on it or a message in chat: each applies as one edit
+  // through the brief merge, notes what it changed with an Undo, and holds the runs whose inputs moved.
+  const commit = (b: BrandBrief, facts: LiveFact[], state: GraphState) => {
+    latest.current = { ...latest.current, input: { ...latest.current.input, brief: b, facts, hidden: state.hidden }, state };
+    chat.setBrief(b);
+    setJ((x) => ({ ...x, facts, graph: state }));
+    if (!turn.ready && !missingRequired(b).length) chat.setTurn((t) => ({ ...t, ready: true }));
+  };
+  const apply = (ops: Op[], by: "chat" | "graph") => {
+    const { input, state, ran } = latest.current;
+    const a = applyEdit(input, state, ops, { by, ran });
+    if (a) commit(a.brief, a.facts, a.state);
+    return a;
+  };
+  type Reply = { ops: Op[]; questions: EditQuestion[]; reply: string };
+  /** One call to the graph's edit route, with a hard time limit; past it, the reply points at the graph. */
+  const post = async (body: Record<string, unknown>): Promise<Reply> => {
+    const { input } = latest.current;
+    const nodes = allNodes(input).nodes.map(({ id, type, label }) => ({ id, type, label }));
+    try {
+      const res = await fetch("/api/graph", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...body, brief: input.brief, nodes }), signal: AbortSignal.timeout(60_000) });
+      const r = (await res.json()) as Partial<Reply>;
+      return { ops: Array.isArray(r.ops) ? r.ops : [], questions: Array.isArray(r.questions) ? r.questions : [], reply: typeof r.reply === "string" ? r.reply : "" };
+    } catch {
+      return { ops: [], questions: [], reply: POINTER };
+    }
+  };
+  /** Additions and a typed home city are resolved on the server first; everything else applies here. */
+  const needsServer = (o: Op) => (o.op === "add" ? !o.id && o.type !== "note" : o.op === "set" && o.field === "activeCity");
+  const take = (r: Reply, by: "chat" | "graph") => {
+    if (r.questions.length) setEditQs((qs) => [...qs, ...r.questions.map((q) => ({ ...q, by }))]);
+    if (r.ops.length) {
+      const { input, state } = latest.current;
+      const p = previewOf(input, state, r.ops);
+      // A big edit is shown first, and applies as one step with one Undo.
+      if (p.count > PREVIEW_AT) {
+        setPreview({ ops: r.ops, line: previewLine(p), by });
+        if (by === "chat" && r.reply) say(r.reply);
+        return;
+      }
+    }
+    const a = r.ops.length ? apply(r.ops, by) : undefined;
+    if (by !== "chat") return;
+    const line = r.reply || a?.edit.note || (r.questions.length ? "" : r.ops.length ? "That's already on your graph." : POINTER);
+    if (line) say(line);
+  };
+  const graphSend = async (message: string, shown = false) => {
+    if (!shown) setMsgs((m) => [...m, { who: "you", text: message }]);
+    setWorking({ text: "Reading that…", by: "chat" });
+    const history = msgs.filter((m) => m.text && !m.card).slice(-8).map(({ who, text }) => ({ who, text }));
+    const r = await post({ message, history });
+    setWorking(undefined);
+    take(r, "chat");
+  };
+  const resolveThen = (ops: Op[], by: "chat" | "graph") => {
+    setWorking({ text: "Finding it…", by });
+    void post({ ops }).then((r) => {
+      setWorking(undefined);
+      take(r, by);
+    });
+  };
+  const onGraphEdit = (ops: Op[]) => {
+    const here = ops.filter((o) => !needsServer(o));
+    const there = ops.filter(needsServer);
+    if (here.length) apply(here, "graph");
+    if (there.length) resolveThen(there, "graph");
+  };
+  const answer = (q: EditQuestion & { by: "chat" | "graph" }, a: string) => {
+    setEditQs((qs) => qs.filter((x) => x.id !== q.id));
+    if (!a) return;
+    const one = q.options.findIndex((o) => o.label === a);
+    const picked = one >= 0 ? [one] : q.multi ? a.split(", ").map((l) => q.options.findIndex((o) => o.label === l)) : [-1];
+    if (picked.every((i) => i >= 0)) {
+      const ops = picked.flatMap((i) => q.choices[i] ?? []);
+      if (ops.some(needsServer)) return resolveThen(ops, q.by);
+      const done = apply(ops, q.by);
+      if (q.by === "chat") say(done?.edit.note ?? "That's already on your graph.");
+      return;
+    }
+    if (q.other) return resolveThen([fillOther(q.other, a)], q.by);
+    if (q.by === "chat") void graphSend(a);
+  };
+  const onUndo = () => {
+    const { input, state, ran } = latest.current;
+    const u = undo(input, state, ran);
+    if (u) commit(u.brief, u.facts, u.state);
+  };
+  const onRerun = (run: RunId) => setJ((x) => ({ ...x, graph: rerun(graphState(x.graph), run) }));
+  /** A file added after onboarding (§23.2 step 7d): read through the knowledge reader into the graph, as one edit. */
+  const readFiles = async (fs: File[]) => {
+    const names = fs.map((f) => f.name);
+    setGraphChips((c) => [...c.filter((x) => !names.includes(x.name)), ...fs.map((f) => ({ name: f.name, status: "Reading…", busy: true }))]);
+    const ws = workspace();
+    const kept = await Promise.all(fs.map((f) => keepFile(ws, f)));
+    const hashes = kept.flatMap((k) => (k.hash ? [k.hash] : []));
+    type Read = { facts?: LiveFact[]; stockists?: { ref: string; list: BrandBrief["stockists"][number]["value"][] }[]; read?: string[] };
+    let read: Read = {};
+    if (hashes.length)
+      try {
+        const res = await fetch("/api/knowledge", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ws, hashes }), signal: AbortSignal.timeout(150_000) });
+        read = (await res.json()) as Read;
+      } catch {
+        // Past the time limit: whatever the reader returns later is dropped, and the graph stays as it was.
+      }
+    const { input, state, ran } = latest.current;
+    const a = hashes.length ? applyFiles(input, state, { facts: read.facts ?? [], stockists: read.stockists ?? [], read: read.read?.length ? read.read : names }, { ran }) : undefined;
+    if (a) commit(a.brief, a.facts, a.state);
+    setGraphChips((c) => c.map((x) => (x.busy && names.includes(x.name) ? { ...x, busy: false, status: kept[names.indexOf(x.name)]?.hash ? "Read" : kept[names.indexOf(x.name)]?.status ?? "Read" } : x)));
+    const label = names.length > 1 ? `${names[0]} and ${names.length - 1} more` : names[0];
+    say(a ? a.edit.note : hashes.length ? `Read ${label}: nothing in it the graph doesn't already have.` : `${label} is still on its way; add it again in a moment.`);
+  };
+
   const send = () => {
     if (!text.trim() && !chat.files.length) return;
+    // Once the brief is written, the chat edits the Brand Graph: messages through the edit route, files through the reader.
+    if (turn.ready) {
+      const message = text.trim();
+      const fs = chat.files;
+      setText("");
+      chat.setFiles([]);
+      if (fs.length) setMsgs((m) => [...m, { who: "you", text: message, files: fs.map((f) => f.name) }]);
+      if (fs.length) void readFiles(fs);
+      if (message) void graphSend(message, fs.length > 0);
+      return;
+    }
     void chat.send(text);
     setText("");
   };
@@ -412,6 +590,31 @@ export function Journey() {
             ])}
             {busy && live && <li className="msg msg-athena streaming">{live}</li>}
             {queued && <li className="msg msg-athena typing">Finishing my research, then I&apos;ll read that…</li>}
+            {working?.by === "chat" && <li className="msg msg-athena typing">{working.text}</li>}
+            {editQs.filter((q) => q.by === "chat").map((q) => (
+              <li key={q.id} className="msg-question">
+                <Question q={q} onAnswer={(a) => answer(q, a)} />
+              </li>
+            ))}
+            {preview && (
+              <li className="msg msg-athena graph-preview">
+                <p>{preview.line}</p>
+                <div className="replies">
+                  <button
+                    type="button"
+                    className="primary"
+                    onClick={() => {
+                      const a = apply(preview.ops, preview.by);
+                      setPreview(undefined);
+                      if (preview.by === "chat") say(a?.edit.note ?? "That's already on your graph.");
+                    }}
+                  >
+                    Apply
+                  </button>
+                  <button type="button" onClick={() => setPreview(undefined)}>Not now</button>
+                </div>
+              </li>
+            )}
             <div ref={end} />
           </ol>
 
@@ -479,7 +682,18 @@ export function Journey() {
 
         <section className="journey-canvas" aria-label="Your plan so far">
           <div id="stop-product">
-            <Understood brief={brief} chips={chat.chips} busy={busy} />
+            <BrandGraph
+              input={gInput}
+              state={g}
+              chips={[...chat.chips, ...graphChips]}
+              busy={busy}
+              working={working?.by === "graph" ? working.text : undefined}
+              questions={editQs.filter((q) => q.by === "graph")}
+              onEdit={onGraphEdit}
+              onAnswer={(q, a) => answer({ ...q, by: "graph" }, a)}
+              onUndo={onUndo}
+              onRerun={onRerun}
+            />
           </div>
           {reached("growth") && j.growth.length > 0 && j.done.includes("growth") && (
             <section id="stop-growth" className="card">
@@ -489,6 +703,7 @@ export function Journey() {
           )}
           {reached("crowd") && (
             <div id="stop-crowd">
+              {(["crowds", "fits", "strategy"] as const).map((r) => g.held[r] && <StaleFlag key={r} run={r} line={staleLine(r, g.held[r]!)} onRerun={() => onRerun(r)} />)}
               <CrowdStop
                 j={j}
                 steps={crowdSteps}
@@ -505,22 +720,25 @@ export function Journey() {
             .filter((s) => BLOCK_OF[s] && (reached(s) || prefetch(s)))
             .map((s) => (
               <div key={s} id={`stop-${s}`} hidden={!reached(s)}>
-                <StopRunner alone={alone} taste={taste} stop={s} block={BLOCK_OF[s]!} input={CITY_STOPS.has(s) ? inputFor(s) : { ...inputFor(s), city: undefined }} brandName={brief.name?.value ?? "Your brand"} onData={(d) => setStopData((x) => (x[s] === d ? x : { ...x, [s]: d }))} />
+                {g.held[s as RunId] && <StaleFlag run={s as RunId} line={staleLine(s as RunId, g.held[s as RunId]!)} onRerun={() => onRerun(s as RunId)} />}
+                <StopRunner alone={alone} taste={taste} stop={s} block={BLOCK_OF[s]!} input={CITY_STOPS.has(s) ? inputFor(s) : { ...inputFor(s), city: undefined }} rev={g.rev[s as RunId]} brandName={brief.name?.value ?? "Your brand"} onData={(d) => setStopData((x) => (x[s] === d ? x : { ...x, [s]: d }))} />
               </div>
             ))}
           {stops
             .filter((s) => (s === "retailers" || s === "online") && (reached(s) || prefetch(s)))
             .map((s) => (
               <div key={s} id={`stop-${s}`} hidden={!reached(s)}>
+                {g.held[s as RunId] && <StaleFlag run={s as RunId} line={staleLine(s as RunId, g.held[s as RunId]!)} onRerun={() => onRerun(s as RunId)} />}
                 {crowd ? (
                   <ExtraStop
                     kind={s as "retailers" | "online"}
                     signal={(signalFor(s)?.signal ?? crowd.signal.map((x) => ({ ...x, weight: 1 }))).map((x) => ({ id: x.id, weight: x.weight }))}
                     crowdName={signalFor(s)?.name ?? crowd.name}
                     names={Object.fromEntries((signalFor(s)?.signal ?? crowd.signal).map((x) => [x.id, x.name]))}
-                    product={[brief.sells?.value, ...(brief.traits ?? [])].filter(Boolean).join(", ")}
-                    category={brief.retail}
-                    evidence={[brief.channels?.value ?? "", ...brief.stockists.map((x) => x.value.name), ...brief.notes.map((n) => n.value)].filter(Boolean)}
+                    product={[extraBrief(s).sells?.value, ...(extraBrief(s).traits ?? [])].filter(Boolean).join(", ")}
+                    category={extraBrief(s).retail}
+                    evidence={[extraBrief(s).channels?.value ?? "", ...extraBrief(s).stockists.map((x) => x.value.name), ...extraBrief(s).notes.map((n) => n.value)].filter(Boolean)}
+                    rev={g.rev[s as RunId]}
                     skew={crowd.skew}
                     brandName={brief.name?.value ?? "your brand"}
                     alone={alone}
@@ -947,9 +1165,10 @@ type RetailersResult = { picks: { id: string; name: string; affinity: number; ra
 type OnlineResult = { creators: { id: string; name: string; role: string; affinity: number }[]; podcasts: { id: string; name: string; affinity: number }[]; interests: { id: string; name: string }[]; calls: number };
 
 /** Next retailers (§9.25) and Online (§9.24): small stops outside the six blocks, read for the chosen crowd. */
-function ExtraStop({ kind, signal, crowdName, names, product, category, evidence, skew, brandName, alone, taste, onData }: { kind: "retailers" | "online"; signal: { id: string; weight: number }[]; crowdName: string; names: Record<string, string>; product: string; category?: string; evidence: string[]; skew: CrowdCard["skew"]; brandName: string; alone: AloneRequest; taste?: Taste; onData: (d: unknown) => void }) {
+function ExtraStop({ kind, signal, crowdName, names, product, category, evidence, rev, skew, brandName, alone, taste, onData }: { kind: "retailers" | "online"; signal: { id: string; weight: number }[]; crowdName: string; names: Record<string, string>; product: string; category?: string; evidence: string[]; rev?: number; skew: CrowdCard["skew"]; brandName: string; alone: AloneRequest; taste?: Taste; onData: (d: unknown) => void }) {
   const [data, setData] = useState<RetailersResult | OnlineResult | null>(null);
-  const key = JSON.stringify([kind, signal]);
+  // Held by a Brand Graph edit, the product and evidence stay as they ran; a re-run (its rev) reads them again.
+  const key = JSON.stringify([kind, signal, product, evidence, rev ?? 0]);
   useEffect(() => {
     let live = true;
     setData(null);
@@ -1017,8 +1236,9 @@ function ExtraStop({ kind, signal, crowdName, names, product, category, evidence
 }
 
 /** One stop on the plan engine: a scoped run of one block for the chosen crowd and city. */
-function StopRunner({ stop, block, input, brandName, alone, taste, onData }: { stop: StopId; block: Block; input: Record<string, unknown>; brandName: string; alone: AloneRequest; taste?: Taste; onData: (d: unknown) => void }) {
-  const key = JSON.stringify(input);
+function StopRunner({ stop, block, input, rev, brandName, alone, taste, onData }: { stop: StopId; block: Block; input: Record<string, unknown>; rev?: number; brandName: string; alone: AloneRequest; taste?: Taste; onData: (d: unknown) => void }) {
+  // A re-run from the Brand Graph (its rev) runs again even when the input reads the same.
+  const key = JSON.stringify([input, rev ?? 0]);
   const source: PlanSource = useMemo(() => ({ kind: "custom", input, id: hash(`${block}|${key}`), scope: [block] }), [block, key]); // eslint-disable-line react-hooks/exhaustive-deps
   const plan = usePlan(source);
   const b = plan.blocks[block];

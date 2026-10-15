@@ -52,6 +52,14 @@ export const LIMITS = {
     const t = take(`rerun:${ip}`, 20, HOUR);
     return t.ok ? { ok: true as const } : { ok: false as const, message: "I'll keep your answer and use it on your next plan." };
   },
+  /**
+   * Chat edits to the Brand Graph (§23.2 step 7d): about 40 per IP per hour, never shown. Past it, the reply points
+   * at the graph, where every edit still works: clicks on the graph never need the model.
+   */
+  graphEdit(ip: string) {
+    const t = take(`graph:${ip}`, 40, HOUR);
+    return t.ok ? { ok: true as const } : { ok: false as const, message: "" };
+  },
   /** Taste-axis sliders (§9.27): 60 re-ranks per IP per hour, one Qloo call each (cached ones don't count). */
   lean(ip: string) {
     const t = take(`lean:${ip}`, 60, HOUR);

@@ -158,6 +158,8 @@ function prompt(brief: BrandBrief, history: ChatLine[], message: string, files: 
     stockists: brief.stockists.length,
     comparables: brief.comparables.map((c) => c.value),
     competitors: brief.competitors.map((c) => c.value),
+    // The founder marked these wrong on the Brand Graph (§23.2 step 7c): never propose or infer them again.
+    ...(brief.wrong?.length ? { marked_wrong_never_infer_again: brief.wrong.map((w) => w.text) } : {}),
   };
   const web = brief.research?.sources ?? [];
   const fileText = files

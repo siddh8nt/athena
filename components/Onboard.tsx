@@ -10,6 +10,7 @@ import { CONTEXT_PROMPT, PASTED } from "@/lib/agent/context-prompt";
 import { ACCEPT } from "./chat";
 import { Question, type Asked } from "./Question";
 import { KnowledgePanel, Settle } from "./Knowledge";
+import { workspace } from "@/lib/knowledge/workspace";
 
 // Onboarding (PRD §23.2 steps 3–4, problem 3): three ways in (a website, files, a summary from the founder's own AI
 // assistant), then Athena does the work while the founder watches each real step. Files are kept for the founder
@@ -32,22 +33,6 @@ const TOOL_LABEL: Record<string, string> = {
   check: "Check",
   plan: "Read",
 };
-
-const WS_KEY = "athena-workspace";
-
-/** This browser's workspace: a random id it keeps, so the founder's files stay theirs. */
-function workspace(): string {
-  const fresh = () => (crypto.randomUUID?.() ?? "10000000-1000-4000-8000-100000000000".replace(/[018]/g, (c) => (+c ^ (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (+c / 4)))).toString(16)));
-  try {
-    const had = localStorage.getItem(WS_KEY);
-    if (had) return had;
-    const ws = fresh();
-    localStorage.setItem(WS_KEY, ws);
-    return ws;
-  } catch {
-    return fresh();
-  }
-}
 
 /** One SSE stream, event by event. */
 async function stream(body: FormData, on: (e: AgentStreamEvent) => void) {

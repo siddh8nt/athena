@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { forceCollide, forceLink, forceManyBody, forceSimulation, forceX, forceY, type Simulation, type SimulationLinkDatum, type SimulationNodeDatum } from "d3-force";
 import { domainWord, shortName, whyOf, type Domain, type Galaxy as GalaxyData } from "@/lib/taste/galaxy";
 import { ordinal } from "./Blocks";
+import { shapePath, type ShapeName } from "@/lib/graph/shapes";
 
 // The Taste Galaxy (PRD §13, v4.0): every entity the crowd loves, placed by how the probed landmarks rank it. It forms
 // live, round by round, as the agent probes Qloo; the crowds settle into hulls drawn round their
@@ -22,28 +23,10 @@ type SimLink = SimulationLinkDatum<SimNode> & { s: number };
 
 const radius = (specificity: number) => 3.5 + 7 * Math.min(1, Math.max(0, (specificity + 0.15) / 0.45));
 
+const DOMAIN_SHAPE: Record<Domain, ShapeName> = { brand: "circle", artist: "triangle", tv_show: "square", movie: "diamond", podcast: "hexagon", book: "rect" };
+
 /** A path for each domain's shape, centred on 0,0. */
-function shape(d: Domain, r: number): string {
-  const poly = (n: number, rr: number, start: number) =>
-    Array.from({ length: n }, (_, k) => {
-      const a = start + (k * 2 * Math.PI) / n;
-      return `${k ? "L" : "M"}${(rr * Math.cos(a)).toFixed(2)} ${(rr * Math.sin(a)).toFixed(2)}`;
-    }).join("") + "Z";
-  switch (d) {
-    case "brand":
-      return `M${r} 0A${r} ${r} 0 1 0 ${-r} 0A${r} ${r} 0 1 0 ${r} 0Z`;
-    case "artist":
-      return poly(3, r * 1.3, -Math.PI / 2);
-    case "tv_show":
-      return poly(4, r * 1.2, Math.PI / 4);
-    case "movie":
-      return poly(4, r * 1.3, 0);
-    case "podcast":
-      return poly(6, r * 1.1, 0);
-    default:
-      return `M${-r * 1.15} ${-r * 0.75}h${r * 2.3}v${r * 1.5}h${-r * 2.3}Z`;
-  }
-}
+export const shape = (d: Domain, r: number): string => shapePath(DOMAIN_SHAPE[d] ?? "rect", r);
 
 /** Convex hull (Andrew's monotone chain) of points. */
 function hull(points: [number, number][]): [number, number][] {

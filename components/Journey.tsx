@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { ACCEPT, TrailView, useBriefChat, type FileChip, type Msg } from "./chat";
 import { BrandGraph, StaleFlag } from "./BrandGraph";
@@ -9,8 +9,10 @@ import { Galaxy } from "./Galaxy";
 import { CrowdGeography } from "./CrowdGeography";
 import { WithWithout, type AloneRequest } from "./WithWithout";
 import { Onboard } from "./Onboard";
-import { Fits, tiersFor } from "./Fits";
-import { GoalsBar, SpecialistWorkspace, TeamAsks, TeamPanel, WhatsWorking, WorkView, useTeam, type TeamLive } from "./Team";
+import { Fits, When, tiersFor } from "./Fits";
+import { StrategyCard, StrategyHead, StrategyPending } from "./Strategy";
+import { fromCrowd, type Handoff } from "@/lib/agent/handoffs";
+import { GoalsBar, Handoffs, SpecialistWorkspace, TeamAsks, TeamPanel, WhatsWorking, WorkView, useTeam, type TeamLive } from "./Team";
 import type { StrategyView } from "./Strategy";
 import type { Asked } from "./Question";
 import type { AgentStreamEvent } from "@/lib/agent/loop";
@@ -30,7 +32,7 @@ import { crowdAfterFits, emptyJourney, loadedJourney, type CrowdCard, type Crowd
 import type { Galaxy as GalaxyData } from "@/lib/taste/galaxy";
 import { packBySlug } from "@/lib/journey/packs";
 import { emptyTeam, type Mark, type TeamEvent, type TeamState, type WorkItem } from "@/lib/team/types";
-import { isSpecialist, nameOf, type SpecialistId } from "@/lib/agent/specialists";
+import { SPECIALIST_IDS, isSpecialist, nameOf, specialist, type SpecialistId } from "@/lib/agent/specialists";
 import { growthQuestion, seedOf, type GrowthQuestion } from "@/lib/journey/flow";
 
 // The journey (PRD §23.2 step 8.1): one path. Onboarding writes the Brand Graph; one growth question in the
@@ -206,6 +208,7 @@ export function Journey() {
       facts: j.facts ?? [],
     }),
     graphRev: g.log.length,
+    crowdId: (name) => j.crowds?.crowds.find((c) => c.name === name)?.id,
     onMemory,
     onGalaxy: setForming,
     say,
@@ -257,14 +260,18 @@ export function Journey() {
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [j.stop, turn.ready, measureFor]);
-  // A journey saved with crowds but no goals yet picks up at the goals.
+  // A journey saved with crowds but no growth goal yet picks up at the goals. The question itself isn't saved, so a
+  // reload asks it again even when goals were proposed before.
+  const resumed = useRef(false);
   useEffect(() => {
-    if (j.stop !== "crowd" || !j.crowds || proposedOnce.current || tm.live.running) return;
-    proposedOnce.current = true;
+    const growing = team.goals.some((g) => g.id !== "know_crowd");
+    if (j.stop !== "crowd" || !j.crowds || growing || resumed.current || tm.live.running || !measuredFor.current || tm.live.asks.some((a) => a.id === "goals")) return;
+    resumed.current = proposedOnce.current = true;
     void tm.propose();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [j.stop, !!j.crowds]);
+  }, [j.stop, !!j.crowds, tm.live.running]);
   const inWorkspace = isSpecialist(tm.active) ? tm.active : undefined;
+  const crowdIdOf = (name: string) => j.crowds?.crowds.find((c) => c.name === name)?.id;
 
   // Onboarding (§23.2 step 3): a new founder starts from the three ways in, not a chat. Sample brands and founders
   // who began in the chat keep the chat. (`onboarding` is read above, before the team's hooks.)
@@ -526,7 +533,7 @@ export function Journey() {
       <header className="topbar journey-top">
         <Link href="/" className="wordmark-link"><strong>Athena</strong></Link>
         {/* Hidden through onboarding (§23.2 step 7.2a); the goals take the progress rail's place (step 8a). */}
-        {!onboarding && <GoalsBar goals={team.goals} onChange={turn.ready && j.crowds && !tm.live.running ? () => (tm.setActive("athena"), void tm.propose()) : undefined} />}
+        {!onboarding && <GoalsBar goals={team.goals} />}
         <div className="top-actions">
           <button
             type="button"
@@ -558,7 +565,7 @@ export function Journey() {
                 <button type="button" className="linkish small" onClick={() => tm.setActive("athena")}>
                   ← Back to Athena
                 </button>
-                <SpecialistWorkspace id={inWorkspace} live={tm.live} team={team} alone={alone} onMark={(item, m) => tm.mark(inWorkspace, item, m)} onAnswer={tm.answer} />
+                <SpecialistWorkspace id={inWorkspace} live={tm.live} team={team} alone={alone} onMark={(item, m) => tm.mark(inWorkspace, item, m)} onAnswer={tm.answer} onHandoff={tm.handoff} crowdId={crowdIdOf} />
                 <div ref={end} />
               </div>
             ) : (
@@ -669,14 +676,16 @@ export function Journey() {
                   step={analystStep}
                   measured={measured}
                   forming={forming}
-                  fits={{ steps: [], running: !!analystStep && !j.fits, asks, answers, onAnswer: (q, a) => setAnswers((x) => ({ ...x, [q.id]: a })), strategy: j.fits && (j.strategy || planRunning) ? { run: j.strategy, steps: planSteps, running: planRunning } : undefined }}
+                  fits={{ steps: [], running: !!analystStep && !j.fits, asks, answers, onAnswer: (q, a) => setAnswers((x) => ({ ...x, [q.id]: a })) }}
+                  onHandoff={tm.handoff}
                   onAsk={askAbout}
                   probing={j.crowds ? analystStep : undefined}
                   alone={alone}
                 />
               </div>
             )}
-            {j.stop === "crowd" && <GoalWork team={team} live={tm.live} alone={alone} onOpen={(id) => tm.setActive(id)} onMark={tm.mark} />}
+            {j.stop === "crowd" && <GoalWork j={j} team={team} live={tm.live} alone={alone} onOpen={(id) => tm.setActive(id)} onMark={tm.mark} onHandoff={tm.handoff} crowdId={crowdIdOf} />}
+            {j.stop === "crowd" && j.fits && (j.strategy || planRunning) && <AthenaPlan j={j} steps={planSteps} running={planRunning} />}
           </section>
         </main>
       )}
@@ -719,8 +728,21 @@ function Dock(props: { j: JourneyState; turn: Turn; busy: boolean; researching: 
  * Below the Analyst, the work the chosen goals need (§23.2 step 8.1a): one card per specialist on a goal, its results
  * once in, a line saying what it's doing meanwhile. Specialists no goal needs don't run and don't show.
  */
-function GoalWork({ team, live, alone, onOpen, onMark }: { team: TeamState; live: TeamLive; alone: AloneRequest; onOpen: (id: SpecialistId) => void; onMark: (agent: SpecialistId, item: WorkItem, m: Mark) => void }) {
-  const ids = [...new Set(team.goals.filter((goal) => goal.id !== "know_crowd").flatMap((goal) => goal.team))].filter((id) => id !== "analyst");
+/**
+ * Below the Analyst, each specialist's own section (§23.2 step 8.3a): what it owns before it runs (the Navigator the
+ * crowds' cities, the Promoter the calendar), its results once in, and the handoffs on to the next specialist.
+ */
+function GoalWork({ j, team, live, alone, onOpen, onMark, onHandoff, crowdId }: { j: JourneyState; team: TeamState; live: TeamLive; alone: AloneRequest; onOpen: (id: SpecialistId) => void; onMark: (agent: SpecialistId, item: WorkItem, m: Mark) => void; onHandoff: (h: Handoff) => void; crowdId: (name: string) => string | undefined }) {
+  const [lit, setLit] = useState<number | null>(null);
+  const crowds = j.crowds?.crowds ?? [];
+  const calendar = j.fits?.calendar;
+  const first = j.fits?.fits.fits.find((f) => f.tier === "win_first") ?? j.fits?.fits.fits[0];
+  const owned: Partial<Record<SpecialistId, { body: ReactNode; start?: Handoff }>> = {
+    ...(crowds.some((c) => c.cities.length) ? { navigator: { body: <CrowdGeography crowds={crowds} lit={lit} onLight={setLit} />, ...(first ? { start: fromCrowd({ id: first.crowd, name: first.name }, true)[0] } : {}) } } : {}),
+    ...(calendar ? { promoter: { body: <When calendar={calendar} name={(id) => crowds.find((c) => c.id === id)?.name} />, start: { to: "promoter", label: "Find events and online audiences", focus: {} } } } : {}),
+  };
+  const onGoal = new Set(team.goals.filter((goal) => goal.id !== "know_crowd").flatMap((goal) => goal.team));
+  const ids = SPECIALIST_IDS.filter((id) => id !== "analyst" && (onGoal.has(id) || team.works[id] || owned[id]));
   if (!ids.length) return null;
   return (
     <>
@@ -728,26 +750,62 @@ function GoalWork({ team, live, alone, onOpen, onMark }: { team: TeamState; live
         const s = live.status[id];
         const w = team.works[id];
         const step = s?.state === "working" ? s.step : undefined;
-        if (!w && !step && !live.running) return null;
+        const own = owned[id];
+        if (!w && !step && !own && !live.running) return null;
         return (
           <section key={id} id={`work-${id}`} className="goal-work">
             <header className="card-head">
-              <h3>{nameOf(id)}</h3>
+              <h3>The {nameOf(id)}</h3>
+              <p className="small muted">{specialist(id).role}</p>
               <button type="button" className="linkish small" onClick={() => onOpen(id)}>Open the {nameOf(id)}&apos;s workspace</button>
             </header>
+            {own?.body}
             {w ? (
-              <WorkView work={w} team={team} updating={!!step} alone={alone} onMark={(item, m) => onMark(id, item, m)} />
-            ) : (
+              <WorkView work={w} team={team} updating={!!step} alone={alone} onMark={(item, m) => onMark(id, item, m)} onHandoff={onHandoff} crowdId={crowdId} />
+            ) : step || (onGoal.has(id) && live.running) ? (
               <section className="card">
                 <ol className="steps live-steps">
                   <li className="step-active"><span className="spin" aria-hidden /><span className="shimmer-text">{step ?? "Starting on your goals"}</span></li>
                 </ol>
               </section>
+            ) : (
+              own?.start && <Handoffs list={[own.start]} onHandoff={onHandoff} />
             )}
           </section>
         );
       })}
     </>
+  );
+}
+
+/** Athena's plan (§23.2 step 8.3a): a strategy for each most valuable fit, stitched from what the team measured. */
+function AthenaPlan({ j, steps, running }: { j: JourneyState; steps: AgentEvent[]; running: boolean }) {
+  const plan = j.strategy;
+  const sources = new Map((plan?.sources ?? []).map((s) => [s.id, s]));
+  const fits = (j.fits?.fits.fits ?? []).filter((f) => f.tier !== "watch" || f.rank === 1);
+  return (
+    <section className="goal-work" id="work-athena">
+      <header className="card-head">
+        <h3>Athena&apos;s plan</h3>
+        <p className="small muted">A strategy for each most valuable fit: who, where, through what and when.</p>
+      </header>
+      <section className="card fits">
+        {fits.map((f) => {
+          const st = plan?.result.strategies.find((x) => x.crowd === f.crowd);
+          if (!st && !running) return null;
+          return (
+            <article key={f.crowd} className="fit">
+              <div className="fit-head">
+                <span className="rank">{f.rank}</span>
+                <h5>{f.name}</h5>
+              </div>
+              {st ? <StrategyCard s={st} said={plan!.answer.lines.filter((l) => l.crowd === f.crowd)} sources={sources} /> : <StrategyPending steps={steps} />}
+            </article>
+          );
+        })}
+        <StrategyHead view={{ run: plan, steps, running }} sources={sources} />
+      </section>
+    </section>
   );
 }
 
@@ -768,7 +826,7 @@ type FitsView = { steps: AgentEvent[]; running: boolean; asks: Asked[]; answers:
  * as the brand's most valuable fits (Win first, Win next, Watch, as the Analyst set them), each top fit with its
  * strategy, the linked map and the crowd cards. "Ask the Analyst about this" stays on every Galaxy node.
  */
-function AnalystResults({ j, step, measured, forming, fits, onAsk, probing, alone }: { j: JourneyState; step?: string; measured: boolean; forming?: GalaxyData; fits: FitsView; onAsk: (id: string, name: string) => void; probing?: string; alone: AloneRequest }) {
+function AnalystResults({ j, step, measured, forming, fits, onAsk, probing, alone, onHandoff }: { j: JourneyState; step?: string; measured: boolean; forming?: GalaxyData; fits: FitsView; onAsk: (id: string, name: string) => void; probing?: string; alone: AloneRequest; onHandoff: (h: Handoff) => void }) {
   const r = j.crowds;
   // Linked views (§9.26): the crowd under the pointer in the Galaxy, the map or the cards lights up in all three.
   const [lit, setLit] = useState<number | null>(null);
@@ -800,8 +858,7 @@ function AnalystResults({ j, step, measured, forming, fits, onAsk, probing, alon
   return (
     <section className="crowds">
       {r.galaxy && <Galaxy galaxy={r.galaxy} names={r.crowds.map((c) => c.name)} decisions={decisions} probes={r.probes ?? []} onAsk={onAsk} probing={probing} lit={lit} onLight={setLit} />}
-      <Fits run={j.fits} {...fits} slot={slot} />
-      {!probing && <CrowdGeography crowds={r.crowds} lit={lit} onLight={setLit} />}
+      <Fits run={j.fits} {...fits} slot={slot} foot={(f) => (f.tier === "watch" ? null : <Handoffs list={fromCrowd({ id: f.crowd, name: f.name }, f.tier === "win_first")} onHandoff={onHandoff} />)} />
       <header className="card-head">
         <h3>Your crowds</h3>
         <p className="small muted">

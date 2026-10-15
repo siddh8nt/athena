@@ -10,6 +10,7 @@ import type { AloneStop } from "@/lib/proof/alone";
 import { addEvent, lineDetail, lineText, settleRun, type Line } from "@/lib/agent/transcript";
 import { ATHENA, SPECIALIST_IDS, isSpecialist, nameOf, panelIds, specialist, type AgentId, type SpecialistId } from "@/lib/agent/specialists";
 import { GOALS, pickGoals, teamFor, teamLine } from "@/lib/agent/goals";
+import { fromCity, fromWork, type Handoff } from "@/lib/agent/handoffs";
 import { latest, staleRuns, whatsWorking } from "@/lib/agent/outcomes";
 import { nodesAdded } from "@/lib/graph/types";
 import { MARKS, MARK_LABEL, type AgentStatus, type Goal, type Mark, type TeamEvent, type TeamState, type Work, type WorkItem } from "@/lib/team/types";
@@ -47,6 +48,8 @@ export function useTeam(p: {
   /** The Taste Galaxy as it forms while the Analyst measures (§23.2 step 8.1b). */
   onGalaxy?: (g: Galaxy) => void;
   say: (text: string) => void;
+  /** A crowd's id by its name, for the handoffs a finished run offers. */
+  crowdId?: (name: string) => string | undefined;
 }) {
   const [live, setLive] = useState<TeamLive>(emptyLive);
   const [active, setActive] = useState<AgentId>("athena");
@@ -54,6 +57,8 @@ export function useTeam(p: {
   latestTeam.current = p.team;
   const run = useRef(0);
   const custom = useRef("");
+  // The handoffs Athena offers in the chat after a run, by their label (§23.2 step 8.3d).
+  const offered = useRef(new Map<string, Handoff>());
 
   const handle = (e: TeamEvent, n: number) => {
     if (e.type === "goals") p.setTeam((t) => ({ ...t, proposed: e.goals }));
@@ -61,14 +66,20 @@ export function useTeam(p: {
     else if (e.type === "assign") line("athena", { t: 0, tool: "assign", why: `${e.goal.label}: ${e.line || "Athena takes it herself."}`, status: "ok", callIds: [], summary: "" }, n);
     else if (e.type === "status") setLive((l) => ({ ...l, status: { ...l.status, [e.agent]: e.status } }));
     else if (e.type === "step") line(e.agent, e.event, n);
-    else if (e.type === "ask") setLive((l) => (l.asks.some((a) => a.id === e.ask.id && l.answers[a.id] === undefined) ? l : { ...l, asks: [...l.asks.filter((a) => a.id !== e.ask.id), { ...e.ask, agent: e.agent }], answers: omit(l.answers, e.ask.id) }));
-    else if (e.type === "work")
+    else if (e.type === "ask" && e.ask.id === "goals") {
+      // The goals question is Athena's: bring her panel forward so it is never missed behind a specialist's.
+      setActive("athena");
+      setLive((l) => ({ ...l, asks: [...l.asks.filter((a) => a.id !== "goals"), { ...e.ask, agent: e.agent }], answers: omit(l.answers, "goals") }));
+    } else if (e.type === "ask") setLive((l) => (l.asks.some((a) => a.id === e.ask.id && l.answers[a.id] === undefined) ? l : { ...l, asks: [...l.asks.filter((a) => a.id !== e.ask.id), { ...e.ask, agent: e.agent }], answers: omit(l.answers, e.ask.id) }));
+    else if (e.type === "work") {
+      if (e.agent !== "analyst") offerNext(e.work);
       p.setTeam((t) => ({
         ...t,
         previous: { ...t.previous, ...(t.works[e.agent] ? { [e.agent]: t.works[e.agent] } : {}) },
         works: { ...t.works, [e.agent]: e.work },
         rev: { ...t.rev, [e.agent]: p.graphRev },
       }));
+    }
     else if (e.type === "reply") {
       const who: AgentId = e.agent ?? "athena";
       setLive((l) => ({ ...l, replies: { ...l.replies, [who]: [...(l.replies[who] ?? []), e.text].slice(-6) } }));
@@ -118,6 +129,24 @@ export function useTeam(p: {
     }
   };
 
+  /** When a specialist finishes, Athena says so in the chat and offers whoever its results hand on to. */
+  const offerNext = (work: Work) => {
+    const next = fromWork(work, p.crowdId ?? (() => undefined));
+    p.say(`The ${nameOf(work.agent)} is done: ${work.headline.replace(/\.$/, "")}.`);
+    if (!next.length) return;
+    for (const h of next) offered.current.set(h.label, h);
+    const id = `next_${work.agent}`;
+    const ask: TeamAsk = { id, agent: "athena", question: "Where next?", why: `What the ${nameOf(work.agent)} found, handed on.`, options: next.map((h) => ({ label: h.label, hint: `With the ${nameOf(h.to)}.` })), multi: false, assumed: next[0].label };
+    setLive((l) => ({ ...l, asks: [...l.asks.filter((a) => a.id !== id), ask], answers: omit(l.answers, id) }));
+  };
+  /** A handoff (§23.2 step 8.3b): the next specialist starts with the crowd or city it came from, and its panel opens. */
+  const handoff = (h: Handoff) => {
+    setActive(h.to);
+    const g: Goal = { id: `handoff_${h.to}`, label: h.label, why: "Handed on from a result", team: [h.to], conflicts: [] };
+    p.setTeam((t) => ({ ...t, goals: [...t.goals.filter((x) => x.id !== g.id), g].slice(-5) }));
+    void post("run", { goals: [g], focus: h.focus });
+  };
+
   /** The picked goals go to the team; ones already on top stay. */
   const start = (goals: Goal[]) => {
     if (!goals.length) return;
@@ -138,6 +167,11 @@ export function useTeam(p: {
       if (picked.length) return start(picked);
       custom.current = a;
       return void post("custom", { text: a });
+    }
+    if (q.id.startsWith("next_")) {
+      const h = offered.current.get(a);
+      // Other: the founder's own next step goes to Athena, who answers or hands it on.
+      return h ? handoff(h) : a ? askAthena(a) : undefined;
     }
     if (q.id === "custom") {
       const close = pickGoals(GOALS as Goal[], a);
@@ -171,7 +205,7 @@ export function useTeam(p: {
     return post("run", { goals: [g] });
   };
 
-  return { live, active, setActive, propose, answer, askAthena, askSpecialist, refresh, mark, start, measure };
+  return { live, active, setActive, propose, answer, askAthena, askSpecialist, refresh, mark, start, measure, handoff };
 }
 
 const omit = (o: Record<string, string>, k: string) => Object.fromEntries(Object.entries(o).filter(([x]) => x !== k));
@@ -254,13 +288,11 @@ export function TeamPanel({ live, team, active, onOpen, athena }: { live: TeamLi
 }
 
 /** The goals on top (§23.2 step 8a), each with the team behind it and anything outside what Athena does named plainly. */
-export function GoalsBar({ goals, onChange }: { goals: Goal[]; onChange?: () => void }) {
-  if (!goals.length)
-    return onChange ? (
-      <button type="button" className="linkish goals-pick" onClick={onChange}>
-        Choose what to work on
-      </button>
-    ) : null;
+export function GoalsBar({ goals: all }: { goals: Goal[] }) {
+  // Knowing the crowd is the Analyst's standing first step, not a goal the founder chose. Goals are picked in the chat
+  // (§23.2 step 8.3d), never from a button here: the bar only lists them.
+  const goals = all.filter((g) => g.id !== "know_crowd");
+  if (!goals.length) return null;
   return (
     <ol className="goals" aria-label="Your goals">
       {goals.map((g) => (
@@ -269,13 +301,6 @@ export function GoalsBar({ goals, onChange }: { goals: Goal[]; onChange?: () => 
           <small className="muted">{g.team.map(nameOf).join(" · ")}</small>
         </li>
       ))}
-      {onChange && (
-        <li>
-          <button type="button" className="linkish small" onClick={onChange}>
-            Add a goal
-          </button>
-        </li>
-      )}
     </ol>
   );
 }
@@ -294,7 +319,7 @@ export function TeamAsks({ live, agent, onAnswer }: { live: TeamLive; agent: Age
 }
 
 /** One specialist's workspace (§23.2 step 8b–d, g): its transcript, then its work. */
-export function SpecialistWorkspace({ id, live, team, alone, onMark, onAnswer }: { id: SpecialistId; live: TeamLive; team: TeamState; alone: AloneRequest; onMark: (item: WorkItem, m: Mark) => void; onAnswer: (q: TeamAsk, a: string) => void }) {
+export function SpecialistWorkspace({ id, live, team, alone, onMark, onAnswer, onHandoff, crowdId }: { id: SpecialistId; live: TeamLive; team: TeamState; alone: AloneRequest; onMark: (item: WorkItem, m: Mark) => void; onAnswer: (q: TeamAsk, a: string) => void; onHandoff?: (h: Handoff) => void; crowdId?: (name: string) => string | undefined }) {
   const s = specialist(id);
   const st = statusOf(id, live, team);
   const work = team.works[id];
@@ -315,7 +340,7 @@ export function SpecialistWorkspace({ id, live, team, alone, onMark, onAnswer }:
       ))}
       <TeamAsks live={live} agent={id} onAnswer={onAnswer} />
       {lines.length > 0 && <Transcript lines={lines} />}
-      {work ? <WorkView work={work} team={team} updating={st.state === "working"} alone={alone} onMark={onMark} /> : st.state === "idle" && <p className="small muted">Done when: {s.doneWhen}</p>}
+      {work ? <WorkView work={work} team={team} updating={st.state === "working"} alone={alone} onMark={onMark} onHandoff={onHandoff} crowdId={crowdId} /> : st.state === "idle" && <p className="small muted">Done when: {s.doneWhen}</p>}
     </div>
   );
 }
@@ -355,7 +380,8 @@ function Transcript({ lines }: { lines: Line[] }) {
 const secs = (ms: number) => (ms < 1000 ? "under a second" : `${Math.round(ms / 1000)} s`);
 
 /** A finished run (§23.2 step 8c): its headline, time, Qloo calls and nodes added; then each result with its marks. */
-export function WorkView({ work, team, updating, alone, onMark }: { work: Work; team: TeamState; updating: boolean; alone: AloneRequest; onMark: (item: WorkItem, m: Mark) => void }) {
+export function WorkView({ work, team, updating, alone, onMark, onHandoff, crowdId }: { work: Work; team: TeamState; updating: boolean; alone: AloneRequest; onMark: (item: WorkItem, m: Mark) => void; onHandoff?: (h: Handoff) => void; crowdId?: (name: string) => string | undefined }) {
+  const next = onHandoff && work.agent !== "navigator" ? fromWork(work, crowdId ?? (() => undefined)) : [];
   const nodes = nodesAdded(work);
   const marks = new Map(latest(team.outcomes).filter((o) => o.agent === work.agent).map((o) => [o.item, o.mark]));
   const sources = new Map(work.sources.map((s) => [s.id, s]));
@@ -381,11 +407,12 @@ export function WorkView({ work, team, updating, alone, onMark }: { work: Work; 
       {work.results.length > 0 && (
         <ol className="spec-results">
           {work.results.map((r) => (
-            <Result key={r.id} work={work} item={r} mark={marks.get(r.id)} team={team} alone={alone} onMark={(m) => onMark(r, m)} />
+            <Result key={r.id} work={work} item={r} mark={marks.get(r.id)} team={team} alone={alone} onMark={(m) => onMark(r, m)} onHandoff={onHandoff} />
           ))}
         </ol>
       )}
       {work.handoff && <p className="small muted">Handed back to Athena: {work.handoff.need}.</p>}
+      {next.length > 0 && <Handoffs list={next} onHandoff={onHandoff!} />}
     </section>
   );
 }
@@ -393,7 +420,20 @@ export function WorkView({ work, team, updating, alone, onMark }: { work: Work; 
 /** Kinds a founder reaches out to, and so can mark. */
 const MARKABLE = new Set(["venue", "retailer", "partner", "podcast", "event", "creator", "audience", "draft", "city", "neighbourhood"]);
 
-function Result({ work, item, mark, team, alone, onMark }: { work: Work; item: WorkItem; mark?: Mark; team: TeamState; alone: AloneRequest; onMark: (m: Mark) => void }) {
+/** Handoff buttons (§23.2 step 8.3b): each starts the next specialist on what this came from. */
+export function Handoffs({ list, onHandoff }: { list: Handoff[]; onHandoff: (h: Handoff) => void }) {
+  return (
+    <div className="handoffs">
+      {list.map((h) => (
+        <button key={h.label} type="button" className="handoff" onClick={() => onHandoff(h)}>
+          {h.label} <small>→ {nameOf(h.to)}</small>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function Result({ work, item, mark, team, alone, onMark, onHandoff }: { work: Work; item: WorkItem; mark?: Mark; team: TeamState; alone: AloneRequest; onMark: (m: Mark) => void; onHandoff?: (h: Handoff) => void }) {
   const [know, setKnow] = useState(false);
   const cited = item.sources.map((id) => work.sources.find((s) => s.id === id)).filter((s): s is Work["sources"][number] => !!s);
   const calls = new Set([...item.callIds, ...cited.flatMap((s) => s.callIds)]).size;
@@ -419,6 +459,7 @@ function Result({ work, item, mark, team, alone, onMark }: { work: Work; item: W
           how we know
         </button>
       </div>
+      {onHandoff && item.kind === "city" && item.ref && <Handoffs list={fromCity({ id: item.ref, name: item.name })} onHandoff={onHandoff} />}
       {know && <HowWeKnow work={work} item={item} cited={cited} calls={calls} team={team} alone={alone} />}
     </li>
   );

@@ -8,6 +8,7 @@ import { buildCtx } from "@/lib/agent/team-ctx";
 import { readFacts } from "@/lib/agent/inputs";
 import { athenaAsk, customGoal, goalFacts, proposeFor, runTeam } from "@/lib/agent/team";
 import { goalQuestion } from "@/lib/agent/goals";
+import { isMetroId, metroById } from "@/lib/playbook/metros";
 import { readBrief } from "@/lib/brief/form";
 import { cachedCrowds } from "@/lib/taste/engine";
 import { MAX_EXTRA } from "@/lib/taste/graph";
@@ -57,6 +58,15 @@ export const POST = dated(async function post(req: Request) {
   return planStream<TeamEvent>(async (send) => {
     const crowds = await cachedCrowds(seed, probes);
     const t = await buildCtx({ brief, seed, crowds: crowds ?? undefined, fits, probes, team, enrich: teamEnrich(), llm, qloo, answers, notes });
+    // A handoff (§23.2 step 8.3b) carries what it was started from: the crowd to aim at, the crowd to win next, the city.
+    const focus = raw.focus && typeof raw.focus === "object" ? (raw.focus as Record<string, unknown>) : {};
+    const crowdBy = (id: string) => (id ? t.crowds?.crowds.find((c) => c.id === id) : undefined);
+    const aim = crowdBy(str(focus.crowd, 40));
+    const next = crowdBy(str(focus.next, 40));
+    const metro = str(focus.city, 40);
+    if (aim) t.crowd = aim;
+    if (next) t.next = t.focusNext = next;
+    if (metro && isMetroId(metro)) t.city = { id: metro, name: metroById(metro).name };
     const env = readEnv();
     t.onGalaxy = (galaxy) => send({ type: "galaxy", galaxy });
     const started = Date.now();

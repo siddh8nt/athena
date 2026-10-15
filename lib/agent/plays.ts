@@ -97,6 +97,8 @@ export type TeamCtx = {
   /** Win first, and the crowd to win next (set by the Scout, or from the ranking). */
   crowd?: CrowdCard;
   next?: CrowdCard;
+  /** The crowd the founder handed to the Scout to win next (§23.2 step 8.3b). */
+  focusNext?: CrowdCard;
   city?: { id: string; name: string };
   cities?: MarketRow[];
   hoods?: string[];
@@ -256,7 +258,7 @@ export const PLAYS: Tool[] = [
       const asked = others.find((c) => c.id === str(a.crowd_id, 40));
       const winNext = fits?.fits.find((f) => f.tier === "win_next" && f.crowd !== main.id);
       const strongest = [...others].sort((x, y) => (meet(y.id)?.items.length ?? 0) - (meet(x.id)?.items.length ?? 0))[0];
-      const next = asked ?? others.find((c) => c.id === winNext?.crowd) ?? strongest;
+      const next = asked ?? others.find((c) => c.id === t.focusNext?.id) ?? others.find((c) => c.id === winNext?.crowd) ?? strongest;
       if (!next) return { summary: "one crowd only: no next crowd yet", data: { main: main.name }, status: "thin" };
       t.next = next;
       const bridges = (meet(next.id)?.items ?? []).slice(0, 5);

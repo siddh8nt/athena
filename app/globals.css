@@ -29,6 +29,7 @@
   --graph-place: #5b6b8c;
   --graph-time: #b5651d;
   --graph-fact: #6b675f;
+  --theme-0: #b07a1c; --theme-1: #1f7f86; --theme-2: #b8466e; --theme-3: #6f7d2a; --theme-4: #4d6a91; --theme-5: #9a5b2e; --theme-6: #7457a8; --theme-7: #3f8a4a;
   --dot: #e4e0d6;
   color-scheme: light;
 }
@@ -56,6 +57,7 @@
     --graph-place: #a9b6d6;
     --graph-time: #f0a86c;
     --graph-fact: #b5b0a6;
+    --theme-0: #e3b25a; --theme-1: #5cc2c9; --theme-2: #ec8fb0; --theme-3: #b7c46a; --theme-4: #95b2dc; --theme-5: #e0a074; --theme-6: #b9a0ea; --theme-7: #85cf8f;
     --dot: #2a2824;
     color-scheme: dark;
   }
@@ -564,21 +566,27 @@ a.button.big { padding: 11px 20px; font-size: 15px; font-weight: 600; }
 .galaxy-method { margin: 0; flex: 1; min-width: 220px; }
 .galaxy-stage { position: relative; }
 .galaxy-stage svg { width: 100%; height: auto; display: block; touch-action: manipulation; }
-.hulls path { fill-opacity: 0.07; stroke-opacity: 0.07; stroke-width: 30; stroke-linejoin: round; transition: d 0.2s; }
-.galaxy-edge { stroke: var(--fg); stroke-width: 1; }
+.hulls path { fill-opacity: 0.06; stroke-opacity: 0.35; stroke-width: 1; stroke-dasharray: 3 4; transition: fill-opacity 0.2s, stroke-opacity 0.2s; }
+.hulls path.on { fill-opacity: 0.12; stroke-opacity: 0.7; stroke-dasharray: none; }
+.galaxy-edge { stroke: var(--fg); stroke-width: 0.8; }
+.galaxy-stage svg { background: radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--fg) 3%, transparent), transparent 70%); border-radius: 12px; }
 .gnode { cursor: pointer; transition: opacity 0.2s; }
-.gnode path { stroke: var(--surface); stroke-width: 1; }
+.gnode circle:not(.ring) { stroke-width: 1; stroke-opacity: 0.9; transition: transform 0.15s ease; }
+.gnode:hover circle:not(.ring) { transform: scale(1.25); }
+.gnode .glyph { fill: var(--bg); opacity: 0.45; pointer-events: none; }
 .gnode.faded { opacity: 0.18; }
-.gnode.sel path { stroke: var(--fg); stroke-width: 2; }
-.gnode .ring { fill: none; stroke: var(--fg); stroke-width: 1; opacity: 0.6; }
-.gnode.fringe path { fill-opacity: 0.35; }
-.seed path { fill: var(--fg); }
+.gnode.sel circle:not(.ring) { stroke: var(--fg) !important; stroke-width: 2; }
+.gnode .ring { fill: none; stroke: var(--fg); stroke-width: 0.8; opacity: 0.45; }
+.gnode.fringe circle:not(.ring) { fill-opacity: 0.12; stroke-opacity: 0.6; }
+.gnode.fringe .glyph { opacity: 0.7; }
+.seed circle { fill: var(--fg); }
+.seed .seed-ring { fill: none; stroke: var(--fg); stroke-width: 1; opacity: 0.5; }
 .seed text, .labels text, .hull-label { font-size: 10.5px; paint-order: stroke; stroke: var(--surface); stroke-width: 3px; stroke-linejoin: round; }
-.seed text { font-weight: 600; fill: var(--fg); }
-.labels text { fill: var(--fg); pointer-events: none; }
+.seed text { font-weight: 600; fill: var(--fg); font-family: "Iowan Old Style", "Palatino Linotype", Charter, Georgia, serif; font-size: 12px; }
+.labels text { fill: var(--fg); opacity: 0.8; pointer-events: none; }
 .labels text.strong { font-weight: 600; }
-.hull-label text { font-weight: 600; font-size: 11px; pointer-events: none; paint-order: stroke; stroke: var(--surface); stroke-width: 3px; stroke-linejoin: round; }
-.hull-label .hull-line { font-weight: 400; font-size: 10px; fill: var(--muted); }
+.hull-label text { font-weight: 600; font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; pointer-events: none; paint-order: stroke; stroke: var(--surface); stroke-width: 3px; stroke-linejoin: round; }
+.hull-label .hull-line { font-weight: 400; font-size: 10px; letter-spacing: 0; text-transform: none; fill: var(--muted); }
 .hull-label.watch, .hulls path.watch { opacity: 0.5; }
 .galaxy-card { position: absolute; z-index: 2; width: 250px; max-width: 70%; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; box-shadow: 0 6px 24px rgb(0 0 0 / 0.12); display: flex; flex-direction: column; gap: 4px; pointer-events: none; }
 .galaxy-card.pinned { pointer-events: auto; border-color: var(--accent); }
@@ -608,7 +616,8 @@ a.button.big { padding: 11px 20px; font-size: 15px; font-weight: 600; }
 }
 .galaxy-legend { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 14px; }
 .galaxy-legend li { display: flex; align-items: center; gap: 5px; }
-.galaxy-legend path { fill: var(--muted); }
+.galaxy-legend path { fill: var(--surface); }
+.galaxy-legend .legend-disc { fill: var(--muted); }
 .legend-ring { fill: none; stroke: var(--fg); stroke-width: 1.2; }
 .legend-fringe { fill: var(--muted); fill-opacity: 0.35; }
 .galaxy-list { max-height: 420px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
@@ -822,8 +831,8 @@ a.button.big { padding: 11px 20px; font-size: 15px; font-weight: 600; }
 .bg-node:hover path, .bg-node:focus-visible path, .bg-node.picked path { transform: scale(1.25); }
 .bg-node:focus-visible path, .bg-node.picked path { stroke: var(--accent); stroke-width: 2.5; }
 .bg-node.watch { opacity: 0.6; }
-.bg-node-label { font-size: 10px; fill: var(--fg); text-anchor: middle; pointer-events: none; paint-order: stroke; stroke: var(--bg); stroke-width: 3px; stroke-linejoin: round; }
-.bg-node-label.brand { font-size: 13px; font-weight: 600; }
+.bg-node-label { font-size: 10px; fill: var(--fg); opacity: 0.85; pointer-events: none; paint-order: stroke; stroke: var(--bg); stroke-width: 3px; stroke-linejoin: round; }
+.bg-node-label.brand { font-size: 13px; font-weight: 600; text-anchor: middle; opacity: 1; }
 .bg-tip { position: absolute; z-index: 2; max-width: 240px; padding: 8px 10px; border-radius: 10px; background: var(--surface); border: 1px solid var(--line); box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12); display: flex; flex-direction: column; gap: 4px; font-size: 12px; pointer-events: none; }
 .bg-tip .src { align-self: flex-start; }
 .bg-legend { list-style: none; margin: 0; padding: 8px 12px; display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--muted); border-top: 1px solid var(--line); }
@@ -1020,3 +1029,40 @@ span.ob-source { color: var(--muted); }
   .ob-work:has(.team-rail) { grid-template-columns: 56px minmax(0, 1fr); }
   .ob-work.ob-has-panel:has(.team-rail) { grid-template-columns: 56px minmax(0, 1fr) minmax(400px, 46%); }
 }
+
+/* Knowledge by theme, folded (§23.2 step 8.2b–c): one box that scrolls on its own, a hue per theme. */
+.bg-themes { display: flex; flex-direction: column; gap: 4px; max-height: 240px; overflow: hidden; position: relative; }
+.bg-themes:not(.all) { -webkit-mask-image: linear-gradient(to bottom, #000 55%, transparent); mask-image: linear-gradient(to bottom, #000 55%, transparent); }
+.bg-themes.all { max-height: none; }
+.bg-more { margin-top: 6px; }
+.bg-theme { border-left: 3px solid var(--hue); padding-left: 10px; border-radius: 4px; }
+.bg-fold, .bg-note-text { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.bg-fold::before { content: "›"; color: var(--muted); transition: transform 0.15s; }
+.bg-theme.open .bg-fold::before { transform: rotate(90deg); }
+.bg-hue { width: 9px; height: 9px; border-radius: 50%; background: var(--hue); }
+.bg-peek { margin: 2px 0 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bg-note-text { display: block; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bg-note-line.open .bg-note-text { white-space: normal; }
+.bg-note-text:focus-visible, .bg-fold:focus-visible { outline: 2px solid var(--accent); border-radius: 4px; }
+.bg-note-more { margin: 4px 0 0 22px; display: flex; flex-direction: column; gap: 4px; }
+.bg-note-more .bg-sources { margin: 0; }
+/* The graph's themes: a hued disc with a soft halo and its count; notes lighter, joined to their theme. */
+.bg-halo { opacity: 0.16; transition: opacity 0.2s; }
+.bg-node.theme:hover .bg-halo, .bg-node.theme[aria-expanded="true"] .bg-halo { opacity: 0.3; }
+.bg-node-count { font-size: 8px; font-weight: 700; fill: var(--surface); text-anchor: middle; pointer-events: none; }
+.bg-node-label.theme { font-size: 11px; font-weight: 600; opacity: 1; }
+.bg-node circle { transition: transform 0.2s ease; }
+.bg-node:hover circle, .bg-node.picked circle { transform: scale(1.12); }
+.bg-node.picked circle:not(.bg-halo) { stroke: var(--accent); stroke-width: 2; }
+.bg-node.sub { opacity: 0.7; }
+.bg-node.sub:hover, .bg-node.sub.picked { opacity: 1; }
+.bg-edge.child { stroke-opacity: 0.45; stroke-width: 1; }
+.bg-ghosts { pointer-events: none; opacity: 0.35; animation: bg-ghost-in 0.2s ease-out; }
+.bg-ghosts line { stroke-width: 1; stroke-dasharray: 2 2; }
+@keyframes bg-ghost-in { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .bg-ghosts { animation: none; } .bg-fold::before { transition: none; } }
+/* Handoffs between specialists (§23.2 step 8.3b). */
+.handoffs { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.handoff { font: inherit; font-size: 13px; padding: 5px 11px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--accent); cursor: pointer; }
+.handoff small { color: var(--muted); margin-left: 2px; }
+.handoff:hover { border-color: var(--accent); }

@@ -36,8 +36,11 @@ describe("goals", () => {
     expect(g.find((x) => x.id === "deepen_home")?.label).toBe("Win more of Fernvale");
   });
 
-  it("puts knowing the crowd first when there are no crowds yet, and growing online first for an online brand", () => {
-    expect(proposeGoals({ channel: "both", stockists: 0, crowds: false, winNext: false })[0].id).toBe("know_crowd");
+  it("never offers knowing the crowd (the Analyst always runs first), and puts growing online first for an online brand", () => {
+    const early = proposeGoals({ channel: "both", stockists: 0, crowds: false, winNext: false });
+    expect(early.some((x) => x.id === "know_crowd")).toBe(false);
+    expect(early.length).toBeGreaterThanOrEqual(3);
+    expect(checkGoals([{ id: "know_crowd", label: "Know who your customers are", team: ["analyst"] }, { id: "x", label: "Crowds", team: ["analyst"] }])).toEqual([]);
     const online = proposeGoals({ channel: "online", stockists: 0, crowds: true, winNext: false });
     expect(online[0].id).toBe("online");
     expect(online.some((x) => x.id === "deepen_home")).toBe(false);

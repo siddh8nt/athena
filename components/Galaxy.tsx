@@ -46,6 +46,31 @@ function hull(points: [number, number][]): [number, number][] {
   return [...lower.slice(0, -1), ...upper.slice(0, -1)];
 }
 
+/** A hull grown outward by `pad` and drawn as one smooth closed curve, so a crowd reads as a soft region, not a blob. */
+function softHull(pts: [number, number][], pad: number): string {
+  if (!pts.length) return "";
+  const cx = pts.reduce((s, p) => s + p[0], 0) / pts.length;
+  const cy = pts.reduce((s, p) => s + p[1], 0) / pts.length;
+  if (pts.length < 3) {
+    const r = pad + Math.max(...pts.map((p) => Math.hypot(p[0] - cx, p[1] - cy)));
+    return `M${cx - r} ${cy}a${r} ${r} 0 1 0 ${2 * r} 0a${r} ${r} 0 1 0 ${-2 * r} 0Z`;
+  }
+  const out = pts.map(([x, y]): [number, number] => {
+    const d = Math.hypot(x - cx, y - cy) || 1;
+    return [x + ((x - cx) / d) * pad, y + ((y - cy) / d) * pad];
+  });
+  // Closed Catmull-Rom through the grown points, as cubic Béziers.
+  const n = out.length;
+  let d = `M${out[0][0].toFixed(1)} ${out[0][1].toFixed(1)}`;
+  for (let i = 0; i < n; i++) {
+    const [p0, p1, p2, p3] = [out[(i - 1 + n) % n], out[i], out[(i + 1) % n], out[(i + 2) % n]];
+    const c1 = [p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6];
+    const c2 = [p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6];
+    d += `C${c1[0].toFixed(1)} ${c1[1].toFixed(1)} ${c2[0].toFixed(1)} ${c2[1].toFixed(1)} ${p2[0].toFixed(1)} ${p2[1].toFixed(1)}`;
+  }
+  return `${d}Z`;
+}
+
 const corr = (a: number[], b: number[]) => a.reduce((s, x, i) => s + x * b[i], 0);
 
 const reducedMotion = () => typeof window !== "undefined" && !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
@@ -121,6 +146,12 @@ export function Galaxy({ galaxy, names, decisions, step, probes: yourProbes = []
       if (corr(tx, px) < 0) tx = tx.map((v) => -v);
       if (corr(ty, py) < 0) ty = ty.map((v) => -v);
     }
+    // Fill the frame: scale so most entities reach the edges, instead of a clump in the middle.
+    const reach = (v: number[]) => [...v].map(Math.abs).sort((a, b) => a - b)[Math.floor(v.length * 0.95)] || 1;
+    const sx = reach(tx);
+    const sy = reach(ty);
+    tx = tx.map((v) => Math.max(-1.08, Math.min(1.08, v / sx)));
+    ty = ty.map((v) => Math.max(-1.08, Math.min(1.08, v / sy)));
     lastTargets.current = { round: galaxy.round, x: new Map(galaxy.nodes.map((n, i) => [n.id, tx[i]])), y: new Map(galaxy.nodes.map((n, i) => [n.id, ty[i]])) };
     const nodes: SimNode[] = galaxy.nodes.map((n, i) => {
       const s = simNodes.current.get(n.id) ?? { id: n.id, i, tx: 0, ty: 0, r: 0, x: W / 2 + (Math.random() - 0.5) * 20, y: H / 2 + (Math.random() - 0.5) * 20 };
@@ -236,12 +267,12 @@ export function Galaxy({ galaxy, names, decisions, step, probes: yourProbes = []
           <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Taste Galaxy: ${galaxy.nodes.length} entities in ${crowds.length || "no"} crowds. Use "Show as a list" for every name.`} onClick={() => setSel(null)}>
             <g className="hulls">
               {hulls.map(({ c, pts }) =>
-                pts.length >= 3 ? <path key={c} className={decisions?.[c]?.watch ? "watch" : ""} d={`M${pts.map((p) => p.join(" ")).join("L")}Z`} style={{ fill: colour(c), stroke: colour(c) }} /> : null,
+                pts.length ? <path key={c} className={`${decisions?.[c]?.watch ? "watch" : ""}${lit === c || (focus !== null && galaxy.nodes[focus].crowd === c) ? " on" : ""}`} d={softHull(pts, 16)} style={{ fill: colour(c), stroke: colour(c) }} /> : null,
               )}
             </g>
             {focus !== null &&
               neighbours[focus].map(({ j, s }) => (
-                <line key={j} className="galaxy-edge" x1={pos[focus].x} y1={pos[focus].y} x2={pos[j].x} y2={pos[j].y} style={{ opacity: 0.25 + 0.6 * s }} />
+                <line key={j} className="galaxy-edge" x1={pos[focus].x} y1={pos[focus].y} x2={pos[j].x} y2={pos[j].y} style={{ opacity: 0.15 + 0.5 * s, stroke: colour(galaxy.nodes[focus].crowd) }} />
               ))}
             <g className="seed" transform={`translate(${seedAt.x},${seedAt.y})`}>
               <path d="M0 -9L2.5 -2.5L9 0L2.5 2.5L0 9L-2.5 2.5L-9 0L-2.5 -2.5Z" />
@@ -261,7 +292,8 @@ export function Galaxy({ galaxy, names, decisions, step, probes: yourProbes = []
                   }}
                 >
                   {n.landmark && <circle className="ring" r={p.r + 3.5} />}
-                  <path d={shape(n.domain, p.r)} style={{ fill: colour(n.crowd) }} />
+                  <circle r={p.r} style={{ fill: colour(n.crowd), stroke: colour(n.crowd) }} />
+                  {p.r >= 6 && <path className="glyph" d={shape(n.domain, p.r * 0.45)} style={n.core ? undefined : { fill: colour(n.crowd) }} />}
                 </g>
               );
             })}
@@ -409,7 +441,7 @@ function Legend() {
     <ul className="galaxy-legend small muted" aria-label="Legend">
       {LEGEND.map((d) => (
         <li key={d}>
-          <svg viewBox="-8 -8 16 16" width="14" height="14" aria-hidden><path d={shape(d, 5)} /></svg>
+          <svg viewBox="-8 -8 16 16" width="14" height="14" aria-hidden><circle r={7} className="legend-disc" /><path d={shape(d, 3.5)} /></svg>
           {domainWord(d)}
         </li>
       ))}

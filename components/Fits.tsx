@@ -53,9 +53,11 @@ type Props = {
   strategy?: StrategyView;
   /** Each crowd's colour slot, by id. */
   slot: (id: string) => number;
+  /** Each fit's foot: the handoffs to the specialists who work it (§23.2 step 8.3b). */
+  foot?: (f: Fit) => ReactNode;
 };
 
-export function Fits({ run, steps, running, asks, answers, onAnswer, strategy, slot }: Props) {
+export function Fits({ run, steps, running, asks, answers, onAnswer, strategy, slot, foot }: Props) {
   const live = steps.filter((s) => s.why);
   if (!run)
     return (
@@ -74,7 +76,7 @@ export function Fits({ run, steps, running, asks, answers, onAnswer, strategy, s
     );
 
   const sources = new Map(run.sources.map((s) => [s.id, s]));
-  const { fits, answer, calendar } = run;
+  const { fits, answer } = run;
   const qloo = run.sources.reduce((n, s) => n + s.callIds.length, 0);
   const said = (crowd: string) => answer.reasons.filter((r) => r.crowd === crowd);
   const overall = said("");
@@ -119,6 +121,7 @@ export function Fits({ run, steps, running, asks, answers, onAnswer, strategy, s
                 ) : planning(f) ? (
                   <StrategyPending steps={strategy!.steps} />
                 ) : null}
+                {foot?.(f)}
               </FitCard>
             ))}
           </div>
@@ -151,7 +154,6 @@ export function Fits({ run, steps, running, asks, answers, onAnswer, strategy, s
       )}
       {asks.map((q) => <Question key={q.id} q={q} answer={answers[q.id]} onAnswer={(a) => onAnswer(q, a)} />)}
 
-      <When calendar={calendar} name={name} />
     </section>
   );
 }
@@ -201,7 +203,7 @@ function FitCard({ f, said, sources, slot, children }: { f: Fit; said: FitsAnswe
 }
 
 /** When (§23.2 step 5f): retail moments, category seasons and each crowd's own, across four horizons, and the yearly patterns. */
-function When({ calendar, name }: { calendar: Calendar; name: (id?: string) => string | undefined }) {
+export function When({ calendar, name }: { calendar: Calendar; name: (id?: string) => string | undefined }) {
   const any = HORIZONS.some((h) => calendar.horizons[h].length);
   if (!any && !calendar.recurring.length) return null;
   return (

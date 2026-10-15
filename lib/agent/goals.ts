@@ -9,6 +9,8 @@ import { SPECIALISTS, isSpecialist, specialist, type SpecialistId } from "./spec
 
 /** Every goal the team can deliver, with the specialists it takes. A new kind of goal is one entry here. */
 export const GOALS: (Omit<Goal, "why" | "recommended"> & { why: string })[] = [
+  // Never offered as a choice: the Analyst measures the crowds first on every journey (§23.2 step 8.1a), so the goals
+  // the founder picks are growth goals. Kept for that first run.
   { id: "know_crowd", label: "Know who your customers are", why: "Everything else starts from the crowds.", team: ["analyst"], conflicts: [] },
   { id: "launch_city", label: "Launch in a new city", why: "Find the city where your crowd is strongest, then the shops and events there.", team: ["navigator", "rep", "promoter"], conflicts: ["deepen_home"] },
   { id: "deepen_home", label: "Win more of your home city", why: "Go deeper where you're already sold, before spreading out.", team: ["navigator", "rep"], conflicts: ["launch_city"] },
@@ -36,7 +38,7 @@ const MAX = 4;
 export function proposeGoals(f: GoalFacts): Goal[] {
   const instore = f.channel !== "online";
   const score: Record<string, number> = {
-    know_crowd: f.crowds ? 0 : 5,
+    know_crowd: 0,
     launch_city: (instore ? 2 : 0.5) + (f.stockists >= 5 ? 1.5 : 0),
     deepen_home: f.city && instore ? (f.stockists < 5 ? 3 : 1.5) : 0,
     step_up: instore && f.stockists >= 10 ? 3 : instore && f.stockists >= 3 ? 1 : 0,
@@ -59,7 +61,7 @@ export function checkGoals(raw: unknown): Goal[] {
     const o = (x ?? {}) as Record<string, unknown>;
     const label = typeof o.label === "string" ? o.label.trim().slice(0, 80) : "";
     const team = [...new Set((Array.isArray(o.team) ? o.team : []).filter(isSpecialist))];
-    if (!label || !team.length) return [];
+    if (!label || !team.length || o.id === "know_crowd" || team.every((s) => s === "analyst")) return [];
     const id = typeof o.id === "string" && /^[a-z_]{2,30}$/.test(o.id) ? o.id : `goal_${i}`;
     return [{ id, label, why: typeof o.why === "string" ? o.why.trim().slice(0, 200) : "", team, conflicts: (Array.isArray(o.conflicts) ? o.conflicts : []).filter((c): c is string => typeof c === "string"), recommended: o.recommended === true, ...(typeof o.outside === "string" && o.outside.trim() ? { outside: o.outside.trim().slice(0, 200) } : {}) } satisfies Goal];
   });

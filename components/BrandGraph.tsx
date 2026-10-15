@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { forceCollide, forceLink, forceManyBody, forceRadial, forceSimulation, type SimulationLinkDatum, type SimulationNodeDatum } from "d3-force";
 import { zoom, zoomIdentity, type ZoomTransform } from "d3-zoom";
 import { select } from "d3-selection";
@@ -45,7 +45,12 @@ type Props = {
   onRerun: (run: RunId) => void;
 };
 
-const nodeColour = (n: GraphNode) => {
+/** Each theme its own hue, and its notes and their sources the same hue, lighter (§23.2 step 8.2b). */
+const HUES = 8;
+const themeHue = (themes: string[], t: string) => `var(--theme-${Math.max(0, themes.indexOf(t)) % HUES})`;
+const nodeColour = (n: GraphNode, byId?: Map<string, GraphNode>, themes: string[] = []) => {
+  const root = byId && n.parent ? (byId.get(n.parent)?.parent ? byId.get(byId.get(n.parent)!.parent!) : byId.get(n.parent)) : n;
+  if (root?.type === "theme" && themes.length) return themeHue(themes, root.label);
   const c = NODE_TYPES[n.type].colour;
   return c === "crowd" ? `var(--crowd-${n.crowd ?? 0})` : c;
 };
@@ -281,41 +286,59 @@ function NoteActions({ note, themes, onEdit }: { note: LiveFact; themes: string[
   );
 }
 
-/** The list's knowledge (§23.2 step 8.2c): one section per theme, its notes as short lines, sources behind a toggle. */
+/**
+ * The list's knowledge (§23.2 step 8.2c): one box that scrolls on its own, a folded section per theme, each note one
+ * line until opened for its full text, sources and edits.
+ */
 function ThemeList({ facts, flash, onEdit }: { facts: LiveFact[]; flash: Set<string>; onEdit: (ops: Op[]) => void }) {
   const [shown, setShown] = useState<Set<string>>(new Set());
   const [picked, setPicked] = useState<string[]>([]);
+  const [all, setAll] = useState(false);
   const themes = themesOf(facts);
   const toggle = (id: string) => setShown((s) => { const x = new Set(s); if (x.has(id)) x.delete(id); else x.add(id); return x; });
   if (!themes.length) return null;
   return (
-    <>
+    <section className="bg-group bg-notes">
+      <h4 className="bg-label">Notes <span className="bg-count">{facts.filter((f) => f.theme).length}</span></h4>
+    <div className={`bg-themes${all || picked.length > 1 ? " all" : ""}`}>
       {themes.map((theme) => {
         const notes = facts.filter((f) => f.theme === theme);
+        const tid = themeId(theme);
+        const on = shown.has(tid) || notes.some((n) => flash.has(`fact:${n.id}`));
         return (
-          <section key={theme} className={`bg-group bg-theme${flash.has(themeId(theme)) ? " flash" : ""}`}>
-            <h4 className="bg-label"><Swatch type="theme" /> {theme} <span className="bg-count">{notes.length}</span> <ThemeActions theme={theme} onEdit={onEdit} /></h4>
-            <ul>
-              {notes.map((n) => {
-                const srcs = sourcesOf(n);
-                const sel = picked.includes(n.id);
-                return (
-                  <li key={n.id} className={`bg-note-line${flash.has(`fact:${n.id}`) ? " flash" : ""}`}>
-                    <div className="bg-row">
-                      <input type="checkbox" checked={sel} aria-label={`Pick “${n.text.slice(0, 40)}” to merge`} onChange={() => setPicked((p) => (sel ? p.filter((x) => x !== n.id) : [...p, n.id]))} />
-                      <span className="bg-name">{n.text}{n.mine && <small className="muted"> · yours</small>}</span>
-                      <NoteActions note={n} themes={themes} onEdit={onEdit} />
-                    </div>
-                    {!!srcs.length && (
-                      <button type="button" className="linkish small" aria-expanded={shown.has(n.id)} onClick={() => toggle(n.id)}>
-                        {srcs.length} source{srcs.length === 1 ? "" : "s"}
-                      </button>
-                    )}
-                    {shown.has(n.id) && <ul className="bg-sources small muted">{srcs.map((w) => <li key={w}>{w}</li>)}</ul>}
-                  </li>
-                );
-              })}
-            </ul>
+          <section key={theme} className={`bg-group bg-theme${on ? " open" : ""}${flash.has(tid) ? " flash" : ""}`} style={{ "--hue": themeHue(themes, theme) } as CSSProperties}>
+            <h4 className="bg-label">
+              <button type="button" className="bg-fold" aria-expanded={on} onClick={() => toggle(tid)}>
+                <span className="bg-hue" aria-hidden /> {theme} <span className="bg-count">{notes.length}</span>
+              </button>
+              {on && <ThemeActions theme={theme} onEdit={onEdit} />}
+            </h4>
+            {!on && <p className="bg-peek small muted">{notes[0]?.text}</p>}
+            {on && (
+              <ul>
+                {notes.map((n) => {
+                  const srcs = sourcesOf(n);
+                  const sel = picked.includes(n.id);
+                  const open = shown.has(n.id);
+                  return (
+                    <li key={n.id} className={`bg-note-line${open ? " open" : ""}${flash.has(`fact:${n.id}`) ? " flash" : ""}`}>
+                      <div className="bg-row">
+                        <input type="checkbox" checked={sel} aria-label={`Pick “${n.text.slice(0, 40)}” to merge`} onChange={() => setPicked((p) => (sel ? p.filter((x) => x !== n.id) : [...p, n.id]))} />
+                        <button type="button" className="bg-note-text" aria-expanded={open} onClick={() => toggle(n.id)}>
+                          {n.text}{n.mine && <small className="muted"> · yours</small>}
+                        </button>
+                      </div>
+                      {open && (
+                        <div className="bg-note-more">
+                          {!!srcs.length && <ul className="bg-sources small muted">{srcs.map((w) => <li key={w}>{w}</li>)}</ul>}
+                          <NoteActions note={n} themes={themes} onEdit={onEdit} />
+                        </div>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
           </section>
         );
       })}
@@ -324,7 +347,9 @@ function ThemeList({ facts, flash, onEdit }: { facts: LiveFact[]; flash: Set<str
           {picked.length} notes picked · <button type="button" className="linkish" onClick={() => (onEdit([{ op: "merge", ids: picked }]), setPicked([]))}>Merge them</button> · <button type="button" className="linkish" onClick={() => setPicked([])}>Clear</button>
         </p>
       )}
-    </>
+    </div>
+      <button type="button" className="linkish small bg-more" aria-expanded={all} onClick={() => setAll((a) => !a)}>{all ? "Show less" : `Show all ${themes.length} themes`}</button>
+    </section>
   );
 }
 
@@ -419,7 +444,7 @@ function ListView({ input, flash, onEdit }: { input: GraphInput; flash: Set<stri
   );
 }
 
-type SimNode = SimulationNodeDatum & { id: string; r: number; ring: number };
+type SimNode = SimulationNodeDatum & { id: string; r: number; ring: number; pad?: number };
 type SimLink = SimulationLinkDatum<SimNode> & { id: string };
 
 /**
@@ -440,16 +465,19 @@ function GraphView({ input, flash, narrow, onEdit }: { input: GraphInput; flash:
   const [t, setT] = useState<ZoomTransform>(zoomIdentity);
   const [picked, setPicked] = useState<string>();
   const [tip, setTip] = useState<{ e: GraphEdge; x: number; y: number }>();
-  const shape = JSON.stringify([g.nodes.map((n) => n.id), g.edges.map((e) => e.id)]);
+  const [hover, setHover] = useState<string>();
+  const themes = themesOf(input.facts);
+  const shape =JSON.stringify([g.nodes.map((n) => n.id), g.edges.map((e) => e.id)]);
 
   useEffect(() => {
     const prev = placed.current;
     const nodes: SimNode[] = g.nodes.map((n, i) => {
       const ty = NODE_TYPES[n.type];
       const p = prev.get(n.id);
-      const a = (i / Math.max(1, g.nodes.length)) * Math.PI * 2;
+      // The golden angle, so one type's nodes start spread round the ring, not bunched on one side.
+      const a = i * 2.39996;
       const r = n.members ? ty.size + 4 : ty.size;
-      return n.id === BRAND ? { id: n.id, r, ring: 0, x: 0, y: 0, fx: 0, fy: 0 } : { id: n.id, r, ring: ty.ring, x: p?.x ?? Math.cos(a) * RING[ty.ring], y: p?.y ?? Math.sin(a) * RING[ty.ring] };
+      return n.id === BRAND ? { id: n.id, r, ring: 0, x: 0, y: 0, fx: 0, fy: 0 } : { id: n.id, r, ring: ty.ring, pad: n.type === "theme" || n.members ? 30 : 12, x: p?.x ?? Math.cos(a) * RING[ty.ring], y: p?.y ?? Math.sin(a) * RING[ty.ring] };
     });
     const ids = new Set(nodes.map((n) => n.id));
     const links: SimLink[] = g.edges.filter((e) => ids.has(e.from) && ids.has(e.to)).map((e) => ({ id: e.id, source: e.from, target: e.to }));
@@ -457,7 +485,7 @@ function GraphView({ input, flash, narrow, onEdit }: { input: GraphInput; flash:
       .force("link", forceLink<SimNode, SimLink>(links).id((d) => d.id).distance((l) => 40 + 30 * Math.abs((l.source as SimNode).ring - (l.target as SimNode).ring)).strength(0.2))
       .force("radial", forceRadial<SimNode>((d) => RING[d.ring], 0, 0).strength(0.8))
       .force("charge", forceManyBody().strength(-70))
-      .force("collide", forceCollide<SimNode>((d) => d.r + 10));
+      .force("collide", forceCollide<SimNode>((d) => d.r + (d.pad ?? 10)));
     const keep = () => nodes.forEach((n) => placed.current.set(n.id, { x: n.x ?? 0, y: n.y ?? 0 }));
     if (reducedMotion()) {
       sm.stop();
@@ -493,7 +521,7 @@ function GraphView({ input, flash, narrow, onEdit }: { input: GraphInput; flash:
   const at = (id: string) => placed.current.get(id) ?? { x: 0, y: 0 };
   const byId = new Map(g.nodes.map((n) => [n.id, n]));
   const node = picked ? byId.get(picked) : undefined;
-  const labelled = (n: GraphNode) => n.id === BRAND || n.type === "crowd" || !!n.members || g.nodes.length <= 22 || picked === n.id;
+  const labelled = (n: GraphNode) => n.id === BRAND || n.type === "crowd" || n.type === "theme" || !!n.members || g.nodes.length <= 22 || picked === n.id;
   const types = [...new Set(g.nodes.map((n) => n.type))];
   const short = (s: string) => (s.length > 20 ? `${s.slice(0, 19)}…` : s);
 
@@ -505,9 +533,10 @@ function GraphView({ input, flash, narrow, onEdit }: { input: GraphInput; flash:
             const a = at(e.from);
             const b = at(e.to);
             const lit = picked && (e.from === picked || e.to === picked);
+            const child = byId.get(e.from)?.parent === e.to ? byId.get(e.from) : byId.get(e.to)?.parent === e.from ? byId.get(e.to) : undefined;
             return (
               <g key={e.id}>
-                <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} className={`bg-edge${lit ? " lit" : ""}${tip?.e.id === e.id ? " hover" : ""}`} />
+                <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} className={`bg-edge${child ? " child" : ""}${lit ? " lit" : ""}${tip?.e.id === e.id ? " hover" : ""}`} style={child ? { stroke: nodeColour(child, byId, themes) } : undefined} />
                 <line
                   x1={a.x}
                   y1={a.y}
@@ -527,23 +556,85 @@ function GraphView({ input, flash, narrow, onEdit }: { input: GraphInput; flash:
             const p = at(n.id);
             const tt = NODE_TYPES[n.type];
             const r = n.members ? tt.size + 4 : tt.size;
-            const c = nodeColour(n);
+            const c = nodeColour(n, byId, themes);
+            const theme = n.type === "theme";
+            const sub = !!n.parent;
+            // A theme opens on click, as its card's button does; a note opens its sources the same way.
+            const pick = () => {
+              setPicked(n.id === picked ? undefined : n.id);
+              if (theme || (sub && n.type === "fact")) expand(n);
+            };
             return (
               <g
                 key={n.id}
                 transform={`translate(${p.x},${p.y})`}
-                className={`bg-node${flash.has(n.id) || n.members?.some((m) => flash.has(m.id)) ? " flash" : ""}${picked === n.id ? " picked" : ""}${n.tier?.watch ? " watch" : ""}`}
+                className={`bg-node${theme ? " theme" : ""}${sub ? " sub" : ""}${flash.has(n.id) || n.members?.some((m) => flash.has(m.id)) ? " flash" : ""}${picked === n.id ? " picked" : ""}${n.tier?.watch ? " watch" : ""}`}
                 role="button"
                 tabIndex={0}
                 aria-label={`${tt.label}: ${n.label}`}
-                onClick={() => setPicked(n.id === picked ? undefined : n.id)}
-                onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), setPicked(n.id === picked ? undefined : n.id))}
+                aria-expanded={theme ? open.includes(n.id) : undefined}
+                onClick={pick}
+                onMouseEnter={() => theme && setHover(n.id)}
+                onMouseLeave={() => theme && setHover(undefined)}
+                onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), pick())}
               >
-                <path d={shapePath(tt.shape, r)} fill={guessed(n) ? "var(--surface)" : c} stroke={c} strokeWidth={guessed(n) ? 1.8 : 1} strokeDasharray={guessed(n) ? "2 2" : undefined} />
-                {labelled(n) && <text y={r + 12} className={n.id === BRAND ? "bg-node-label brand" : "bg-node-label"}>{short(n.label)}</text>}
+                {theme || n.members ? (
+                  <>
+                    <circle r={r + 7} className="bg-halo" fill={c} />
+                    <circle r={r + 1} fill={c} stroke="var(--surface)" strokeWidth={1.5} />
+                    <text y={3.5} className="bg-node-count">{theme ? input.facts.filter((f) => f.theme === n.label).length : n.members!.length}</text>
+                  </>
+                ) : n.id === BRAND ? (
+                  <path d={shapePath(tt.shape, r)} fill={c} stroke={c} strokeWidth={1} />
+                ) : (
+                  // A soft disc in the type's colour, its shape marked inside, so type never rests on colour alone;
+                  // Athena's own reads stay hollow and dashed.
+                  <>
+                    <circle r={r + 5} className="bg-halo" fill={c} />
+                    <circle r={r + 1.5} fill={guessed(n) ? "var(--surface)" : c} stroke={c} strokeWidth={guessed(n) ? 1.5 : 1} strokeDasharray={guessed(n) ? "2 2" : undefined} />
+                    <path d={shapePath(tt.shape, Math.max(2, r * 0.55))} fill={guessed(n) ? c : "var(--surface)"} opacity={0.9} />
+                  </>
+                )}
+                {labelled(n) && (() => {
+                  // Labels point away from the brand, so they fan out with the graph instead of piling under nodes.
+                  if (n.id === BRAND) return <text y={r + 14} className="bg-node-label brand">{short(n.label)}</text>;
+                  const a = Math.atan2(p.y, p.x);
+                  const d = r + (theme || n.members ? 12 : 8);
+                  const cx = Math.cos(a);
+                  const anchor = cx > 0.35 ? "start" : cx < -0.35 ? "end" : "middle";
+                  return (
+                    <text x={cx * d} y={Math.sin(a) * d + (anchor === "middle" ? (Math.sin(a) > 0 ? 8 : -2) : 3.5)} textAnchor={anchor} className={theme ? "bg-node-label theme" : "bg-node-label"}>
+                      {short(n.label)}
+                    </text>
+                  );
+                })()}
               </g>
             );
           })}
+          {hover && !open.includes(hover) && (() => {
+            // A closed theme, hovered: its notes appear faintly around it, not yet part of the graph.
+            const h = byId.get(hover);
+            if (!h) return null;
+            const p = at(hover);
+            const c = nodeColour(h, byId, themes);
+            const notes = input.facts.filter((f) => f.theme === h.label).slice(0, 12);
+            const away = Math.atan2(p.y, p.x);
+            return (
+              <g className="bg-ghosts" aria-hidden>
+                {notes.map((f, i) => {
+                  const a = away + (notes.length > 1 ? (i / (notes.length - 1) - 0.5) * Math.PI * 0.9 : 0);
+                  const x = p.x + Math.cos(a) * 42;
+                  const y = p.y + Math.sin(a) * 42;
+                  return (
+                    <g key={f.id}>
+                      <line x1={p.x} y1={p.y} x2={x} y2={y} stroke={c} />
+                      <circle cx={x} cy={y} r={3.5} fill={c} />
+                    </g>
+                  );
+                })}
+              </g>
+            );
+          })()}
         </g>
       </svg>
       {tip && (

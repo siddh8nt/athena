@@ -7,6 +7,7 @@ import type { CrowdsResult } from "@/lib/journey/types";
 import type { FitsResult } from "@/lib/fits/types";
 import type { SeedInput } from "@/lib/taste/seed";
 import type { TeamState } from "@/lib/team/types";
+import type { LiveFact } from "@/lib/knowledge/types";
 import { resolveBrand } from "@/lib/methods/resolve";
 import { metroOf } from "./tools";
 import type { TeamCtx, TeamEnrich } from "./plays";
@@ -29,6 +30,7 @@ export type CtxInput = {
   llm: boolean;
   qloo: QlooClient;
   answers?: { question: string; answer: string }[];
+  notes?: LiveFact[];
 };
 
 /** A named brand in Qloo, by name; undefined when Qloo doesn't know it. */
@@ -89,6 +91,7 @@ export async function buildCtx(r: CtxInput): Promise<TeamCtx> {
     ...(crowdNamed(works.analyst?.shared?.crowd) ? { crowd: crowdNamed(works.analyst?.shared?.crowd) } : {}),
     ...(crowdNamed(nextName) ? { next: crowdNamed(nextName) } : {}),
     ...(r.answers?.length ? { answers: r.answers } : {}),
+    ...(r.notes?.length ? { notes: r.notes } : {}),
     found: {},
     outcomes: r.team.outcomes,
     probe: { ran: r.probes.length },

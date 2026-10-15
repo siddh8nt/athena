@@ -25,6 +25,8 @@ export type GraphInput = {
   team?: TeamState;
   /** Nodes the founder removed: hidden from the view, still read by the agents. */
   hidden?: string[];
+  /** Themes and notes the founder opened on the graph (§23.2 step 8.2b): collapsed otherwise. */
+  open?: string[];
 };
 
 export type GraphNode = {
@@ -46,6 +48,10 @@ export type GraphNode = {
   crowd?: number;
   /** A folded group's members (§13.12: a type folds into a group past 12). */
   members?: GraphNode[];
+  /** A note's theme node, or a source's note (§23.2 step 8.2b): shown only while that is open. */
+  parent?: string;
+  /** Names of existing nodes a note is about (a stockist, a city, a competitor, a comparable, a crowd). */
+  about?: string[];
 };
 
 export type GraphEdge = { id: string; from: string; to: string; kind: EdgeKind; reason: string; source: Source };
@@ -99,6 +105,9 @@ const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 const brandName = (b: BrandBrief) => b.name?.value || "Your brand";
 const edge = (kind: EdgeKind, from: string, to: string, reason: string, source: Source): GraphEdge => ({ id: `${kind}:${from}>${to}`, from, to, kind, reason, source });
 const short = (s: string, n = 64) => (s.length > n ? `${s.slice(0, n - 1).trimEnd()}…` : s);
+
+/** A theme's node id (§23.2 step 8.2b). */
+export const themeId = (t: string) => `theme:${t}`;
 
 /** A founder's fact's "wrong" key: by its words, so the same fact read again from a later file stays out. */
 export const factKey = (f: { text: string }) => `fact:${norm(f.text).slice(0, 150)}`;
@@ -403,6 +412,28 @@ export const NODE_TYPES: Record<string, NodeType> = {
       return out;
     },
   },
+  theme: {
+    label: "Theme",
+    plural: "Themes",
+    shape: "square",
+    colour: "var(--graph-fact)",
+    size: 6,
+    ring: 1,
+    order: 8.9,
+    fold: 0,
+    edit: "fact",
+    from: ({ brief, facts }) => {
+      const out: Graph = { nodes: [], edges: [] };
+      const themes = [...new Set(facts.flatMap((f) => (f.theme ? [f.theme] : [])))];
+      for (const t of themes) {
+        const n = facts.filter((f) => f.theme === t).length;
+        const id = themeId(t);
+        out.nodes.push({ id, type: "theme", label: t, detail: `${n} note${n === 1 ? "" : "s"}`, source: YOU, from: "from your files and site" });
+        out.edges.push(edge("about", id, BRAND, `About ${brandName(brief)}`, YOU));
+      }
+      return out;
+    },
+  },
   fact: {
     label: "From your files",
     plural: "What your files and site say",
@@ -423,11 +454,25 @@ export const NODE_TYPES: Record<string, NodeType> = {
       for (const f of facts) {
         const id = `fact:${f.id}`;
         const source = factSource(f);
-        out.nodes.push({ id, type: "fact", label: short(f.text), detail: f.text.length > 64 ? f.text : undefined, source, key: factKey(f) });
-        out.edges.push(edge("about", id, BRAND, `About ${brandName(brief)}${f.where ? `: ${f.where}` : ""}`, source));
+        const parent = f.theme ? themeId(f.theme) : undefined;
+        out.nodes.push({ id, type: "fact", label: short(f.text), detail: f.text.length > 64 ? f.text : undefined, source, key: factKey(f), ...(parent ? { parent } : {}), ...(f.about?.length ? { about: f.about } : {}) });
+        out.edges.push(edge("about", id, parent ?? BRAND, parent ? `Under ${f.theme}` : `About ${brandName(brief)}${f.where ? `: ${f.where}` : ""}`, source));
       }
       return out;
     },
+  },
+  source: {
+    label: "Source",
+    plural: "Sources",
+    shape: "pill",
+    colour: "var(--graph-fact)",
+    size: 3,
+    ring: 1,
+    order: 9.5,
+    fold: 0,
+    edit: "none",
+    // Shown only under an open note (lib/graph/build.ts): never in the list on its own.
+    from: () => ({ nodes: [], edges: [] }),
   },
 };
 

@@ -1,3 +1,4 @@
+import type { LiveFact } from "@/lib/knowledge/types";
 import type { Galaxy } from "@/lib/taste/galaxy";
 import type { FitsRun } from "@/lib/journey/types";
 import "server-only";
@@ -91,6 +92,8 @@ export type TeamCtx = {
   question?: string;
   /** The founder's answers to the team's earlier questions (ask_founder), read as facts. */
   answers?: { question: string; answer: string }[];
+  /** The founder's knowledge as derived notes, by theme, each with its source ids (§23.2 step 8.2e). */
+  notes?: LiveFact[];
   /** Win first, and the crowd to win next (set by the Scout, or from the ranking). */
   crowd?: CrowdCard;
   next?: CrowdCard;

@@ -319,7 +319,7 @@ describe("files read after onboarding", () => {
 describe("saved state and answers", () => {
   it("reads a save from before the graph, or a damaged one, as empty", () => {
     expect(graphState(undefined)).toEqual(emptyGraphState());
-    expect(graphState({ hidden: ["a", 3], log: [{ nope: 1 }], held: "x" })).toEqual({ hidden: ["a"], log: [], held: {}, rev: {} });
+    expect(graphState({ hidden: ["a", 3], log: [{ nope: 1 }], held: "x" })).toEqual({ hidden: ["a"], log: [], held: {}, rev: {}, gone: [] });
   });
 
   it("fills a typed answer into the question's empty field", () => {

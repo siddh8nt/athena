@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Question, type Asked } from "./Question";
 import { WithWithout, type AloneRequest } from "./WithWithout";
 import type { AgentEvent } from "@/lib/blocks/types";
@@ -8,7 +8,7 @@ import type { Galaxy } from "@/lib/taste/galaxy";
 import type { BenchTask } from "@/lib/bench/lines";
 import type { AloneStop } from "@/lib/proof/alone";
 import { addEvent, lineDetail, lineText, settleRun, type Line } from "@/lib/agent/transcript";
-import { ATHENA, SPECIALIST_IDS, isSpecialist, nameOf, specialist, type AgentId, type SpecialistId } from "@/lib/agent/specialists";
+import { ATHENA, SPECIALIST_IDS, isSpecialist, nameOf, panelIds, specialist, type AgentId, type SpecialistId } from "@/lib/agent/specialists";
 import { GOALS, pickGoals, teamFor, teamLine } from "@/lib/agent/goals";
 import { latest, staleRuns, whatsWorking } from "@/lib/agent/outcomes";
 import { nodesAdded } from "@/lib/graph/types";
@@ -194,11 +194,34 @@ function statusText(id: AgentId, s: AgentStatus): string {
 }
 
 /** The left panel (§23.2 step 8f): Athena and the six, each with live status. On a phone the list is a menu. */
+const RAIL = "athena:team-rail";
+
 export function TeamPanel({ live, team, active, onOpen, athena }: { live: TeamLive; team: TeamState; active: AgentId; onOpen: (id: AgentId) => void; athena?: string }) {
-  const ids: AgentId[] = ["athena", ...SPECIALIST_IDS];
+  const ids = panelIds(team);
   const on = (id: AgentId) => team.goals.some((g) => isSpecialist(id) && g.team.includes(id));
+  // Collapsed to a rail of agent badges with live status, or expanded to the list; the choice is remembered.
+  const [rail, setRail] = useState(false);
+  useEffect(() => {
+    try {
+      setRail(localStorage.getItem(RAIL) === "1");
+    } catch {
+      // Storage unavailable: the panel starts expanded.
+    }
+  }, []);
+  const flip = () =>
+    setRail((r) => {
+      try {
+        localStorage.setItem(RAIL, r ? "0" : "1");
+      } catch {
+        // Storage unavailable: the choice lasts this visit.
+      }
+      return !r;
+    });
   return (
-    <aside className="team" aria-label="Athena and her team">
+    <aside className={`team${rail ? " team-rail" : ""}`} aria-label="Athena and her team">
+      <button type="button" className="linkish small team-fold" aria-expanded={!rail} onClick={flip} aria-label={rail ? "Show the team" : "Fold the team to a rail"} title={rail ? "Show the team" : "Fold the team to a rail"}>
+        {rail ? "»" : "«"}
+      </button>
       <label className="team-menu">
         <span className="small muted">Workspace</span>
         <select value={active} onChange={(e) => onOpen(e.target.value as AgentId)}>
@@ -215,7 +238,7 @@ export function TeamPanel({ live, team, active, onOpen, athena }: { live: TeamLi
           const text = id === "athena" && athena && s.state !== "working" ? athena : statusText(id, s);
           return (
             <li key={id}>
-              <button type="button" className={`team-agent team-${s.state} ${active === id ? "on" : ""} ${on(id) ? "team-on-goal" : ""}`} aria-current={active === id ? "true" : undefined} onClick={() => onOpen(id)}>
+              <button type="button" className={`team-agent team-${s.state} ${active === id ? "on" : ""} ${on(id) ? "team-on-goal" : ""}`} aria-current={active === id ? "true" : undefined} onClick={() => onOpen(id)} title={rail ? `${nameOf(id)}: ${text}` : undefined}>
                 <span className="team-badge" aria-hidden>{nameOf(id).slice(0, 1)}</span>
                 <span className="team-text">
                   <strong>{nameOf(id)}</strong>

@@ -1,3 +1,5 @@
+import type { LiveFact } from "@/lib/knowledge/types";
+import { byTheme } from "@/lib/knowledge/notes";
 import type { BrandBrief } from "@/lib/brief/types";
 import type { CrowdsResult } from "@/lib/journey/types";
 import type { SeedInput } from "@/lib/taste/seed";
@@ -18,7 +20,7 @@ import type { AgentBudget, Finisher, Source } from "./loop";
 export type FitsInput = {
   brief?: BrandBrief;
   /** The founder's knowledge base as it stands: facts not struck, conflicts as settled. */
-  facts: { id: string; text: string; where: string; source: string }[];
+  facts: LiveFact[];
   seed: SeedInput;
   crowds: CrowdsResult;
 };
@@ -82,6 +84,9 @@ export function knowledgeParts(facts: FitsInput["facts"]): { tool: string; summa
     }
   };
   const groups = new Map<string, string[]>();
+  // Derived notes (§23.2 step 8.2e) go by theme, each with its sources and the raw facts behind it.
+  if (facts.some((f) => f.theme))
+    return byTheme(facts).map((g) => ({ tool: "knowledge", summary: `${g.notes.length} note${g.notes.length === 1 ? "" : "s"} on ${g.theme}`, data: { theme: g.theme, notes: g.notes } }));
   for (const f of facts) {
     const key = site(f.source);
     groups.set(key, [...(groups.get(key) ?? []), `${f.id} | ${f.text} | ${f.where}`]);

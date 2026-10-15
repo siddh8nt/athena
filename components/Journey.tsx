@@ -24,6 +24,7 @@ import { POINTER, PREVIEW_AT, applyEdit, applyFiles, fillOther, graphState, prev
 import { staleLine, type RunId } from "@/lib/graph/stale";
 import type { GraphInput } from "@/lib/graph/types";
 import { keepFile, workspace } from "@/lib/knowledge/workspace";
+import { bySource, mergeNotes, themesOf, type Synth } from "@/lib/knowledge/notes";
 import type { Channel } from "@/lib/journey/growth";
 import { crowdAfterFits, emptyJourney, loadedJourney, type CrowdCard, type CrowdsResult, type Journey as JourneyState } from "@/lib/journey/types";
 import type { Galaxy as GalaxyData } from "@/lib/taste/galaxy";
@@ -202,6 +203,7 @@ export function Journey() {
       brief: teamBrief,
       ...(j.fits ? { fits: j.fits.fits } : {}),
       answers: j.told ? [j.told] : [],
+      facts: j.facts ?? [],
     }),
     graphRev: g.log.length,
     onMemory,
@@ -266,15 +268,67 @@ export function Journey() {
 
   // Onboarding (§23.2 step 3): a new founder starts from the three ways in, not a chat. Sample brands and founders
   // who began in the chat keep the chat. (`onboarding` is read above, before the team's hooks.)
+  // Knowledge, not raw facts (§23.2 step 8.2a): what was read is grouped by its source at once, then into themes by
+  // the model. The founder's edited notes and deletions hold through every re-synthesis.
+  const own = (fs: LiveFact[]) => fs.filter((f) => f.source === "the founder" && !f.theme);
+  const entities = () =>
+    allNodes(latest.current.input).nodes.filter((n) => ["stockist", "city", "competitor", "comparable", "crowd"].includes(n.type)).map((n) => n.label).slice(0, 120);
+  const synthesize = async (raw: LiveFact[], themes: string[]): Promise<Synth> => {
+    try {
+      const res = await fetch("/api/synthesize", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ws: workspace(), raw, themes, entities: entities() }), signal: AbortSignal.timeout(90_000) });
+      const r = (await res.json()) as Partial<Synth>;
+      return { notes: Array.isArray(r.notes) ? r.notes : bySource(raw), asks: Array.isArray(r.asks) ? r.asks : [] };
+    } catch {
+      return { notes: bySource(raw), asks: [] };
+    }
+  };
+  const asked = (s: Synth) =>
+    setEditQs((qs) => [
+      ...qs,
+      ...s.asks.map((a) => ({
+        id: `synth-${a.note}`,
+        question: `Your sources differ on ${a.about.replace(/\.$/, "")}: which is right?`,
+        why: "I kept your own files' value until you say.",
+        options: a.options.map((o) => ({ label: o.value, hint: o.text })),
+        multi: false,
+        assumed: a.options[0].value,
+        choices: a.options.map((o): Op[] => [{ op: "note", id: a.note, text: o.text }]),
+        by: "graph" as const,
+      })),
+    ]);
+  const synthRun = useRef(0);
+  const regroup = (raw: LiveFact[]) => {
+    const run = ++synthRun.current;
+    setWorking({ text: "Grouping what I read into themes…", by: "graph" });
+    void synthesize(raw, []).then((s) => {
+      setWorking((w) => (w?.text.startsWith("Grouping") ? undefined : w));
+      if (run !== synthRun.current) return;
+      setJ((x) => {
+        const gone = graphState(x.graph).gone ?? [];
+        return { ...x, facts: [...mergeNotes(x.facts ?? [], s.notes, gone).filter((n) => n.theme), ...own(x.facts ?? [])] };
+      });
+      const themes = themesOf(s.notes);
+      if (themes.length) say(`I grouped what I read into ${themes.length} theme${themes.length === 1 ? "" : "s"}: ${themes.join(", ")}. Open one on the graph, or edit any note below.`);
+      asked(s);
+    });
+  };
+  const onRaw = (facts: LiveFact[]) =>
+    setJ((x) => {
+      const gone = graphState(x.graph).gone ?? [];
+      return { ...x, raw: facts, facts: [...mergeNotes(x.facts ?? [], bySource(facts), gone).filter((n) => n.theme), ...own(facts)] };
+    });
+
   const onBrief = (b: BrandBrief, assumptions: string[], facts: LiveFact[], early = false) => {
     chat.setBrief(b);
     // A new brief from onboarding: earlier graph edits stay in the log, but can't be undone onto it.
     setJ((x) => {
       const gs = graphState(x.graph);
-      return { ...x, facts: facts.length || !early ? facts : x.facts, graph: { ...gs, log: gs.log.map(({ before: _b, ...e }) => e) } };
+      return { ...x, graph: { ...gs, log: gs.log.map(({ before: _b, ...e }) => e) } };
     });
+    if (facts.length || !early) onRaw(facts);
     // The first brief fills the graph while the full read goes on; only the full one moves the journey on.
     if (early) return;
+    if (facts.length) regroup(facts);
     const ready = missingRequired(b).length === 0;
     chat.setTurn({ text: "", replies: [], ready });
     setMsgs((m) => [
@@ -397,8 +451,19 @@ export function Journey() {
       } catch {
         // Past the time limit: whatever the reader returns later is dropped, and the graph stays as it was.
       }
+    // A later file merges into the themes already there (§23.2 step 8.2a).
+    const known = new Set((j.raw ?? []).map((f) => f.text.toLowerCase()));
+    const fresh = (read.facts ?? []).filter((f) => !known.has(f.text.toLowerCase()));
+    let notes: LiveFact[] = [];
+    if (fresh.length) {
+      setGraphChips((c) => c.map((x) => (x.busy && names.includes(x.name) ? { ...x, status: "Fitting it into your themes…" } : x)));
+      const s = await synthesize(fresh, themesOf(latest.current.input.facts));
+      notes = s.notes;
+      asked(s);
+      setJ((x) => ({ ...x, raw: [...(x.raw ?? []), ...fresh] }));
+    }
     const { input, state, ran } = latest.current;
-    const a = hashes.length ? applyFiles(input, state, { facts: read.facts ?? [], stockists: read.stockists ?? [], read: read.read?.length ? read.read : names }, { ran }) : undefined;
+    const a = hashes.length ? applyFiles(input, state, { facts: notes, stockists: read.stockists ?? [], read: read.read?.length ? read.read : names }, { ran }) : undefined;
     if (a) commit(a.brief, a.facts, a.state);
     setGraphChips((c) => c.map((x) => (x.busy && names.includes(x.name) ? { ...x, busy: false, status: kept[names.indexOf(x.name)]?.hash ? "Read" : kept[names.indexOf(x.name)]?.status ?? "Read" } : x)));
     const label = names.length > 1 ? `${names[0]} and ${names.length - 1} more` : names[0];
@@ -482,7 +547,7 @@ export function Journey() {
 
       {onboarding ? (
         <main className="journey-main ob-main">
-          <Onboard brief={brief} files={chat.files} addFiles={chat.addFiles} setFiles={chat.setFiles} onBrief={onBrief} onFacts={(facts) => setJ((x) => ({ ...x, facts }))} graph={graphEl} dock={dockEl} />
+          <Onboard brief={brief} files={chat.files} addFiles={chat.addFiles} setFiles={chat.setFiles} onBrief={onBrief} onFacts={onRaw} graph={graphEl} dock={dockEl} />
         </main>
       ) : (
         <main className="journey-main journey-team">

@@ -112,6 +112,8 @@ The edits you can make (JSON):
 - {"op":"add","type":T,"value":NAME,"city":CITY?}: T is one of ${ADD_TYPES.join(", ")}. comparable is a brand with a similar customer; competitor a direct rival; stockist a shop or venue that sells the brand (give its city when the founder says it); city a city the founder wants to grow in; note a fact about the business in the founder's words (a goal, a constraint, a number).
 - {"op":"wrong","node":ID}: the founder says a node on the graph isn't true of the brand: "X isn't like us", "X isn't a competitor", "we don't sell there". It stops every agent using it. Use the node ids listed.
 - {"op":"remove","node":ID}: the founder only wants it out of view and doesn't say it's untrue ("skip Austin for now", "hide that"). Every agent still reads it. When in doubt between the two, it's wrong.
+- The founder's knowledge is notes (type fact, ids "fact:NOTE") under themes (type theme, labelled with the theme's name). For a note, NOTE is its id without "fact:".
+  {"op":"note","id":NOTE,"text":T} rewrites a note in the founder's words; {"op":"drop","id":NOTE} deletes it, and agents stop reading it; {"op":"move","id":NOTE,"theme":NAME} moves it to a theme, new or listed; {"op":"split","id":NOTE,"parts":[T,...]} splits it into several notes; {"op":"merge","ids":[NOTE,...],"text":T?} merges notes into one; {"op":"theme","theme":NAME,"to":NEW} renames a theme; {"op":"theme","theme":NAME} removes a theme and its notes. Copy every number exactly.
 
 Rules:
 - The founder edits facts, never taste: crowds and what they love aren't edited. If they disagree with a crowd, say in the reply that the crowds come from Qloo and change when the facts do.

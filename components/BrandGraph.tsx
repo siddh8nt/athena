@@ -12,7 +12,9 @@ import { allNodes, buildGraph, fromLabel, listGroups } from "@/lib/graph/build";
 import type { EditQuestion, GraphState, Op, SetField } from "@/lib/graph/edit";
 import { shapePath } from "@/lib/graph/shapes";
 import { RUN_LABEL, staleLine, type RunId } from "@/lib/graph/stale";
-import { BRAND, EDGE_TYPES, NODE_TYPES, type GraphEdge, type GraphInput, type GraphNode } from "@/lib/graph/types";
+import { BRAND, EDGE_TYPES, NODE_TYPES, themeId, type GraphEdge, type GraphInput, type GraphNode } from "@/lib/graph/types";
+import { sourcesOf, themesOf } from "@/lib/knowledge/notes";
+import type { LiveFact } from "@/lib/knowledge/types";
 
 // The Brand Graph (PRD §13.12, §23.2 step 7): the brand's one source of truth, first made at onboarding and read by
 // every step after it. One view (§23.2 step 7.1): the fact strip on top, then the graph grown from the Galaxy, then
@@ -208,13 +210,121 @@ function FactStrip({ input, busy, flash, onEdit }: { input: GraphInput; busy: bo
 }
 
 /** Remove and Wrong, for the founder's facts only (§23.2 step 7c: facts, never taste). */
-function Actions({ n, onEdit }: { n: GraphNode; onEdit: (ops: Op[]) => void }) {
+function Actions({ n, onEdit, facts = [] }: { n: GraphNode; onEdit: (ops: Op[]) => void; facts?: LiveFact[] }) {
   if (NODE_TYPES[n.type].edit !== "fact" || n.members) return null;
+  if (n.type === "theme") return <ThemeActions theme={n.label} onEdit={onEdit} />;
+  const note = n.parent && facts.find((f) => `fact:${f.id}` === n.id);
+  if (note) return <NoteActions note={note} themes={themesOf(facts)} onEdit={onEdit} />;
   return (
     <span className="bg-actions">
       <button type="button" className="linkish" onClick={() => onEdit([{ op: "remove", node: n.id }])} title="Hide it from the graph; Athena still reads it">Remove</button>
       <button type="button" className="linkish" onClick={() => onEdit([{ op: "wrong", node: n.id }])} title="It's wrong: hide it, and Athena stops inferring it">Wrong</button>
     </span>
+  );
+}
+
+/** Rename or remove a theme (§23.2 step 8.2d): each one edit with Undo. */
+function ThemeActions({ theme, onEdit }: { theme: string; onEdit: (ops: Op[]) => void }) {
+  const [renaming, setRenaming] = useState(false);
+  const [draft, setDraft] = useState(theme);
+  if (renaming)
+    return (
+      <form className="bg-add-form" onSubmit={(e) => (e.preventDefault(), setRenaming(false), draft.trim() && draft.trim() !== theme && onEdit([{ op: "theme", theme, to: draft.trim() }]))}>
+        <input autoFocus value={draft} maxLength={60} aria-label="Theme name" onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => e.key === "Escape" && setRenaming(false)} />
+        <button type="submit">Rename</button>
+        <button type="button" className="linkish" onClick={() => setRenaming(false)}>Cancel</button>
+      </form>
+    );
+  return (
+    <span className="bg-actions">
+      <button type="button" className="linkish" onClick={() => (setDraft(theme), setRenaming(true))}>Rename</button>
+      <button type="button" className="linkish" onClick={() => onEdit([{ op: "theme", theme }])} title="Remove the theme and its notes: Athena stops reading them">Remove</button>
+    </span>
+  );
+}
+
+/** Edit, move, split or delete a note (§23.2 step 8.2d): each one edit with Undo; the note becomes the founder's. */
+function NoteActions({ note, themes, onEdit }: { note: LiveFact; themes: string[]; onEdit: (ops: Op[]) => void }) {
+  const [mode, setMode] = useState<"edit" | "move" | "split">();
+  const [draft, setDraft] = useState("");
+  const done = (ops: Op[]) => (setMode(undefined), onEdit(ops));
+  if (mode === "edit" || mode === "split")
+    return (
+      <form className="bg-add-form bg-note-form" onSubmit={(e) => {
+        e.preventDefault();
+        if (mode === "edit") return draft.trim() && draft.trim() !== note.text ? done([{ op: "note", id: note.id, text: draft.trim() }]) : setMode(undefined);
+        const parts = draft.split("\n").map((x) => x.trim()).filter(Boolean);
+        return parts.length > 1 ? done([{ op: "split", id: note.id, parts }]) : setMode(undefined);
+      }}>
+        <textarea autoFocus value={draft} rows={mode === "split" ? 3 : 2} maxLength={600} aria-label={mode === "edit" ? "The note" : "One note per line"} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => e.key === "Escape" && setMode(undefined)} />
+        {mode === "split" && <small className="muted">One note per line</small>}
+        <button type="submit">{mode === "edit" ? "Save" : "Split"}</button>
+        <button type="button" className="linkish" onClick={() => setMode(undefined)}>Cancel</button>
+      </form>
+    );
+  if (mode === "move")
+    return (
+      <form className="bg-add-form" onSubmit={(e) => (e.preventDefault(), draft.trim() ? done([{ op: "move", id: note.id, theme: draft.trim() }]) : setMode(undefined))}>
+        <input autoFocus list={`themes-${note.id}`} value={draft} maxLength={60} placeholder="A theme, or a new one" aria-label="Move to theme" onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => e.key === "Escape" && setMode(undefined)} />
+        <datalist id={`themes-${note.id}`}>{themes.filter((t) => t !== note.theme).map((t) => <option key={t} value={t} />)}</datalist>
+        <button type="submit">Move</button>
+        <button type="button" className="linkish" onClick={() => setMode(undefined)}>Cancel</button>
+      </form>
+    );
+  return (
+    <span className="bg-actions">
+      <button type="button" className="linkish" onClick={() => (setDraft(note.text), setMode("edit"))}>Edit</button>
+      <button type="button" className="linkish" onClick={() => (setDraft(""), setMode("move"))}>Move</button>
+      <button type="button" className="linkish" onClick={() => (setDraft(note.text.split(/(?<=[.;])\s+/).join("\n")), setMode("split"))}>Split</button>
+      <button type="button" className="linkish" onClick={() => onEdit([{ op: "drop", id: note.id }])} title="Delete it: Athena stops reading it">Delete</button>
+    </span>
+  );
+}
+
+/** The list's knowledge (§23.2 step 8.2c): one section per theme, its notes as short lines, sources behind a toggle. */
+function ThemeList({ facts, flash, onEdit }: { facts: LiveFact[]; flash: Set<string>; onEdit: (ops: Op[]) => void }) {
+  const [shown, setShown] = useState<Set<string>>(new Set());
+  const [picked, setPicked] = useState<string[]>([]);
+  const themes = themesOf(facts);
+  const toggle = (id: string) => setShown((s) => { const x = new Set(s); if (x.has(id)) x.delete(id); else x.add(id); return x; });
+  if (!themes.length) return null;
+  return (
+    <>
+      {themes.map((theme) => {
+        const notes = facts.filter((f) => f.theme === theme);
+        return (
+          <section key={theme} className={`bg-group bg-theme${flash.has(themeId(theme)) ? " flash" : ""}`}>
+            <h4 className="bg-label"><Swatch type="theme" /> {theme} <span className="bg-count">{notes.length}</span> <ThemeActions theme={theme} onEdit={onEdit} /></h4>
+            <ul>
+              {notes.map((n) => {
+                const srcs = sourcesOf(n);
+                const sel = picked.includes(n.id);
+                return (
+                  <li key={n.id} className={`bg-note-line${flash.has(`fact:${n.id}`) ? " flash" : ""}`}>
+                    <div className="bg-row">
+                      <input type="checkbox" checked={sel} aria-label={`Pick “${n.text.slice(0, 40)}” to merge`} onChange={() => setPicked((p) => (sel ? p.filter((x) => x !== n.id) : [...p, n.id]))} />
+                      <span className="bg-name">{n.text}{n.mine && <small className="muted"> · yours</small>}</span>
+                      <NoteActions note={n} themes={themes} onEdit={onEdit} />
+                    </div>
+                    {!!srcs.length && (
+                      <button type="button" className="linkish small" aria-expanded={shown.has(n.id)} onClick={() => toggle(n.id)}>
+                        {srcs.length} source{srcs.length === 1 ? "" : "s"}
+                      </button>
+                    )}
+                    {shown.has(n.id) && <ul className="bg-sources small muted">{srcs.map((w) => <li key={w}>{w}</li>)}</ul>}
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        );
+      })}
+      {picked.length > 1 && (
+        <p className="bg-merge small">
+          {picked.length} notes picked · <button type="button" className="linkish" onClick={() => (onEdit([{ op: "merge", ids: picked }]), setPicked([]))}>Merge them</button> · <button type="button" className="linkish" onClick={() => setPicked([])}>Clear</button>
+        </p>
+      )}
+    </>
   );
 }
 
@@ -271,8 +381,11 @@ function ListView({ input, flash, onEdit }: { input: GraphInput; flash: Set<stri
   const addable = Object.entries(NODE_TYPES).filter(([type, t]) => t.add && !groups.some((g) => g.type === type));
   return (
     <div className="bg-list">
+      <ThemeList facts={input.facts} flash={flash} onEdit={onEdit} />
       {groups
-        .filter((g) => g.type !== "brand" && g.type !== "trait")
+        .filter((g) => g.type !== "brand" && g.type !== "trait" && g.type !== "theme")
+        .map((g) => ({ ...g, nodes: g.nodes.filter((n) => !n.parent) }))
+        .filter((g) => g.nodes.length)
         .map(({ type, t, nodes }) => (
           <section key={type} className="bg-group">
             <h4 className="bg-label"><Swatch type={type} n={nodes[0]} /> {t.plural} <span className="bg-count">{nodes.length}</span></h4>
@@ -315,7 +428,11 @@ type SimLink = SimulationLinkDatum<SimNode> & { id: string };
  * that), and a finger pans the page while two fingers pan and pinch the graph.
  */
 function GraphView({ input, flash, narrow, onEdit }: { input: GraphInput; flash: Set<string>; narrow: boolean; onEdit: (ops: Op[]) => void }) {
-  const g = useMemo(() => buildGraph(input), [input]);
+  // Themes collapsed by default (§23.2 step 8.2b): one theme open at a time, and one of its notes.
+  const [open, setOpen] = useState<string[]>([]);
+  const g = useMemo(() => buildGraph({ ...input, open }), [input, open]);
+  const expand = (n: GraphNode) =>
+    setOpen((o) => (o.includes(n.id) ? o.filter((x) => x !== n.id && !(n.type === "theme" && x.startsWith("fact:"))) : n.type === "theme" ? [n.id] : [...o.filter((x) => !x.startsWith("fact:")), n.id]));
   const svg = useRef<SVGSVGElement>(null);
   const wrap = useRef<HTMLDivElement>(null);
   const placed = useRef(new Map<string, { x: number; y: number }>());
@@ -441,14 +558,16 @@ function GraphView({ input, flash, narrow, onEdit }: { input: GraphInput; flash:
         <li><svg className="bg-swatch" width="14" height="14" viewBox="-7 -7 14 14" aria-hidden><path d={shapePath("circle", 4.5)} fill="none" stroke="var(--muted)" strokeDasharray="2 2" strokeWidth={1.5} /></svg> My read, not yet yours</li>
       </ul>
       <p className="small muted bg-hint">{narrow ? "Pinch to zoom, two fingers to pan. Tap a node for its card." : "Drag to pan; pinch, or scroll with Ctrl or ⌘ held, to zoom. Click a node for its card, hover a line for why it's there."}</p>
-      {node && <NodeCard n={node} edges={g.edges} names={byId} onEdit={(ops) => (setPicked(undefined), onEdit(ops))} onPick={setPicked} />}
+      {node && <NodeCard n={node} edges={g.edges} names={byId} facts={input.facts} open={open.includes(node.id)} onExpand={() => expand(node)} onEdit={(ops) => (setPicked(undefined), onEdit(ops))} onPick={setPicked} />}
     </div>
   );
 }
 
 /** A node's card (§13.12): what it is, where it came from, why it's linked, and Remove / Wrong for a fact. */
-function NodeCard({ n, edges, names, onEdit, onPick }: { n: GraphNode; edges: GraphEdge[]; names: Map<string, GraphNode>; onEdit: (ops: Op[]) => void; onPick: (id: string) => void }) {
+function NodeCard({ n, edges, names, facts, open, onExpand, onEdit, onPick }: { n: GraphNode; edges: GraphEdge[]; names: Map<string, GraphNode>; facts: LiveFact[]; open: boolean; onExpand: () => void; onEdit: (ops: Op[]) => void; onPick: (id: string) => void }) {
   const t = NODE_TYPES[n.type];
+  const note = n.parent && n.type === "fact" ? facts.find((f) => `fact:${f.id}` === n.id) : undefined;
+  const opens = n.type === "theme" ? (open ? "Hide its notes" : "Show its notes") : note ? (open ? "Hide sources" : `${sourcesOf(note).length} source${sourcesOf(note).length === 1 ? "" : "s"}`) : undefined;
   const mine = edges.filter((e) => e.from === n.id || e.to === n.id).slice(0, 4);
   return (
     <article className="bg-card" aria-label={n.label}>
@@ -477,7 +596,8 @@ function NodeCard({ n, edges, names, onEdit, onPick }: { n: GraphNode; edges: Gr
             );
           })}
           <small className={`src src-${n.source.kind}`}>{fromLabel(n)}</small>
-          <div><Actions n={n} onEdit={onEdit} /></div>
+          {opens && <div><button type="button" className="linkish small" aria-expanded={open} onClick={onExpand}>{opens}</button></div>}
+          <div><Actions n={n} onEdit={onEdit} facts={facts} /></div>
         </>
       )}
     </article>

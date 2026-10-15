@@ -89,6 +89,8 @@ export type Journey = {
   pins?: Record<string, Pin>;
   /** The founder's knowledge base as onboarding left it (§23.2 step 4), for the fits run. */
   facts?: LiveFact[];
+  /** The raw facts behind the notes (§23.2 step 8.2a): each note's sources, and what a re-synthesis reads. */
+  raw?: LiveFact[];
   /** The most valuable fits (§23.2 step 5), with the inputs they were ranked from. */
   fits?: FitsRun;
   /** A strategy for every most valuable fit (§23.2 step 6), built from the fits run above and the founder's context. */

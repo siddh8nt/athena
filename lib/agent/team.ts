@@ -1,4 +1,5 @@
 import "server-only";
+import { byTheme } from "@/lib/knowledge/notes";
 import type { QlooClient } from "@/lib/qloo/client";
 import type { Env } from "@/lib/env";
 import type { ConverseResult, FunctionDeclaration } from "@/lib/llm/vertex";
@@ -320,6 +321,8 @@ function given(t: TeamCtx, s: AgentState): NonNullable<AgentRun["given"]> {
     asked_about: t.asked?.name,
     founder_question: t.question,
     founder_answers: t.answers,
+    // The founder's knowledge by theme: "id | note | where (raw ids)"; cite a note by its id.
+    knowledge: t.notes?.length ? byTheme(t.notes) : undefined,
   };
   return [{ tool: "brand_graph", summary: `What the team knows about ${b.name}`, data }];
 }

@@ -72,7 +72,7 @@ export function keyValue(s: Snapshot, key: InputKey): string {
     case "notes":
       return v(b.notes.map((n) => n.value));
     case "facts":
-      return v(s.facts.map((f) => [f.id, f.text]));
+      return v(s.facts.map((f) => [f.id, f.text, f.theme ?? ""]));
     case "wrong":
       return v((b.wrong ?? []).map((w) => w.key));
   }

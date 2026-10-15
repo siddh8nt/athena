@@ -490,6 +490,18 @@ a.button.big { padding: 11px 20px; font-size: 15px; font-weight: 600; }
 .team-working .team-text small { color: var(--fg); }
 .team-waiting { opacity: 0.5; }
 .team-on-goal .team-text strong::after { content: " ·"; color: var(--accent); }
+/* The team folded to a rail of agent badges with live status (§23.2 step 8.2f). */
+.team-fold { display: block; margin: 0 0 6px auto; padding: 2px 6px; }
+.team-rail .team-text { display: none; }
+.team-rail .team-agent { justify-content: center; padding: 6px 0; }
+.team-rail .team-fold { margin: 0 auto 6px; }
+/* Knowledge by theme (§23.2 step 8.2c). */
+.bg-theme .bg-label .bg-actions { margin-left: auto; font-weight: 400; text-transform: none; letter-spacing: 0; }
+.bg-note-line .bg-name { font-weight: 400; }
+.bg-note-line input[type="checkbox"] { flex: none; margin: 3px 0 0; }
+.bg-sources { margin: 2px 0 0 22px; padding: 0; }
+.bg-note-form textarea { flex: 1 1 100%; font: inherit; padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--fg); }
+.bg-merge { position: sticky; bottom: 0; background: var(--surface); padding: 6px 0; }
 .goals { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; flex: 1; min-width: 0; }
 .goals li { display: flex; flex-direction: column; padding: 4px 10px; border: 1px solid var(--line); border-radius: 10px; font-size: 13px; max-width: 280px; }
 .goals li:last-child:has(button) { border: 0; justify-content: center; }
@@ -530,6 +542,7 @@ a.button.big { padding: 11px 20px; font-size: 15px; font-weight: 600; }
   .journey-main.journey-team { grid-template-columns: 1fr; }
   .team { border-right: 0; border-bottom: 1px solid var(--line); padding: 8px 16px; }
   .team-list { display: none; }
+  .team-fold { display: none; }
   .team-menu { display: flex; flex-direction: column; gap: 4px; }
   .team-menu select { font: inherit; width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--fg); }
   .goals li { max-width: 100%; }
@@ -999,4 +1012,11 @@ span.ob-source { color: var(--muted); }
   .ob-line, .ob-plan-list li, .ob-panel, .ob-file-adding, .ob-agent-live .ob-mark, .ob-plan-now .ob-check, .ob-dot::before { animation: none !important; }
   .ob-cards button { transition: none; }
   .ob-cards button:hover:not(:disabled) { transform: none; }
+}
+
+/* The rail only where the team has its own column. */
+@media (min-width: 1101px) {
+  .journey-main.journey-team:has(.team-rail) { grid-template-columns: 56px minmax(320px, 0.9fr) minmax(0, 1.4fr); }
+  .ob-work:has(.team-rail) { grid-template-columns: 56px minmax(0, 1fr); }
+  .ob-work.ob-has-panel:has(.team-rail) { grid-template-columns: 56px minmax(0, 1fr) minmax(400px, 46%); }
 }

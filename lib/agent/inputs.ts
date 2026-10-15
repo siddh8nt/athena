@@ -24,13 +24,17 @@ export function readSeed(raw: unknown): SeedInput {
 
 export function readFacts(raw: unknown): FitsInput["facts"] {
   return (Array.isArray(raw) ? raw : [])
-    .map((x) => x as { id?: unknown; text?: unknown; where?: unknown; source?: unknown })
+    .map((x) => x as { id?: unknown; text?: unknown; where?: unknown; source?: unknown; theme?: unknown; from?: unknown; about?: unknown; mine?: unknown })
     .filter((f) => typeof f.id === "string" && typeof f.text === "string" && f.text.trim())
     .map((f) => {
       const where = typeof f.where === "string" ? f.where.slice(0, 200) : "";
       // The file or site a fact came from; older clients only send where ("deck.pptx, slide 4").
       const source = (typeof f.source === "string" && f.source.trim() ? f.source : where.split(", ")[0] || "the founder").slice(0, 200);
-      return { id: (f.id as string).slice(0, 80), text: (f.text as string).slice(0, 500), where, source };
+      // A derived note (§23.2 step 8.2e) keeps its theme and the raw facts it traces to.
+      const theme = str(f.theme, 60);
+      const from = strs(f.from, 40);
+      const about = strs(f.about, 12);
+      return { id: (f.id as string).slice(0, 80), text: (f.text as string).slice(0, 500), where, source, ...(theme ? { theme } : {}), ...(from.length ? { from } : {}), ...(about.length ? { about } : {}), ...(f.mine === true ? { mine: true } : {}) };
     })
     .slice(0, 400);
 }

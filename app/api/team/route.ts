@@ -5,6 +5,7 @@ import { LIMITS, clientIp } from "@/lib/limits";
 import { planStream, teamEnrich } from "@/lib/agent/server-deps";
 import { readFits, readSeed, strs } from "@/lib/agent/inputs";
 import { buildCtx } from "@/lib/agent/team-ctx";
+import { readFacts } from "@/lib/agent/inputs";
 import { athenaAsk, customGoal, goalFacts, proposeFor, runTeam } from "@/lib/agent/team";
 import { goalQuestion } from "@/lib/agent/goals";
 import { readBrief } from "@/lib/brief/form";
@@ -46,6 +47,8 @@ export const POST = dated(async function post(req: Request) {
     .map((a) => ({ question: str((a as Record<string, unknown>)?.question, 200), answer: str((a as Record<string, unknown>)?.answer, 200) }))
     .filter((a) => a.question && a.answer)
     .slice(0, 8);
+  // The derived notes the founder keeps (§23.2 step 8.2e): deleted ones never arrive.
+  const notes = readFacts(raw.facts);
   const qloo = getQloo();
   // Proposing and splitting goals are one small model call each; runs and asks count against the team's limit.
   const cap = action === "propose" || action === "custom" ? { ok: true } : LIMITS.team(clientIp(req));
@@ -53,7 +56,7 @@ export const POST = dated(async function post(req: Request) {
 
   return planStream<TeamEvent>(async (send) => {
     const crowds = await cachedCrowds(seed, probes);
-    const t = await buildCtx({ brief, seed, crowds: crowds ?? undefined, fits, probes, team, enrich: teamEnrich(), llm, qloo, answers });
+    const t = await buildCtx({ brief, seed, crowds: crowds ?? undefined, fits, probes, team, enrich: teamEnrich(), llm, qloo, answers, notes });
     const env = readEnv();
     t.onGalaxy = (galaxy) => send({ type: "galaxy", galaxy });
     const started = Date.now();

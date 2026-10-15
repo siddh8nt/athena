@@ -101,7 +101,19 @@ export function applyMerge(facts: Fact[], groups: string[][]): Fact[] {
 }
 
 /** A fact as later runs read it: its text, where it is, and the file or page it came from. */
-export type LiveFact = { id: string; text: string; where: string; source: string };
+export type LiveFact = {
+  id: string;
+  text: string;
+  where: string;
+  source: string;
+  /** A derived note (PRD §23.2 step 8.2): the theme it sits under, and the raw facts it traces to. */
+  theme?: string;
+  from?: string[];
+  /** The founder edited it: theirs, kept as they left it through re-synthesis. */
+  mine?: boolean;
+  /** Existing Brand Graph nodes it is about, by name (a stockist, a city, a competitor, a comparable, a crowd). */
+  about?: string[];
+};
 
 /** The knowledge base as it stands: facts not struck, each conflict as settled, and the founder's own answers as facts. */
 export function liveFacts(kb: Knowledge, settled: Settled): LiveFact[] {

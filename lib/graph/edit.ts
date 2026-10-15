@@ -4,6 +4,7 @@ import type { LiveFact } from "@/lib/knowledge/types";
 import type { FounderQuestion } from "@/lib/agent/tools";
 import { allNodes } from "./build";
 import { READS, changedKeys, settle, type Held, type RunId, type Snapshot } from "./stale";
+import { noteId } from "@/lib/knowledge/notes";
 import { NODE_TYPES, factKey, type GraphInput, type GraphNode, type InputKey } from "./types";
 
 // Edits to the Brand Graph (PRD §13.12, §23.2 step 7c–e): one set of operations for a click on the graph and for a
@@ -23,7 +24,14 @@ export type Op =
   | { op: "set"; field: SetField; value: string }
   | { op: "add"; type: AddType; value: string; city?: string; address?: string; id?: string }
   | { op: "wrong"; node: string }
-  | { op: "remove"; node: string };
+  | { op: "remove"; node: string }
+  // The founder's knowledge (§23.2 step 8.2d): a note edited, merged, split, moved or deleted; a theme renamed or removed.
+  | { op: "note"; id: string; text: string }
+  | { op: "merge"; ids: string[]; text?: string }
+  | { op: "split"; id: string; parts: string[] }
+  | { op: "move"; id: string; theme: string }
+  | { op: "drop"; id: string }
+  | { op: "theme"; theme: string; to?: string };
 
 /**
  * A question about an edit ("Did you mean Sightglass Coffee, SF?"): each option is the operations it stands for. With
@@ -49,7 +57,7 @@ export type GraphEdit = {
   changed: string[];
   keys: InputKey[];
   /** What it was before, for Undo. Kept for the latest few edits only. */
-  before?: { brief: BrandBrief; facts: LiveFact[]; hidden: string[] };
+  before?: { brief: BrandBrief; facts: LiveFact[]; hidden: string[]; gone?: string[] };
 };
 
 export type GraphState = {
@@ -59,9 +67,11 @@ export type GraphState = {
   held: Partial<Record<RunId, Held>>;
   /** Re-run counters: a one-click re-run bumps its run's, so it runs again on the current inputs. */
   rev: Partial<Record<RunId, number>>;
+  /** Raw facts behind notes the founder deleted (§23.2 step 8.2d): they stop feeding agents, and a re-synthesis leaves them out. */
+  gone?: string[];
 };
 
-export const emptyGraphState = (): GraphState => ({ hidden: [], log: [], held: {}, rev: {} });
+export const emptyGraphState = (): GraphState => ({ hidden: [], log: [], held: {}, rev: {}, gone: [] });
 
 /** Reads a saved state, so a save from before the graph (or a damaged one) loads as empty. */
 export function graphState(v: unknown): GraphState {
@@ -71,6 +81,7 @@ export function graphState(v: unknown): GraphState {
     log: Array.isArray(s.log) ? s.log.filter((e) => e && typeof e.id === "string" && typeof e.note === "string") : [],
     held: s.held && typeof s.held === "object" ? s.held : {},
     rev: s.rev && typeof s.rev === "object" ? s.rev : {},
+    gone: Array.isArray(s.gone) ? s.gone.filter((x): x is string => typeof x === "string") : [],
   };
 }
 
@@ -94,7 +105,7 @@ type TraitField = (typeof TRAIT_FIELDS)[number];
 const clean = (s: unknown) => (typeof s === "string" ? s.replace(/\s+/g, " ").trim().slice(0, MAX) : "");
 
 /** Checks one operation against the registry and the graph's nodes: anything else is dropped, never guessed at. */
-export function validOp(o: unknown, nodes: { id: string; type: string }[]): Op | undefined {
+export function validOp(o: unknown, nodes: { id: string; type: string; label?: string }[]): Op | undefined {
   if (!o || typeof o !== "object") return undefined;
   const x = o as Record<string, unknown>;
   if (x.op === "set") {
@@ -114,6 +125,7 @@ export function validOp(o: unknown, nodes: { id: string; type: string }[]): Op |
     const extra = Object.fromEntries((["city", "address", "id"] as const).map((k) => [k, clean(x[k])]).filter(([, v]) => v));
     return { op: "add", type, value, ...extra };
   }
+  if (["note", "merge", "split", "move", "drop", "theme"].includes(x.op as string)) return validNoteOp(x, nodes);
   if (x.op === "wrong" || x.op === "remove") {
     const n = nodes.find((m) => m.id === x.node);
     if (!n || n.id.startsWith("group:")) return undefined;
@@ -123,6 +135,81 @@ export function validOp(o: unknown, nodes: { id: string; type: string }[]): Op |
     return { op: x.op, node: n.id };
   }
   return undefined;
+}
+
+/** A knowledge edit, checked against the notes and themes on the graph: anything else is dropped. */
+function validNoteOp(x: Record<string, unknown>, nodes: { id: string; type: string; label?: string }[]): Op | undefined {
+  const note = (id: unknown) => typeof id === "string" && nodes.some((n) => n.id === `fact:${id}` && n.type === "fact");
+  const themes = nodes.filter((n) => n.type === "theme").map((n) => n.label ?? "");
+  const name = (v: unknown) => clean(v).slice(0, 60);
+  if (x.op === "note") return note(x.id) && clean(x.text) ? { op: "note", id: x.id as string, text: clean(x.text) } : undefined;
+  if (x.op === "drop") return note(x.id) ? { op: "drop", id: x.id as string } : undefined;
+  if (x.op === "move") return note(x.id) && name(x.theme) ? { op: "move", id: x.id as string, theme: name(x.theme) } : undefined;
+  if (x.op === "split") {
+    const parts = (Array.isArray(x.parts) ? x.parts : []).map(clean).filter(Boolean).slice(0, 6);
+    return note(x.id) && parts.length > 1 ? { op: "split", id: x.id as string, parts } : undefined;
+  }
+  if (x.op === "merge") {
+    const ids = [...new Set((Array.isArray(x.ids) ? x.ids : []).filter(note) as string[])].slice(0, 12);
+    return ids.length > 1 ? { op: "merge", ids, ...(clean(x.text) ? { text: clean(x.text) } : {}) } : undefined;
+  }
+  const theme = themes.find((t) => t.toLowerCase() === name(x.theme).toLowerCase());
+  if (!theme) return undefined;
+  return name(x.to) ? { op: "theme", theme, to: name(x.to) } : { op: "theme", theme };
+}
+
+/** One knowledge edit applied to the notes (§23.2 step 8.2d): every note it touches becomes the founder's. */
+function noteStep(facts: LiveFact[], gone: string[], op: Extract<Op, { op: "note" | "merge" | "split" | "move" | "drop" | "theme" }>): { facts: LiveFact[]; gone: string[]; note: string; why: string } | undefined {
+  const at = (id: string) => facts.find((f) => f.id === id);
+  const q = (t: string) => `“${t.length > 48 ? `${t.slice(0, 47)}…` : t}”`;
+  const away = (n: LiveFact) => [...gone, ...(n.from?.length ? n.from : [n.id])];
+  if (op.op === "note") {
+    const n = at(op.id);
+    if (!n || n.text === op.text) return undefined;
+    return { facts: facts.map((f) => (f.id === n.id ? { ...f, text: op.text, mine: true } : f)), gone, note: `Changed a note to ${q(op.text)}`, why: "you edited a note" };
+  }
+  if (op.op === "drop") {
+    const n = at(op.id);
+    if (!n) return undefined;
+    return { facts: facts.filter((f) => f.id !== n.id), gone: [...new Set(away(n))], note: `Deleted ${q(n.text)}`, why: "you deleted a note" };
+  }
+  if (op.op === "move") {
+    const n = at(op.id);
+    if (!n || n.theme === op.theme) return undefined;
+    return { facts: facts.map((f) => (f.id === n.id ? { ...f, theme: op.theme, mine: true } : f)), gone, note: `Moved ${q(n.text)} to ${op.theme}`, why: "you moved a note" };
+  }
+  if (op.op === "split") {
+    const n = at(op.id);
+    if (!n) return undefined;
+    const parts = op.parts.map((text, i) => ({ ...n, id: noteId(n.from ?? [n.id], `split${i}:${text.slice(0, 20)}`), text, mine: true }));
+    const i = facts.indexOf(n);
+    return { facts: [...facts.slice(0, i), ...parts, ...facts.slice(i + 1)], gone, note: `Split ${q(n.text)} in ${parts.length}`, why: "you split a note" };
+  }
+  if (op.op === "merge") {
+    const ns = op.ids.map(at).filter((n): n is LiveFact => !!n);
+    if (ns.length < 2) return undefined;
+    const from = [...new Set(ns.flatMap((n) => n.from ?? [n.id]))];
+    const merged: LiveFact = {
+      ...ns[0],
+      id: noteId(from, "merge"),
+      text: op.text ?? ns.map((n) => n.text.replace(/\.$/, "")).join("; "),
+      where: [...new Set(ns.flatMap((n) => n.where.split(";").map((w) => w.trim()).filter(Boolean)))].join("; "),
+      from,
+      mine: true,
+      ...(ns.some((n) => n.about?.length) ? { about: [...new Set(ns.flatMap((n) => n.about ?? []))] } : {}),
+    };
+    const ids = new Set(ns.map((n) => n.id));
+    const i = facts.findIndex((f) => ids.has(f.id));
+    const rest = facts.filter((f) => !ids.has(f.id));
+    return { facts: [...rest.slice(0, i), merged, ...rest.slice(i)], gone, note: `Merged ${ns.length} notes into ${q(merged.text)}`, why: "you merged notes" };
+  }
+  const inTheme = facts.filter((f) => f.theme === op.theme);
+  if (!inTheme.length) return undefined;
+  if (op.to) {
+    if (op.to === op.theme) return undefined;
+    return { facts: facts.map((f) => (f.theme === op.theme ? { ...f, theme: op.to, mine: true } : f)), gone, note: `Renamed ${op.theme} to ${op.to}`, why: "you renamed a theme" };
+  }
+  return { facts: facts.filter((f) => f.theme !== op.theme), gone: [...new Set(inTheme.flatMap(away))], note: `Removed ${op.theme} and its ${inTheme.length} note${inTheme.length === 1 ? "" : "s"}`, why: "you removed a theme" };
 }
 
 /** What the founder marked wrong, in plain words: "Whole Foods as a stockist". */
@@ -171,8 +258,14 @@ function makeRoom<T>(list: Sourced<T>[], cap: number, name: (v: T) => string): {
 type Step = { note: string; why: string; out?: string };
 
 /** One operation applied: the brief, the facts and the hidden nodes after it, and its note. Undefined when it changes nothing. */
-function step(cur: { brief: BrandBrief; facts: LiveFact[]; hidden: string[] }, op: Op, nodes: GraphNode[], source: Source): (typeof cur & Step) | undefined {
+type Cur = { brief: BrandBrief; facts: LiveFact[]; hidden: string[]; gone: string[] };
+
+function step(cur: Cur, op: Op, nodes: GraphNode[], source: Source): (Omit<Cur, "gone"> & { gone?: string[] } & Step) | undefined {
   const { brief, facts, hidden } = cur;
+  if (op.op === "note" || op.op === "merge" || op.op === "split" || op.op === "move" || op.op === "drop" || op.op === "theme") {
+    const s = noteStep(facts, cur.gone, op);
+    return s && { brief, hidden, ...s };
+  }
   const merge = (patch: Partial<BrandBrief>, b = brief) => dropWrong(mergeBrief(b, patch).brief);
   const sourced = <T>(value: T): Sourced<T> => ({ value, source, confirmed: true });
   if (op.op === "set") {
@@ -256,13 +349,13 @@ export type Applied = { brief: BrandBrief; facts: LiveFact[]; state: GraphState;
 export function applyEdit(input: GraphInput, state: GraphState, ops: Op[], ctx: { by: "chat" | "graph"; ran: RunId[]; at?: number }): Applied | undefined {
   const nodes = allNodes(input).nodes;
   const source: Source = ctx.by === "graph" ? { kind: "message", ref: "you" } : { kind: "message" };
-  let cur = { brief: input.brief, facts: input.facts, hidden: state.hidden };
+  let cur: Cur = { brief: input.brief, facts: input.facts, hidden: state.hidden, gone: state.gone ?? [] };
   const steps: (Step & { keys: InputKey[] })[] = [];
   for (const op of ops) {
     const s = step(cur, op, nodes, source);
     if (!s) continue;
     const keys = changedKeys(cur, s);
-    cur = { brief: s.brief, facts: s.facts, hidden: s.hidden };
+    cur = { brief: s.brief, facts: s.facts, hidden: s.hidden, gone: s.gone ?? cur.gone };
     steps.push({ ...s, keys });
   }
   if (!steps.length) return undefined;
@@ -285,10 +378,10 @@ export function applyEdit(input: GraphInput, state: GraphState, ops: Op[], ctx: 
     by: ctx.by,
     changed: changedNodes({ ...input, hidden: state.hidden }, { ...input, ...after, hidden: cur.hidden }),
     keys: changedKeys(before, after),
-    before: { brief: input.brief, facts: input.facts, hidden: state.hidden },
+    before: { brief: input.brief, facts: input.facts, hidden: state.hidden, gone: state.gone ?? [] },
   };
   const log = [...state.log, edit].slice(-LOG).map((e, i, all) => (i < all.length - UNDOABLE ? { ...e, before: undefined } : e));
-  return { ...after, state: { ...state, hidden: cur.hidden, log, held: why ? settle(state.held, ctx.ran, before, after, whyFor) : state.held }, edit };
+  return { ...after, state: { ...state, hidden: cur.hidden, gone: cur.gone, log, held: why ? settle(state.held, ctx.ran, before, after, whyFor) : state.held }, edit };
 }
 
 /** Undoes the latest edit that can be: the brief, the facts and the hidden nodes go back, and runs it held let go. */
@@ -299,7 +392,7 @@ export function undo(input: GraphInput, state: GraphState, ran: RunId[]): Omit<A
   const back: Snapshot = { brief: last.before.brief, facts: last.before.facts };
   return {
     ...back,
-    state: { ...state, hidden: last.before.hidden, log: state.log.slice(0, -1), held: settle(state.held, ran, now, back, "you undid an edit") },
+    state: { ...state, hidden: last.before.hidden, gone: last.before.gone ?? state.gone ?? [], log: state.log.slice(0, -1), held: settle(state.held, ran, now, back, "you undid an edit") },
     undone: last,
   };
 }
@@ -317,12 +410,12 @@ export function rerun(state: GraphState, run: RunId): GraphState {
 /** A big edit, shown before it's applied: "This changes 14 things: …". */
 export function previewOf(input: GraphInput, state: GraphState, ops: Op[]): { count: number; lines: string[] } {
   const nodes = allNodes(input).nodes;
-  let cur = { brief: input.brief, facts: input.facts, hidden: state.hidden };
+  let cur: Cur = { brief: input.brief, facts: input.facts, hidden: state.hidden, gone: state.gone ?? [] };
   const lines: string[] = [];
   for (const op of ops) {
     const s = step(cur, op, nodes, { kind: "message" });
     if (!s) continue;
-    cur = { brief: s.brief, facts: s.facts, hidden: s.hidden };
+    cur = { brief: s.brief, facts: s.facts, hidden: s.hidden, gone: s.gone ?? cur.gone };
     lines.push(s.note);
   }
   return { count: lines.length, lines };
@@ -348,7 +441,9 @@ export function applyFiles(input: GraphInput, state: GraphState, read: { facts: 
   const facts = [...input.facts, ...fresh];
   const before: Snapshot = { brief: input.brief, facts: input.facts };
   const after: Snapshot = { brief, facts };
-  const what = [fresh.length ? `${fresh.length} fact${fresh.length === 1 ? "" : "s"}` : "", added > 0 ? `${added} stockist${added === 1 ? "" : "s"}` : ""].filter(Boolean).join(" and ");
+  const kind = fresh.every((f) => f.theme) ? "note" : "fact";
+  const themes = new Set(fresh.flatMap((f) => (f.theme ? [f.theme] : [])));
+  const what = [fresh.length ? `${fresh.length} ${kind}${fresh.length === 1 ? "" : "s"}${kind === "note" ? ` in ${themes.size} theme${themes.size === 1 ? "" : "s"}` : ""}` : "", added > 0 ? `${added} stockist${added === 1 ? "" : "s"}` : ""].filter(Boolean).join(" and ");
   const names = read.read.length > 1 ? `${read.read[0]} and ${read.read.length - 1} more` : read.read[0] ?? "your file";
   const why = `you added ${names}`;
   const at = ctx.at ?? Date.now();
@@ -360,7 +455,7 @@ export function applyFiles(input: GraphInput, state: GraphState, read: { facts: 
     by: "chat",
     changed: changedNodes({ ...input, hidden: state.hidden }, { ...input, ...after, hidden: state.hidden }),
     keys: changedKeys(before, after),
-    before: { brief: input.brief, facts: input.facts, hidden: state.hidden },
+    before: { brief: input.brief, facts: input.facts, hidden: state.hidden, gone: state.gone ?? [] },
   };
   const log = [...state.log, edit].slice(-LOG).map((e, i, all) => (i < all.length - UNDOABLE ? { ...e, before: undefined } : e));
   return { ...after, state: { ...state, log, held: settle(state.held, ctx.ran, before, after, why) }, edit };

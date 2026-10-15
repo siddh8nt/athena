@@ -45,8 +45,14 @@ Athena is a Qloo hackathon entry; submission is **28 Oct**, the only real date. 
 | 5 Most valuable fits | done, verified live | 70a18af |
 | 6 A strategy for every most valuable fit | done, verified live (cloud build, then local fixes) | 38165ff, 2ffd839 |
 | 7 The Brand Graph, 7.1, 7.2 | done, verified locally | 743c5e7, 22bf521, 475e995 |
-| **8 Goals: Athena leads six specialists** | **built and unit-tested on fixtures (15 Oct); awaiting the founder's live run; not committed** | none |
+| 8 Goals: Athena leads six specialists, 8.1 | built, unit-tested on fixtures; awaiting the founder's live run | 65ce3b5, 9dfc4ef |
+| **8.2 Knowledge, not raw facts; a team panel that follows the goals** | **built, unit-tested and browser-checked on fixtures (15 Oct); awaiting the founder's live run** | see `git log` |
 | 9–10 | not started; **out of scope here** | none |
+
+**Step 8.2 state (15 Oct):**
+- Built: `lib/knowledge/notes.ts` (themes, no-model grouping by source, merge that keeps the founder's edits and deletions, the model reply checked so every number appears in its raw facts), `lib/knowledge/synth.ts` and `/api/synthesize` (one flash pass, cached per workspace); `theme` and `source` node types, themes collapsed and opened from the node card, a note linked to the node it is about; the list by theme with "n sources"; note edits (edit, merge, split, move, delete; rename or remove a theme) from the graph, the list or chat, each one edit with Undo, deletions kept in `graph.gone`; notes by theme in the agents' context (`knowledge` in s1, and the fits' knowledge parts); the team panel shows Athena, the Analyst and the chosen goals' specialists, and folds to a remembered badge rail.
+- Tested: `tests/knowledge-notes.test.ts` (401 tests in all), tsc and build clean; browser check at 1280 and 375 on a saved journey (themes collapsed, opened to a note and its source, an edit saved and undone, a theme removed, the rail remembered after a reload).
+- Still needs a live run: a real brand's site plus a file giving 5–10 readable themes, a later file merging in, and a brand outside the demo packs.
 
 **Step 8 state (15 Oct):**
 - Built: `/api/team` (propose, custom, run, ask, analyst); `lib/agent/{specialists,goals,plays,team,team-ctx,outcomes,evidence,draft}.ts`; `lib/team/`; `components/Team.tsx`; Journey wiring (goals bar, left panel, workspaces, What's working, "Ask the Analyst about this").

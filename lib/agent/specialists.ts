@@ -147,3 +147,6 @@ export function waitingOn(id: SpecialistId, have: { crowds: boolean; city: boole
   const need = specialist(id).needs.find((n) => !have[n.key] && !(n.home && have.home));
   return need ? `${need.why}, from the ${nameOf(need.from)}` : undefined;
 }
+
+/** Who the team panel shows (§23.2 step 8.2f): Athena and the Analyst from the start; any other specialist once a chosen goal includes it. */
+export const panelIds = (team: { goals: { team: readonly string[] }[] }): AgentId[] => ["athena", ...SPECIALIST_IDS.filter((id) => id === "analyst" || team.goals.some((g) => g.team.includes(id)))];

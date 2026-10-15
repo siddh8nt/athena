@@ -2518,6 +2518,28 @@ Written 14 Oct, after the founder's review of the v4 build. **§23.1 is `problem
 2. **Google Trends alpha** (applied 14 Oct): use it if granted; otherwise Wikipedia pageviews.
 3. **Agent framework:** own loop on Gemini function calling (default) vs the Vercel AI SDK; Google ADK TypeScript support [VERIFY].
 4. **The 1M-token and per-file limits** for Gemini 3.8 Flash on Vertex [VERIFY] before the meter ships.
+5. **Onboarding speed-up** (problem 3; deferred by the founder, 15 Oct, to be built later). *Measured 15 Oct:*
+   - **Olipop, from its website alone:** 3.6 min end to end. The site read took about 2.5 min, and one web search timed out.
+   - **A parked domain (ghia.com):** 104 s. The site read took 34 s, the agent about 67 s over five turns of 3–15 s each, and one web search 17 s.
+
+   **Cause:** one call waits on the next:
+   1. crawl;
+   2. one large Flash extraction (up to 24k output tokens), plus coverage rounds that each re-read the whole site;
+   3. a Flash comparison at medium thinking;
+   4. the agent (Qloo search, web search);
+   5. the source check.
+
+   Most of the time goes to the model writing output, and Flash was unusually slow that day (7–60 s on calls that are normally a few seconds).
+
+   **Methods, biggest win first:**
+   1. **Answer first, finish later.** Read the home and About pages with Flash-Lite and fill the core brief (name, what it sells, price, channel, tier) in about 20 s. The full read keeps adding facts in the background while the founder moves on; the brief and graph update in place with a note, never a spinner.
+   2. **Run independent work at once.** The Qloo lookup and the web search start alongside the site read, not after it. The site is read page by page in parallel, not in one huge call.
+   3. **The cheapest model that does the job.** Flash-Lite picks out facts; Flash only compares facts and writes the brief, where judgment matters. The same switch took chat edits from 20 s timeouts to about 1.5 s (step 7).
+   4. **Write less.** Fewer coverage rounds (stop after one that adds little), shorter fact text, and lower output caps.
+   5. **Cut off slow calls.** Each call gets a short time limit, and a second identical request goes out if the first is slow (as chat edits do). A web search that hangs is cut off within seconds and the run carries on without it.
+   6. **Start before the click.** The crawl begins once a valid website is typed, before Start. Reads are already kept for 6 hours, so a re-run is instant.
+
+   **Target:** a usable brief in about 20 s, and the full fact list within about a minute [VERIFY: measure live before claiming].
 
 ---
 

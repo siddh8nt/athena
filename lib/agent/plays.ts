@@ -1,3 +1,5 @@
+import type { Galaxy } from "@/lib/taste/galaxy";
+import type { FitsRun } from "@/lib/journey/types";
 import "server-only";
 import type { QlooClient } from "@/lib/qloo/client";
 import { results } from "@/lib/qloo/client";
@@ -80,6 +82,10 @@ export type TeamCtx = {
   crowds?: CrowdsResult;
   fits?: FitsResult;
   probes: string[];
+  /** The Taste Galaxy as it forms while the Analyst measures, for the client to draw live (PRD §23.2 step 8.1b). */
+  onGalaxy?: (g: Galaxy) => void;
+  /** What the Analyst's last run produced beyond the ranking, for the journey to show as its results (step 8.1). */
+  ranked?: Pick<FitsRun, "calendar" | "reach" | "answer" | "sources">;
   /** What the founder asked about from the Galaxy ("Ask the Analyst about this"), and their words. */
   asked?: { id?: string; name: string };
   question?: string;

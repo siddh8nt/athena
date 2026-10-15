@@ -55,6 +55,7 @@ export const POST = dated(async function post(req: Request) {
     const crowds = await cachedCrowds(seed, probes);
     const t = await buildCtx({ brief, seed, crowds: crowds ?? undefined, fits, probes, team, enrich: teamEnrich(), llm, qloo, answers });
     const env = readEnv();
+    t.onGalaxy = (galaxy) => send({ type: "galaxy", galaxy });
     const started = Date.now();
     const finish = () => send({ type: "done", qlooCalls: 0, ms: Date.now() - started });
 
@@ -87,7 +88,7 @@ export const POST = dated(async function post(req: Request) {
     let calls = 0;
     await runTeam({ goals, team: t, state: team, graphRev, qloo, env, send: (e) => (e.type === "done" ? (calls = e.qlooCalls) : send(e)), llm });
     // What the Analyst measured is the journey's to keep: the crowds, the ranking and the probes.
-    if (t.crowds !== before.crowds || t.fits !== before.fits || t.probes.join("|") !== before.probes) send({ type: "memory", crowds: t.crowds, fits: t.fits, probes: t.probes });
+    if (t.crowds !== before.crowds || t.fits !== before.fits || t.probes.join("|") !== before.probes) send({ type: "memory", crowds: t.crowds, fits: t.fits, probes: t.probes, ...(t.ranked ?? {}) });
     send({ type: "done", qlooCalls: calls, ms: Date.now() - started });
   }, qloo.mode);
 });

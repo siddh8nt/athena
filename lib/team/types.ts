@@ -1,7 +1,8 @@
 import type { AgentEvent } from "@/lib/blocks/types";
 import type { Claim } from "@/lib/agent/cite";
 import type { FitsResult, SourceRef } from "@/lib/fits/types";
-import type { CrowdsResult } from "@/lib/journey/types";
+import type { CrowdsResult, FitsRun } from "@/lib/journey/types";
+import type { Galaxy } from "@/lib/taste/galaxy";
 import type { FounderQuestion } from "@/lib/agent/tools";
 import type { AgentId, SpecialistId } from "@/lib/agent/specialists";
 
@@ -87,7 +88,9 @@ export type TeamEvent =
   | { type: "work"; agent: SpecialistId; work: Work }
   | { type: "reply"; text: string; agent?: SpecialistId }
   /** The crowds and ranking after the Analyst measured, probed or re-ranked, for the journey to keep. */
-  | { type: "memory"; crowds?: CrowdsResult; fits?: FitsResult; probes: string[] }
+  | { type: "memory"; crowds?: CrowdsResult; fits?: FitsResult; probes: string[]; calendar?: FitsRun["calendar"]; reach?: FitsRun["reach"]; answer?: FitsRun["answer"]; sources?: FitsRun["sources"] }
+  /** The Taste Galaxy as it forms, round by round, while the Analyst measures. */
+  | { type: "galaxy"; galaxy: Galaxy }
   | { type: "done"; qlooCalls: number; ms: number };
 
 /** What the journey keeps of the team. Optional on the journey, so saves from before step 8 load. */

@@ -16,6 +16,11 @@ import { GOALS, checkCustom, checkGoals, customQuestion, proposeGoals, teamFor, 
 import { itemId, outcomeLine, staleRuns, whatChanged } from "./outcomes";
 import { crowdSignature } from "./evidence";
 import { metroById } from "@/lib/playbook/metros";
+import { gatherEvidence } from "@/lib/fits/gather";
+import { rankFits } from "@/lib/fits/score";
+import { timeContext } from "@/lib/time/now";
+import { reachOf } from "@/lib/journey/types";
+import { defaultCalendar } from "./fits";
 
 // The team runner (PRD §23.2 step 8): Athena turns the founder's goals into work for the specialists and runs them,
 // 2–3 at once, each a real agent on the step 2 loop with its own instructions, tools, budget and transcript. The
@@ -394,7 +399,25 @@ export async function runSpecialist(r: SpecialistInput): Promise<Work | undefine
     if (last.seed) t.seed = last.seed;
     t.fits = last.fits;
     t.probes = last.probes ?? t.probes;
-    if (id === "analyst") t.crowd = winFirst(last);
+  }
+  // The Analyst ranks the crowds once, for the whole journey (§23.2 step 8.1a). When it measured but didn't rank
+  // (the model ran out of time, or code's decider stopped early), code ranks from the same evidence.
+  if (id === "analyst" && t.crowds?.crowds.length) {
+    const st: Partial<AgentState> = last ?? {};
+    if (!t.fits) {
+      try {
+        const exclude = t.brand.soldIn.map((m) => metroById(m)).filter((m) => !!m);
+        const g = await gatherEvidence({ qloo: r.qloo, crowds: t.crowds, exclude, geography: st.geography, ticketmasterKey: r.env.ticketmasterKey, status: (text) => status({ state: "working", step: text }) });
+        t.fits = rankFits(g.evidence, { date: timeContext().date, excluded: exclude.map((m) => ({ metro: m.name, sources: ["s1"] })) });
+        st.evidence = g.evidence;
+        st.seasons = g.seasons;
+        st.geography = g.geography ?? st.geography;
+      } catch (err) {
+        console.error("analyst code ranking failed", err);
+      }
+    }
+    if (t.fits) t.ranked = { calendar: defaultCalendar(st), reach: reachOf(st.geography), answer: { headline: "", reasons: [], assumptions: [] }, sources: [] };
+    t.crowd = winFirst({ crowds: t.crowds, fits: t.fits } as AgentState);
   }
   if (!work) work = { agent: id, goal: goalId, headline: `Nothing new from the ${s.name} this time`, results: [], claims: [], sources: [], ms: 0, qlooCalls: 0, at: 0, by };
   const heard = outcomeLine(t.outcomes, id);
@@ -409,6 +432,7 @@ export async function runSpecialist(r: SpecialistInput): Promise<Work | undefine
     ...(r.previous ? { changed: whatChanged(r.previous, work) } : {}),
     shared: id === "navigator" && t.city ? { city: t.city } : id === "scout" && t.next ? { crowd: t.next.name } : id === "analyst" && t.crowd ? { crowd: t.crowd.name } : undefined,
   };
+  if (id === "analyst" && t.ranked) t.ranked = { ...t.ranked, answer: { headline: done.headline, reasons: done.claims.map((c) => ({ crowd: "", text: c.text, sources: c.sources })), assumptions: [] }, sources: done.sources };
   r.send({ type: "work", agent: id, work: done });
   status({ state: "done", last: done.headline });
   return done;
@@ -559,6 +583,7 @@ export async function proposeFor(t: TeamCtx, facts: GoalFacts, llm: boolean, gen
       maxOutputTokens: 2048,
       system: "You are Athena, leading a team of growth specialists for a small consumer brand. Propose goals the team can deliver, from the brand's facts. Reply with JSON only.",
       prompt:
+        (t.answers?.length ? `The founder's answers so far: ${JSON.stringify(t.answers)}\n` : "") +
         `The brand: ${JSON.stringify({ name: t.brand.name, sells: t.brand.product, channel: t.brand.channel, stockists: t.brand.stockists.length, in_qloo: !!t.brand.ownId, crowds: t.crowds?.crowds.map((c) => c.name), fits: t.fits?.fits.map((f) => `${f.name} (${f.tier})`) })}\n` +
         `The specialists and what each delivers: ${JSON.stringify(SPECIALISTS.map((s) => ({ id: s.id, delivers: s.delivers })))}\n` +
         `Goals the team knows how to run (ids to reuse when one fits): ${JSON.stringify(GOALS.map((g) => ({ id: g.id, label: g.label, team: g.team, conflicts: g.conflicts })))}\n` +

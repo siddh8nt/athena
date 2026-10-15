@@ -72,6 +72,8 @@ export type CrowdsEvent = { type: "status"; text: string } | { type: "graph"; ga
 /** The journey's state, held by the client (stateless server, like the brief). */
 export type Journey = {
   channel?: Channel;
+  /** The growth question as the founder answered it (§23.2 step 8.1a), read by the team as a fact. */
+  told?: { question: string; answer: string };
   growth: GrowthType[];
   stop: StopId;
   done: StopId[];

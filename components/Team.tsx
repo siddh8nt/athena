@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { Question, type Asked } from "./Question";
 import { WithWithout, type AloneRequest } from "./WithWithout";
 import type { AgentEvent } from "@/lib/blocks/types";
+import type { Galaxy } from "@/lib/taste/galaxy";
 import type { BenchTask } from "@/lib/bench/lines";
 import type { AloneStop } from "@/lib/proof/alone";
 import { addEvent, lineDetail, lineText, settleRun, type Line } from "@/lib/agent/transcript";
@@ -43,6 +44,8 @@ export function useTeam(p: {
   body: () => Record<string, unknown>;
   graphRev: number;
   onMemory: (m: Memory) => void;
+  /** The Taste Galaxy as it forms while the Analyst measures (§23.2 step 8.1b). */
+  onGalaxy?: (g: Galaxy) => void;
   say: (text: string) => void;
 }) {
   const [live, setLive] = useState<TeamLive>(emptyLive);
@@ -71,6 +74,7 @@ export function useTeam(p: {
       setLive((l) => ({ ...l, replies: { ...l.replies, [who]: [...(l.replies[who] ?? []), e.text].slice(-6) } }));
       if (who === "athena") p.say(e.text);
     } else if (e.type === "memory") p.onMemory(e);
+    else if (e.type === "galaxy") p.onGalaxy?.(e.galaxy);
   };
   const line = (agent: AgentId, ev: AgentEvent, n: number) => setLive((l) => ({ ...l, lines: { ...l.lines, [agent]: addEvent(l.lines[agent] ?? [], ev, n).slice(-60) } }));
 
@@ -78,12 +82,15 @@ export function useTeam(p: {
   const post = async (action: string, extra: Record<string, unknown> = {}) => {
     const n = ++run.current;
     setLive((l) => ({ ...l, running: l.running + 1 }));
-    const asked = live.asks.filter((a) => live.answers[a.id]).map((a) => ({ question: a.question, answer: live.answers[a.id] }));
+    const body = p.body();
+    // The founder's answers in the journey (the growth question) and to the team's own questions, read as facts.
+    const given = Array.isArray(body.answers) ? (body.answers as { question: string; answer: string }[]) : [];
+    const asked = [...given, ...live.asks.filter((a) => live.answers[a.id]).map((a) => ({ question: a.question, answer: live.answers[a.id] }))];
     try {
       const res = await fetch("/api/team", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...p.body(), action, team: latestTeam.current, graphRev: p.graphRev, answers: asked, ...extra }),
+        body: JSON.stringify({ ...body, action, team: latestTeam.current, graphRev: p.graphRev, answers: asked, ...extra }),
         signal: AbortSignal.timeout(480_000),
       });
       if (!res.body) return;
@@ -157,7 +164,14 @@ export function useTeam(p: {
   const mark = (agent: SpecialistId, item: WorkItem, m: Mark) =>
     p.setTeam((t) => ({ ...t, outcomes: [...t.outcomes, { item: item.id, agent, kind: item.kind, name: item.name, ...(item.group ? { group: item.group } : {}), mark: m, at: Date.now() }].slice(-300) }));
 
-  return { live, active, setActive, propose, answer, askAthena, askSpecialist, refresh, mark, start };
+  /** The Analyst measures and ranks the crowds, once, for the whole journey (§23.2 step 8.1a). */
+  const measure = () => {
+    const g = GOALS.find((x) => x.id === "know_crowd")!;
+    p.setTeam((t) => ({ ...t, goals: t.goals.some((x) => x.id === g.id) ? t.goals : [...t.goals, g] }));
+    return post("run", { goals: [g] });
+  };
+
+  return { live, active, setActive, propose, answer, askAthena, askSpecialist, refresh, mark, start, measure };
 }
 
 const omit = (o: Record<string, string>, k: string) => Object.fromEntries(Object.entries(o).filter(([x]) => x !== k));
@@ -318,7 +332,7 @@ function Transcript({ lines }: { lines: Line[] }) {
 const secs = (ms: number) => (ms < 1000 ? "under a second" : `${Math.round(ms / 1000)} s`);
 
 /** A finished run (§23.2 step 8c): its headline, time, Qloo calls and nodes added; then each result with its marks. */
-function WorkView({ work, team, updating, alone, onMark }: { work: Work; team: TeamState; updating: boolean; alone: AloneRequest; onMark: (item: WorkItem, m: Mark) => void }) {
+export function WorkView({ work, team, updating, alone, onMark }: { work: Work; team: TeamState; updating: boolean; alone: AloneRequest; onMark: (item: WorkItem, m: Mark) => void }) {
   const nodes = nodesAdded(work);
   const marks = new Map(latest(team.outcomes).filter((o) => o.agent === work.agent).map((o) => [o.item, o.mark]));
   const sources = new Map(work.sources.map((s) => [s.id, s]));

@@ -1,4 +1,5 @@
 import "server-only";
+import type { Galaxy } from "@/lib/taste/galaxy";
 import type { QlooClient } from "@/lib/qloo/client";
 import { results } from "@/lib/qloo/client";
 import type { QlooEntity } from "@/lib/qloo/types";
@@ -271,7 +272,11 @@ export const TOOLS: Tool[] = [
         lookalikes: strs(a.lookalikes, 5, 80),
         traits: strs(a.traits, 5, 80),
       };
-      const r = (await cachedCrowds(seed)) ?? (await measure(qloo, seed, baseKey(seed), status, () => undefined)).result;
+      const onGalaxy = (g: Galaxy) => state.team?.onGalaxy?.(g);
+      const cached = await cachedCrowds(seed);
+      // Measured before, the Galaxy draws at once from the stored graph; measured now, it forms round by round.
+      if (cached?.galaxy) onGalaxy(cached.galaxy);
+      const r = cached ?? (await measure(qloo, seed, baseKey(seed), status, onGalaxy)).result;
       state.seed = seed;
       state.crowds = r;
       state.probes = [];

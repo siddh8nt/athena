@@ -3,10 +3,9 @@ import { alreadyIn, retailCategory, OWN_LABEL } from "@/lib/stops/retailers";
 import { creatorRole, MIN_CREATORS } from "@/lib/stops/online";
 import { citiesFrom, fallbackName, readSkew, validName } from "@/lib/taste/crowds";
 import { seedSignal, type Crowd } from "@/lib/taste/graph";
-import { takeFor } from "@/lib/journey/takes";
 import type { QlooEntity } from "@/lib/qloo/types";
 
-// The v3.0 journey's pure parts: crowds (§9.23), the retail step-up (§9.25), Online (§9.24) and stop takes.
+// The v3.0 journey's pure parts: crowds (§9.23), the retail step-up (§9.25), and Online (§9.24).
 
 const crowd = (names: [string, string][], tags: string[] = []): Crowd => ({
   id: "c0",
@@ -93,18 +92,6 @@ describe("online creators (§9.24)", () => {
     expect(creatorRole(person(["Bodyguards", "Person"]))).toBeUndefined();
     expect(creatorRole(person(["Indian Television Actresses", "Model"]))).toBeUndefined();
     expect(MIN_CREATORS).toBe(3);
-  });
-});
-
-describe("stop takes", () => {
-  it("writes a grounded fallback from the stop's own data", () => {
-    const t = takeFor("retailers", { picks: [{ name: "Eataly", affinity: 0.9 }, { name: "H Mart", affinity: 0.8 }], already: ["Erewhon"] });
-    expect(t?.fallback).toContain("Eataly");
-    expect(t?.data).toEqual({ nextRetailers: ["Eataly", "H Mart"], alreadyIn: ["Erewhon"] });
-  });
-
-  it("has nothing to say about an empty stop", () => {
-    expect(takeFor("places", { picks: [] })).toBeUndefined();
   });
 });
 

@@ -1,10 +1,10 @@
-# Cloud handoff: building PRD v5.0 §23.2 step 6
+# Cloud handoff: building PRD v5.0 §23.2 step 7
 
 This is a **guide** for a cloud Claude Code session. It is not the spec.
 
-- **The spec is `ATHENA PRD.md` §23**, especially the §23.2 table, row 6. Where this file and the PRD disagree, the PRD wins.
-- **Branch:** `complete-rework`. It starts at `70a18af` ("v5 step 5: most valuable fits"); local and origin are both there. Work only on this branch. Don't open a PR or merge to `main`.
-- The founder will pull this branch locally afterwards, then run the live checks with real keys there.
+- **The spec is `ATHENA PRD.md` §23**, especially the §23.2 table, row 7, and **§13.12 The Brand Graph**, which row 7 builds. Where this file and the PRD disagree, the PRD wins.
+- **Branch:** `complete-rework`. It starts at `2ffd839` ("v5 step 6: verified locally, with fixes from live runs"). Work only on this branch. Don't open a PR or merge to `main`.
+- The founder will pull this branch locally afterwards and run the live checks with real keys there.
 
 ---
 
@@ -17,13 +17,14 @@ This is a **guide** for a cloud Claude Code session. It is not the spec.
    - §23.3 is the coverage table;
    - §23.4 holds the rules and open items.
 
-   Read the earlier sections only when §23 points to them. `PLAN v4.md` is a superseded draft and isn't in the repo; never build from it.
-3. `CLAUDE.md` says to re-read `MEMORY.md` and `build-status.md`. Those files live on the founder's machine and **don't exist in the cloud**. **Sections 3 and 6 of this file replace them.**
-4. Read the code named in section 5 before planning. Read `lib/agent/fits.ts` and `app/api/fits/route.ts` end to end, because step 6 copies their pattern.
-5. Before writing code, write a short plan for step 6:
+   Then read **§13.12** (the Brand Graph) and **§13.11** (the Taste Galaxy the graph grows from). Read other sections only when these point to them. `PLAN v4.md` is a superseded draft and isn't in the repo; never build from it.
+3. `CLAUDE.md` says to re-read `MEMORY.md` and `build-status.md`. Those files live on the founder's machine and **don't exist in the cloud**. **Sections 2, 3 and 6 of this file replace them.**
+4. Read the code named in section 5 before planning. Read `components/Galaxy.tsx` and `components/chat.tsx` end to end: the graph grows from the first and replaces a card in the second.
+5. Before writing code, write a short plan for step 7:
    - which files;
    - which parts of the spec each file covers, mapped (a) to (f);
-   - how each "done when" will be checked.
+   - how each "done when" will be checked;
+   - your reading of the two open points in section 4.
 
    Show the plan to the founder and wait for their go. Founder decisions are theirs; ask only founder-only questions, with 2–4 concrete options.
 
@@ -42,22 +43,24 @@ Athena is a Qloo hackathon entry; submission is **28 Oct**, the only real date. 
 | 3 Onboarding playground | done, verified live | 86819dc |
 | 4 Crawl and ingestion | done, verified live | 8a631fb |
 | 5 Most valuable fits | done, verified live | 70a18af |
-| **6 A strategy for every most valuable fit** | **not started: build this** | none |
-| 7–10 | not started; **out of scope here** | none |
+| 6 A strategy for every most valuable fit | done, verified live (cloud build, then local fixes) | 38165ff, 2ffd839 |
+| **7 The Brand Graph** | **not started: build this** | none |
+| 8–10 | not started; **out of scope here** | none |
 
-**Step 5's live result** (Fishwife, a saved journey with 205 facts):
-- Win first: Curated Foodie Folk, 0.61;
-- Watch: Soulful Singer Family, 0.44;
-- weights moved by context: reach 1.5×, efficiency 1.4×, fit 1.3×, signal 1.2×, each citing the deck;
-- 5 stockist metros excluded as already the brand's.
+**Step 6's live result** (Fishwife, about 113 Qloo calls per run):
+- every top fit gets its own sourced strategy;
+- changing the budget, the launch date, capacity or an existing stockist changes only the matching actions;
+- the `readContext` guard in `lib/strategy/build.ts` requires the founder's quoted words and every stockist name to appear in a cited source, and an unanswered `ask_founder` holds nothing.
 
-**Step 5's known caveats** (don't fix them unless step 6 needs it):
+**Known caveats** (don't fix them unless step 7 needs it):
 - agent titles and weights vary from run to run;
 - after a probe, the old ranking shows until the re-rank;
-- day counts use the US/UTC date.
+- day counts use the US/UTC date (held by decision);
+- "$40,000 a month" reads as moderate in one run and ample in another, until the founder gives dollar ranges for the budget bands.
 
 **Decided, so don't reopen:**
-- 6(b), "other actions per fit", is **deferred to the next rework iteration** (founder, 15 Oct). Build step 6 on the existing actions: who, where, through what, when, plus the existing per-crowd stops. Don't ask for the list.
+- 6(b), "other actions per fit", is **deferred to the next rework iteration**.
+- **Never ask the founder to judge taste.** The graph has no "That's us / Not us" and no pins (§13.12, problems.md problem 1).
 - §23.1 is verbatim from the founder; never edit it.
 
 ## 3. Standing rules (from the founder; non-negotiable)
@@ -66,7 +69,10 @@ Athena is a Qloo hackathon entry; submission is **28 Oct**, the only real date. 
 - **Ask before** any PRD edit, any commit, any push, and before making the repo public. Only a plain yes counts ("yes commit", "push it").
 - A question like "so we can just push?" is **not** approval. Answer it and wait.
 - If a build finding conflicts with the PRD, report it and propose the edit. Don't edit the PRD yourself.
-- Don't start scope the founder hasn't asked for. No step 7 (Brand Graph), no step 8 (goals and plays as tools), and no general rework of the old journey or chat; §23.2 schedules those for steps 7–8.
+- Don't start scope the founder hasn't asked for:
+  - no step 8 (goals, and plays as the agent's tools);
+  - no dollar ranges for the budget bands (the founder sets those);
+  - no general rework of the journey beyond what step 7 needs.
 - **No invented dates:** never put dates, deadlines or schedules on plan steps. Give order and done-when only.
 - Never add to `problems.md` without discussion and an explicit "add".
 - Commit messages end with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
@@ -98,111 +104,127 @@ Athena is a Qloo hackathon entry; submission is **28 Oct**, the only real date. 
   - never claim Athena or Qloo ranks stockists better than an LLM;
   - every Bench line carries Gemini's number;
   - disclose any method change made after the tag;
-  - Bench methods stay deterministic tools, exactly as registered. Step 6 must not change how any registered method scores.
+  - Bench methods stay deterministic tools, exactly as registered. Step 7 must not change how any registered method scores.
 
-## 4. Step 6: what to build
+## 4. Step 7: what to build
 
-Read the PRD row. In short:
+Read §23.2 row 7 and §13.12. In short:
 
-- **(a)** Each top fit (Win first and Win next, and Watch where useful) gets **its own strategy**:
-  - who, where, through what, and when;
-  - framed as **what to do now, what next, and what before each moment** (from the step 5 calendar).
+- **(a) One graph, not two.**
+  - A slim **fact strip** on top: name, what it sells, channel, tier, stage and home city, each with its source label and edited in place.
+  - Below it, the **graph grown from the Taste Galaxy** (`components/Galaxy.tsx`), not a second graph beside it.
+  - Together they replace the static "What I understood" card (`components/chat.tsx:195`).
+  - The brand sits at the centre, with its comparables, competitors and stockists; the crowds and what they love (real Qloo entities); and the founder's facts as small labelled anchors.
+  - It opens with about 15–25 nodes. A node type folds into a group past 12.
+  - Every edge has a reason: comparable of, loved by [crowd], shares fans with, sold at, found by [play]. Hovering an edge shows its reason and source.
+  - Every node shows its source: website, a file, Qloo, or you.
+  - Crowd nodes carry their Win first / Win next / Watch tier and reason from step 5.
+  - Time-sensitive nodes (moments from the step 5 calendar) show when they matter.
+- **(b) A list view** beside it shows the same nodes as grouped lists, with the same actions. It is the main way to read the graph, and the phone layout (< 640 px).
+- **(c) Edit facts, never taste.**
+  - Click a node to open its card. **Remove** hides the node.
+  - **Wrong** hides it *and* stops the agent inferring it again. This has to reach the agents' given sources (for example as a struck or wrong fact), not a keyword filter.
+  - **Add by typing** a comparable, competitor, stockist or city. It is resolved through Qloo search (`lib/qloo`) or the place resolver (`resolveTyped` / `locationParams`). Nothing unresolved is added.
+  - An unresolved addition becomes a question ("Did you mean …?") through the step 3 question component (`components/Question.tsx`), never an error.
+- **(d) Chat edits** ("we're actually more premium", "we just got into Whole Foods", "skip Austin") go through the same merge rules as the brief (`mergeBrief` in `lib/brief/types.ts`): the founder's words beat a file, which beats a guess.
+  - The changed nodes flash once with a one-line note ("Moved to premium: from your message") and **Undo**.
+  - Working out what the message means is the model's job (context, not regexes); code applies the change and guards it.
+- **(e) Stale flags.** Each edit marks the runs whose inputs changed as stale ("Cities may change: you added a comparable. Re-run?"), with a one-click re-run. Nothing re-runs silently, and nothing already decided is thrown away.
+- **(f) Look and feel from the audit:** a serif display face, small uppercase labels, 16px-radius cards. Apply them to the graph, the strip, the list and the cards; don't restyle the whole app.
+- **Registry:** node and edge types come from one registry, `lib/graph/types.ts`. A new node type is one entry, with no change to the graph view. Step 8 relies on this.
+- **Library:** the Galaxy's existing `d3-force` (already a dependency), extended with zoom and pan. Colour **and** shape by node type, never colour alone. Respect reduced motion: the layout settles at once.
 
-  It answers "what if I went after this crowd".
-- **(b)** Deferred (see section 2).
-- **(c)** **Context changes the actions:**
-  - stockists the brand already has aren't suggested again;
-  - **budget** sets the channel mix;
-  - a **launch date** moves the calendar;
-  - **capacity** limits how many regions at once.
-- **(d)** **Every result shows which context shaped it, with the source**, for example "Ranked higher because your deck says 60% of sales are in California". Facts come from step 4's knowledge base (`liveFacts()`), each with its file, page, slide or cell.
-- **(e)** **Tailored throughout:** the brand's own products, stockists and numbers, never generic advice.
-- **(f)** Remove "Plan for this crowd instead":
-  - `components/Fits.tsx:199` (FitCard);
-  - `components/Journey.tsx:848` (CrowdStop);
-  - check for `crowdChosen` and the `onChoose` wiring at `Journey.tsx:154,216,463`.
+**Two open points.** Give your reading of each in the plan, and let the founder confirm:
+1. **What "plays" means in (e) before step 8 exists.** Suggested reading: until step 8, the stale-able runs are the ones that exist now:
+   - the fits run (step 5);
+   - each per-fit strategy (step 6);
+   - the journey stops and blocks (`app/api/stop`, `app/api/plan`).
 
-  Keep old saved journeys loading: leave optional types in place, as step 5 did for pins.
+   Each run records which facts and nodes it read, so an edit can flag exactly the runs it touched.
+2. **Where the graph lives in the journey:** on the product stop, where the card is now, and whether it stays visible on later stops as the canvas (§13.1). Propose this; don't decide it.
 
-**Done when:** "Each top fit has its own sourced strategy and actions, and changing one context fact changes the matching action."
+**Done when** (§23.2 row 7): "An edit in chat and one on the graph each change the right nodes, show what changed, can be undone, and flag the right plays."
 
 ## 5. Code map (read these)
 
-**Agent core**
-- `lib/agent/loop.ts`:
-  - `runAgent(run)` and `DEFAULT_BUDGET` (`{qloo:150, ms:150_000, turns:10}`);
-  - `Finisher` (`declaration`, `checking`, `checked`, `check(args, sources, state)`, which returns problems, a result and a summary);
-  - `CLAIMS`.
+**What the graph grows from and replaces**
+- `components/Galaxy.tsx` (446 lines):
+  - `Galaxy`: the d3-force layout, hulls per crowd, `CrowdDecision` tier lines, and click-to-probe with `MAX_PROBES`;
+  - `EntityCard`, `GalaxyList` and `Legend`.
 
-  Given sources go in the first user turn, and the code fallback runs on a stall.
-- `lib/agent/cite.ts`: `checkClaims` rejects any number with no source.
-- `lib/agent/tools.ts`, the registry: `qloo_search`, `qloo_insights`, `qloo_demographics`, `build_taste_graph`, `probe_entity`, `crowd_geography`, `taste_axes`, `crowd_bridges`, `wikipedia_momentum`, `ticketmaster_events`, `census_market`, `web_search`, `read_website`, `rank_fits`, `brand_calendar`, `ask_founder`, `finish`.
+  Step 5 removed That's us and the pins; their types are kept empty so old saves load.
+- `components/chat.tsx:195`: the "What I understood" card to replace. `app/globals.css:272` styles the brief canvas.
+- Where the card and the Galaxy are mounted: `components/Journey.tsx`, `JourneyPage.tsx` and `Workspace.tsx`.
+- `lib/journey/types.ts`: `JourneyState`, `FitsRun` and the step 6 strategy runs.
 
-  §23.2 says that from step 3 on, **features are agent tools plus a goal, never a new fixed stop**.
+**Facts and merging**
+- `lib/brief/types.ts`:
+  - `BrandBrief` and `Sourced<T>`;
+  - `RANK` by source kind;
+  - `mergeBrief` and `mergeList` (stockists, comparables and websites, with caps).
+- `lib/brief/`: agent, conversation, extract, form, rows, to-input.
+- `lib/knowledge/types.ts`: `Fact` (`topic`, `where[]`) and `liveFacts()`. Struck facts are already left out, so "wrong" can build on this.
+- `lib/knowledge/merge.ts`: `compareFacts` and conflicts.
+- `app/api/brief` and `app/api/onboard`: chat and brief updates today.
 
-**Step 5, the template for step 6**
-- `lib/agent/fits.ts`:
-  - `FITS_SYSTEM` and `FITS_BUDGET` (`{qloo:150, ms:150_000, turns:9}`);
-  - `fitsGiven` (the brief, then the knowledge facts, files first, chunked at `PART = 7500` so nothing is cut, then the crowds);
-  - `fitsIntro` and `fitsTools`;
-  - `fitsFinisher`: `finish_fits` with headline, reasons and assumptions; `checkClaims`; no numbers in the headline;
-  - `FitsEvent`.
-- `app/api/fits/route.ts`: the agent streams events, and the **code fallback** (`rankFits` + `gatherEvidence`) runs when no LLM is configured, the limit is hit, or the agent fails. It is rate-limited (12/hour).
-- `lib/fits/`:
-  - `score.ts`: `rankFits`, `paramScores`, `weightsOf`, `nextPeak`;
-  - `calendar.ts`: `buildCalendar`, moments with `startBy` and lead times;
-  - `gather.ts`;
-  - `types.ts`: `Fit`, `FitsResult` with `excluded` (stockist metros already the brand's), `WeightChange` with sources, `Calendar`, `Moment`, `SourceRef`.
-- `components/Fits.tsx`: tiers, `FitCard`, `Cites` (source ids, named on hover), "What your context changed", and `When`.
-- `lib/journey/types.ts`: `FitsRun` and `JourneyState.fits` / `crowdId` / `crowdChosen`.
-- `lib/knowledge/types.ts`: `Fact` with `topic`, which covers brand, product, price, customer, channel, stockist, sales, goal, budget, plan, team, competitor, press and other; plus `where[]` and `liveFacts()`.
+**Runs that can go stale**
+- Step 5: `lib/fits/`, `lib/agent/fits.ts`, `app/api/fits`, `components/Fits.tsx`.
+- Step 6:
+  - `lib/strategy/` (build, picks, types);
+  - `lib/agent/strategy.ts`;
+  - `app/api/strategy`;
+  - `components/Strategy.tsx`;
+  - `components/Cites.tsx` (`Cites`, `readable()`).
+- Stops and blocks: `lib/journey/growth.ts`, `lib/blocks/`, `lib/stops/`, `app/api/stop`, `app/api/plan`.
 
-**Existing per-crowd actions that step 6's strategy builds on**
-- `lib/journey/growth.ts`: `GROWTH` maps each growth type to its stops. The `StopId` values are product, growth, crowd, where, places, retailers, partners, online, message, moments and go.
-- `lib/blocks/`: markets, places, partners, message, moments, fingerprint, run and types. They run through `lib/agent/plan.ts` `runCustomPlan` and `app/api/plan`.
-- `lib/stops/retailers.ts` and `online.ts` run through `app/api/stop`.
-- `app/api/take` gives the per-stop LLM takes.
-- `components/Journey.tsx`:
-  - `signalFor(s)` / `inputFor(s)` (around line 276) feed the chosen crowd's signal into each stop;
-  - `CrowdStop` is at line 785.
+**Agent core** (if the chat edit uses the agent)
+- `lib/agent/loop.ts`: `runAgent` and `Finisher`.
+- `lib/agent/cite.ts`: `checkClaims`.
+- `lib/agent/tools.ts`: the tool registry.
+
+Follow the step 5 and 6 pattern:
+- a system prompt with today's date;
+- given sources;
+- a finisher with checks;
+- a budget;
+- streamed narration;
+- a **code fallback**, so there is never a failure state.
 
 **Environment facts**
 - `lib/env.ts`: fixtures are on when `ATHENA_FIXTURES=1` **or when no `QLOO_API_KEY` is set**. In the cloud, Qloo therefore serves synthetic fixtures (`lib/qloo/fixture.ts`).
-- `llmConfigured()` is false with no `GOOGLE_CLOUD_PROJECT`, so every agent route takes its **code fallback** in the cloud. That makes the fallback path testable there; the agent path isn't.
+- `llmConfigured()` is false with no `GOOGLE_CLOUD_PROJECT`, so every agent route takes its code fallback in the cloud.
 - Commands:
   - `corepack pnpm install`
   - `corepack pnpm exec tsc --noEmit -p .`
-  - `corepack pnpm exec vitest run` (284 tests pass at 70a18af)
+  - `corepack pnpm exec vitest run` (**310 tests pass at 2ffd839**)
   - live tests: `corepack pnpm live <file>`. **Local only.**
 
 ## 6. How to keep quality with no live calls
 
-The cloud can do the structure, the deterministic logic, the unit tests, the UI and the type-checks. The agent's prompt tuning and the done-when checks need real Qloo and Gemini, so they happen locally after the pull. To make the local pass short and the result just as good:
+1. **Put the graph logic in deterministic, testable code:**
+   - building nodes and edges from the brief, the facts, the Galaxy, the fits and the strategies;
+   - folding a type past 12;
+   - applying an edit, and undo;
+   - working out which runs are stale from what each run read.
 
-1. **Put the context-to-action effects in deterministic code**, as step 5 did with the weights and `excluded`. The agent reads the facts and passes structured context *with source ids*. Code then applies it, so it's testable offline, and "changing one fact changes the matching action" is a unit test, not a hope. Each rule below keeps its source:
-   - existing stockists are filtered out of the suggested retailers and places;
-   - budget sets the channel mix;
-   - the launch date shifts the calendar's start-by dates;
-   - capacity caps the regions at once.
+   The model only decides *what a chat message means*. Code applies the change and guards it: an edit with no source is rejected, and an unresolved addition becomes a question.
+2. **The chat-edit path needs a code fallback** that works with no LLM in the cloud, even if it only handles structured edits (the graph's own add, remove and wrong), so the UI never fails. Understanding natural language is the agent's job, and gets checked live locally.
+3. **Reuse, don't duplicate:** the Galaxy's layout, the brief merge, `liveFacts()`, the question component, `Cites`, the place resolver and Qloo search.
+4. **Unit tests** in `tests/graph.test.ts`, using **fictional fixtures only**. Cover:
+   - the registry: a new node type is one entry, and renders with no change to the view;
+   - 15–25 nodes at the start, and folding past 12;
+   - every node has a source, and every edge a reason;
+   - remove versus wrong: wrong stops the fact being inferred again;
+   - an addition is either resolved or becomes a question;
+   - a chat-style edit and a graph edit each change the right nodes, record what changed, undo cleanly, and flag exactly the runs that read the changed fact;
+   - old saved journeys still load.
+5. **Write the live check for the local session:** `tests/live/graph.live.ts`. It scripts the done-when on a real brand:
+   - one chat edit, for example "we just got into <a store from the brand's own facts>";
+   - one graph edit, for example adding a comparable;
+   - for each, it prints the changed nodes, the undo result and the stale flags.
 
-   The agent decides *what the facts mean*: that is model context, not keyword rules. Code only applies the decision and guards it, for example "budget change with no source is rejected", as `weightsOf` does.
-2. **Follow the step 5 pattern exactly:**
-   - a system prompt with today's date (automatic through `lib/llm/vertex.ts`);
-   - given sources with files first and nothing cut;
-   - a `Finisher` with `checkClaims`;
-   - a budget and caps;
-   - the streamed narration of the real steps;
-   - `ask_founder` only for founder-only facts (budget, capacity, launch date), with suggested answers and stated assumptions;
-   - a **code fallback** so there is never a failure state.
-3. **Reuse, don't duplicate.** Strategies should call the existing blocks and stops (retailers, places, partners, online, message, moments) as tools or inputs where they fit, not re-implement them.
-4. **Unit tests** in `tests/strategy.test.ts`, using **fictional fixtures only**. Cover:
-   - each (c) rule flipping its action when one fact changes;
-   - each action carrying its source;
-   - the strategy being built for every top fit;
-   - the fallback strategy existing with no LLM;
-   - (f): the button is gone, and old saves still load.
-5. **Write the live check for the local session:** `tests/live/strategy.live.ts`. It scripts the done-when: run the strategy for a brand, change one fact (budget, then launch date, then capacity, then an existing stockist), re-run, and print the action diff. It must redact keys, never touch prereg-v2 held-out brands, and keep the Qloo calls modest (each key has 10k/month).
-6. **UI:** match `Fits.tsx` (the cards, `Cites`, small muted method lines, `shimmer-text` narration). Check that there's no horizontal scroll at 375px. A dev server can run in the cloud on the fallback path with fixtures (`corepack pnpm dev`) if a browser preview is available. If it isn't, say so and leave the visual checks for local.
+   It must redact keys, never touch the prereg-v2 held-out brands, and keep the Qloo calls modest (each key has 10k/month).
+6. **UI:** match the existing cards, `Cites`, the muted method lines and the `shimmer-text` narration, plus (f). Check that there's no horizontal scroll at 375px; the list view is the phone layout. If a browser preview is available, run `corepack pnpm dev` on the fixtures. If it isn't, say so and leave the visual checks for local.
 7. Before handing back: `tsc` is clean, all tests pass, and no secrets or Qloo data are in the diff (`git diff --stat`, then read it).
 
 ## 7. Commit and push
@@ -211,7 +233,7 @@ The cloud can do the structure, the deterministic logic, the unit tests, the UI 
   - what was built per (a) to (f);
   - the test count;
   - what still needs the local live check.
-- **Ask** before committing. Commit on `complete-rework` with a message like `v5 step 6: a strategy for every most valuable fit`, ending in the Co-Authored-By line.
+- **Ask** before committing. Commit on `complete-rework` with the message `v5 step 7: the Brand Graph`, ending in the Co-Authored-By line.
 - **Ask** before pushing. The push is what lets the local session pull, so ask for it explicitly at the end.
 
 ## 8. After the pull (the local session does this, not the cloud)
@@ -220,14 +242,15 @@ The cloud can do the structure, the deterministic logic, the unit tests, the UI 
 2. Live with keys:
    - the Fishwife saved journey (full knowledge base);
    - a brand outside the demo packs;
-   - `tests/live/strategy.live.ts`, showing the one-fact diffs.
-3. Tune the strategy prompt from what the live runs show (model context, not rules).
-4. Check in the browser that each top fit has its own sourced strategy, that context lines cite their sources, and that the phone layout works. Take screenshots.
+   - `tests/live/graph.live.ts`.
+3. Tune the chat-edit prompt from what the live runs show (model context, not rules).
+4. Check in the browser, on desktop and at 375px, that a chat edit and a graph edit each change the right nodes, flash with a note, can be undone, and flag the right runs. Take screenshots.
 5. Update `build-status.md` and report to the founder. Ask before committing the fixes.
 
 ## 9. Reminders to raise at the right time (don't start them)
 
-- **Other actions per fit:** after this rework is done.
+- **Dollar ranges for the budget bands:** the founder sets them. Then they go into STRATEGY_SYSTEM and the step 6 live script is re-run.
+- **Other actions per fit (6b):** after this rework is done.
 - **The Bench write-up** (Bench page, Method page, Devpost): before submission; the founder said later.
 - **Fast search API** (Tavily first, Google as fallback): the founder said later.
 - **A higher Qloo limit request:** still open.

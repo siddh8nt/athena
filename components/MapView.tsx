@@ -85,7 +85,7 @@ export function MapView(props: {
         source: "pins",
         paint: {
           "circle-radius": ["case", ["==", ["get", "kind"], "account"], 4, 11],
-          "circle-color": ["match", ["get", "kind"], "pick", css("--pick", "#2b50c8"), "llm", css("--llm", "#7a6a55"), css("--account", "#3c8d6e")],
+          "circle-color": ["match", ["get", "kind"], "pick", css("--pick", "#7e2b34"), "llm", css("--llm", "#7a6a55"), css("--account", "#3c8d6e")],
           "circle-stroke-color": "#ffffff",
           "circle-stroke-width": 1.5,
         },

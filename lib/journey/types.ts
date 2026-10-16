@@ -5,6 +5,7 @@ import type { Calendar, FitsAnswer, FitsResult, SourceRef } from "@/lib/fits/typ
 import type { Geography } from "@/lib/geo/types";
 import type { StrategyRun } from "@/lib/strategy/types";
 import type { LiveFact } from "@/lib/knowledge/types";
+import type { SeedInput } from "@/lib/taste/seed";
 import type { Channel, GrowthType, StopId } from "./growth";
 
 // What the journey's client and server share (PRD §6.2.2, §13). Pure types, no server imports.
@@ -74,12 +75,16 @@ export type Journey = {
   channel?: Channel;
   /** The growth question as the founder answered it (§23.2 step 8.1a), read by the team as a fact. */
   told?: { question: string; answer: string };
+  /** The founder's answers on the dashboard (§23.2 step 8.4h), by question id; "" is skipped. */
+  inputs?: Record<string, string>;
   growth: GrowthType[];
   stop: StopId;
   done: StopId[];
   crowds?: CrowdsResult;
   /** The product input those crowds were built from, so a changed product rebuilds them. */
   crowdsFor?: string;
+  /** The seed the Analyst chose and measured them from, so later runs read the same cached crowds. */
+  crowdsSeed?: SeedInput;
   /** The crowd the later stops follow: the Win first crowd (§23.2 step 6f). */
   crowdId?: string;
   /** Retired (§23.2 step 6f: every top fit gets its own strategy, so there's no crowd to choose). Older saves carry it; it's ignored. */

@@ -36,10 +36,12 @@ export function fromWork(work: Work, crowdId: (name: string) => string | undefin
   if (work.agent === "scout") {
     const name = work.shared?.crowd;
     const id = name ? crowdId(name) : undefined;
-    if (!name || !id) return [];
+    if (!name) return [];
+    // A crowd measured since (its id unknown here) still hands on; the next run reads the team's current crowd.
+    const focus = id ? { crowd: id } : {};
     return [
-      { to: "matchmaker", label: `Find partners who reach ${name}`, focus: { crowd: id } },
-      { to: "promoter", label: `Find where ${name} gathers`, focus: { crowd: id } },
+      { to: "matchmaker", label: `Find partners who reach ${name}`, focus },
+      { to: "promoter", label: `Find where ${name} gathers`, focus },
     ];
   }
   if (work.agent === "matchmaker" && work.results.some((r) => r.kind === "partner")) return [{ to: "promoter", label: "Find an event to co-host with a partner", focus: {} }];

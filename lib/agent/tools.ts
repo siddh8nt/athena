@@ -77,7 +77,7 @@ export type ToolCtx = {
 
 /** A founder question (§23.2 step 2f, shown by step 3's question component): 2–4 options, the recommended first. */
 /** `conflicts` names the options (by label) that can't be picked with this one. */
-export type FounderQuestion = { question: string; why: string; options: { label: string; hint?: string; conflicts?: string[] }[]; multi: boolean; assumed: string };
+export type FounderQuestion = { question: string; why: string; options: { label: string; hint?: string; conflicts?: string[] }[]; multi: boolean; assumed: string; /** No option is Athena's pick: a fact only the founder knows. */ unranked?: boolean };
 
 /** `items`: the results a specialist can return from this call, ranked; finish_work names them from here. */
 export type ToolResult = { summary: string; data: unknown; status?: "ok" | "empty" | "thin"; items?: Omit<WorkItem, "sources" | "callIds">[] };

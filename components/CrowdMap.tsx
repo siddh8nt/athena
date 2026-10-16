@@ -28,7 +28,7 @@ function weatherGeoJSON(g: Geography) {
   };
 }
 
-const colours = () => [0, 1, 2, 3].map((k) => css(`--crowd-${k}`, ["#2b50c8", "#c8553d", "#2f8a64", "#8a4fa8"][k]));
+const colours = () => [0, 1, 2, 3].map((k) => css(`--crowd-${k}`, ["#4d6a91", "#c8553d", "#2f8a64", "#8a4fa8"][k]));
 
 /**
  * Paint for the current highlight. Every cell is faint, stronger where its crowd ranks higher; hotspot cells are solid,

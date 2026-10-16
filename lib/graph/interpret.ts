@@ -69,12 +69,14 @@ async function resolveAdd(qloo: QlooClient, op: Extract<Op, { op: "add" }>, brie
 }
 
 /** Resolves a typed home city through the place resolver: the place's label, or a question. */
-async function resolveHome(op: Extract<Op, { op: "set" }>): Promise<{ op?: Op; q?: EditQuestion; calls: number }> {
+async function resolveHome(op: Extract<Op, { op: "set" }>, b: BrandBrief): Promise<{ op?: Op; q?: EditQuestion; calls: number }> {
   const r = await resolveTyped(op.value);
   if (r.status === "ok") return { op: { ...op, value: r.label }, calls: 0 };
   const why = "I set the home city once I know which place it is.";
-  if (r.status === "ask") return { q: question(r.question, why, r.options.map((o) => ({ label: o.label, hint: o.detail, ops: [{ op: "set", field: "activeCity", value: o.label }] }))), calls: 0 };
-  return { q: question(r.question, why, [], { ...op, value: "" }), calls: 0 };
+  // Until the founder picks, the home city stays as it was; nothing is being left off the graph.
+  const keep = b.activeCity?.value ? `${b.activeCity.value} as the home city` : "no home city for now";
+  if (r.status === "ask") return { q: { ...question(r.question, why, r.options.map((o) => ({ label: o.label, hint: o.detail, ops: [{ op: "set", field: "activeCity", value: o.label }] }))), assumed: keep }, calls: 0 };
+  return { q: { ...question(r.question, why, [], { ...op, value: "" }), assumed: keep }, calls: 0 };
 }
 
 type Resolvable = Extract<Op, { op: "add" }> | (Extract<Op, { op: "set" }> & { field: "activeCity" });
@@ -85,7 +87,7 @@ export async function resolveOps(qloo: QlooClient, ops: Op[], brief: BrandBrief)
   const out: Interpreted = { ops: [], questions: [], reply: "", calls: 0 };
   const todo = ops.filter(resolvable).slice(0, 12);
   const timed = <T>(p: Promise<T>, ms: number) => Promise.race([p, new Promise<undefined>((r) => setTimeout(() => r(undefined), ms))]);
-  const done = await Promise.all(todo.map((o) => timed((o.op === "add" ? resolveAdd(qloo, o, brief) : resolveHome(o)).catch(() => undefined), 12_000)));
+  const done = await Promise.all(todo.map((o) => timed((o.op === "add" ? resolveAdd(qloo, o, brief) : resolveHome(o, brief)).catch(() => undefined), 12_000)));
   let i = 0;
   for (const o of ops) {
     if (!resolvable(o)) {

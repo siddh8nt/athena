@@ -101,7 +101,11 @@ export const POST = dated(async function post(req: Request) {
     let calls = 0;
     await runTeam({ goals, team: t, state: team, graphRev, qloo, env, send: (e) => (e.type === "done" ? (calls = e.qlooCalls) : send(e)), llm });
     // What the Analyst measured is the journey's to keep: the crowds, the ranking and the probes.
-    if (t.crowds !== before.crowds || t.fits !== before.fits || t.probes.join("|") !== before.probes) send({ type: "memory", crowds: t.crowds, fits: t.fits, probes: t.probes, ...(t.ranked ?? {}) });
+    if (t.crowds !== before.crowds || t.fits !== before.fits || t.probes.join("|") !== before.probes) {
+      // Fits go back only when ranked again: the ones that came in were read without their scores.
+      const ranked = t.fits !== before.fits;
+      send({ type: "memory", crowds: t.crowds, seed: t.seed, ...(ranked ? { fits: t.fits, ...(t.ranked ?? {}) } : {}), probes: t.probes });
+    }
     send({ type: "done", qlooCalls: calls, ms: Date.now() - started });
   }, qloo.mode);
 });

@@ -587,10 +587,10 @@ export async function proposeFor(t: TeamCtx, facts: GoalFacts, llm: boolean, gen
       system: "You are Athena, leading a team of growth specialists for a small consumer brand. Propose goals the team can deliver, from the brand's facts. Reply with JSON only.",
       prompt:
         (t.answers?.length ? `The founder's answers so far: ${JSON.stringify(t.answers)}\n` : "") +
-        `The brand: ${JSON.stringify({ name: t.brand.name, sells: t.brand.product, channel: t.brand.channel, stockists: t.brand.stockists.length, in_qloo: !!t.brand.ownId, crowds: t.crowds?.crowds.map((c) => c.name), fits: t.fits?.fits.map((f) => `${f.name} (${f.tier})`) })}\n` +
+        `The brand: ${JSON.stringify({ name: t.brand.name, sells: t.brand.product, channel: t.brand.channel, home_city: facts.city ?? "not known yet", stockists: t.brand.stockists.length, in_qloo: !!t.brand.ownId, crowds: t.crowds?.crowds.map((c) => c.name), fits: t.fits?.fits.map((f) => `${f.name} (${f.tier})`) })}\n` +
         `The specialists and what each delivers: ${JSON.stringify(SPECIALISTS.map((s) => ({ id: s.id, delivers: s.delivers })))}\n` +
         `Goals the team knows how to run (ids to reuse when one fits): ${JSON.stringify(GOALS.filter((g) => g.id !== "know_crowd").map((g) => ({ id: g.id, label: g.label, team: g.team, conflicts: g.conflicts })))}\n` +
-        "The Analyst measures the crowds first on every journey, so never propose knowing the customers as a goal: propose growth goals. Propose 3 or 4 goals for this brand now, the one you recommend first. Each goal is the founder's, with the specialists it takes (usually several). Mark goals that can't be pursued together in conflicts (by id). Only goals the specialists can deliver.\n" +
+        "The Analyst measures the crowds first on every journey, so never propose knowing the customers as a goal: propose growth goals. Propose 3 or 4 goals for this brand now, the one you recommend first. Each goal is the founder's, with the specialists it takes (usually several). Mark goals that can't be pursued together in conflicts (by id). Only goals the specialists can deliver. Going deeper at home needs a home city: with none known it isn't a goal yet; with one, name the city in its label.\n" +
         'Return [{"id","label","why","team":[ids],"conflicts":[ids],"recommended":bool}]',
     });
     const goals = checkGoals(parseJson(res.text));

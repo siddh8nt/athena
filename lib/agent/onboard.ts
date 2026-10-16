@@ -128,7 +128,7 @@ How to work:
 - What the founder gave may already be read into facts: each such source lists its facts as "id | fact | where". Work from them and don't read those again. Read anything else they gave (read_file, read_website); several calls can go in one turn. Nothing they gave may go unread.
 - No website? Work from the files and the pasted summary. Use web_search only to fill gaps about this brand, once its name is clear.
 - Find the brand in Qloo (qloo_search, type brand); a search already run for you is a given source, so don't repeat it. If a result is clearly this brand, give its id as qloo_id. Either way, name 3–5 real lookalike brands whose customers are like this brand's: they seed the taste graph.
-- ask_founder only for what only the founder knows and you couldn't find: goals, budget, launch dates, capacity, constraints. Build the options from what you found, recommended first. Never ask about taste or about anything the files, website or summary already say. Questions never wait: carry on with your recommended option and list it under assumptions. Asking nothing is fine.
+- The specialists who plan next lean on a few facts only the founder may know. Most of all where the brand is based: its home city, state or area (local stockists, events and the home crowd all start there). Then what the founder wants most from the next months, and roughly what they can spend or make. Always ask_founder where they're based, first, unless the founder already said: sources go out of date, so what you found (the HQ city a source names, the cities its stockists are in) is the recommended option, not the answer. Give it as "home" with its source meanwhile. Ask for goals or budget only if the sources leave them open. Build the options from what you found, recommended first; the founder can always type their own (a city, a state, an area, or "online only, no home base"). Never ask about taste or about anything the files, website or summary already say. Questions never wait: carry on with your recommended option and list it under assumptions.
 - The founder's own words (steering and answers) are source s1 when present; they win over everything else, and each one shows up in the brief: as a note citing s1 ("Priority: more grocery stores"), or in the facts it changes.
 - Finish with finish_brief as soon as you have the brief; the founder is watching the clock. Every fact cites the source ids (s1, s2, …) it comes from, and every number in a fact must appear in a cited source as written. Leave out what you can't source; never guess. Write in the brand's own terms: its product names, stockists and numbers, with names in normal case ("Moonrise Pantry", not "MOONRISE PANTRY").
 - Where the founder's sources disagreed, the founder settles it with one click; the facts you're given hold the value in use (theirs, or the recommended one until they choose). Use that value and don't note the disagreement. Any other disagreement you find: keep the most recent or most specific and add a note naming both, citing both.
@@ -186,6 +186,7 @@ function briefFacts(b: BrandBrief): string {
     line("sells", b.sells?.value),
     line("channels", b.channels?.value),
     line("mostly", b.channel?.value),
+    line("home base", b.activeCity?.value),
     line("tier", b.tierHint?.value),
     line("stage", b.stageHint?.value),
     line("lookalikes", b.proxies?.join(", ")),
@@ -221,6 +222,7 @@ const FINISH_BRIEF = {
       sells: { ...FACT, description: "What it sells, in one sentence: the product, what makes it different, the price point." },
       channels: { ...FACT, description: "How people buy it now, in a phrase: own site, marketplaces, shops, cities." },
       channel: ENUM_FACT([...CHANNELS]),
+      home: { ...FACT, description: "Where the brand is based or sells most: a US city, state or area as the founder or a source puts it (\"Brooklyn, NY\", \"the Bay Area\"). Leave out when no source says." },
       tier: ENUM_FACT(TIERS),
       stage: ENUM_FACT([...STAGES]),
       stockists: { type: "array", items: { type: "object", properties: { name: { type: "string" }, city: { type: "string" }, sources: { type: "array", items: { type: "string" } } }, required: ["name", "sources"] }, description: "Shops that carry it, beyond lists read in code." },
@@ -300,15 +302,18 @@ function carried(input: OnboardInput): BrandBrief {
   if (!rereads(input)) return { ...out, ...b };
   const own = <T,>(s?: Sourced<T>) => (s && (s.source.kind === "message" || s.confirmed) ? s : undefined);
   const owns = <T,>(l: Sourced<T>[]) => l.filter((s) => own(s));
-  return { ...out, name: own(b.name), sells: own(b.sells), channels: own(b.channels), channel: own(b.channel), tierHint: own(b.tierHint), stageHint: own(b.stageHint), websites: b.websites, stockists: owns(b.stockists), comparables: owns(b.comparables), competitors: owns(b.competitors), notes: owns(b.notes) };
+  return { ...out, name: own(b.name), sells: own(b.sells), channels: own(b.channels), channel: own(b.channel), activeCity: own(b.activeCity), tierHint: own(b.tierHint), stageHint: own(b.stageHint), websites: b.websites, stockists: owns(b.stockists), comparables: owns(b.comparables), competitors: owns(b.competitors), notes: owns(b.notes) };
 }
 
 export function briefFinisher(input: OnboardInput): Finisher {
+  // The home base is the one fact later agents can't do without, and a source's city may be out of date: unless the
+  // founder has said where they're based, a finish with no question asked goes back once so the agent asks.
+  let homeRaised = false;
   return {
     declaration: FINISH_BRIEF,
     checking: "Checking every fact against where it came from",
     checked: "Checked every fact against where it came from",
-    check(args, sources) {
+    check(args, sources, state) {
       const rejected: { fact: string; reason: string }[] = [];
       let kept = 0;
       const cited = new Set<string>();
@@ -354,6 +359,7 @@ export function briefFinisher(input: OnboardInput): Finisher {
         sells,
         channels: fact("channels", args.channels),
         channel: fact("channel", args.channel, CHANNELS) as Sourced<(typeof CHANNELS)[number]> | undefined,
+        activeCity: fact("home", args.home),
         tierHint: fact("tier", args.tier, TIERS) as Sourced<Tier> | undefined,
         stageHint: fact("stage", args.stage, STAGES) as Sourced<(typeof STAGES)[number]> | undefined,
         websites: input.websites.map((w) => ({ value: w, source: { kind: "message" } })),
@@ -371,7 +377,7 @@ export function briefFinisher(input: OnboardInput): Finisher {
       };
       // A fact restated unchanged keeps the source it already had: a steer that repeats the name isn't the founder giving it.
       const base = carried(input);
-      for (const k of ["name", "sells", "channels", "channel", "tierHint", "stageHint"] as const) {
+      for (const k of ["name", "sells", "channels", "channel", "activeCity", "tierHint", "stageHint"] as const) {
         const was = base[k]?.value;
         if (was !== undefined && String(was).toLowerCase() === String(patch[k]?.value ?? "").toLowerCase()) delete patch[k];
       }
@@ -383,14 +389,17 @@ export function briefFinisher(input: OnboardInput): Finisher {
       // What the founder told this run must show up in the brief.
       const founder = [...sources.values()].find((s) => s.tool === "founder");
       const unheard = founder && !cited.has(founder.id);
+      const homeOpen = !input.answers?.length && !state.asks && !homeRaised;
+      if (homeOpen) homeRaised = true;
       const problems =
-        rejected.length || missing.length || unheard || unplaced.length
+        rejected.length || missing.length || unheard || unplaced.length || homeOpen
           ? {
-              count: rejected.length + missing.length + (unheard ? 1 : 0) + unplaced.length,
+              count: rejected.length + missing.length + (unheard ? 1 : 0) + unplaced.length + (homeOpen ? 1 : 0),
               feedback: {
                 rejected,
                 ...(unplaced.length ? { unplaced, facts: `These rest on facts you were given but list none of their ids in "facts": add the ids (the part before " | ") so the founder sees the slide, cell or page each came from.` } : {}),
                 ...(missing.length ? { required: `${missing.join(" and ")} must be given, with sources` } : {}),
+                ...(homeOpen ? { home: `The founder hasn't said where the brand is based, and the specialists need it (local shops, events, the home crowd). ask_founder where they're based (city, state or area), what you found as the recommended option, then finish. If their own message already says where, finish as you were.` } : {}),
                 ...(unheard ? { founder: `What the founder told you (${founder.id}) isn't in the brief: add it as a note citing ${founder.id}, or change the facts it touches and cite ${founder.id}.` } : {}),
               },
             }

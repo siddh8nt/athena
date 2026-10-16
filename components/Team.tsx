@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Question, type Asked } from "./Question";
 import { WithWithout, type AloneRequest } from "./WithWithout";
 import type { AgentEvent } from "@/lib/blocks/types";
@@ -14,6 +14,8 @@ import { fromCity, fromWork, type Handoff } from "@/lib/agent/handoffs";
 import { latest, staleRuns, whatsWorking } from "@/lib/agent/outcomes";
 import { nodesAdded } from "@/lib/graph/types";
 import { MARKS, MARK_LABEL, type AgentStatus, type Goal, type Mark, type TeamEvent, type TeamState, type Work, type WorkItem } from "@/lib/team/types";
+import { pacer } from "@/lib/stream/pace";
+import { RunProgress, StepTimer, type ProgressStep } from "./Progress";
 
 // Athena and her six specialists in the journey (PRD §23.2 step 8): the goals on top, the team in the left panel with
 // live status, each specialist's workspace (its transcript, its results with their tool calls, the founder's outcome
@@ -35,6 +37,11 @@ export type TeamLive = {
   running: number;
 };
 
+/** What the journey shows: one agent's workspace, or the founder's dashboard (§23.2 step 8.4h). */
+export type View = AgentId | "dashboard";
+/** The option on every "What next?" that opens the dashboard. */
+export const SEE_DASHBOARD = "See your dashboard";
+
 const emptyLive = (): TeamLive => ({ status: {}, lines: {}, replies: {}, asks: [], answers: {}, asked: {}, running: 0 });
 
 /** Streams the team route; each event lands in the journey's team state or this visit's live view. */
@@ -52,7 +59,7 @@ export function useTeam(p: {
   crowdId?: (name: string) => string | undefined;
 }) {
   const [live, setLive] = useState<TeamLive>(emptyLive);
-  const [active, setActive] = useState<AgentId>("athena");
+  const [active, setActive] = useState<View>("athena");
   const latestTeam = useRef(p.team);
   latestTeam.current = p.team;
   const run = useRef(0);
@@ -67,10 +74,15 @@ export function useTeam(p: {
     else if (e.type === "status") setLive((l) => ({ ...l, status: { ...l.status, [e.agent]: e.status } }));
     else if (e.type === "step") line(e.agent, e.event, n);
     else if (e.type === "ask" && e.ask.id === "goals") {
-      // The goals question is Athena's: bring her panel forward so it is never missed behind a specialist's.
-      setActive("athena");
-      setLive((l) => ({ ...l, asks: [...l.asks.filter((a) => a.id !== "goals"), { ...e.ask, agent: e.agent }], answers: omit(l.answers, "goals") }));
-    } else if (e.type === "ask") setLive((l) => (l.asks.some((a) => a.id === e.ask.id && l.answers[a.id] === undefined) ? l : { ...l, asks: [...l.asks.filter((a) => a.id !== e.ask.id), { ...e.ask, agent: e.agent }], answers: omit(l.answers, e.ask.id) }));
+      // The goals question is the Analyst's workspace's last step (§23.2 step 8.4g): Athena proposes, in its chat.
+      setActive("analyst");
+      setLive((l) => ({ ...l, asks: [...l.asks.filter((a) => a.id !== "goals"), { ...e.ask, agent: "analyst" }], answers: omit(l.answers, "goals") }));
+    } else if (e.type === "ask") {
+      // Each run numbers its questions from one, so the run's own number keeps them apart: a later run's first question
+      // never hides, or shares a Skip with, an earlier one still showing.
+      const id = e.ask.id === "custom" ? e.ask.id : `${e.ask.id}-r${n}`;
+      setLive((l) => ({ ...l, asks: [...l.asks.filter((a) => a.id !== id), { ...e.ask, id, agent: e.agent }], answers: omit(l.answers, id) }));
+    }
     else if (e.type === "work") {
       if (e.agent !== "analyst") offerNext(e.work);
       p.setTeam((t) => ({
@@ -107,13 +119,19 @@ export function useTeam(p: {
       if (!res.body) return;
       const reader = res.body.getReader();
       const dec = new TextDecoder();
+      const pace = pacer();
       let buf = "";
       for (;;) {
         const { done, value } = await reader.read();
         buf += done ? dec.decode() : dec.decode(value, { stream: true });
         const parts = buf.split("\n\n");
         buf = parts.pop() ?? "";
-        for (const part of parts) if (part.startsWith("data:")) handle(JSON.parse(part.slice(5)) as TeamEvent, n);
+        for (const part of parts) {
+          if (!part.startsWith("data:")) continue;
+          const e = JSON.parse(part.slice(5)) as TeamEvent;
+          await pace(e);
+          handle(e, n);
+        }
         if (done) break;
       }
     } catch {
@@ -129,14 +147,20 @@ export function useTeam(p: {
     }
   };
 
-  /** When a specialist finishes, Athena says so in the chat and offers whoever its results hand on to. */
+  /** Every run ends with "What next?" in its own chat (§23.2 step 8.4h): what its results hand on to, and the dashboard. */
   const offerNext = (work: Work) => {
     const next = fromWork(work, p.crowdId ?? (() => undefined));
-    p.say(`The ${nameOf(work.agent)} is done: ${work.headline.replace(/\.$/, "")}.`);
-    if (!next.length) return;
     for (const h of next) offered.current.set(h.label, h);
     const id = `next_${work.agent}`;
-    const ask: TeamAsk = { id, agent: "athena", question: "Where next?", why: `What the ${nameOf(work.agent)} found, handed on.`, options: next.map((h) => ({ label: h.label, hint: `With the ${nameOf(h.to)}.` })), multi: false, assumed: next[0].label };
+    const ask: TeamAsk = {
+      id,
+      agent: work.agent,
+      question: "What next?",
+      why: `Done: ${work.headline.replace(/\.$/, "")}.`,
+      options: [...next.map((h) => ({ label: h.label, hint: `With the ${nameOf(h.to)}.` })), { label: SEE_DASHBOARD, hint: "The whole team, and what I still need from you." }],
+      multi: false,
+      assumed: next[0]?.label ?? SEE_DASHBOARD,
+    };
     setLive((l) => ({ ...l, asks: [...l.asks.filter((a) => a.id !== id), ask], answers: omit(l.answers, id) }));
   };
   /** A handoff (§23.2 step 8.3b): the next specialist starts with the crowd or city it came from, and its panel opens. */
@@ -154,6 +178,9 @@ export function useTeam(p: {
     for (const g of goals.filter((x) => x.outside)) p.say(g.team.length ? `I've put the ${teamLine(g.team).replace(/^With the /, "").replace(/\.$/, "")} on the part we can do. ${g.outside}` : `${g.outside} Here's what the team can do meanwhile.`);
     if (!fresh.length) return void propose();
     p.setTeam((t) => ({ ...t, goals: [...t.goals.filter((x) => !fresh.some((g) => g.id === x.id)), ...fresh].slice(-5) }));
+    // A pick opens the first specialist's workspace (§23.2 step 8.4g); the Analyst's when it is the only one at work.
+    const first = SPECIALIST_IDS.find((id) => id !== "analyst" && fresh.some((g) => g.team.includes(id))) ?? (fresh.some((g) => g.team.includes("analyst")) ? "analyst" : undefined);
+    if (first) setActive(first);
     void post("run", { goals: fresh });
   };
   const propose = () => post("propose");
@@ -169,12 +196,16 @@ export function useTeam(p: {
       return void post("custom", { text: a });
     }
     if (q.id.startsWith("next_")) {
-      const h = offered.current.get(a);
+      // Skip goes ahead with what the question said it would: the handoff it recommended.
+      const pick = a || q.assumed;
+      if (pick === SEE_DASHBOARD) return setActive("dashboard");
+      const h = offered.current.get(pick);
       // Other: the founder's own next step goes to Athena, who answers or hands it on.
-      return h ? handoff(h) : a ? askAthena(a) : undefined;
+      return h ? handoff(h) : a ? askAthena(a) : setActive("dashboard");
     }
     if (q.id === "custom") {
-      const close = pickGoals(GOALS as Goal[], a);
+      // Skip takes the closest mission the question recommended, so the goal still starts.
+      const close = pickGoals(GOALS as Goal[], a || q.assumed);
       const text = custom.current;
       if (!close.length || !text) return;
       return start([{ id: `custom_${close.map((g) => g.id).join("_")}`, label: text.slice(0, 80), why: "In your words", team: teamFor(close), conflicts: [], custom: true }]);
@@ -201,6 +232,8 @@ export function useTeam(p: {
   /** The Analyst measures and ranks the crowds, once, for the whole journey (§23.2 step 8.1a). */
   const measure = () => {
     const g = GOALS.find((x) => x.id === "know_crowd")!;
+    // The Analyst is now the one at work, so the founder moves to its workspace and watches it measure.
+    setActive("analyst");
     p.setTeam((t) => ({ ...t, goals: t.goals.some((x) => x.id === g.id) ? t.goals : [...t.goals, g] }));
     return post("run", { goals: [g] });
   };
@@ -230,7 +263,7 @@ function statusText(id: AgentId, s: AgentStatus): string {
 /** The left panel (§23.2 step 8f): Athena and the six, each with live status. On a phone the list is a menu. */
 const RAIL = "athena:team-rail";
 
-export function TeamPanel({ live, team, active, onOpen, athena }: { live: TeamLive; team: TeamState; active: AgentId; onOpen: (id: AgentId) => void; athena?: string }) {
+export function TeamPanel({ live, team, active, onOpen, athena }: { live: TeamLive; team: TeamState; active: View; onOpen: (id: View) => void; athena?: string }) {
   const ids = panelIds(team);
   const on = (id: AgentId) => team.goals.some((g) => isSpecialist(id) && g.team.includes(id));
   // Collapsed to a rail of agent badges with live status, or expanded to the list; the choice is remembered.
@@ -258,12 +291,13 @@ export function TeamPanel({ live, team, active, onOpen, athena }: { live: TeamLi
       </button>
       <label className="team-menu">
         <span className="small muted">Workspace</span>
-        <select value={active} onChange={(e) => onOpen(e.target.value as AgentId)}>
+        <select value={active} onChange={(e) => onOpen(e.target.value as View)}>
           {ids.map((id) => (
             <option key={id} value={id}>
               {nameOf(id)} · {statusText(id, statusOf(id, live, team))}
             </option>
           ))}
+          <option value="dashboard">Your dashboard</option>
         </select>
       </label>
       <ol className="team-list">
@@ -282,6 +316,15 @@ export function TeamPanel({ live, team, active, onOpen, athena }: { live: TeamLi
             </li>
           );
         })}
+        <li className="team-dash">
+          <button type="button" className={`team-agent ${active === "dashboard" ? "on" : ""}`} aria-current={active === "dashboard" ? "true" : undefined} onClick={() => onOpen("dashboard")} title={rail ? "Your dashboard" : undefined}>
+            <span className="team-badge" aria-hidden>▦</span>
+            <span className="team-text">
+              <strong>Your dashboard</strong>
+              <small>The whole team, and what Athena needs from you</small>
+            </span>
+          </button>
+        </li>
       </ol>
     </aside>
   );
@@ -319,7 +362,7 @@ export function TeamAsks({ live, agent, onAnswer }: { live: TeamLive; agent: Age
 }
 
 /** One specialist's workspace (§23.2 step 8b–d, g): its transcript, then its work. */
-export function SpecialistWorkspace({ id, live, team, alone, onMark, onAnswer, onHandoff, crowdId }: { id: SpecialistId; live: TeamLive; team: TeamState; alone: AloneRequest; onMark: (item: WorkItem, m: Mark) => void; onAnswer: (q: TeamAsk, a: string) => void; onHandoff?: (h: Handoff) => void; crowdId?: (name: string) => string | undefined }) {
+export function SpecialistWorkspace({ id, live, team, onAnswer }: { id: SpecialistId; live: TeamLive; team: TeamState; onAnswer: (q: TeamAsk, a: string) => void }) {
   const s = specialist(id);
   const st = statusOf(id, live, team);
   const work = team.works[id];
@@ -335,13 +378,32 @@ export function SpecialistWorkspace({ id, live, team, alone, onMark, onAnswer, o
         {st.state === "waiting" && <p className="small muted spec-wait">Waiting: {st.reason}.</p>}
       </header>
       {live.asked[id] && <p className="msg msg-you spec-asked">{live.asked[id]}</p>}
+      {st.state === "working" && <AgentProgress lines={lines} who={`The ${s.name}`} />}
+      {lines.length > 0 && <Transcript lines={lines} />}
+      {work && st.state !== "working" && <p className="spec-reply">{work.headline}</p>}
       {replies.map((r, i) => (
         <p key={i} className="spec-reply">{r}</p>
       ))}
       <TeamAsks live={live} agent={id} onAnswer={onAnswer} />
-      {lines.length > 0 && <Transcript lines={lines} />}
-      {work ? <WorkView work={work} team={team} updating={st.state === "working"} alone={alone} onMark={onMark} onHandoff={onHandoff} crowdId={crowdId} /> : st.state === "idle" && <p className="small muted">Done when: {s.doneWhen}</p>}
+      {!work && st.state === "idle" && !lines.length && <p className="small muted">Done when: {s.doneWhen}</p>}
     </div>
+  );
+}
+
+/** A working agent's run at a glance (its latest run's steps, its calls so far, its clock), above its transcript. */
+function AgentProgress({ lines, who }: { lines: Line[]; who: string }) {
+  const run = lines.reduce((n, l) => Math.max(n, l.run), 0);
+  const mine = lines.filter((l) => l.run === run);
+  const now = [...mine].reverse().find((l) => l.ev.status === "running");
+  const calls = mine.reduce((n, l) => n + l.ev.callIds.length, 0);
+  return (
+    <RunProgress
+      key={run}
+      who={who}
+      current={now ? lineText(now.ev) : mine.length ? "Working out the next step" : "Getting started"}
+      steps={mine.map((l): ProgressStep => ({ label: lineText(l.ev), state: l.ev.status === "running" ? "now" : "done" }))}
+      counts={[calls ? `${calls} Qloo call${calls === 1 ? "" : "s"}` : ""]}
+    />
   );
 }
 
@@ -362,6 +424,7 @@ function Transcript({ lines }: { lines: Line[] }) {
               <span className="ob-line-text">
                 {lineText(ev)}
                 {!!ev.callIds.length && !live && <small className="muted"> · {ev.callIds.length} Qloo call{ev.callIds.length === 1 ? "" : "s"}</small>}
+                {live && <StepTimer />}
               </span>
               {detail && !live && <span className="ob-caret" aria-hidden>{opened ? "▾" : "▸"}</span>}
             </button>
@@ -540,5 +603,71 @@ export function WhatsWorking({ team, graphRev, busy, onRefresh }: { team: TeamSt
         </div>
       )}
     </section>
+  );
+}
+
+/** What Athena still needs from the founder (§23.2 step 8.4h): asked one at a time, each naming the agent it helps. */
+export const INPUTS: (Asked & { helps: SpecialistId[] })[] = [
+  { id: "input_budget", question: "What can you spend on growth in the next three months?", why: "The Promoter and the Rep size events and shop pitches to it.", helps: ["promoter", "rep"], unranked: true, multi: false, assumed: "a small budget", options: [{ label: "Under $1,000" }, { label: "$1,000 to $10,000" }, { label: "Over $10,000" }] },
+  { id: "input_launch", question: "When is your next launch or push?", why: "The Promoter picks events with lead times that fit it.", helps: ["promoter"], unranked: true, multi: false, assumed: "no fixed date", options: [{ label: "Within a month" }, { label: "In 1 to 3 months" }, { label: "No fixed date" }] },
+  { id: "input_regions", question: "Which regions can you reach: ship to, visit, sell in?", why: "The Navigator ranks only cities you can serve.", helps: ["navigator"], unranked: true, multi: false, assumed: "anywhere in the US", options: [{ label: "Anywhere in the US" }, { label: "Near home only" }, { label: "One or two coasts" }] },
+  { id: "input_stockists", question: "Which shops already stock you? Name them, or add a stockist sheet.", why: "The Rep leaves them out and finds shops like them.", helps: ["rep"], unranked: true, multi: false, assumed: "the stockists on your Brand Graph", options: [{ label: "The ones on my Brand Graph" }, { label: "None yet" }] },
+];
+
+/** The founder's dashboard (§23.2 step 8.4h, a first version of §23.4 item 6): the team, the inputs, what's working. */
+export function Dashboard({ live, team, runs, inputs, onInput, onOpen, onHandoff, working }: { live: TeamLive; team: TeamState; runs: Partial<Record<SpecialistId, Handoff>>; inputs: Record<string, string>; onInput: (id: string, a: string) => void; onOpen: (id: View) => void; onHandoff: (h: Handoff) => void; working: ReactNode }) {
+  const need = INPUTS.find((q) => inputs[q.id] === undefined);
+  const given = INPUTS.filter((q) => inputs[q.id] !== undefined);
+  return (
+    <div className="dash">
+      <section className="dash-sec">
+        <h3>Your team</h3>
+        <ul className="dash-team">
+          {SPECIALIST_IDS.map((id) => {
+            const s = statusOf(id, live, team);
+            const w = team.works[id];
+            const run = runs[id];
+            return (
+              <li key={id} className={`dash-agent dash-${s.state}`}>
+                <span className="team-badge" aria-hidden>{nameOf(id).slice(0, 1)}</span>
+                <div>
+                  <strong>The {nameOf(id)}</strong>
+                  {s.state === "working" ? (
+                    <p className="small shimmer-text">{s.step}</p>
+                  ) : w ? (
+                    <p className="small">{w.headline}</p>
+                  ) : (
+                    <p className="small muted">{run ? `Would ${run.label.charAt(0).toLowerCase()}${run.label.slice(1)} now.` : specialist(id).mission}</p>
+                  )}
+                  <div className="dash-acts">
+                    {w && <button type="button" className="linkish small" onClick={() => onOpen(id)}>Open the {nameOf(id)}</button>}
+                    {!w && s.state !== "working" && run && (
+                      <button type="button" className="handoff" onClick={() => onHandoff(run)}>
+                        Run
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      </section>
+      <section className="dash-sec">
+        <h3>What I need from you</h3>
+        {need ? (
+          <>
+            <p className="small muted">Helps the {need.helps.map(nameOf).join(" and the ")}.</p>
+            <Question key={need.id} q={need} onAnswer={(a) => onInput(need.id, a)} />
+          </>
+        ) : (
+          <p className="small muted">That&apos;s everything for now; the team reads your answers on every run.</p>
+        )}
+        {given.map((q) => (
+          <Question key={q.id} q={q} answer={inputs[q.id]} onAnswer={() => undefined} />
+        ))}
+      </section>
+      <section className="dash-sec">{working}</section>
+    </div>
   );
 }

@@ -15,6 +15,9 @@ import { Question, type Asked } from "./Question";
 import { KnowledgePanel, Settle } from "./Knowledge";
 import { workspace } from "@/lib/knowledge/workspace";
 import { PACKS } from "@/lib/journey/packs";
+import { pacer } from "@/lib/stream/pace";
+import { RunProgress, StepTimer, type ProgressStep } from "./Progress";
+import { PanelGrip } from "./Resize";
 
 // Onboarding as a workspace (PRD §23.2 step 7.2). First, one box: the founder types, pastes or drops anything, and
 // the model sorts it (a website, files, notes or an AI summary). On send the box docks at the bottom as the steering
@@ -35,6 +38,7 @@ async function stream(body: FormData, on: (e: AgentStreamEvent) => void) {
   const reader = res.body?.getReader();
   if (!reader) return;
   const dec = new TextDecoder();
+  const pace = pacer();
   let buf = "";
   for (;;) {
     const { value, done } = await reader.read();
@@ -44,7 +48,10 @@ async function stream(body: FormData, on: (e: AgentStreamEvent) => void) {
     while ((i = buf.indexOf("\n\n")) >= 0) {
       const line = buf.slice(0, i).trim();
       buf = buf.slice(i + 2);
-      if (line.startsWith("data: ")) on(JSON.parse(line.slice(6)) as AgentStreamEvent);
+      if (!line.startsWith("data: ")) continue;
+      const e = JSON.parse(line.slice(6)) as AgentStreamEvent;
+      await pace(e);
+      on(e);
     }
   }
 }
@@ -68,22 +75,27 @@ function Icon({ d, size = 16 }: { d: keyof typeof ICONS; size?: number }) {
   );
 }
 
-/** Athena's small mark. */
+/** Athena's small mark: the oxblood and ochre dots, as on the landing page. */
 export function Mark({ size = 22 }: { size?: number }) {
   return (
-    <svg className="ob-mark" width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden>
-      <circle cx="12" cy="12" r="10.5" stroke="currentColor" strokeWidth="1.3" />
-      <path d="M7.5 16.5L12 7l4.5 9.5M9.3 13h5.4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+    <svg className="ob-mark" width={size} height={size} viewBox="0 0 24 24" aria-hidden>
+      <circle cx="6.5" cy="12" r="5" fill="#7e2b34" />
+      <circle cx="17.5" cy="12" r="5" fill="#a9791c" />
     </svg>
   );
 }
 
 /** Runs the switch to the workspace as one glide of the box, where the browser can. */
 function glide(go: () => void) {
-  const doc = document as Document & { startViewTransition?: (f: () => void) => unknown };
+  type Glide = { ready: Promise<void>; finished: Promise<void> };
+  const doc = document as Document & { startViewTransition?: (f: () => void) => Glide };
   const still = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-  if (doc.startViewTransition && !still) doc.startViewTransition(() => flushSync(go));
-  else go();
+  if (doc.startViewTransition && !still) {
+    // A glide the browser skips (a hidden tab, a second click) still switches; only the animation is lost.
+    const t = doc.startViewTransition(() => flushSync(go));
+    t.ready.catch(() => {});
+    t.finished.catch(() => {});
+  } else go();
 }
 
 export function Onboard({
@@ -527,7 +539,6 @@ export function Onboard({
       <div className="ob ob-first">
         {picker}
         <div className="ob-hero">
-          <Mark size={28} />
           <h1>Tell me about your brand</h1>
           <p className="muted">Type, paste or drop anything. I&apos;ll read it all, look you up, and only ask what I can&apos;t find.</p>
           {composer}
@@ -581,8 +592,22 @@ export function Onboard({
   const panel = had || !!kb;
   const now = items?.find((i) => i.state === "now");
   const lastLive = [...lines].reverse().find((l) => l.ev.status === "running");
-  const status = running ? (now?.step ?? (lastLive ? lineText(lastLive.ev) : thinking ?? "Reading what you gave me")) : had ? "Your brief is written" : "Ready when you are";
+  // Between steps the next one on the plan is what it's on; once the plan is through, it's writing it all up.
+  const between = items?.find((i) => i.state === "todo")?.step ?? (lines.some((l) => l.run === runs.current && l.ev.tool !== "you") ? "Putting it all together" : "Reading what you gave me");
+  const status = running ? (now?.step ?? (lastLive ? lineText(lastLive.ev) : thinking ?? between)) : had ? "Your brief is written" : "Ready when you are";
   const conflicts = kb?.conflicts.length ?? 0;
+  // The run's progress: the agent's own plan when it has written one, else the steps shown so far.
+  const runLines = lines.filter((l) => l.run === runs.current && l.ev.tool !== "you");
+  const progressSteps: ProgressStep[] = items?.length
+    ? items.map((i) => ({ label: i.step, state: i.state }))
+    : runLines.map((l) => ({ label: lineText(l.ev), state: l.ev.status === "running" ? "now" : "done" }));
+  const pagesRead = runLines.reduce((n, l) => n + l.pages.length, 0);
+  const qlooCalls = runLines.reduce((n, l) => n + l.ev.callIds.length + l.pages.reduce((m, p) => m + p.ev.callIds.length, 0), 0);
+  const progressCounts = [
+    pagesRead ? `${pagesRead} page${pagesRead === 1 ? "" : "s"} read` : "",
+    kb?.facts.length ? `${fmt(kb.facts.length)} facts` : "",
+    qlooCalls ? `${qlooCalls} Qloo call${qlooCalls === 1 ? "" : "s"}` : "",
+  ];
   const toggle = (k: string) =>
     setOpen((o) => {
       const n = new Set(o);
@@ -623,6 +648,7 @@ export function Onboard({
           <span className="ob-line-text">
             {lineText(ev)}
             {live && ev.summary && <small className="muted"> · {ev.summary}</small>}
+            {live && <StepTimer />}
             {!live && l.pages.length > 0 && !opened && <small className="muted"> · {l.pages.length} page{l.pages.length === 1 ? "" : "s"}</small>}
           </span>
           {more && !live && <span className="ob-caret" aria-hidden>{opened ? "▾" : "▸"}</span>}
@@ -661,7 +687,7 @@ export function Onboard({
   const plan = items && items.length > 0 && (
     <div className="ob-plan" aria-label="Athena's plan">
       <button type="button" className="ob-plan-line" aria-expanded={planOpen} onClick={() => setPlanOpen((o) => !o)}>
-        {checklistLine(items)} <span aria-hidden>{planOpen ? "▴" : "▾"}</span>
+        {running ? (planOpen ? "Hide the plan" : "See the plan") : checklistLine(items)} <span aria-hidden>{planOpen ? "▴" : "▾"}</span>
       </button>
       <ol className={`ob-plan-list ${planOpen ? "open" : ""}`}>
         {items.map((i) => (
@@ -725,7 +751,10 @@ export function Onboard({
       </aside>
 
       <section className="ob-centre" aria-label="Transcript">
-        {plan}
+        <div className="ob-top">
+          {running && <RunProgress key={runs.current} current={status} steps={progressSteps} counts={progressCounts} />}
+          {plan}
+        </div>
         <ol className="ob-transcript" aria-live="polite">
           {lines.map((l) => row(l))}
           {running && thinking && (
@@ -779,6 +808,7 @@ export function Onboard({
         {composer}
       </div>
 
+      {panel && <PanelGrip prop="--panel-col" chat=".ob-centre" panel=".ob-panel" extra={12} store="athena.ob-panel-w" />}
       {panel && (
         <aside className="ob-panel" aria-label={side === "kept" ? "What I kept" : "Your Brand Graph"}>
           <div className="ob-panel-tabs" role="tablist">

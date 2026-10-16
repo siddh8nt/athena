@@ -11,8 +11,8 @@ import { WithWithout, type AloneRequest } from "./WithWithout";
 import { Onboard } from "./Onboard";
 import { Fits, When, tiersFor } from "./Fits";
 import { StrategyCard, StrategyHead, StrategyPending } from "./Strategy";
-import { fromCrowd, type Handoff } from "@/lib/agent/handoffs";
-import { GoalsBar, Handoffs, SpecialistWorkspace, TeamAsks, TeamPanel, WhatsWorking, WorkView, useTeam, type TeamLive } from "./Team";
+import { fromCity, fromCrowd, type Handoff } from "@/lib/agent/handoffs";
+import { Dashboard, GoalsBar, Handoffs, INPUTS, SpecialistWorkspace, TeamAsks, TeamPanel, WhatsWorking, WorkView, useTeam, type TeamLive } from "./Team";
 import type { StrategyView } from "./Strategy";
 import type { Asked } from "./Question";
 import type { AgentStreamEvent } from "@/lib/agent/loop";
@@ -27,12 +27,15 @@ import { staleLine, type RunId } from "@/lib/graph/stale";
 import type { GraphInput } from "@/lib/graph/types";
 import { keepFile, workspace } from "@/lib/knowledge/workspace";
 import { bySource, mergeNotes, themesOf, type Synth } from "@/lib/knowledge/notes";
+import { pacer } from "@/lib/stream/pace";
+import { RunProgress } from "./Progress";
+import { PanelGrip } from "./Resize";
 import type { Channel } from "@/lib/journey/growth";
 import { crowdAfterFits, emptyJourney, loadedJourney, type CrowdCard, type CrowdsResult, type Journey as JourneyState } from "@/lib/journey/types";
 import type { Galaxy as GalaxyData } from "@/lib/taste/galaxy";
 import { packBySlug } from "@/lib/journey/packs";
 import { emptyTeam, type Mark, type TeamEvent, type TeamState, type WorkItem } from "@/lib/team/types";
-import { SPECIALIST_IDS, isSpecialist, nameOf, specialist, type SpecialistId } from "@/lib/agent/specialists";
+import { SPECIALIST_IDS, isSpecialist, nameOf, specialist, type AgentId, type SpecialistId } from "@/lib/agent/specialists";
 import { growthQuestion, seedOf, type GrowthQuestion } from "@/lib/journey/flow";
 
 // The journey (PRD §23.2 step 8.1): one path. Onboarding writes the Brand Graph; one growth question in the
@@ -144,6 +147,7 @@ export function Journey() {
         ...x,
         crowds,
         crowdsFor: seedKey,
+        crowdsSeed: m.seed ?? x.crowdsSeed,
         fits,
         crowdId: fits ? crowdAfterFits(fits.fits, x.crowdId && ids.has(x.crowdId) ? x.crowdId : main) : x.crowdId && ids.has(x.crowdId) ? x.crowdId : main,
       };
@@ -173,7 +177,7 @@ export function Journey() {
     // A city the founder marked wrong on the Brand Graph is never a place to start.
     const wrong = new Set((stratBrief.wrong ?? []).map((w) => w.key));
     const reach = run.reach && Object.fromEntries(Object.entries(run.reach).map(([id, ms]) => [id, ms.filter((m) => !wrong.has(itemKey.city(m.metro)))]));
-    const body = JSON.stringify({ seed: JSON.parse(j.crowdsFor) as unknown, probes: j.crowds?.probes ?? [], brief: stratBrief, facts: [...stratFacts, ...told], fits: run.fits, calendar: run.calendar, reach });
+    const body = JSON.stringify({ seed: j.crowdsSeed ?? (JSON.parse(j.crowdsFor) as unknown), probes: j.crowds?.probes ?? [], brief: stratBrief, facts: [...stratFacts, ...told], fits: run.fits, calendar: run.calendar, reach });
     const go = (tries: number): Promise<void> =>
       agentStream("/api/strategy", body, (e) => {
         if (planKey.current !== key) return false;
@@ -183,7 +187,8 @@ export function Journey() {
             const i = ev.status === "running" ? -1 : s.findIndex((x) => x.status === "running" && x.tool === ev.tool && x.why === ev.why);
             return i >= 0 ? s.map((x, k) => (k === i ? ev : x)) : [...s, ev];
           });
-        } else if (e.type === "ask") setAsks((a) => (a.some((x) => x.question === e.ask.question) ? a : [...a, e.ask]));
+        // Every strategy run numbers its questions from one; an id of its own here keeps each question's answer apart.
+        } else if (e.type === "ask") setAsks((a) => (a.some((x) => x.question === e.ask.question) ? a : [...a, { ...e.ask, id: `strategy-${a.length + 1}` }]));
         else if (e.type === "strategy") setJ((x) => ({ ...x, strategy: { key, result: e.result, answer: e.answer, sources: e.sources } }));
         return true;
       }).catch(() => (tries > 0 && planKey.current === key ? go(tries - 1) : undefined));
@@ -200,11 +205,12 @@ export function Journey() {
     team,
     setTeam: (f) => setJ((x) => ({ ...x, team: f(x.team ?? emptyTeam()) })),
     body: () => ({
-      seed: JSON.parse(j.crowdsFor ?? seedKey) as unknown,
+      seed: j.crowdsSeed ?? (JSON.parse(j.crowdsFor ?? seedKey) as unknown),
       probes: j.crowds?.probes ?? [],
       brief: teamBrief,
       ...(j.fits ? { fits: j.fits.fits } : {}),
-      answers: j.told ? [j.told] : [],
+      // The growth answer and the dashboard's inputs (§23.2 step 8.4h), read by every run as the founder's facts.
+      answers: [...(j.told ? [j.told] : []), ...INPUTS.filter((q) => j.inputs?.[q.id] !== undefined).map((q) => ({ question: q.question, answer: j.inputs![q.id] || q.assumed }))],
       facts: j.facts ?? [],
     }),
     graphRev: g.log.length,
@@ -270,7 +276,34 @@ export function Journey() {
     void tm.propose();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [j.stop, !!j.crowds, tm.live.running]);
-  const inWorkspace = isSpecialist(tm.active) ? tm.active : undefined;
+  const view = tm.active;
+  const workOf = (id: AgentId) => (id === "athena" ? "Athena's work" : `the ${nameOf(id)}'s work`);
+  const inWorkspace = isSpecialist(view) ? view : undefined;
+  // The floating panel (§23.2 step 8.4b): open beside the chat on a desktop; a full-screen sheet on a phone.
+  const [panelOpen, setPanelOpen] = useState(true);
+  const [sheet, setSheet] = useState(false);
+  const panelBody = useRef<HTMLDivElement>(null);
+  // Whenever the flow hands the work to another agent (a Next, an option picked, a handoff), its workspace comes forward:
+  // the panel opens on its work if it was hidden, and its card in the team panel scrolls into sight.
+  const shownView = useRef(view);
+  useEffect(() => {
+    if (shownView.current === view) return;
+    shownView.current = view;
+    setPanelOpen(true);
+    document.querySelector(".team-list [aria-current='true']")?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [view]);
+  // Sequential panels (§23.2 step 8.4e): each new section lands below the last, and the panel scrolls to it.
+  useEffect(() => {
+    const el = panelBody.current;
+    if (!el) return;
+    let n = el.childElementCount;
+    const mo = new MutationObserver(() => {
+      if (el.childElementCount > n) el.lastElementChild?.scrollIntoView({ block: "start", behavior: "smooth" });
+      n = el.childElementCount;
+    });
+    mo.observe(el, { childList: true });
+    return () => mo.disconnect();
+  }, [view]);
   const crowdIdOf = (name: string) => j.crowds?.crowds.find((c) => c.name === name)?.id;
 
   // Onboarding (§23.2 step 3): a new founder starts from the three ways in, not a chat. Sample brands and founders
@@ -307,7 +340,8 @@ export function Journey() {
   const regroup = (raw: LiveFact[]) => {
     const run = ++synthRun.current;
     setWorking({ text: "Grouping what I read into themes…", by: "graph" });
-    void synthesize(raw, []).then((s) => {
+    // A cached grouping answers at once; the themes still come in after a beat, as grouping live would.
+    void Promise.all([synthesize(raw, []), new Promise((r) => setTimeout(r, 1400))]).then(([s]) => {
       setWorking((w) => (w?.text.startsWith("Grouping") ? undefined : w));
       if (run !== synthRun.current) return;
       setJ((x) => {
@@ -319,11 +353,9 @@ export function Journey() {
       asked(s);
     });
   };
-  const onRaw = (facts: LiveFact[]) =>
-    setJ((x) => {
-      const gone = graphState(x.graph).gone ?? [];
-      return { ...x, raw: facts, facts: [...mergeNotes(x.facts ?? [], bySource(facts), gone).filter((n) => n.theme), ...own(facts)] };
-    });
+  // Fresh raw facts wait for the themes: grouped by source page first, a crawled site drew dozens of themes that then
+  // shrank to a handful. The notes already on the graph stay until the grouping lands, so the graph only ever grows.
+  const onRaw = (facts: LiveFact[]) => setJ((x) => ({ ...x, raw: facts, facts: [...(x.facts ?? []).filter((n) => n.theme), ...own(facts)] }));
 
   const onBrief = (b: BrandBrief, assumptions: string[], facts: LiveFact[], early = false) => {
     chat.setBrief(b);
@@ -428,7 +460,9 @@ export function Journey() {
     const picked = one >= 0 ? [one] : q.multi ? a.split(", ").map((l) => q.options.findIndex((o) => o.label === l)) : [-1];
     if (picked.every((i) => i >= 0)) {
       const ops = picked.flatMap((i) => q.choices[i] ?? []);
-      if (ops.some(needsServer)) return resolveThen(ops, q.by);
+      // A picked option is already a resolved place or entity: sending a home city back to be resolved again asked the
+      // same question again, so the pick seemed to do nothing. Only a shop still to be placed by its city goes back.
+      if (ops.some((o) => o.op === "add" && needsServer(o))) return resolveThen(ops, q.by);
       const done = apply(ops, q.by);
       if (q.by === "chat") say(done?.edit.note ?? "That's already on your graph.");
       return;
@@ -533,7 +567,6 @@ export function Journey() {
       <header className="topbar journey-top">
         <Link href="/" className="wordmark-link"><strong>Athena</strong></Link>
         {/* Hidden through onboarding (§23.2 step 7.2a); the goals take the progress rail's place (step 8a). */}
-        {!onboarding && <GoalsBar goals={team.goals} />}
         <div className="top-actions">
           <button
             type="button"
@@ -557,19 +590,22 @@ export function Journey() {
           <Onboard brief={brief} files={chat.files} addFiles={chat.addFiles} setFiles={chat.setFiles} onBrief={onBrief} onFacts={onRaw} graph={graphEl} dock={dockEl} />
         </main>
       ) : (
-        <main className="journey-main journey-team">
-          <TeamPanel live={tm.live} team={team} active={tm.active} onOpen={(id) => (tm.setActive(id), setAbout(undefined))} />
-          <section className="chat" aria-live="polite">
+        <main className={`journey-main journey-team agent-stage${panelOpen ? " with-panel" : ""}${sheet ? " sheet-on" : ""}`}>
+          <TeamPanel live={tm.live} team={team} active={tm.active} onOpen={(id) => (tm.setActive(id), setAbout(undefined), setPanelOpen(true))} />
+          <section className="chat agent-chat" aria-live="polite">
+            <div className="agent-chat-head agent-switch" key={`head-${view}`}>
+              <strong>{view === "dashboard" ? "Your dashboard" : nameOf(view)}</strong>
+              <button type="button" className="linkish small agent-panel-open" onClick={() => (setPanelOpen(true), setSheet(true))}>
+                {view === "dashboard" ? "Open the dashboard" : `See ${workOf(view)}`}
+              </button>
+            </div>
             {inWorkspace ? (
-              <div className="msgs spec-wrap">
-                <button type="button" className="linkish small" onClick={() => tm.setActive("athena")}>
-                  ← Back to Athena
-                </button>
-                <SpecialistWorkspace id={inWorkspace} live={tm.live} team={team} alone={alone} onMark={(item, m) => tm.mark(inWorkspace, item, m)} onAnswer={tm.answer} onHandoff={tm.handoff} crowdId={crowdIdOf} />
+              <div className="msgs spec-wrap agent-switch" key={`msgs-${view}`}>
+                <SpecialistWorkspace id={inWorkspace} live={tm.live} team={team} onAnswer={tm.answer} />
                 <div ref={end} />
               </div>
             ) : (
-            <ol className="msgs">
+            <ol className="msgs agent-switch" key={`msgs-${view}`}>
               {msgs.map((m, i) => [
                 <li key={i} className={`msg msg-${m.who}`}>
                   {m.text}
@@ -617,7 +653,6 @@ export function Journey() {
               <div ref={end} />
             </ol>
             )}
-
             {dockEl}
 
             <form
@@ -641,7 +676,7 @@ export function Journey() {
                 rows={first ? 3 : 2}
                 value={text}
                 maxLength={8000}
-                placeholder={first ? "e.g. We're Fishwife: premium tinned fish with playful packaging, about $9 a tin. Sold online and in 1,500 shops. eatfishwife.com" : inWorkspace ? `Ask the ${nameOf(inWorkspace)}` : j.stop === "product" ? "Reply, or drop in a file" : "Ask or change anything: \"drop gyms\", \"what about Austin?\""}
+                placeholder={first ? "e.g. We're Fishwife: premium tinned fish with playful packaging, about $9 a tin. Sold online and in 1,500 shops. eatfishwife.com" : inWorkspace ? specialist(inWorkspace).prompt : j.stop === "product" ? "Reply, or drop in a file" : "Ask or change anything: \"drop gyms\", \"what about Austin?\""}
                 onChange={(e) => setText(e.target.value)}
                 onPaste={(e) => {
                   if (e.clipboardData.files.length) {
@@ -665,28 +700,51 @@ export function Journey() {
             </form>
           </section>
 
-          <section className="journey-canvas" aria-label="Your plan so far">
-            <WhatsWorking team={team} graphRev={g.log.length} busy={tm.live.running > 0} onRefresh={tm.refresh} />
-            <div id="stop-product">{graphEl}</div>
-            {j.stop === "crowd" && (
-              <div id="stop-analyst">
-                {(["crowds", "fits", "strategy"] as const).map((r) => g.held[r] && <StaleFlag key={r} run={r} line={staleLine(r, g.held[r]!)} onRerun={() => onRerun(r)} />)}
-                <AnalystResults
-                  j={j}
-                  step={analystStep}
-                  measured={measured}
-                  forming={forming}
-                  fits={{ steps: [], running: !!analystStep && !j.fits, asks, answers, onAnswer: (q, a) => setAnswers((x) => ({ ...x, [q.id]: a })) }}
+          {panelOpen && <PanelGrip prop="--panel-user" chat=".chat" panel=".agent-panel" store="athena.panel-w" />}
+          <aside className={`agent-panel${panelOpen ? "" : " agent-panel-shut"}`} aria-label={view === "dashboard" ? "Your dashboard" : workOf(view)}>
+            <div className="agent-panel-bar">
+              <button type="button" className="linkish small agent-panel-back" onClick={() => setSheet(false)}>← Back to the chat</button>
+              <button type="button" className="linkish small agent-panel-hide" onClick={() => setPanelOpen(false)} aria-label="Hide the panel">Hide ›</button>
+            </div>
+            <div className="agent-panel-body" ref={panelBody} key={view}>
+              {view === "athena" && (
+                <>
+                  <div id="stop-product">{graphEl}</div>
+                  <GoalsBar goals={team.goals} />
+                  {j.fits && (j.strategy || planRunning) && <AthenaPlan j={j} steps={planSteps} running={planRunning} />}
+                </>
+              )}
+              {view === "analyst" && (
+                <div id="stop-analyst">
+                  {(["crowds", "fits", "strategy"] as const).map((r) => g.held[r] && <StaleFlag key={r} run={r} line={staleLine(r, g.held[r]!)} onRerun={() => onRerun(r)} />)}
+                  <AnalystResults
+                    j={j}
+                    step={analystStep}
+                    measured={measured}
+                    forming={forming}
+                    fits={{ steps: [], running: !!analystStep && !j.fits, asks, answers, onAnswer: (q, a) => setAnswers((x) => ({ ...x, [q.id]: a })) }}
+                    onHandoff={tm.handoff}
+                    onAsk={askAbout}
+                    probing={j.crowds ? analystStep : undefined}
+                    alone={alone}
+                  />
+                </div>
+              )}
+              {inWorkspace && inWorkspace !== "analyst" && <SpecialistPanel id={inWorkspace} j={j} team={team} live={tm.live} alone={alone} onMark={tm.mark} onHandoff={tm.handoff} crowdId={crowdIdOf} />}
+              {view === "dashboard" && (
+                <Dashboard
+                  live={tm.live}
+                  team={team}
+                  runs={Object.fromEntries(SPECIALIST_IDS.map((id) => [id, startFor(id, j, team)]))}
+                  inputs={j.inputs ?? {}}
+                  onInput={(id, a) => setJ((x) => ({ ...x, inputs: { ...x.inputs, [id]: a } }))}
+                  onOpen={tm.setActive}
                   onHandoff={tm.handoff}
-                  onAsk={askAbout}
-                  probing={j.crowds ? analystStep : undefined}
-                  alone={alone}
+                  working={<WhatsWorking team={team} graphRev={g.log.length} busy={tm.live.running > 0} onRefresh={tm.refresh} />}
                 />
-              </div>
-            )}
-            {j.stop === "crowd" && <GoalWork j={j} team={team} live={tm.live} alone={alone} onOpen={(id) => tm.setActive(id)} onMark={tm.mark} onHandoff={tm.handoff} crowdId={crowdIdOf} />}
-            {j.stop === "crowd" && j.fits && (j.strategy || planRunning) && <AthenaPlan j={j} steps={planSteps} running={planRunning} />}
-          </section>
+              )}
+            </div>
+          </aside>
         </main>
       )}
     </div>
@@ -699,13 +757,19 @@ async function agentStream(path: string, body: string, on: (e: AgentStreamEvent)
   if (!res.body) throw new Error("no stream");
   const reader = res.body.getReader();
   const dec = new TextDecoder();
+  const pace = pacer();
   let buf = "";
   for (;;) {
     const { done, value } = await reader.read();
     buf += done ? dec.decode() : dec.decode(value, { stream: true });
     const parts = buf.split("\n\n");
     buf = parts.pop() ?? "";
-    for (const p of parts) if (p.startsWith("data:") && !on(JSON.parse(p.slice(5)) as AgentStreamEvent)) return;
+    for (const p of parts) {
+      if (!p.startsWith("data:")) continue;
+      const e = JSON.parse(p.slice(5)) as AgentStreamEvent;
+      await pace(e);
+      if (!on(e)) return;
+    }
     if (done) return;
   }
 }
@@ -729,53 +793,45 @@ function Dock(props: { j: JourneyState; turn: Turn; busy: boolean; researching: 
  * once in, a line saying what it's doing meanwhile. Specialists no goal needs don't run and don't show.
  */
 /**
- * Below the Analyst, each specialist's own section (§23.2 step 8.3a): what it owns before it runs (the Navigator the
- * crowds' cities, the Promoter the calendar), its results once in, and the handoffs on to the next specialist.
+ * One specialist's panel (§23.2 step 8.4f): only what it owns (the Navigator the crowds' cities, the Promoter the
+ * calendar), its results with their handoffs, or the one-click start when it hasn't run.
  */
-function GoalWork({ j, team, live, alone, onOpen, onMark, onHandoff, crowdId }: { j: JourneyState; team: TeamState; live: TeamLive; alone: AloneRequest; onOpen: (id: SpecialistId) => void; onMark: (agent: SpecialistId, item: WorkItem, m: Mark) => void; onHandoff: (h: Handoff) => void; crowdId: (name: string) => string | undefined }) {
+function SpecialistPanel({ id, j, team, live, alone, onMark, onHandoff, crowdId }: { id: SpecialistId; j: JourneyState; team: TeamState; live: TeamLive; alone: AloneRequest; onMark: (agent: SpecialistId, item: WorkItem, m: Mark) => void; onHandoff: (h: Handoff) => void; crowdId: (name: string) => string | undefined }) {
   const [lit, setLit] = useState<number | null>(null);
   const crowds = j.crowds?.crowds ?? [];
   const calendar = j.fits?.calendar;
-  const first = j.fits?.fits.fits.find((f) => f.tier === "win_first") ?? j.fits?.fits.fits[0];
-  const owned: Partial<Record<SpecialistId, { body: ReactNode; start?: Handoff }>> = {
-    ...(crowds.some((c) => c.cities.length) ? { navigator: { body: <CrowdGeography crowds={crowds} lit={lit} onLight={setLit} />, ...(first ? { start: fromCrowd({ id: first.crowd, name: first.name }, true)[0] } : {}) } } : {}),
-    ...(calendar ? { promoter: { body: <When calendar={calendar} name={(id) => crowds.find((c) => c.id === id)?.name} />, start: { to: "promoter", label: "Find events and online audiences", focus: {} } } } : {}),
-  };
-  const onGoal = new Set(team.goals.filter((goal) => goal.id !== "know_crowd").flatMap((goal) => goal.team));
-  const ids = SPECIALIST_IDS.filter((id) => id !== "analyst" && (onGoal.has(id) || team.works[id] || owned[id]));
-  if (!ids.length) return null;
+  const s = live.status[id];
+  const w = team.works[id];
+  const step = s?.state === "working" ? s.step : undefined;
+  const start = startFor(id, j, team);
   return (
     <>
-      {ids.map((id) => {
-        const s = live.status[id];
-        const w = team.works[id];
-        const step = s?.state === "working" ? s.step : undefined;
-        const own = owned[id];
-        if (!w && !step && !own && !live.running) return null;
-        return (
-          <section key={id} id={`work-${id}`} className="goal-work">
-            <header className="card-head">
-              <h3>The {nameOf(id)}</h3>
-              <p className="small muted">{specialist(id).role}</p>
-              <button type="button" className="linkish small" onClick={() => onOpen(id)}>Open the {nameOf(id)}&apos;s workspace</button>
-            </header>
-            {own?.body}
-            {w ? (
-              <WorkView work={w} team={team} updating={!!step} alone={alone} onMark={(item, m) => onMark(id, item, m)} onHandoff={onHandoff} crowdId={crowdId} />
-            ) : step || (onGoal.has(id) && live.running) ? (
-              <section className="card">
-                <ol className="steps live-steps">
-                  <li className="step-active"><span className="spin" aria-hidden /><span className="shimmer-text">{step ?? "Starting on your goals"}</span></li>
-                </ol>
-              </section>
-            ) : (
-              own?.start && <Handoffs list={[own.start]} onHandoff={onHandoff} />
-            )}
-          </section>
-        );
-      })}
+      <header className="card-head">
+        <h3>The {nameOf(id)}</h3>
+        <p className="small muted">{specialist(id).role}</p>
+      </header>
+      {id === "navigator" && crowds.some((c) => c.cities.length) && <CrowdGeography crowds={crowds} lit={lit} onLight={setLit} />}
+      {id === "promoter" && calendar && <When calendar={calendar} name={(cid) => crowds.find((c) => c.id === cid)?.name} />}
+      {step && (
+        <RunProgress who={`The ${nameOf(id)}`} current={step} steps={[]} />
+      )}
+      {w && <WorkView work={w} team={team} updating={!!step} alone={alone} onMark={(item, m) => onMark(id, item, m)} onHandoff={onHandoff} crowdId={crowdId} />}
+      {!w && !step && start && <Handoffs list={[start]} onHandoff={onHandoff} />}
     </>
   );
+}
+
+/** What a specialist would do now for this brand, from what the team already has: its one-click start. */
+function startFor(id: SpecialistId, j: JourneyState, team: TeamState): Handoff | undefined {
+  const first = j.fits?.fits.fits.find((f) => f.tier === "win_first") ?? j.fits?.fits.fits[0];
+  const crowd = first ? { id: first.crowd, name: first.name } : undefined;
+  const city = team.works.navigator?.shared?.city;
+  if (id === "navigator") return crowd ? fromCrowd(crowd, true)[0] : undefined;
+  if (id === "scout") return crowd ? fromCrowd(crowd, true)[1] : undefined;
+  if (id === "rep") return city ? fromCity(city)[0] : { to: "rep", label: "Find shops for your top crowd", focus: {} };
+  if (id === "matchmaker") return crowd ? { to: "matchmaker", label: `Find partners who reach ${crowd.name}`, focus: { crowd: crowd.id } } : undefined;
+  if (id === "promoter") return city ? fromCity(city)[1] : { to: "promoter", label: "Find events and online audiences", focus: {} };
+  return undefined;
 }
 
 /** Athena's plan (§23.2 step 8.3a): a strategy for each most valuable fit, stitched from what the team measured. */
@@ -836,12 +892,7 @@ function AnalystResults({ j, step, measured, forming, fits, onAsk, probing, alon
     return (
       <section className="card">
         <h3>The Analyst</h3>
-        <ol className="steps live-steps">
-          <li className="step-active">
-            <span className="spin" aria-hidden />
-            <span className="shimmer-text">{step ?? "Reading your product into Qloo"}</span>
-          </li>
-        </ol>
+        <RunProgress current={step ?? "Reading your product into Qloo"} steps={[]} />
         <p className="small muted">The first measurement takes 20–40 seconds; the Galaxy draws itself as it goes.</p>
       </section>
     );

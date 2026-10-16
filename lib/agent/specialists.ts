@@ -16,6 +16,8 @@ export type Specialist = {
   name: string;
   /** One line for the left panel. */
   role: string;
+  /** The suggested text in its chat box: the kind of thing a founder asks this specialist. */
+  prompt: string;
   /** What it's for, and when it's done: the model reads both; it decides the order. */
   mission: string;
   doneWhen: string;
@@ -36,6 +38,7 @@ export const SPECIALISTS: Specialist[] = [
     id: "analyst",
     name: "Analyst",
     role: "Fingerprint, crowds and rivals",
+    prompt: 'Ask the Analyst: "why is this crowd first?", "how do we compare with our rivals?"',
     mission: "Measure who the brand speaks to: its taste fingerprint, the crowds around it ranked as most valuable fits, and where it stands against its rivals.",
     doneWhen: "The crowds are measured and stable enough to act on, ranked Win first / Win next / Watch, and the rivals are placed.",
     rules: [
@@ -53,6 +56,7 @@ export const SPECIALISTS: Specialist[] = [
     id: "scout",
     name: "Scout",
     role: "Next crowd, path, words and mood board",
+    prompt: 'Ask the Scout: "who should we win next?", "make the words more playful"',
     mission: "Find the crowd to win after the current one, the path to it through what both crowds love, the words that speak to it, and a mood board of its taste.",
     doneWhen: "The next crowd is named with the bridges that lead to it, the message themes and hooks are written, and the mood board is set.",
     rules: [
@@ -69,6 +73,7 @@ export const SPECIALISTS: Specialist[] = [
     id: "navigator",
     name: "Navigator",
     role: "Cities and neighbourhoods",
+    prompt: 'Ask the Navigator: "what about Chicago?", "which neighbourhoods first?"',
     mission: "Choose the cities to grow in and the neighbourhoods within them where the crowd's taste concentrates.",
     doneWhen: "The cities are ranked with their reach and income, the list is sized to what the team can work, and the first city's neighbourhoods are mapped.",
     rules: [
@@ -85,6 +90,7 @@ export const SPECIALISTS: Specialist[] = [
     id: "rep",
     name: "Rep",
     role: "Shops, retailers and the pitch",
+    prompt: 'Ask the Rep: "more independent shops, fewer chains", "write the pitch for the top shop"',
     mission: "Find the independent shops and venues in the city whose regulars match the crowd, the bigger retailers to step up to, and write the pitch.",
     doneWhen: "There is a shortlist of venues and retailers the brand isn't in yet, and a pitch for the top one.",
     rules: [
@@ -101,6 +107,7 @@ export const SPECIALISTS: Specialist[] = [
     id: "matchmaker",
     name: "Matchmaker",
     role: "Brands and podcasts, both ways, and the ask",
+    prompt: 'Ask the Matchmaker: "any podcasts for this crowd?", "partners outside our category"',
     mission: "Find brands and podcasts to partner with whose audience loves the brand's crowd and whose own crowd would love the brand back, and write the ask.",
     doneWhen: "There is a list of two-way partners and podcasts, with an ask for the top one.",
     rules: [
@@ -116,6 +123,7 @@ export const SPECIALISTS: Specialist[] = [
     id: "promoter",
     name: "Promoter",
     role: "Events, moments and online audiences",
+    prompt: 'Ask the Promoter: "what events are coming up?", "which creators should we reach?"',
     mission: "Find the events and moments the crowd turns up for, with their lead times, the online audiences and creators it follows, and write the inquiry.",
     doneWhen: "There are dated events with lead times still open, the online audiences and creators to reach, and an inquiry for the top event.",
     rules: [

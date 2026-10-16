@@ -5,6 +5,7 @@ import { OPENING, type Turn } from "@/lib/brief/conversation";
 import type { BriefEvent } from "@/app/api/brief/route";
 import { emptyBrief, type BrandBrief } from "@/lib/brief/types";
 import { sourceLabel } from "@/lib/brief/source";
+import { pacer } from "@/lib/stream/pace";
 
 // Chapter 1's conversation (§6.2.1): the founder describes the product; the server turns everything into one brief.
 // Shared by the journey; the server streams status lines, Athena's reply as it's written, and the result.
@@ -34,7 +35,9 @@ export function useBriefChat(initial?: { brief: BrandBrief; msgs: Msg[]; turn: T
   const [queued, setQueued] = useState<string | null>(null);
   const queuedRef = useRef<string | null>(null);
   queuedRef.current = queued;
-  const first = !msgs.some((m) => m.who === "you");
+  // The founder's first message is the one that says what the brand is; once onboarding has written a brief, there's
+  // nothing left to introduce, even if they haven't typed in the chat yet.
+  const first = !msgs.some((m) => m.who === "you") && !brief.name?.value;
 
   const addFiles = (list: FileList | File[]) => setFiles((f) => [...f, ...Array.from(list)].slice(0, 10));
 
@@ -80,6 +83,7 @@ export function useBriefChat(initial?: { brief: BrandBrief; msgs: Msg[]; turn: T
       const decoder = new TextDecoder();
       let buf = "";
       let got = false;
+      const pace = pacer();
       for (;;) {
         const { done, value } = await reader.read();
         buf += done ? decoder.decode() : decoder.decode(value, { stream: true });
@@ -88,6 +92,7 @@ export function useBriefChat(initial?: { brief: BrandBrief; msgs: Msg[]; turn: T
         for (const p of parts) {
           if (!p.startsWith("data:")) continue;
           const e = JSON.parse(p.slice(5)) as BriefEvent;
+          await pace(e);
           if (e.type === "status") {
             setStatus(e.text);
             step(e.text);

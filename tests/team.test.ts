@@ -128,6 +128,8 @@ describe("outcomes", () => {
     const team: TeamState = { goals: [], works: { rep: work, navigator: { ...work, agent: "navigator" } }, outcomes: [o("rep", "venue", "Fig Larder", "café", "no", 9)], rev: { rep: 1, navigator: 1 } };
     expect(staleRuns(team, 1)).toEqual([{ agent: "rep", why: "1 new outcome since it last ran" }]);
     expect(staleRuns(team, 2).map((s) => s.agent)).toEqual(["navigator", "rep"]);
+    // The team's notes don't re-measure the Analyst; its crowds and fits flags do.
+    expect(staleRuns({ ...team, works: { ...team.works, analyst: { ...work, agent: "analyst" } }, rev: { ...team.rev, analyst: 1 } }, 2).map((s) => s.agent)).toEqual(["navigator", "rep"]);
   });
 
   it("says what changed against the last run, and keeps one overview", () => {

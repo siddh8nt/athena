@@ -27,8 +27,8 @@ export function tiersFor(run: FitsRun | undefined, crowds: CrowdCard[]): (CrowdD
   return crowds.map((c) => {
     const f = run.fits.fits.find((x) => x.crowd === c.id);
     if (!f) return undefined;
-    const reach = f.params.reach.value;
-    const mom = f.params.momentum.value;
+    const reach = f.params.reach?.value;
+    const mom = f.params.momentum?.value;
     const peak = HORIZONS.flatMap((h) => run.calendar.horizons[h]).find((m) => m.kind === "crowd" && m.crowd === c.id);
     const line = [
       reach !== undefined ? `${people(reach)} new reach` : "",
@@ -182,6 +182,7 @@ function FitCard({ f, said, sources, slot, children }: { f: Fit; said: FitsAnswe
         <dl>
           {PARAMS.map((p) => {
             const m = f.params[p];
+            if (!m) return null;
             const missing = f.missing.includes(p);
             return (
               <Fragment key={p}>

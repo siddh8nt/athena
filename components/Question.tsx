@@ -38,7 +38,7 @@ export function Question({ q, answer, onAnswer }: { q: Asked; answer?: string; o
                 <span className="question-n">{i + 1}</span>
                 <span>
                   {o.label}
-                  {i === 0 && <small className="muted"> · recommended</small>}
+                  {i === 0 && !q.unranked && <small className="muted"> · recommended</small>}
                   {clash ? <small className="question-hint">Not with “{clash}”: they pull opposite ways.</small> : o.hint && <small className="question-hint">{o.hint}</small>}
                 </span>
               </button>

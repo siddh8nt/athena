@@ -4,6 +4,10 @@ import type { AgentEvent } from "@/lib/blocks/types";
 import type { SourceRef } from "@/lib/fits/types";
 import { CHANNEL_LABEL, CONTEXT_LABEL, WHEN_LABEL, type ActionWhen, type Strategy, type StrategyAnswer, type StrategyRun } from "@/lib/strategy/types";
 import { Cites, day, readable } from "./Cites";
+import { RunProgress, type ProgressStep } from "./Progress";
+
+/** Bookkeeping steps the progress card doesn't count. */
+const HIDDEN_STEPS = new Set(["today", "goal", "update_plan", "think"]);
 
 // A strategy for every most valuable fit (PRD §23.2 step 6): who, where, through what and when, built by code from
 // the ranking, the calendar and the founder's context; each action says which context fact shaped it. The agent's
@@ -84,7 +88,13 @@ export function StrategyHead({ view, sources }: { view: StrategyView; sources: M
   return (
     <div className="fits-context strategy-head">
       <h4>Your strategies</h4>
-      {view.running && <StrategyPending steps={view.steps} />}
+      {view.running && (
+        <RunProgress
+          current={view.steps.filter((x) => x.why).at(-1)?.why ?? "Planning who, where and when for each crowd"}
+          steps={view.steps.filter((x) => x.why && !HIDDEN_STEPS.has(x.tool)).map((x): ProgressStep => ({ label: x.why, state: x.status === "running" ? "now" : "done" }))}
+          counts={[(() => { const n = view.steps.reduce((k, x) => k + x.callIds.length, 0); return n ? `${n} Qloo call${n === 1 ? "" : "s"}` : ""; })()]}
+        />
+      )}
       {run.answer.headline && <p className="fits-headline">{readable(run.answer.headline)}</p>}
       {overall.map((l, i) => (
         <p key={i} className="small">

@@ -1,16 +1,18 @@
 import Link from "next/link";
 import s from "./landing.module.css";
+import HeroGlow from "./HeroGlow";
+import LandingNav from "./LandingNav";
 
 // The landing page: a headline, one line, one way in (/plan), and a quiet picture of Athena at work.
 // The run shown is a fictional example brand, written by hand: no Qloo data.
 
-const PLAN = [
-  { text: "Read your brand", done: true },
-  { text: "Find your crowds", done: true },
-  { text: "Rank the most valuable fits", done: true },
-  { text: "Pick the cities", done: false },
-  { text: "Build the plan", done: false },
-];
+// The team panel as the product shows it: Athena and the Analyst first, then the specialists the chosen goal needs.
+const TEAM = [
+  { name: "Athena", role: "Leads the team", state: "done" },
+  { name: "Analyst", role: "Fingerprint, crowds and rivals", state: "done" },
+  { name: "Navigator", role: "Cities and neighbourhoods", state: "working" },
+  { name: "Rep", role: "Needs a city first", state: "waiting" },
+] as const;
 
 const RUN = [
   { what: "Read the website", found: "14 pages, 3 product lines, sold in 6 shops" },
@@ -39,72 +41,79 @@ const EDGES = [[0, 1], [0, 2], [0, 3], [0, 4], [1, 5], [1, 6], [2, 6], [2, 7], [
 
 export default function Landing() {
   return (
-    <div className={s.page}>
-      <header className={s.top}>
-        <span className={s.mark}>
-          <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden>
-            <circle cx="10" cy="10" r="3" fill="currentColor" />
-            <circle cx="10" cy="10" r="8" fill="none" stroke="currentColor" strokeWidth="1.4" opacity="0.45" />
-          </svg>
-          Athena
-        </span>
-        <Link href="/plan?new=1" className={s.small}>Get started</Link>
-      </header>
+    <div className={`${s.page} landing-page`}>
+      <LandingNav />
 
       <main className={s.main}>
-        <section className={s.hero}>
-          <p className={s.pill}><span className={s.dot} aria-hidden />A growth agent for consumer brands</p>
+        <HeroGlow className={s.hero}>
+          <p className={s.pill}>A growth agent for consumer brands</p>
           <h1 className={s.title}>Your customers aren&apos;t&nbsp;a demographic.</h1>
           <p className={s.sub}>
             &ldquo;Women, 25 to 34&rdquo; never bought anything. Athena finds the people who&apos;d love what you make by what they already love, and
             tells you where they are, who to team up with, and when to show up.
           </p>
           <Link href="/plan?new=1" className={s.cta}>Get started <span aria-hidden>→</span></Link>
+        </HeroGlow>
+
+        <section id="at-work" className={s.section}>
+          <header className={s.sectionHead}>
+            <span className={s.index}>01</span>
+            <h2>Athena at work</h2>
+          </header>
+          <figure className={s.shot} aria-label="Athena at work on an example brand">
+            <div className={s.panes}>
+              <div className={s.plan}>
+              <p className={s.goal}><span>Goal</span>Launch in Portland</p>
+              <ul>
+                {TEAM.map((a) => (
+                  <li key={a.name} className={s[a.state]}>
+                    <span className={s.badge} aria-hidden>{a.name[0]}</span>
+                    <span className={s.who}><strong>{a.name}</strong><small>{a.role}</small></span>
+                    <span className={s.state} aria-label={a.state} />
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <ol className={s.run}>
+                {RUN.map((r, i) => (
+                  <li key={r.what} style={{ animationDelay: `${0.35 + i * 0.55}s` }} className={r.found ? undefined : s.live}>
+                    <strong>{r.what}</strong>
+                    {r.found ? <span>{r.found}</span> : <span className={s.shimmer}>working…</span>}
+                  </li>
+                ))}
+              </ol>
+              <svg className={s.graph} viewBox="0 0 320 250" aria-hidden>
+                {EDGES.map(([a, b], i) => (
+                  <line key={i} x1={NODES[a].x} y1={NODES[a].y} x2={NODES[b].x} y2={NODES[b].y} style={{ animationDelay: `${0.6 + i * 0.12}s` }} />
+                ))}
+                {NODES.map((n, i) => (
+                  <g key={n.label} className={s[n.kind]} style={{ animationDelay: `${0.3 + i * 0.14}s` }}>
+                    <circle cx={n.x} cy={n.y} r={n.r} />
+                    <text x={n.x} y={n.y + n.r + 11}>{n.label}</text>
+                  </g>
+                ))}
+              </svg>
+            </div>
+            <figcaption>Example brand · a fictional coffee roaster</figcaption>
+          </figure>
         </section>
 
-        <figure className={s.shot} aria-label="Athena at work on an example brand">
-          <div className={s.chrome}>
-            <span /><span /><span />
-            <em>Example brand · a fictional coffee roaster</em>
-          </div>
-          <div className={s.panes}>
-            <ol className={s.plan}>
-              {PLAN.map((p, i) => (
-                <li key={p.text} className={p.done ? s.done : i === PLAN.findIndex((q) => !q.done) ? s.now : s.todo}>
-                  <span className={s.box} aria-hidden>{p.done ? "✓" : ""}</span>
-                  {p.text}
-                </li>
-              ))}
-            </ol>
-            <ol className={s.run}>
-              {RUN.map((r, i) => (
-                <li key={r.what} style={{ animationDelay: `${0.35 + i * 0.55}s` }} className={r.found ? undefined : s.live}>
-                  <strong>{r.what}</strong>
-                  {r.found ? <span>{r.found}</span> : <span className={s.shimmer}>working…</span>}
-                </li>
-              ))}
-            </ol>
-            <svg className={s.graph} viewBox="0 0 320 250" aria-hidden>
-              {EDGES.map(([a, b], i) => (
-                <line key={i} x1={NODES[a].x} y1={NODES[a].y} x2={NODES[b].x} y2={NODES[b].y} style={{ animationDelay: `${0.6 + i * 0.12}s` }} />
-              ))}
-              {NODES.map((n, i) => (
-                <g key={n.label} className={s[n.kind]} style={{ animationDelay: `${0.3 + i * 0.14}s` }}>
-                  <circle cx={n.x} cy={n.y} r={n.r} />
-                  <text x={n.x} y={n.y + n.r + 11}>{n.label}</text>
-                </g>
-              ))}
-            </svg>
-          </div>
-        </figure>
+        <section id="why" className={s.section}>
+          <header className={s.sectionHead}>
+            <span className={s.index}>02</span>
+            <h2>Why Athena</h2>
+          </header>
+          <ol className={s.points}>
+            <li><em>i.</em><strong>It reads your brand</strong><span>Your site, decks and spreadsheets become one Brand Graph. Every fact keeps its source, and any of it is yours to edit.</span></li>
+            <li><em>ii.</em><strong>It ranks who to win</strong><span>The Analyst measures the crowds who share your customers&apos; taste and ranks them: win first, win next, watch.</span></li>
+            <li><em>iii.</em><strong>A team works your goals</strong><span>Pick a goal and Athena hands it to her specialists: the cities, shops, partners and events to go after, with lead times.</span></li>
+          </ol>
+        </section>
 
-        <ul className={s.points}>
-          <li><strong>Who loves you</strong><span>The crowds your brand already speaks to, ranked by what they&apos;re worth.</span></li>
-          <li><strong>Where to grow</strong><span>Cities, neighbourhoods, shops and partners where those crowds are.</span></li>
-          <li><strong>When to show up</strong><span>The moments and seasons that matter to them, with lead times.</span></li>
-        </ul>
-
-        <p className={s.note}>Built on Qloo&apos;s taste data. Every answer shows where it came from.</p>
+        <footer className={s.note}>
+          <span className={s.dots} aria-hidden><i /><i /></span>
+          <p>Built on Qloo&apos;s taste data. Every answer shows where it came from.</p>
+        </footer>
       </main>
     </div>
   );

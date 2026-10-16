@@ -276,6 +276,8 @@ export type SpecialistInput = {
   model?: AgentRun["model"];
   llm: boolean;
   budget?: Partial<AgentBudget>;
+  /** Called when the run stops for the founder's answer (it asked them something). */
+  onPause?: () => void;
 };
 
 function systemFor(id: SpecialistId, t: TeamCtx): string {
@@ -291,7 +293,7 @@ ${s.rules.map((r) => `- ${r}`).join("\n")}
 ${heard ? `\nWhat the founder heard back on your earlier results: ${heard}. Read the outcomes before deciding again, and say what they changed.\n` : ""}
 How to work:
 - Call tools, choosing each next step from what the last ones returned. Every tool takes a short why, shown to the founder.
-- Taste is Qloo's job, never the founder's. ask_founder is only for what only the founder knows (budget, capacity, where they sell); carry on with your recommended option meanwhile.
+- Taste is Qloo's job, never the founder's. ask_founder is only for what only the founder knows (budget, capacity, where they sell) and only when the answer would change your results. Ask before you search, so your results are built on the answer: your run pauses until the founder answers, then starts again with it in founder_answers. Never ask what founder_answers or the Brand Graph already says.
 - When you need something another specialist provides (the crowds from the Analyst, a city from the Navigator), finish with a handoff naming it instead of guessing.
 - Watch budget_left. Finish as soon as your mission is met; not every tool is needed.
 - End with finish_work: results named exactly as a tool listed them, best first; claims that cite source ids; a headline with no numbers. Say "most valuable fits", never "best".
@@ -345,6 +347,7 @@ export async function runSpecialist(r: SpecialistInput): Promise<Work | undefine
 
   let work: Work | undefined;
   let calls = 0;
+  let paused = false;
   let last: AgentState | undefined;
   const send: AgentRun["send"] = (e) => {
     if (e.type === "event") {
@@ -360,7 +363,7 @@ export async function runSpecialist(r: SpecialistInput): Promise<Work | undefine
   const byRules = !r.model && !r.llm;
   let by: Work["by"] = byRules ? "rules" : "agent";
 
-  const state0: Partial<AgentState> = { seed: t.seed, crowds: t.crowds, fits: t.fits, probes: [...t.probes], team: t, agent: id };
+  const state0: Partial<AgentState> = { seed: t.seed, crowds: t.crowds, fits: t.fits, probes: [...t.probes], team: t, agent: id, waits: true };
   const base = (model: NonNullable<AgentRun["model"]>, state: Partial<AgentState>): AgentRun => ({
     goal: goalText,
     brand: { name: t.brand.name },
@@ -392,6 +395,8 @@ export async function runSpecialist(r: SpecialistInput): Promise<Work | undefine
     const res = await runAgent(first);
     calls += res.qlooCalls;
     if (res.answered) last = res.state;
+    paused = !!res.paused;
+    if (paused) last = res.state;
   } catch (err) {
     console.error(`${id} run failed`, err);
   }
@@ -402,6 +407,12 @@ export async function runSpecialist(r: SpecialistInput): Promise<Work | undefine
     if (last.seed) t.seed = last.seed;
     t.fits = last.fits;
     t.probes = last.probes ?? t.probes;
+  }
+  // Waiting on the founder's answer: no results yet; what was measured stays for the run that follows the answer.
+  if (paused) {
+    status({ state: "waiting", reason: "your answer to its question" });
+    r.onPause?.();
+    return undefined;
   }
   // The Analyst ranks the crowds once, for the whole journey (§23.2 step 8.1a). When it measured but didn't rank
   // (the model ran out of time, or code's decider stopped early), code ranks from the same evidence.
@@ -492,6 +503,9 @@ export async function runTeam(r: TeamInput): Promise<Partial<Record<SpecialistId
   const rerun = new Map<SpecialistId, string>();
   const have = () => ({ crowds: !!t.crowds?.crowds.length, city: !!t.city, home: !!t.brand.homeMetro });
   /** Waiting on another specialist in this batch that hasn't finished; else undefined (ready, or it hands back). */
+  // Specialists stopped for the founder's answer; whoever in the batch needs what they provide waits for it too.
+  const paused = new Set<SpecialistId>();
+  const heldBy = (id: SpecialistId) => specialist(id).needs.find((n) => n.from !== "athena" && paused.has(n.from as SpecialistId))?.from as SpecialistId | undefined;
   const blocked = (id: SpecialistId) => {
     // A home city stands in for the Navigator's only when the Navigator isn't choosing one in this batch.
     const h = { ...have(), home: have().home && !batch.includes("navigator") };
@@ -513,6 +527,7 @@ export async function runTeam(r: TeamInput): Promise<Partial<Record<SpecialistId
       model: r.model?.(id),
       llm: r.llm,
       budget: why ? { ms: RERUN_MS } : undefined,
+      onPause: () => paused.add(id),
     });
     if (w) {
       works[id] = w;
@@ -537,6 +552,13 @@ export async function runTeam(r: TeamInput): Promise<Partial<Record<SpecialistId
     const left = batch.filter((id) => !finished.has(id) && !running.has(id));
     if (!left.length && !running.size) break;
     for (const id of left) {
+      const on = heldBy(id);
+      if (on) {
+        r.send({ type: "held", agent: id, on });
+        r.send({ type: "status", agent: id, status: { state: "waiting", reason: `your answer to the ${nameOf(on)}` } });
+        finished.add(id);
+        continue;
+      }
       if (running.size >= CONCURRENCY) break;
       const wait = blocked(id);
       if (wait) {

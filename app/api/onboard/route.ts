@@ -238,6 +238,11 @@ export const POST = dated(async function post(req: Request) {
       });
     }
     input.lookups = lookups;
+    // Where the sources disagree, the founder chooses before the brief is written, so it's built on their answer.
+    if (k?.knowledge.conflicts.some((c) => kb.settled[c.id] === undefined)) {
+      await queue;
+      return;
+    }
     const founder = input.steer || input.answers?.length;
     await runAgent({
       goal: input.brief ? "Update the brief with what you told me" : `Understand ${input.name || "your brand"} and write its brief`,
@@ -248,6 +253,9 @@ export const POST = dated(async function post(req: Request) {
       given: [...(founder ? [{ tool: "founder", summary: "What you told me", data: { steering: input.steer, answers: input.answers } }] : []), ...knownGiven(input), ...lookupGiven(input)],
       budget: ONBOARD_BUDGET,
       tools: onboardTools(input, { plan }),
+      // Onboarding may ask a little more than a specialist run: a brand with little online leaves more that only the founder
+      // knows. A question pauses the run; the brief is written once the founder has answered.
+      state: { maxAsks: 4, waits: true },
       qloo,
       env,
       send: out,

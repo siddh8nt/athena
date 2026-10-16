@@ -128,9 +128,31 @@ export default function Landing() {
           </ol>
         </section>
 
-        <footer className={s.note}>
-          <span className={s.dots} aria-hidden><i /><i /></span>
-          <p>Built on Qloo&apos;s taste data. Every answer shows where it came from.</p>
+        {/* The closing bookend: a dark card that echoes the hero, one last way in, then the small print. */}
+        <footer className={s.foot}>
+          <div className={s.footCall}>
+            <h2>Go meet your crowd.</h2>
+            <Link href="/plan?new=1" className={s.cta}>Get started <span aria-hidden>→</span></Link>
+          </div>
+          <div className={s.footGrid}>
+            <div className={s.footBrand}>
+              <Link href="/" className={s.mark} aria-label="Athena"><span className={s.dots} aria-hidden><i /><i /></span>Athena</Link>
+              <p>A growth agent for consumer brands. It finds the crowds already wired to love you, and puts you in their path.</p>
+            </div>
+            <nav aria-label="Footer">
+              <h3>On this page</h3>
+              <a href="#at-work">Athena at work</a>
+              <a href="#why">Why Athena</a>
+            </nav>
+            <nav aria-label="Start">
+              <h3>Start</h3>
+              <Link href="/plan?new=1">Plan a launch</Link>
+            </nav>
+          </div>
+          <div className={s.footBase}>
+            <p>Built on Qloo&apos;s taste data. Every answer shows where it came from.</p>
+            <p>© Athena</p>
+          </div>
         </footer>
       </main>
     </div>

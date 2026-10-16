@@ -65,7 +65,7 @@ export function Question({ q, answer, onAnswer }: { q: Asked; answer?: string; o
         </li>
       </ol>
       <div className="question-foot">
-        <span className="muted small">Going ahead with “{q.assumed}” until you answer.</span>
+        <span className="muted small">Skip goes with “{q.assumed}”.</span>
         {q.multi && (
           <button type="button" className="primary" disabled={!picked.length} onClick={() => onAnswer(picked.join(", "))}>
             Done

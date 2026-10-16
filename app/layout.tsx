@@ -3,6 +3,7 @@ import { Instrument_Serif, Nunito_Sans } from "next/font/google";
 import "./globals.css";
 import { ScrollFade } from "@/components/ScrollFade";
 import { ChatField } from "@/components/ChatField";
+import { GlassFilter } from "@/components/GlassFilter";
 
 // whitevision type: a light serif for display and numerals, Nunito Sans for small caps labels and controls.
 const serif = Instrument_Serif({ subsets: ["latin"], weight: "400", style: ["normal", "italic"], variable: "--font-serif", display: "swap" });
@@ -20,6 +21,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {children}
         <ScrollFade />
         <ChatField />
+        <GlassFilter />
       </body>
     </html>
   );

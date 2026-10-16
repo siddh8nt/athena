@@ -1,7 +1,7 @@
 /* whitevision: oxblood and ochre, mostly light with deliberate dark chrome. Oxblood is for actions and
    active state, ochre for data emphasis; green and red only mark change. */
 :root {
-  --bg: #f7f5f0;
+  --bg: #f4ecdc;
   --surface: #fffdf8;
   --sunken: #f3efe7;
   --fg: #1a1814;
@@ -1214,7 +1214,7 @@ span.ob-source { color: var(--muted); }
    Nunito Sans for caps labels and controls, the system sans for reading. Oxblood is for actions and the active
    state, ochre for data; green and red only for change. Motion: 120 / 180 / 240 ms. */
 
-:root { --bg: #ece8e0; --dot: #d9d1c2; --overlay: 0 8px 24px rgba(26, 24, 20, 0.12); --ease-slow: cubic-bezier(0.2, 0.8, 0.2, 1); }
+:root { --bg: #f4ecdc; --dot: #dfd2b8; --overlay: 0 8px 24px rgba(26, 24, 20, 0.12); --ease-slow: cubic-bezier(0.2, 0.8, 0.2, 1); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #14120f; --dot: #26221d; --overlay: 0 8px 24px rgba(0, 0, 0, 0.45); } }
 
 html, body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; font-size: 14px; line-height: 1.5; }
@@ -1673,7 +1673,7 @@ input[type="checkbox"] { accent-color: var(--accent); }
 
 /* The product's backdrop: a quiet dot field, every 18px, with a small crosshair at each 72px crossing and a ringed
    ochre point at the centre of each cell. The landing page keeps its own honeycomb; the product stays calm (founder, 16 Oct). */
-:root { --dots: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='72'%3E%3Cg fill='%23d6cebf'%3E%3Ccircle cx='0' cy='18' r='.85'/%3E%3Ccircle cx='0' cy='36' r='.85'/%3E%3Ccircle cx='0' cy='54' r='.85'/%3E%3Ccircle cx='18' cy='0' r='.85'/%3E%3Ccircle cx='18' cy='18' r='.85'/%3E%3Ccircle cx='18' cy='36' r='.85'/%3E%3Ccircle cx='18' cy='54' r='.85'/%3E%3Ccircle cx='36' cy='0' r='.85'/%3E%3Ccircle cx='36' cy='18' r='.85'/%3E%3Ccircle cx='36' cy='54' r='.85'/%3E%3Ccircle cx='54' cy='0' r='.85'/%3E%3Ccircle cx='54' cy='18' r='.85'/%3E%3Ccircle cx='54' cy='36' r='.85'/%3E%3Ccircle cx='54' cy='54' r='.85'/%3E%3C/g%3E%3Cpath d='M-3.5 .5H4.5M.5 -3.5V4.5M67.5 .5H75.5M71.5 -3.5V4.5M-3.5 71.5H4.5M.5 67.5V75.5M67.5 71.5H75.5M71.5 67.5V75.5' stroke='%23cbc1af' stroke-width='.9' fill='none'/%3E%3Ccircle cx='36.5' cy='36.5' r='1.6' fill='none' stroke='%23c2b49a' stroke-width='.7'/%3E%3Ccircle cx='36.5' cy='36.5' r='.6' fill='%23a9791c' fill-opacity='.45'/%3E%3C/svg%3E"); }
+:root { --dots: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='72'%3E%3Cg fill='%23dccfb4'%3E%3Ccircle cx='0' cy='18' r='.85'/%3E%3Ccircle cx='0' cy='36' r='.85'/%3E%3Ccircle cx='0' cy='54' r='.85'/%3E%3Ccircle cx='18' cy='0' r='.85'/%3E%3Ccircle cx='18' cy='18' r='.85'/%3E%3Ccircle cx='18' cy='36' r='.85'/%3E%3Ccircle cx='18' cy='54' r='.85'/%3E%3Ccircle cx='36' cy='0' r='.85'/%3E%3Ccircle cx='36' cy='18' r='.85'/%3E%3Ccircle cx='36' cy='54' r='.85'/%3E%3Ccircle cx='54' cy='0' r='.85'/%3E%3Ccircle cx='54' cy='18' r='.85'/%3E%3Ccircle cx='54' cy='36' r='.85'/%3E%3Ccircle cx='54' cy='54' r='.85'/%3E%3C/g%3E%3Cpath d='M-3.5 .5H4.5M.5 -3.5V4.5M67.5 .5H75.5M71.5 -3.5V4.5M-3.5 71.5H4.5M.5 67.5V75.5M67.5 71.5H75.5M71.5 67.5V75.5' stroke='%23cbc1af' stroke-width='.9' fill='none'/%3E%3Ccircle cx='36.5' cy='36.5' r='1.6' fill='none' stroke='%23c2b49a' stroke-width='.7'/%3E%3Ccircle cx='36.5' cy='36.5' r='.6' fill='%23a9791c' fill-opacity='.45'/%3E%3C/svg%3E"); }
 .ob-first, .ob-work, .journey-main.agent-stage { background-color: var(--bg); background-image: var(--dots); background-size: 72px 72px; background-position: center top; }
 
 /* The first screen: no mark, and a regular-weight serif title (Instrument Serif has no bold, so 600 was a faked bold). */
@@ -1773,10 +1773,21 @@ input[type="checkbox"] { accent-color: var(--accent); }
    team screen it sits behind the chat column, clear of the open panel. */
 .ob-work::before, .agent-stage .chat::before {
   content: ""; pointer-events: none; border-radius: 22px;
-  background: color-mix(in srgb, var(--surface) 54%, transparent);
-  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
-  border: 1px solid color-mix(in srgb, var(--fg) 7%, transparent);
-  box-shadow: 0 1px 2px rgba(20, 18, 15, 0.03), 0 28px 64px -40px rgba(20, 18, 15, 0.3);
+  /* Glass, after Apple's material: a light sheen falling from the top edge over a thin tint, a strong blur that also lifts
+     the colour behind it, a bright rim, and inner highlights that give the pane an edge and some depth. */
+  background:
+    linear-gradient(160deg, rgba(255, 255, 255, 0.42) 0%, rgba(255, 255, 255, 0.08) 38%, rgba(255, 255, 255, 0) 62%, rgba(255, 255, 255, 0.14) 100%),
+    color-mix(in srgb, var(--accent) 7%, transparent);
+  -webkit-backdrop-filter: blur(22px) saturate(180%) brightness(1); backdrop-filter: blur(22px) saturate(180%) brightness(1);
+  /* Where the browser can, the backdrop also goes through the lens filter (components/GlassFilter.tsx): bent and split at the rim. */
+  backdrop-filter: url(#athena-glass) blur(14px) saturate(180%) brightness(1);
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.25),
+    inset 0 0 0 0.5px rgba(20, 18, 15, 0.05),
+    inset 0 18px 36px -24px rgba(255, 255, 255, 0.6),
+    0 1px 2px rgba(20, 18, 15, 0.04), 0 30px 70px -38px rgba(20, 18, 15, 0.32);
   animation: ob-settle 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) 0.08s both;
 }
 .ob-work::before { grid-column: centre; grid-row: centre-start / dock-end; justify-self: center; width: min(calc(100% - 16px), 784px); margin: 12px 0; }
@@ -1888,3 +1899,19 @@ input[type="checkbox"] { accent-color: var(--accent); }
 .panel-grip:focus-visible span, .resizing > .panel-grip span { background: var(--accent); height: 64px; margin-top: -32px; }
 .resizing, .resizing * { cursor: col-resize !important; user-select: none; }
 .resizing .chat, .resizing .chat::before, .resizing .agent-panel, .resizing .ob-panel { transition: none !important; animation: none !important; }
+
+/* A run paused on the founder: what it waits on, in the accent, so it can't be missed. */
+.paused {
+  margin: 0 0 12px; padding: 12px 14px; border-radius: 12px;
+  background: color-mix(in srgb, var(--accent) 9%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  border-left: 3px solid var(--accent);
+  animation: ob-settle 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.paused strong { display: flex; align-items: center; gap: 8px; color: var(--accent-ink); font-size: 14px; }
+.paused strong::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); animation: paused-pulse 1.6s ease-in-out infinite; }
+.paused p { margin: 4px 0 0; font-size: 13px; color: var(--fg); }
+.paused-go { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 8px; }
+.paused-go:empty { display: none; }
+@keyframes paused-pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(0.8); } }
+@media (prefers-reduced-motion: reduce) { .paused, .paused strong::before { animation: none; } }

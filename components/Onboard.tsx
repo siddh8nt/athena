@@ -256,6 +256,8 @@ export function Onboard({
     if (extra.said) setItems(undefined);
     let got = false;
     let early = false;
+    // The run stopped for the founder's answers (a question, or sources that disagree): not a run to send again.
+    let waiting = false;
     let read: { kb: Knowledge; settled: Settled } | undefined;
     try {
       await stream(form, (e) => {
@@ -274,8 +276,13 @@ export function Onboard({
           read = { kb: e.knowledge, settled: e.settled };
           onFacts(liveFacts(e.knowledge, e.settled));
           if (e.knowledge.conflicts.length)
-            setLines((l) => addEvent(l, said("settle", `Your sources disagree on ${e.knowledge.conflicts.length === 1 ? "one thing" : `${e.knowledge.conflicts.length} things`}: my pick is in use until you choose`), n));
-        } else if (e.type === "ask") setAsks((a) => [...a.filter((x) => x.question !== e.ask.question), e.ask]);
+            setLines((l) => addEvent(l, said("settle", `Your sources disagree on ${e.knowledge.conflicts.length === 1 ? "one thing" : `${e.knowledge.conflicts.length} things`}: choose below and I'll write the brief from your answers`), n));
+          if (e.knowledge.conflicts.some((c) => picked[c.id] === undefined)) waiting = true;
+        } else if (e.type === "ask") {
+          // Each run numbers its questions from one: the run's number keeps a new question from showing an old answer.
+          waiting = true;
+          setAsks((a) => [...a.filter((x) => x.question !== e.ask.question), { ...e.ask, id: `${e.ask.id}-r${n}` }]);
+        }
         else if (e.type === "brief" && e.early) {
           early = true;
           onBrief(e.brief, [], read ? liveFacts(read.kb, read.settled) : [], true);
@@ -296,12 +303,14 @@ export function Onboard({
     setRunning(false);
     setThinking(undefined);
     setLines((l) => settleRun(l, n));
-    if (!got) setNote("Send it again and I'll pick up from here.");
+    if (!got && !waiting) setNote("Send it again and I'll pick up from here.");
   }
 
   // Messages, answers, choices and files given while a run is going wait for it, then go in together.
   useEffect(() => {
-    if (!running && (pending.length || queued.length || again)) {
+    // Answers wait until every question and disagreement is answered, then go in together and the brief is written.
+    const open = asks.some((q) => !(q.id in answers)) || !!kb?.conflicts.some((c) => picked[c.id] === undefined);
+    if (!running && (queued.length || ((pending.length || again) && !open))) {
       const a = pending;
       const q = queued;
       setPending([]);
@@ -310,7 +319,7 @@ export function Onboard({
       void run({ answers: a, said: q.join("\n") || undefined });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [running, pending, queued, again]);
+  }, [running, pending, queued, again, asks, answers, kb, picked]);
 
   useEffect(() => {
     end.current?.scrollIntoView({ block: "end", behavior: "smooth" });
@@ -318,11 +327,14 @@ export function Onboard({
 
   const answer = (q: Asked, a: string) => {
     setAnswers((x) => ({ ...x, [q.id]: a }));
-    if (a) setPending((p) => [...p, { question: q.question, answer: a }]);
+    // Skip goes with the option Athena recommended.
+    const given = a || q.assumed;
+    if (given) setPending((p) => [...p, { question: q.question, answer: given }]);
   };
 
   const settle = (id: string, s: Settlement) => {
-    if ((picked[id] ?? inUse[id]) === s) return;
+    // Choosing the pick already in use still counts as the founder's answer.
+    if (picked[id] === s) return;
     setPicked((p) => ({ ...p, [id]: s }));
     setAgain(true);
   };
@@ -331,7 +343,11 @@ export function Onboard({
   // mix with caveats) is read by the model into which values still hold and one fact in the founder's terms.
   const answerConflict = async (c: Conflict, a: string) => {
     setTypedFor((x) => ({ ...x, [c.id]: a }));
-    if (!a) return;
+    // Skip keeps Athena's pick, as the founder's choice.
+    if (!a) {
+      setPicked((p) => ({ ...p, [c.id]: inUse[c.id] ?? c.recommended }));
+      return setAgain(true);
+    }
     const labels = conflictLabels(c);
     const exact = labels.findIndex((l) => l === a);
     if (exact >= 0) return settle(c.id, exact);
@@ -590,12 +606,17 @@ export function Onboard({
 
   // The workspace.
   const panel = had || !!kb;
+  const waitingOnYou = !running && (asks.some((q) => !(q.id in answers)) || !!kb?.conflicts.some((c) => picked[c.id] === undefined));
   const now = items?.find((i) => i.state === "now");
   const lastLive = [...lines].reverse().find((l) => l.ev.status === "running");
   // Between steps the next one on the plan is what it's on; once the plan is through, it's writing it all up.
   const between = items?.find((i) => i.state === "todo")?.step ?? (lines.some((l) => l.run === runs.current && l.ev.tool !== "you") ? "Putting it all together" : "Reading what you gave me");
-  const status = running ? (now?.step ?? (lastLive ? lineText(lastLive.ev) : thinking ?? between)) : had ? "Your brief is written" : "Ready when you are";
+  const status = running ? (now?.step ?? (lastLive ? lineText(lastLive.ev) : thinking ?? between)) : waitingOnYou ? "Paused until you answer" : had ? "Your brief is written" : "Ready when you are";
   const conflicts = kb?.conflicts.length ?? 0;
+  // What the brief waits on: questions not yet answered and disagreements not yet chosen.
+  const openAsks = asks.filter((q) => !(q.id in answers)).length;
+  const openConflicts = kb?.conflicts.filter((c) => picked[c.id] === undefined).length ?? 0;
+  const paused = !running && (openAsks > 0 || openConflicts > 0);
   // The run's progress: the agent's own plan when it has written one, else the steps shown so far.
   const runLines = lines.filter((l) => l.run === runs.current && l.ev.tool !== "you");
   const progressSteps: ProgressStep[] = items?.length
@@ -770,6 +791,15 @@ export function Onboard({
             </li>
           )}
         </ol>
+        {paused && (
+          <div className="paused" role="status">
+            <strong>Paused until you answer</strong>
+            <p>
+              I&apos;ll write your brief from your answers.{" "}
+              {[openAsks ? `Answer ${openAsks === 1 ? "the question" : `the ${openAsks} questions`}` : "", openConflicts ? `choose where your sources disagree (${openConflicts})` : ""].filter(Boolean).join(" and ").replace(/^c/, "C")} below, and I&apos;ll carry on.
+            </p>
+          </div>
+        )}
         {asks.length > 0 && (
           <div className="onboard-asks">
             {asks.map((q) => (

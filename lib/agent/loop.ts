@@ -164,7 +164,7 @@ const HEDGE_MS = 10_000;
 const clamp = (v: number | undefined, d: number, max: number) => (typeof v === "number" && Number.isFinite(v) && v > 0 ? Math.min(v, max) : d);
 
 /** Runs one goal. Resolves when the answer (or the fallback's plan) has been sent; never throws. */
-export async function runAgent(run: AgentRun): Promise<{ answered: boolean; reason?: string; state: AgentState; qlooCalls: number; ms: number }> {
+export async function runAgent(run: AgentRun): Promise<{ answered: boolean; reason?: string; paused?: boolean; state: AgentState; qlooCalls: number; ms: number }> {
   const budget: AgentBudget = { qloo: clamp(run.budget?.qloo, DEFAULT_BUDGET.qloo, MAX.qloo), ms: clamp(run.budget?.ms, DEFAULT_BUDGET.ms, MAX.ms), turns: clamp(run.budget?.turns, DEFAULT_BUDGET.turns, MAX.turns) };
   const tools = run.tools ?? TOOLS;
   const byName = toolByName(tools);
@@ -346,6 +346,8 @@ export async function runAgent(run: AgentRun): Promise<{ answered: boolean; reas
       }),
     );
     turns.push({ role: "user", parts: responses });
+    // A question the founder answers first (a run that waits): the run stops here, and starts again with the answer.
+    if (state.paused) return { ...ended(false, "waiting for the founder"), paused: true };
   }
 
   // The fix-up round didn't come back: the answer as checked goes out, without the parts that failed the check.

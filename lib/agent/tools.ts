@@ -46,6 +46,12 @@ export type AgentState = {
   probes: string[];
   geography?: Geography;
   asks: number;
+  /** Questions allowed this run (ask_founder); 2 unless the run sets more. */
+  maxAsks?: number;
+  /** The founder answers before this run's results: an ask pauses the run, which starts again with the answers. */
+  waits?: boolean;
+  /** Set when a question was asked on a run that waits: the loop ends after this turn. */
+  paused?: boolean;
   /** The last ranking (§23.2 step 5) and what it was computed from. */
   fits?: FitsResult;
   evidence?: CrowdEvidence[];
@@ -624,7 +630,7 @@ export const TOOLS: Tool[] = [
     for: ["analyst", "scout", "navigator", "rep", "matchmaker", "promoter"],
     description:
       "Asks the founder something only they know: budget, goals, margins, capacity, constraints, where they sell now. Never taste (Qloo answers that). Give 2–4 options built from what you've found, the one you recommend first. " +
-      "The founder answers later; you carry on now with your recommended option as an assumption and say so. At most 2 per run.",
+      "The founder answers later; you carry on now with your recommended option as an assumption and say so. At most 2 per run, unless your instructions allow more.",
     properties: {
       question: { type: "string" },
       options: { type: "array", items: { type: "object", properties: { label: { type: "string" }, hint: { type: "string" } }, required: ["label"] }, description: "2–4 options, the recommended one first." },
@@ -634,11 +640,15 @@ export const TOOLS: Tool[] = [
     qloo: () => 0,
     async run(a, { state, ask }) {
       const options = (Array.isArray(a.options) ? a.options : []).map((o) => ({ label: str((o as { label?: unknown })?.label, 80), hint: str((o as { hint?: unknown })?.hint, 120) || undefined })).filter((o) => o.label).slice(0, 4);
-      if (state.asks >= 2) return { summary: "two questions asked already; carry on with assumptions", data: { asked: false } , status: "thin" };
+      if (state.asks >= (state.maxAsks ?? 2)) return { summary: "the questions for this run are asked; carry on with assumptions", data: { asked: false } , status: "thin" };
       if (options.length < 2) return { summary: "a question needs 2–4 options", data: { asked: false }, status: "empty" };
       state.asks++;
       const q: FounderQuestion = { question: str(a.question, 200), why: str(a.why, 200), options, multi: a.multi_select === true, assumed: options[0].label };
       ask(q);
+      if (state.waits) {
+        state.paused = true;
+        return { summary: "asked; waiting for the founder's answer", data: { asked: true, note: "Your run pauses after this turn and starts again with the founder's answer in founder_answers." } };
+      }
       return { summary: `asked; assuming "${q.assumed}" for now`, data: { asked: true, assumed: q.assumed, note: "The founder hasn't answered. Continue with the assumed answer and list it under assumptions." } };
     },
   },

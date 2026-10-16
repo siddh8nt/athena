@@ -12,7 +12,7 @@ import { Onboard } from "./Onboard";
 import { Fits, When, tiersFor } from "./Fits";
 import { StrategyCard, StrategyHead, StrategyPending } from "./Strategy";
 import { fromCity, fromCrowd, type Handoff } from "@/lib/agent/handoffs";
-import { Dashboard, GoalsBar, Handoffs, INPUTS, SpecialistWorkspace, TeamAsks, TeamPanel, WhatsWorking, WorkView, useTeam, type TeamLive } from "./Team";
+import { Dashboard, GoalsBar, Handoffs, INPUTS, PausedForYou, SpecialistWorkspace, TeamAsks, TeamPanel, WhatsWorking, WorkView, useTeam, type TeamLive } from "./Team";
 import type { StrategyView } from "./Strategy";
 import type { Asked } from "./Question";
 import type { AgentStreamEvent } from "@/lib/agent/loop";
@@ -599,6 +599,7 @@ export function Journey() {
                 {view === "dashboard" ? "Open the dashboard" : `See ${workOf(view)}`}
               </button>
             </div>
+            <PausedForYou live={tm.live} view={view} onGo={tm.setActive} />
             {inWorkspace ? (
               <div className="msgs spec-wrap agent-switch" key={`msgs-${view}`}>
                 <SpecialistWorkspace id={inWorkspace} live={tm.live} team={team} onAnswer={tm.answer} />

@@ -87,6 +87,8 @@ export type TeamEvent =
   | { type: "step"; agent: AgentId; event: AgentEvent }
   | { type: "ask"; agent: AgentId; ask: Asked }
   | { type: "work"; agent: SpecialistId; work: Work }
+  /** A specialist that needs what another is waiting on the founder for: it waits too, and runs once they've answered. */
+  | { type: "held"; agent: SpecialistId; on: SpecialistId }
   | { type: "reply"; text: string; agent?: SpecialistId }
   /** The crowds and ranking after the Analyst measured, probed or re-ranked, for the journey to keep. */
   | { type: "memory"; crowds?: CrowdsResult; seed?: SeedInput; fits?: FitsResult; probes: string[]; calendar?: FitsRun["calendar"]; reach?: FitsRun["reach"]; answer?: FitsRun["answer"]; sources?: FitsRun["sources"] }

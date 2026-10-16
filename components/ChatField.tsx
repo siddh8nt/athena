@@ -16,10 +16,15 @@ const HOST = ".ob-first, .ob-work, .journey-main.agent-stage, .landing-page";
 const LANDING = ".landing-page";
 const WORKING = ".ob-live, .ob-think, .ob-agent-live, .streaming, .typing, .step-running, .live-steps .step-active, .team-working";
 const COLUMN = ".ob-centre > .ob-transcript, .agent-stage .msgs, .ob-first .ob-box";
-const CHARS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-const CW = 9, CH = 14;
+// A machine's vocabulary, never more than two characters: hex bytes, bit pairs and short pieces of code syntax, so from a
+// distance the field reads as code. Repeating a set raises how often it shows.
+const HEX = Array.from({ length: 256 }, (_, n) => n.toString(16).toUpperCase().padStart(2, "0"));
+const BITS = ["00", "01", "10", "11"];
+const SYNTAX = ["{}", "[]", "()", "=>", "!=", "==", "&&", "||", "//", "/*", "*/", "<>", "::", "->", "++", "+=", "0x", "\\n", "fn", "if", "?:", ";", "#", "$", "%", "@", "&", "|", "~", "^"];
+const TOKENS = [...HEX, ...Array(16).fill(BITS).flat(), ...Array(3).fill(SYNTAX).flat()];
+const CW = 22, CH = 16;
 
-const pick = () => CHARS[(Math.random() * CHARS.length) | 0];
+const pick = () => TOKENS[(Math.random() * TOKENS.length) | 0];
 
 export function ChatField() {
   const [host, setHost] = useState<HTMLElement | null>(null);
@@ -72,7 +77,7 @@ function Field({ host, busy }: { host: HTMLElement; busy: boolean }) {
     const ptr = { x: 0, y: 0, on: false, s: 0 };
     let rings: { x: number; y: number; age: number }[] = [];
     const HOVER = 120, RING = 520, RING_LIFE = 1.1, RISE = 5;
-    const LIFE = [1.6, 3.2], REST = [9, 26];
+    const LIFE = [1.6, 3.2], REST = [5, 16];
     const between = ([a, b]: number[]) => a + Math.random() * (b - a);
 
     // A fresh cycle for one cell (age below zero is its rest). `anywhere` starts it at a random point of a cycle, so the
@@ -92,7 +97,7 @@ function Field({ host, busy }: { host: HTMLElement; busy: boolean }) {
       cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.font = `500 11px ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace`;
-      ctx.textBaseline = "top";
+      ctx.textBaseline = "top"; ctx.textAlign = "center";
       cols = Math.ceil(w / CW); rows = Math.ceil(h / CH) + 1;
       const n = cols * rows;
       chars = new Array(n); age = new Float32Array(n); life = new Float32Array(n);
@@ -141,7 +146,7 @@ function Field({ host, busy }: { host: HTMLElement; busy: boolean }) {
           } else {
             ctx.fillStyle = `rgba(20,18,15,${(e * (a + p * 0.3) * lane(x)).toFixed(3)})`;
           }
-          ctx.fillText(chars[i], x, y);
+          ctx.fillText(chars[i], x + CW / 2, y);
         }
       }
     };

@@ -35,6 +35,10 @@ export type TeamLive = {
   /** The founder's last question to each agent, shown at the top of its workspace. */
   asked: Partial<Record<AgentId, string>>;
   running: number;
+  /** Specialists waiting on another's question to the founder, with the one they wait on and the run they're from. */
+  held: Partial<Record<SpecialistId, { on: SpecialistId; n: number }>>;
+  /** Questions that pause their run until answered, by id. */
+  blocking: Record<string, { agent: AgentId; n: number }>;
 };
 
 /** What the journey shows: one agent's workspace, or the founder's dashboard (§23.2 step 8.4h). */
@@ -42,7 +46,7 @@ export type View = AgentId | "dashboard";
 /** The option on every "What next?" that opens the dashboard. */
 export const SEE_DASHBOARD = "See your dashboard";
 
-const emptyLive = (): TeamLive => ({ status: {}, lines: {}, replies: {}, asks: [], answers: {}, asked: {}, running: 0 });
+const emptyLive = (): TeamLive => ({ status: {}, lines: {}, replies: {}, asks: [], answers: {}, asked: {}, running: 0, held: {}, blocking: {} });
 
 /** Streams the team route; each event lands in the journey's team state or this visit's live view. */
 export function useTeam(p: {
@@ -66,6 +70,12 @@ export function useTeam(p: {
   const custom = useRef("");
   // The handoffs Athena offers in the chat after a run, by their label (§23.2 step 8.3d).
   const offered = useRef(new Map<string, Handoff>());
+  // An agent's questions come before its results: a run that asks pauses, and once the founder has answered every
+  // question from it, the agent runs again on the same goal with the answers.
+  const open = useRef(new Map<string, { agent: AgentId; n: number }>());
+  const runs = useRef(new Map<number, Record<string, unknown>>());
+  const liveRef = useRef(live);
+  liveRef.current = live;
 
   const handle = (e: TeamEvent, n: number) => {
     if (e.type === "goals") p.setTeam((t) => ({ ...t, proposed: e.goals }));
@@ -81,9 +91,16 @@ export function useTeam(p: {
       // Each run numbers its questions from one, so the run's own number keeps them apart: a later run's first question
       // never hides, or shares a Skip with, an earlier one still showing.
       const id = e.ask.id === "custom" ? e.ask.id : `${e.ask.id}-r${n}`;
+      if (id !== "custom") {
+        open.current.set(id, { agent: e.agent, n });
+        setLive((l) => ({ ...l, blocking: { ...l.blocking, [id]: { agent: e.agent, n } } }));
+      }
       setLive((l) => ({ ...l, asks: [...l.asks.filter((a) => a.id !== id), { ...e.ask, id, agent: e.agent }], answers: omit(l.answers, id) }));
     }
-    else if (e.type === "work") {
+    else if (e.type === "held") {
+      const h = e;
+      setLive((l) => ({ ...l, held: { ...l.held, [h.agent]: { on: h.on, n } } }));
+    } else if (e.type === "work") {
       if (e.agent !== "analyst") offerNext(e.work);
       p.setTeam((t) => ({
         ...t,
@@ -104,11 +121,15 @@ export function useTeam(p: {
   /** One call to the team route. A dropped stream settles quietly: running lines go, the last results stay. */
   const post = async (action: string, extra: Record<string, unknown> = {}) => {
     const n = ++run.current;
+    runs.current.set(n, extra);
     setLive((l) => ({ ...l, running: l.running + 1 }));
     const body = p.body();
     // The founder's answers in the journey (the growth question) and to the team's own questions, read as facts.
     const given = Array.isArray(body.answers) ? (body.answers as { question: string; answer: string }[]) : [];
-    const asked = [...given, ...live.asks.filter((a) => live.answers[a.id]).map((a) => ({ question: a.question, answer: live.answers[a.id] }))];
+    const now = liveRef.current;
+    // A skipped question counts as its recommended option, so the agent doesn't ask it again.
+    const facts = now.asks.filter((a) => a.id in now.answers && !/^(goals|custom|next_)/.test(a.id));
+    const asked = [...given, ...facts.filter((a) => now.answers[a.id] || a.assumed).map((a) => ({ question: a.question, answer: now.answers[a.id] || a.assumed }))];
     try {
       const res = await fetch("/api/team", {
         method: "POST",
@@ -187,7 +208,29 @@ export function useTeam(p: {
 
   /** The founder answered a question from the team: the goals, a custom goal's closest missions, or a founder-only fact. */
   const answer = (q: TeamAsk, a: string) => {
+    // Seen at once by a run started below, before React applies the update.
+    liveRef.current = { ...liveRef.current, answers: { ...liveRef.current.answers, [q.id]: a } };
     setLive((l) => ({ ...l, answers: { ...l.answers, [q.id]: a } }));
+    const o = open.current.get(q.id);
+    if (o) {
+      // The run carries on once every question it asked is answered: whoever asked, and whoever waited on them, run
+      // again on the same goals with the answers.
+      open.current.delete(q.id);
+      setLive((l) => ({ ...l, blocking: omitKey(l.blocking, q.id) }));
+      if ([...open.current.values()].some((x) => x.n === o.n)) return;
+      const asked = new Set(liveRef.current.asks.filter((x) => x.id.endsWith(`-r${o.n}`)).map((x) => x.agent));
+      const waited = Object.entries(liveRef.current.held).filter(([, h]) => h?.n === o.n).map(([id]) => id as SpecialistId);
+      const who = new Set<AgentId>([...asked, ...waited]);
+      const before = runs.current.get(o.n) ?? {};
+      const goals = ((before.goals as Goal[] | undefined) ?? []).map((g) => ({ ...g, team: g.team.filter((x) => who.has(x)) })).filter((g) => g.team.length);
+      setActive(o.agent);
+      setLive((l) => ({
+        ...l,
+        held: Object.fromEntries(Object.entries(l.held).filter(([, h]) => h?.n !== o.n)),
+        status: { ...l.status, ...Object.fromEntries([...who].map((id) => [id, { state: "working", step: "Working from your answers" }])) },
+      }));
+      return void post("run", { ...before, goals: goals.length ? goals : [{ id: `answered_${o.agent}`, label: "Your answers", why: "With your answers", team: [o.agent], conflicts: [] }] });
+    }
     const proposed = latestTeam.current.proposed ?? [];
     if (q.id === "goals") {
       const picked = a ? pickGoals(proposed, a) : proposed.slice(0, 1);
@@ -241,6 +284,7 @@ export function useTeam(p: {
   return { live, active, setActive, propose, answer, askAthena, askSpecialist, refresh, mark, start, measure, handoff };
 }
 
+const omitKey = <T,>(o: Record<string, T>, k: string): Record<string, T> => Object.fromEntries(Object.entries(o).filter(([x]) => x !== k));
 const omit = (o: Record<string, string>, k: string) => Object.fromEntries(Object.entries(o).filter(([x]) => x !== k));
 
 /** An agent's status from what it last returned: done with its last result, or idle. */
@@ -345,6 +389,38 @@ export function GoalsBar({ goals: all }: { goals: Goal[] }) {
         </li>
       ))}
     </ol>
+  );
+}
+
+const and = (xs: string[]) => (xs.length > 1 ? `${xs.slice(0, -1).join(", ")} and ${xs.at(-1)}` : xs[0] ?? "");
+
+/** Shown whenever a run is paused on the founder: who is asking, who waits on it, and a way to each question. */
+export function PausedForYou({ live, view, onGo }: { live: TeamLive; view: View; onGo: (id: AgentId) => void }) {
+  const open = Object.entries(live.blocking).filter(([id]) => !(id in live.answers));
+  if (!open.length) return null;
+  const by = new Map<AgentId, number>();
+  for (const [, b] of open) by.set(b.agent, (by.get(b.agent) ?? 0) + 1);
+  const held = Object.keys(live.held).map((id) => `the ${nameOf(id as AgentId)}`);
+  const asking = [...by.entries()];
+  return (
+    <div className="paused" role="status">
+      <strong>Paused until you answer</strong>
+      <p>
+        {and(asking.map(([id, k]) => `the ${nameOf(id)} has ${k === 1 ? "a question" : `${k} questions`}`)).replace(/^t/, "T")} for you.
+        {held.length > 0 && ` ${and(held).replace(/^t/, "T")} ${held.length > 1 ? "wait" : "waits"} on ${asking.length > 1 ? "them" : "it"}.`} Nothing more is found until you answer{asking.length > 1 || open.length > 1 ? " them all" : ""}.
+      </p>
+      <div className="paused-go">
+        {asking.map(([id]) =>
+          view === id ? (
+            <small key={id} className="muted">The {nameOf(id)}&apos;s {by.get(id)! > 1 ? "questions are" : "question is"} below.</small>
+          ) : (
+            <button key={id} type="button" className="primary" onClick={() => onGo(id)}>
+              Answer the {nameOf(id)}
+            </button>
+          ),
+        )}
+      </div>
+    </div>
   );
 }
 

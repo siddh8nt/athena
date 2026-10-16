@@ -19,7 +19,6 @@ function glide(e: React.MouseEvent, id: string) {
   e.preventDefault();
   const calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   el.scrollIntoView({ behavior: calm ? "auto" : "smooth", block: "start" });
-  history.replaceState(null, "", `#${id}`);
 }
 
 export default function LandingNav() {
@@ -28,12 +27,17 @@ export default function LandingNav() {
   const bar = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    // The page always opens at the top, with the bar above the hero, so the entry plays as designed. A reload would
+    // otherwise come back mid-page, with the bar sitting over the hero. A link to a section still goes to it.
+    history.scrollRestoration = "manual";
+    if (!location.hash) scrollTo(0, 0);
     let raf = 0;
     const update = () => {
       raf = 0;
       const max = document.documentElement.scrollHeight - innerHeight;
       bar.current?.style.setProperty("--progress", String(max > 0 ? Math.min(1, scrollY / max) : 0));
       setScrolled(scrollY > 24);
+      document.documentElement.toggleAttribute("data-scrolled", scrollY > 24);
       let current: string | null = null;
       for (const sec of SECTIONS) {
         const el = document.getElementById(sec.id);
@@ -45,7 +49,7 @@ export default function LandingNav() {
     update();
     addEventListener("scroll", onScroll, { passive: true });
     addEventListener("resize", onScroll);
-    return () => { removeEventListener("scroll", onScroll); removeEventListener("resize", onScroll); cancelAnimationFrame(raf); };
+    return () => { removeEventListener("scroll", onScroll); removeEventListener("resize", onScroll); cancelAnimationFrame(raf); document.documentElement.removeAttribute("data-scrolled"); history.scrollRestoration = "auto"; };
   }, []);
 
   return (

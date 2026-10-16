@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import Link from "next/link";
 import s from "./landing.module.css";
 import HeroGlow from "./HeroGlow";
@@ -47,19 +48,36 @@ export default function Landing() {
       <main className={s.main}>
         <HeroGlow className={s.hero}>
           <p className={s.pill}>A growth agent for consumer brands</p>
-          <h1 className={s.title}>Your customers aren&apos;t&nbsp;a demographic.</h1>
+          <h1 className={s.title} aria-label="Stop selling to everyone.">
+            {/* Each word rises out of its own line mask on entry; the last two never part. */}
+            <span aria-hidden>
+              <span className={s.word} style={{ "--i": 0 } as CSSProperties}><span>Stop</span></span>{" "}
+              <span className={s.word} style={{ "--i": 1 } as CSSProperties}><span>selling</span></span>{" "}
+              <span className={s.nowrap}>
+                <span className={s.word} style={{ "--i": 2 } as CSSProperties}><span>to</span></span>{" "}
+                <span className={s.word} style={{ "--i": 3 } as CSSProperties}><span>everyone.</span></span>
+              </span>
+            </span>
+          </h1>
           <p className={s.sub}>
-            &ldquo;Women, 25 to 34&rdquo; never bought anything. Athena finds the people who&apos;d love what you make by what they already love, and
-            tells you where they are, who to team up with, and when to show up.
+            Your best customers already exist. You just haven&apos;t met them yet. Athena reads the taste of millions of people to spot the crowds
+            already wired to love your brand. Then it puts you in their path: the right cities, the right shelves, the right collabs, at the right
+            moment.
           </p>
           <Link href="/plan?new=1" className={s.cta}>Get started <span aria-hidden>→</span></Link>
         </HeroGlow>
 
-        <section id="at-work" className={s.section}>
-          <header className={s.sectionHead}>
-            <span className={s.index}>01</span>
-            <h2>Athena at work</h2>
-          </header>
+        {/* On the first screen only the top of the product picture shows under the hero; its title opens above it as
+            soon as the page moves, so the title still comes first. */}
+        <section id="at-work" className={`${s.section} ${s.peek}`}>
+          <div className={s.peekHead}>
+            <div>
+              <header className={s.sectionHead}>
+                <span className={s.index}>01</span>
+                <h2>Athena at work</h2>
+              </header>
+            </div>
+          </div>
           <figure className={s.shot} aria-label="Athena at work on an example brand">
             <div className={s.panes}>
               <div className={s.plan}>

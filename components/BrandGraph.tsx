@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { StepTimer } from "./Progress";
 import { forceCollide, forceLink, forceManyBody, forceRadial, forceSimulation, type SimulationLinkDatum, type SimulationNodeDatum } from "d3-force";
 import { zoom, zoomIdentity, type ZoomTransform } from "d3-zoom";
 import { select } from "d3-selection";
@@ -110,13 +111,28 @@ export function BrandGraph(props: Props) {
       {held.map(([run, h]) => (
         <StaleFlag key={run} run={run} line={staleLine(run, h)} onRerun={() => onRerun(run)} />
       ))}
-      {working && <p className="bg-working small"><span className="spin" aria-hidden /> <span className="shimmer-text">{working}</span></p>}
+      {working && (
+        <p className="bg-working" role="status">
+          <span className="spin" aria-hidden /> <span className="shimmer-text">{working}</span>
+          <StepTimer />
+        </p>
+      )}
       {questions.map((q) => (
         <Question key={q.id} q={q} onAnswer={(a) => onAnswer(q, a)} />
       ))}
 
       {/* The graph and the list read the same input and edit through the same onEdit, so an edit in either shows in both. */}
-      <GraphView input={input} flash={flash} narrow={narrow} onEdit={onEdit} />
+      {/* While it groups, the graph says so over itself: the themes are still to land (founder, 17 Oct). */}
+      <div className={`bg-graph-hold${working ? " loading" : ""}`} aria-busy={!!working}>
+        <GraphView input={input} flash={flash} narrow={narrow} onEdit={onEdit} />
+        {working && (
+          <div className="bg-veil" aria-hidden>
+            <span className="spin" />
+            <strong>Grouping into themes</strong>
+            <small>The graph fills in when it&apos;s done</small>
+          </div>
+        )}
+      </div>
       <ListView input={input} flash={flash} onEdit={onEdit} />
 
       {!!b.research?.sources.length && (

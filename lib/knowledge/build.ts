@@ -187,7 +187,21 @@ export async function buildKnowledge(input: KnowledgeInput, emit: (e: AgentEvent
           "compare",
           "Putting it all together",
           undefined,
-          () => compareFacts(facts),
+          // Each topic group is its own Gemini call, run side by side: each shows as a line under the step.
+          () =>
+            compareFacts(facts, {
+              progress: (p) =>
+                emit({
+                  t: Date.now() - t0,
+                  tool: "compare_group",
+                  why: `Comparing ${p.name}`,
+                  status: p.done ? "ok" : "running",
+                  callIds: [],
+                  summary: p.done ? "" : plural(p.facts, "fact"),
+                  line: p.done ? `Compared ${p.name}: ${[p.done.same ? `${plural(p.done.same, "repeat")} merged` : "", p.done.conflicts ? `${plural(p.done.conflicts, "place")} your sources disagree` : ""].filter(Boolean).join(", ") || "they agree"}` : undefined,
+                  under: "Putting it all together",
+                }),
+            }),
           (m) => ({
             summary: `${plural(m.facts.length, "fact")} after merging what said the same thing${m.conflicts.length ? `; ${plural(m.conflicts.length, "place")} where your sources disagree, for you to settle` : ""}`,
             line: `Put it all together: ${plural(m.facts.length, "fact")}${m.conflicts.length ? `, and ${plural(m.conflicts.length, "place")} where your sources disagree, for you to settle` : ", and your sources agree"}`,

@@ -9,6 +9,47 @@ import type { FounderQuestion } from "@/lib/agent/tools";
 
 export type Asked = FounderQuestion & { id: string };
 
+export type TrayItem = { q: Asked; answer?: string; onAnswer: (answer: string) => void };
+
+/** The open questions, tucked above the reply box one at a time, the way Claude Code asks: "2 of 4", arrows between them,
+ *  and answering one moves straight to the next. Answered ones leave the tray (the chat keeps them as one-line records);
+ *  an answer that lands later (a conflict being settled) leaves at once, so it can't be answered twice. */
+export function QuestionTray({ items }: { items: TrayItem[] }) {
+  const [sent, setSent] = useState<string[]>([]);
+  const [at, setAt] = useState<string>();
+  const open = items.filter((it) => it.answer === undefined && !sent.includes(it.q.id));
+  if (!open.length) return null;
+  const i = Math.max(0, open.findIndex((it) => it.q.id === at));
+  const cur = open[i];
+  const go = (k: number) => setAt(open[(k + open.length) % open.length].q.id);
+  return (
+    <section className="q-tray" aria-label="Questions for you">
+      {open.length > 1 && (
+        <header className="q-tray-head">
+          <span className="small muted">
+            Question {i + 1} of {open.length}
+          </span>
+          <span className="q-tray-nav">
+            <button type="button" className="linkish" aria-label="Previous question" onClick={() => go(i - 1)}>‹</button>
+            <button type="button" className="linkish" aria-label="Next question" onClick={() => go(i + 1)}>›</button>
+          </span>
+        </header>
+      )}
+      <Question
+        key={cur.q.id}
+        q={cur.q}
+        onAnswer={(a) => {
+          setSent((s) => [...s, cur.q.id]);
+          // Straight on to the next open one, in order.
+          const next = open[i + 1] ?? open[0];
+          setAt(next && next !== cur ? next.q.id : undefined);
+          cur.onAnswer(a);
+        }}
+      />
+    </section>
+  );
+}
+
 export function Question({ q, answer, onAnswer }: { q: Asked; answer?: string; onAnswer: (answer: string) => void }) {
   const [picked, setPicked] = useState<string[]>([]);
   const [other, setOther] = useState("");

@@ -424,19 +424,6 @@ export function PausedForYou({ live, view, onGo }: { live: TeamLive; view: View;
   );
 }
 
-/** The team's questions for one agent, through step 3's question component. */
-export function TeamAsks({ live, agent, onAnswer }: { live: TeamLive; agent: AgentId; onAnswer: (q: TeamAsk, a: string) => void }) {
-  const mine = live.asks.filter((a) => a.agent === agent);
-  if (!mine.length) return null;
-  return (
-    <div className="onboard-asks">
-      {mine.map((q) => (
-        <Question key={q.id} q={q} answer={live.answers[q.id]} onAnswer={(a) => onAnswer(q, a)} />
-      ))}
-    </div>
-  );
-}
-
 /** One specialist's workspace (§23.2 step 8b–d, g): its transcript, then its work. */
 export function SpecialistWorkspace({ id, live, team, onAnswer }: { id: SpecialistId; live: TeamLive; team: TeamState; onAnswer: (q: TeamAsk, a: string) => void }) {
   const s = specialist(id);
@@ -460,7 +447,14 @@ export function SpecialistWorkspace({ id, live, team, onAnswer }: { id: Speciali
       {replies.map((r, i) => (
         <p key={i} className="spec-reply">{r}</p>
       ))}
-      <TeamAsks live={live} agent={id} onAnswer={onAnswer} />
+      {/* Answered asks stay here as one-line records; the open ones wait in the tray above the box. */}
+      {live.asks.some((q) => q.agent === id && q.id in live.answers) && (
+        <div className="onboard-asks">
+          {live.asks.filter((q) => q.agent === id && q.id in live.answers).map((q) => (
+            <Question key={q.id} q={q} answer={live.answers[q.id]} onAnswer={(a) => onAnswer(q, a)} />
+          ))}
+        </div>
+      )}
       {!work && st.state === "idle" && !lines.length && <p className="small muted">Done when: {s.doneWhen}</p>}
     </div>
   );

@@ -8,14 +8,13 @@ import { createPortal } from "react-dom";
 // the characters around it, and a click sends an ochre ring rippling out through them. While an agent works the field
 // quickens a little (shorter rests, a few ochre glints) and settles back when the work ends. Visual only: it reads nothing but
 // the page's own "working" marks, and it mounts itself into whichever chat surface is on screen. On the landing page it
-// covers the window, fixed behind the scrolling content, with no lane: the titles keep their own clearings. One canvas, one
+// covers the window, fixed behind the scrolling content; the titles keep their own clearings. One canvas, one
 // requestAnimationFrame loop held to ~24 frames a second, paused while the tab is hidden; a still frame under
 // prefers-reduced-motion.
 
 const HOST = ".ob-first, .ob-work, .journey-main.agent-stage, .landing-page";
 const LANDING = ".landing-page";
 const WORKING = ".ob-live, .ob-think, .ob-agent-live, .streaming, .typing, .step-running, .live-steps .step-active, .team-working";
-const COLUMN = ".ob-centre > .ob-transcript, .agent-stage .msgs, .ob-first .ob-box";
 // A machine's vocabulary, never more than two characters: hex bytes, bit pairs and short pieces of code syntax, so from a
 // distance the field reads as code. Repeating a set raises how often it shows.
 const HEX = Array.from({ length: 256 }, (_, n) => n.toString(16).toUpperCase().padStart(2, "0"));
@@ -68,9 +67,8 @@ function Field({ host, busy }: { host: HTMLElement; busy: boolean }) {
     // characters make it up keeps changing; nothing settles into fixed shapes or fixed holes.
     let chars: string[] = [], age = new Float32Array(0), life = new Float32Array(0);
     let glow = new Float32Array(0), seed = new Float32Array(0);
-    let clear = { x: 0, half: 0 };
     let wake = live.current ? 1 : 0;
-    let raf = 0, last = 0, measured = 0;
+    let raf = 0, last = 0;
     // The whole field rises very slowly; rows that leave the top come back in at the bottom, fresh.
     let oy = 0, base = 0;
     // The pointer, in field coordinates, with an eased presence; and the rings that clicks send out.
@@ -104,20 +102,10 @@ function Field({ host, busy }: { host: HTMLElement; busy: boolean }) {
       glow = new Float32Array(n); seed = new Float32Array(n);
       for (let i = 0; i < n; i++) born(i, true);
       oy = 0; base = 0;
-      measure();
       if (calm) draw();
     };
 
-    // The conversation sits on a paper sheet; the field eases off along the sheet's edges, wherever the open panel has pushed it.
-    const measure = () => {
-      const hr = host.getBoundingClientRect();
-      const k = hr.width ? w / hr.width : 1;
-      const col = host.querySelector(COLUMN)?.getBoundingClientRect();
-      const x = col && col.width ? (col.left - hr.left + col.width / 2) * k : w / 2;
-      const half = col && col.width ? Math.max(0, (col.width * k) / 2 - 60) : Math.min(300, w * 0.3);
-      clear = { x, half };
-    };
-    const lane = (x: number) => fixed ? 1 : 0.45 + 0.55 * Math.min(1, Math.max(0, (Math.abs(x - clear.x) - clear.half - 24) / 90));
+    // The conversation sits on clear glass, so the field runs at one strength everywhere and shows through it (founder, 17 Oct).
     // The pointer's pull at a point: 0 far away, up to 1 under it.
     const near = (x: number, y: number) => {
       if (ptr.s < 0.01) return 0;
@@ -142,9 +130,9 @@ function Field({ host, busy }: { host: HTMLElement; busy: boolean }) {
           if (g > 0.05) {
             ctx.fillStyle = seed[i] > 0.88 ? `rgba(126,43,52,${(g * 0.6).toFixed(3)})` : `rgba(169,121,28,${(g * 0.75).toFixed(3)})`;
           } else if ((p > 0.4 && seed[i] < 0.18) || (wake > 0.5 && seed[i] < 0.025)) {
-            ctx.fillStyle = `rgba(169,121,28,${(e * (0.3 + p * 0.45) * lane(x)).toFixed(3)})`;
+            ctx.fillStyle = `rgba(169,121,28,${(e * (0.3 + p * 0.45)).toFixed(3)})`;
           } else {
-            ctx.fillStyle = `rgba(20,18,15,${(e * (a + p * 0.3) * lane(x)).toFixed(3)})`;
+            ctx.fillStyle = `rgba(20,18,15,${(e * (a + p * 0.3)).toFixed(3)})`;
           }
           ctx.fillText(chars[i], x + CW / 2, y);
         }
@@ -159,7 +147,6 @@ function Field({ host, busy }: { host: HTMLElement; busy: boolean }) {
       last = now;
       wake += ((live.current ? 1 : 0) - wake) * Math.min(1, 0.06 * dt);
       ptr.s += ((ptr.on ? 1 : 0) - ptr.s) * Math.min(1, 0.18 * dt);
-      if (now - measured > 500) { measure(); measured = now; }
 
       // Rise: once a whole row has gone past the top, it becomes the new bottom row, with fresh cycles.
       oy += RISE * sec;

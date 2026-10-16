@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { ACCEPT, TrailView, useBriefChat, type FileChip, type Msg } from "./chat";
 import { BrandGraph, StaleFlag } from "./BrandGraph";
-import { Question } from "./Question";
+import { Question, QuestionTray, type TrayItem } from "./Question";
 import { Galaxy } from "./Galaxy";
 import { CrowdGeography } from "./CrowdGeography";
 import { WithWithout, type AloneRequest } from "./WithWithout";
@@ -12,7 +12,7 @@ import { Onboard } from "./Onboard";
 import { Fits, When, tiersFor } from "./Fits";
 import { StrategyCard, StrategyHead, StrategyPending } from "./Strategy";
 import { fromCity, fromCrowd, type Handoff } from "@/lib/agent/handoffs";
-import { Dashboard, GoalsBar, Handoffs, INPUTS, PausedForYou, SpecialistWorkspace, TeamAsks, TeamPanel, WhatsWorking, WorkView, useTeam, type TeamLive } from "./Team";
+import { Dashboard, GoalsBar, Handoffs, INPUTS, PausedForYou, SpecialistWorkspace, TeamPanel, WhatsWorking, WorkView, useTeam, type TeamLive } from "./Team";
 import type { StrategyView } from "./Strategy";
 import type { Asked } from "./Question";
 import type { AgentStreamEvent } from "@/lib/agent/loop";
@@ -28,7 +28,7 @@ import type { GraphInput } from "@/lib/graph/types";
 import { keepFile, workspace } from "@/lib/knowledge/workspace";
 import { bySource, mergeNotes, themesOf, type Synth } from "@/lib/knowledge/notes";
 import { pacer } from "@/lib/stream/pace";
-import { RunProgress } from "./Progress";
+import { RunProgress, StepTimer } from "./Progress";
 import { PanelGrip } from "./Resize";
 import type { Channel } from "@/lib/journey/growth";
 import { crowdAfterFits, emptyJourney, loadedJourney, type CrowdCard, type CrowdsResult, type Journey as JourneyState } from "@/lib/journey/types";
@@ -549,6 +549,16 @@ export function Journey() {
   const dockEl = <Dock j={j} turn={turn} busy={busy} researching={chat.researching} onReply={(r) => void chat.send(r)} onNext={() => move("growth")} />;
   const analyst = tm.live.status.analyst;
   const analystStep = analyst?.state === "working" ? analyst.step : undefined;
+  // The open chat's questions for the founder, as one list for the tray: a specialist's own asks in its workspace;
+  // in Athena's chat the growth question, the edit questions and Athena's own asks.
+  const teamQs = (id: string): TrayItem[] => tm.live.asks.filter((q) => q.agent === id).map((q) => ({ q, answer: tm.live.answers[q.id], onAnswer: (a: string) => tm.answer(q, a) }));
+  const questions: TrayItem[] = inWorkspace
+    ? teamQs(inWorkspace)
+    : [
+        ...(j.stop === "growth" || j.told ? [{ q: gq, answer: j.told?.answer, onAnswer: answerGrowth }] : []),
+        ...editQs.filter((q) => q.by === "chat").map((q) => ({ q, onAnswer: (a: string) => answer(q, a) })),
+        ...teamQs("athena"),
+      ];
 
   return (
     <div
@@ -587,7 +597,7 @@ export function Journey() {
 
       {onboarding ? (
         <main className="journey-main ob-main">
-          <Onboard brief={brief} files={chat.files} addFiles={chat.addFiles} setFiles={chat.setFiles} onBrief={onBrief} onFacts={onRaw} graph={graphEl} dock={dockEl} />
+          <Onboard brief={brief} files={chat.files} addFiles={chat.addFiles} setFiles={chat.setFiles} onBrief={onBrief} onFacts={onRaw} graph={graphEl} dock={dockEl} grouping={working?.by === "graph" ? working.text : undefined} />
         </main>
       ) : (
         <main className={`journey-main journey-team agent-stage${panelOpen ? " with-panel" : ""}${sheet ? " sheet-on" : ""}`}>
@@ -617,21 +627,19 @@ export function Journey() {
               {busy && live && <li className="msg msg-athena streaming">{live}</li>}
               {queued && <li className="msg msg-athena typing">Finishing my research, then I&apos;ll read that…</li>}
               {working?.by === "chat" && <li className="msg msg-athena typing">{working.text}</li>}
-              {(j.stop === "growth" || j.told) && (
-                <li className="msg-question">
-                  <Question q={gq} answer={j.told?.answer} onAnswer={answerGrowth} />
+              {/* Once the chat has nothing running, the graph's grouping is the work still going: said where the founder is looking. */}
+              {working?.by === "graph" && !busy && !queued && (
+                <li className="msg msg-athena graph-wait" role="status">
+                  <span className="spin" aria-hidden /> <span className="shimmer-text">The Brand Graph is still grouping what I read into themes</span>
+                  <StepTimer />
                 </li>
               )}
-              {editQs.filter((q) => q.by === "chat").map((q) => (
-                <li key={q.id} className="msg-question">
-                  <Question q={q} onAnswer={(a) => answer(q, a)} />
+              {/* Answered questions stay here as one-line records; the open ones wait in the tray above the box. */}
+              {questions.filter((it) => it.answer !== undefined).map((it) => (
+                <li key={it.q.id} className="msg-question">
+                  <Question q={it.q} answer={it.answer} onAnswer={it.onAnswer} />
                 </li>
               ))}
-              {tm.live.asks.some((q) => q.agent === "athena") && (
-                <li className="msg-question">
-                  <TeamAsks live={tm.live} agent="athena" onAnswer={tm.answer} />
-                </li>
-              )}
               {preview && (
                 <li className="msg msg-athena graph-preview">
                   <p>{preview.line}</p>
@@ -654,6 +662,7 @@ export function Journey() {
               <div ref={end} />
             </ol>
             )}
+            <QuestionTray key={`tray-${view}`} items={questions} />
             {dockEl}
 
             <form

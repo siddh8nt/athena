@@ -1806,6 +1806,17 @@ input[type="checkbox"] { accent-color: var(--accent); }
 .agent-stage .chat { position: relative; isolation: isolate; }
 .agent-stage .chat::before { position: absolute; z-index: -1; top: 12px; bottom: 12px; left: 8px; right: 8px; max-width: 736px; margin: 0 auto; transition: left 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), right 0.35s cubic-bezier(0.2, 0.8, 0.2, 1); }
 .agent-stage.with-panel .chat::before { right: calc(var(--panel-w) + 24px); }
+/* Every agent's chat window, Athena's onboarding one included, is clear glass (founder, 17 Oct): no milky fill and no
+   maroon tint, only a faint light catch along the edges. The blur, the lens, the rim and the inner highlights above do the work. */
+.ob-work::before, .agent-stage .chat::before {
+  /* The pane itself is 20% white (founder, 17 Oct), with the light catch on top. */
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.02) 40%, rgba(255, 255, 255, 0) 65%, rgba(255, 255, 255, 0.06) 100%), rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.5);
+  /* A light softening only, with no colour boost: the character field behind stays readable through the pane, so it looks
+     like glass and not like a lighter patch. The lens still bends it at the rim. */
+  -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px);
+  backdrop-filter: url(#athena-glass) blur(1.5px);
+}
 .agent-stage .agent-chat-head { padding-top: 28px; }
 .agent-stage .composer { margin-bottom: 28px; }
 @media (max-width: 900px) {
@@ -1881,6 +1892,15 @@ input[type="checkbox"] { accent-color: var(--accent); }
    that fades out at its lower edge, so nothing reads through either. */
 .ob-top { position: sticky; top: 0; z-index: 3; display: flex; flex-direction: column; gap: 8px; padding: 6px 0 14px; background: color-mix(in srgb, var(--surface) 97%, transparent); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); -webkit-mask-image: linear-gradient(#000 calc(100% - 12px), transparent); mask-image: linear-gradient(#000 calc(100% - 12px), transparent); }
 .ob-top:empty { display: none; }
+/* On the clear glass the pinned strip is no paper block: no fill, only the blur and the fade, so the window stays glass
+   behind the plan card (founder, 17 Oct). */
+.ob-top { background: none; }
+/* The paused banner leads the pinned strip, on its own frosted paper. */
+.ob-top > .paused {
+  margin: 0;
+  background: color-mix(in srgb, var(--accent) 8%, color-mix(in srgb, var(--surface) 88%, transparent));
+  box-shadow: 0 1px 2px rgba(20, 18, 15, 0.05), 0 10px 24px -16px rgba(20, 18, 15, 0.28);
+}
 .ob-top > .ob-plan { position: static; margin: 0; background: var(--surface); -webkit-backdrop-filter: none; backdrop-filter: none; }
 .ob-top > .prog { margin: 0; }
 
@@ -1915,3 +1935,60 @@ input[type="checkbox"] { accent-color: var(--accent); }
 .paused-go:empty { display: none; }
 @keyframes paused-pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(0.8); } }
 @media (prefers-reduced-motion: reduce) { .paused, .paused strong::before { animation: none; } }
+/* In an agent's chat the banner stays pinned to the top of the glass window, in line with the messages, on its own frosted
+   paper so it reads over whatever scrolls behind it (founder, 17 Oct). */
+.agent-stage .chat > .paused {
+  position: sticky; top: 12px; z-index: 2; flex: none;
+  width: calc(100% - 48px); max-width: 672px; margin: 4px auto 8px;
+  background: color-mix(in srgb, var(--accent) 8%, color-mix(in srgb, var(--surface) 88%, transparent));
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+  box-shadow: 0 1px 2px rgba(20, 18, 15, 0.05), 0 10px 24px -16px rgba(20, 18, 15, 0.28);
+}
+
+/* On the clear glass every chat bubble takes the question cards' paper, line and shadow, so none blends into the backdrop
+   (founder, 17 Oct). */
+.agent-stage .msg-athena, .agent-stage .msg-you, .ob-you {
+  background: var(--surface); border: 1px solid var(--line);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+.agent-stage .msg-athena { border-radius: 16px 16px 16px 6px; padding: 10px 14px; max-width: 88%; align-self: flex-start; }
+.agent-stage .msg-you, .ob-you { border-radius: 16px 16px 6px 16px; }
+
+/* The question tray (components/Question.tsx QuestionTray): the open questions tucked above the reply box, one at a time
+   and compact enough that every option shows without scrolling (founder, 17 Oct). */
+.q-tray { display: flex; flex-direction: column; gap: 4px; flex: none; animation: ob-settle 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.agent-stage .chat > .q-tray { width: calc(100% - 48px); max-width: 672px; margin: 0 auto 8px; }
+.q-tray-head { display: flex; align-items: center; justify-content: space-between; padding: 0 6px; }
+.q-tray-nav { display: flex; gap: 2px; }
+.q-tray-nav button { font-size: 18px; line-height: 1; padding: 2px 8px; border-radius: 8px; color: var(--muted); }
+.q-tray-nav button:hover { background: var(--sunken); color: var(--fg); }
+.q-tray .question { padding: 12px 14px; gap: 8px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 10px 28px -18px rgba(20, 18, 15, 0.3); }
+.q-tray .question-text { font-size: 16px; line-height: 1.25; }
+.q-tray .question-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.q-tray .question-options > li > button { padding: 6px 10px; gap: 8px; font-size: 13.5px; line-height: 1.35; border-radius: 10px; height: 100%; }
+.q-tray .question-options > li > button > span:last-child { min-width: 0; }
+/* A hint (where a value was said) keeps to one line in the tray; the full source is in the Conflicts tab. */
+.q-tray .question-hint { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.q-tray .question-foot { gap: 8px; }
+.q-tray .question-foot .muted { font-size: 12px; }
+.q-tray .question-foot .primary { padding: 4px 14px; }
+@media (max-width: 600px) { .q-tray .question-options { grid-template-columns: minmax(0, 1fr); } }
+@media (prefers-reduced-motion: reduce) { .q-tray { animation: none; } }
+
+/* The graph still grouping into themes is hard to miss (founder, 17 Oct): a banner on the graph card, a frosted veil
+   over the graph itself, a spinner on the Brand tab, and a line in the chat once the chat has gone quiet. */
+.bg-working { padding: 10px 12px; border-radius: 12px; background: var(--emph-soft, var(--accent-soft)); border: 1px solid var(--line); font-size: 14px; font-weight: 600; }
+.bg-working .prog-step-time { margin-left: auto; font-weight: 400; }
+.bg-graph-hold { position: relative; }
+.bg-graph-hold.loading > :not(.bg-veil) { opacity: 0.45; filter: saturate(0.6); transition: opacity 0.3s ease, filter 0.3s ease; }
+.bg-veil {
+  position: absolute; inset: 0; z-index: 2; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+  border-radius: 12px; background: color-mix(in srgb, var(--surface) 45%, transparent); -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); text-align: center; pointer-events: none;
+}
+.bg-veil .spin { width: 26px; height: 26px; border-width: 3px; }
+.bg-veil strong { font-size: 15px; }
+.bg-veil small { color: var(--muted); font-size: 12.5px; }
+.ob-tab-busy.spin { width: 10px; height: 10px; border-width: 2px; }
+.msg.graph-wait { display: flex; align-items: center; gap: 8px; font-weight: 600; border-style: dashed; }
+.msg.graph-wait .prog-step-time, .bg-working .prog-step-time { font-weight: 400; white-space: nowrap; margin-left: auto; }
+@media (prefers-reduced-motion: reduce) { .bg-graph-hold.loading > :not(.bg-veil) { transition: none; } }

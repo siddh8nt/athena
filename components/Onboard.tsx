@@ -11,7 +11,7 @@ import { CONTEXT_PROMPT } from "@/lib/agent/context-prompt";
 import { checklistLine, type CheckItem } from "@/lib/agent/checklist";
 import { addEvent, lineDetail, lineText, settleRun, type Line } from "@/lib/agent/transcript";
 import { ACCEPT } from "./chat";
-import { Question, type Asked } from "./Question";
+import { Question, QuestionTray, type Asked, type TrayItem } from "./Question";
 import { KnowledgePanel, Settle } from "./Knowledge";
 import { workspace } from "@/lib/knowledge/workspace";
 import { PACKS } from "@/lib/journey/packs";
@@ -107,6 +107,7 @@ export function Onboard({
   onFacts,
   graph,
   dock,
+  grouping,
 }: {
   brief: BrandBrief;
   files: File[];
@@ -118,6 +119,8 @@ export function Onboard({
   onFacts: (facts: LiveFact[]) => void;
   graph: ReactNode;
   dock: ReactNode;
+  /** The graph is still grouping what was read into themes: said here too, since the chat has gone quiet by then. */
+  grouping?: string;
 }) {
   const had = !!brief.name;
   const [phase, setPhase] = useState<"first" | "work">(had ? "work" : "first");
@@ -611,7 +614,10 @@ export function Onboard({
   const lastLive = [...lines].reverse().find((l) => l.ev.status === "running");
   // Between steps the next one on the plan is what it's on; once the plan is through, it's writing it all up.
   const between = items?.find((i) => i.state === "todo")?.step ?? (lines.some((l) => l.run === runs.current && l.ev.tool !== "you") ? "Putting it all together" : "Reading what you gave me");
-  const status = running ? (now?.step ?? (lastLive ? lineText(lastLive.ev) : thinking ?? between)) : waitingOnYou ? "Paused until you answer" : had ? "Your brief is written" : "Ready when you are";
+  // Putting it all together runs one comparison per topic, side by side: how many are through says it's moving.
+  const comparing = [...lines].reverse().find((l) => l.run === runs.current && l.ev.tool === "compare" && l.ev.status === "running");
+  const compared = comparing?.pages.length ? `${comparing.pages.filter((p) => p.ev.status !== "running").length} of ${comparing.pages.length} topics compared` : "";
+  const status = running ? (now?.step ?? (lastLive ? lineText(lastLive.ev) : thinking ?? between)) : waitingOnYou ? "Paused until you answer" : grouping ? "Grouping your Brand Graph into themes" : had ? "Your brief is written" : "Ready when you are";
   const conflicts = kb?.conflicts.length ?? 0;
   // What the brief waits on: questions not yet answered and disagreements not yet chosen.
   const openAsks = asks.filter((q) => !(q.id in answers)).length;
@@ -622,9 +628,10 @@ export function Onboard({
   const progressSteps: ProgressStep[] = items?.length
     ? items.map((i) => ({ label: i.step, state: i.state }))
     : runLines.map((l) => ({ label: lineText(l.ev), state: l.ev.status === "running" ? "now" : "done" }));
-  const pagesRead = runLines.reduce((n, l) => n + l.pages.length, 0);
+  const pagesRead = runLines.reduce((n, l) => n + l.pages.filter((p) => p.ev.tool === "read_page").length, 0);
   const qlooCalls = runLines.reduce((n, l) => n + l.ev.callIds.length + l.pages.reduce((m, p) => m + p.ev.callIds.length, 0), 0);
   const progressCounts = [
+    compared,
     pagesRead ? `${pagesRead} page${pagesRead === 1 ? "" : "s"} read` : "",
     kb?.facts.length ? `${fmt(kb.facts.length)} facts` : "",
     qlooCalls ? `${qlooCalls} Qloo call${qlooCalls === 1 ? "" : "s"}` : "",
@@ -645,7 +652,10 @@ export function Onboard({
     const more = !!(detail || ev.found?.length || ev.source || l.pages.length);
     // A finished step folds to one line; while it runs, its latest pages show under it.
     const opened = open.has(l.key);
-    const pages = live ? l.pages.slice(-4) : opened ? l.pages : [];
+    // A site's pages are many, so only the latest show; the comparisons under putting it all together are few, so all do.
+    const cap = ev.tool === "compare" ? 12 : 4;
+    const pages = live ? l.pages.slice(-cap) : opened ? l.pages : [];
+    const sub = ev.tool === "compare" ? "topic" : "page";
     if (ev.tool === "you")
       return (
         <li key={l.key} className="ob-line ob-you">
@@ -670,7 +680,7 @@ export function Onboard({
             {lineText(ev)}
             {live && ev.summary && <small className="muted"> · {ev.summary}</small>}
             {live && <StepTimer />}
-            {!live && l.pages.length > 0 && !opened && <small className="muted"> · {l.pages.length} page{l.pages.length === 1 ? "" : "s"}</small>}
+            {!live && l.pages.length > 0 && !opened && <small className="muted"> · {l.pages.length} {sub}{l.pages.length === 1 ? "" : "s"}</small>}
           </span>
           {more && !live && <span className="ob-caret" aria-hidden>{opened ? "▾" : "▸"}</span>}
         </button>
@@ -700,7 +710,7 @@ export function Onboard({
           </button>
         )}
         {pages.length > 0 && <ol className="ob-pages">{pages.map((p) => row(p, true))}</ol>}
-        {live && l.pages.length > 4 && <small className="muted ob-more">and {l.pages.length - 4} more pages read</small>}
+        {live && l.pages.length > cap && <small className="muted ob-more">and {l.pages.length - cap} more pages read</small>}
       </li>
     );
   };
@@ -748,6 +758,15 @@ export function Onboard({
     </div>
   );
 
+  // Every question for the founder, Athena's asks and then the conflicts, as one list for the tray.
+  const questions: TrayItem[] = [
+    ...asks.map((q) => ({ q, answer: answers[q.id], onAnswer: (a: string) => answer(q, a) })),
+    ...(kb?.conflicts ?? []).map((c) => {
+      const s = picked[c.id] ?? inUse[c.id];
+      return { q: conflictQuestion(c, kb!), answer: isResolution(s) ? s.fact : typedFor[c.id], onAnswer: (a: string) => void answerConflict(c, a) };
+    }),
+  ];
+
   return (
     <div className={`ob ob-work ${panel ? "ob-has-panel" : ""}`} data-view={view}>
       {picker}
@@ -773,7 +792,18 @@ export function Onboard({
 
       <section className="ob-centre" aria-label="Transcript">
         <div className="ob-top">
+          {paused && (
+            <div className="paused" role="status">
+              <strong>Paused until you answer</strong>
+              <p>
+                I&apos;ll write your brief from your answers.{" "}
+                {[openAsks ? `Answer ${openAsks === 1 ? "the question" : `the ${openAsks} questions`}` : "", openConflicts ? `choose where your sources disagree (${openConflicts})` : ""].filter(Boolean).join(" and ").replace(/^c/, "C")} below, and I&apos;ll carry on.
+              </p>
+            </div>
+          )}
           {running && <RunProgress key={runs.current} current={status} steps={progressSteps} counts={progressCounts} />}
+          {/* The run is over but the graph is still being grouped: the same card, so it's plain the work isn't done. */}
+          {!running && grouping && <RunProgress key="grouping" who="Brand Graph" current={grouping} steps={[]} counts={["the themes land on the graph when they're ready"]} />}
           {plan}
         </div>
         <ol className="ob-transcript" aria-live="polite">
@@ -790,36 +820,22 @@ export function Onboard({
               <span className="ob-line-text">Reading what you gave me</span>
             </li>
           )}
+          {!running && grouping && (
+            <li className="ob-line ob-live">
+              <span className="ob-dot" aria-hidden />
+              <span className="ob-line-text">
+                {grouping}
+                <StepTimer />
+              </span>
+            </li>
+          )}
         </ol>
-        {paused && (
-          <div className="paused" role="status">
-            <strong>Paused until you answer</strong>
-            <p>
-              I&apos;ll write your brief from your answers.{" "}
-              {[openAsks ? `Answer ${openAsks === 1 ? "the question" : `the ${openAsks} questions`}` : "", openConflicts ? `choose where your sources disagree (${openConflicts})` : ""].filter(Boolean).join(" and ").replace(/^c/, "C")} below, and I&apos;ll carry on.
-            </p>
-          </div>
-        )}
-        {asks.length > 0 && (
+        {/* Answered questions stay in the conversation as one-line records; the open ones wait in the tray by the box. */}
+        {questions.some((it) => it.answer !== undefined) && (
           <div className="onboard-asks">
-            {asks.map((q) => (
-              <Question key={q.id} q={q} answer={answers[q.id]} onAnswer={(a) => answer(q, a)} />
+            {questions.filter((it) => it.answer !== undefined).map((it) => (
+              <Question key={it.q.id} q={it.q} answer={it.answer} onAnswer={it.onAnswer} />
             ))}
-          </div>
-        )}
-        {kb && kb.conflicts.length > 0 && (
-          <div className="onboard-asks" aria-label="Conflicts">
-            {kb.conflicts.map((c) => {
-              const s = picked[c.id] ?? inUse[c.id];
-              return (
-                <Question
-                  key={c.id}
-                  q={conflictQuestion(c, kb)}
-                  answer={isResolution(s) ? s.fact : typedFor[c.id]}
-                  onAnswer={(a) => void answerConflict(c, a)}
-                />
-              );
-            })}
           </div>
         )}
         {note && !running && (
@@ -834,6 +850,7 @@ export function Onboard({
       </section>
 
       <div className="ob-dock">
+        <QuestionTray items={questions} />
         <div className="ob-dock-actions">{dock}</div>
         {composer}
       </div>
@@ -843,7 +860,7 @@ export function Onboard({
         <aside className="ob-panel" aria-label={side === "kept" ? "What I kept" : "Your Brand Graph"}>
           <div className="ob-panel-tabs" role="tablist">
             <button type="button" role="tab" aria-selected={side === "brand"} className={side === "brand" ? "on" : ""} onClick={() => setView("brand")}>
-              Brand
+              Brand{grouping && <span className="ob-tab-busy spin" aria-label="still grouping" />}
             </button>
             <button type="button" role="tab" aria-selected={side === "kept"} className={side === "kept" ? "on" : ""} onClick={() => setView("kept")}>
               Conflicts{conflicts > 0 && <span className="ob-badge">{conflicts}</span>}

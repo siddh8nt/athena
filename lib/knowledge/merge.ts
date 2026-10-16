@@ -27,6 +27,12 @@ const GROUPS: Topic[][] = [
   ["brand", "team", "press", "competitor", "other"],
 ];
 
+/** Each group as the founder reads it, for the step's sub-lines ("Comparing products and prices"). */
+const NAMES = ["products and prices", "where you sell", "your customer", "your goals, budget and plans", "the brand, team and press"];
+
+/** One comparison under way or done, so the step shows its parts while Gemini works (founder, 17 Oct). */
+export type GroupProgress = { name: string; facts: number; done?: { same: number; conflicts: number } };
+
 /** Facts per call: few enough that Gemini checks each against all the others in time. */
 const BATCH = 70;
 
@@ -64,27 +70,37 @@ async function compareGroup(live: Fact[], budgetMs: number): Promise<Found> {
 }
 
 /** The same facts compare the same way: kept a day, so a conflict the founder settled keeps its id. */
-export async function compareFacts(facts: Fact[], opts: { budgetMs?: number } = {}): Promise<{ facts: Fact[]; conflicts: Conflict[] }> {
+export async function compareFacts(facts: Fact[], opts: { budgetMs?: number; progress?: (p: GroupProgress) => void } = {}): Promise<{ facts: Fact[]; conflicts: Conflict[] }> {
   const key = sha256(JSON.stringify(facts.map((f) => [f.id, f.text, f.topic, f.where, !!f.struck])));
   const hit = await getStore().get<Found>("compare-v1", key);
-  const found = hit?.value ?? (await compareNow(facts, opts.budgetMs ?? 60_000));
+  const found = hit?.value ?? (await compareNow(facts, opts.budgetMs ?? 60_000, opts.progress));
   if (!hit && (found.same.length || found.conflicts.length)) await getStore().set("compare-v1", key, found, 24 * 60 * 60 * 1000);
   return applyFound(facts, found);
 }
 
-async function compareNow(facts: Fact[], budgetMs: number): Promise<Found> {
+async function compareNow(facts: Fact[], budgetMs: number, progress?: (p: GroupProgress) => void): Promise<Found> {
   const live = facts.filter((f) => !f.struck);
   // A big group goes in batches: each has all the founder's file facts and a slice of the rest, so every file
   // fact still meets every other fact once.
-  const batches = GROUPS.flatMap((g) => {
+  const batches = GROUPS.flatMap((g, k) => {
     const facts = live.filter((f) => g.includes(f.topic));
     const files = facts.filter((f) => f.where.some((w) => w.kind === "file"));
     const rest = facts.filter((f) => !files.includes(f));
-    if (facts.length <= BATCH) return [facts];
+    if (facts.length <= BATCH) return [{ name: NAMES[k], facts }];
     const n = Math.max(20, BATCH - files.length);
-    return Array.from({ length: Math.ceil(rest.length / n) }, (_, i) => [...files, ...rest.slice(i * n, (i + 1) * n)]);
+    const parts = Math.ceil(rest.length / n);
+    return Array.from({ length: parts }, (_, i) => ({ name: `${NAMES[k]} (part ${i + 1} of ${parts})`, facts: [...files, ...rest.slice(i * n, (i + 1) * n)] }));
   });
-  const found = await Promise.all(batches.map((b) => compareGroup(b, budgetMs)));
+  // Only groups with something to compare are shown: a group of one fact makes no call.
+  const found = await Promise.all(
+    batches.map(async (b) => {
+      if (b.facts.length < 2) return compareGroup(b.facts, budgetMs);
+      progress?.({ name: b.name, facts: b.facts.length });
+      const f = await compareGroup(b.facts, budgetMs);
+      progress?.({ name: b.name, facts: b.facts.length, done: { same: f.same.length, conflicts: f.conflicts.length } });
+      return f;
+    }),
+  );
   return { same: found.flatMap((f) => f.same), conflicts: found.flatMap((f) => f.conflicts) };
 }
 

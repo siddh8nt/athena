@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { ScrollFade } from "@/components/ScrollFade";
 
 export const metadata: Metadata = {
   title: "Athena",
@@ -9,7 +10,10 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        {children}
+        <ScrollFade />
+      </body>
     </html>
   );
 }

@@ -101,7 +101,7 @@
 
 /* The sections below the hero: each title sits on its own small frosted plaque (only as wide as the title, so the
    pattern still runs around it), with the index numeral in a gold-ringed disc, then quiet content. */
-.section { margin-top: 136px; scroll-margin-top: 110px; }
+.section { margin-top: 112px; scroll-margin-top: 110px; }
 .sectionHead {
   position: relative; display: flex; width: fit-content; max-width: 100%; align-items: center; gap: 18px;
   padding: 14px 30px 16px 16px; margin-bottom: 40px; border-radius: 18px;
@@ -121,6 +121,44 @@
 .sectionHead h2 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: clamp(34px, 3.8vw, 52px); line-height: 1; letter-spacing: -0.015em; color: var(--fg); }
 
 .points { position: relative; isolation: isolate; }
+
+/* Each section opens with a chapter rule: the title pill runs on into a gold line to the column's edge, ending in a
+   small maroon dot. The line draws itself in as the section scrolls into view, and a soft glint travels along it. */
+.chapter { display: flex; align-items: center; margin-bottom: 40px; }
+.chapter .sectionHead { margin-bottom: 0; }
+.chapterLine {
+  position: relative; flex: 1; min-width: 24px; height: 1px; margin-right: 4px; transform-origin: left center;
+  background: linear-gradient(90deg, rgba(169, 121, 28, 0.6), rgba(169, 121, 28, 0.2));
+}
+.chapterLine::before {
+  content: ""; position: absolute; left: 0; top: -1px; width: 120px; height: 3px; border-radius: 3px;
+  background: linear-gradient(90deg, rgba(217, 164, 65, 0), rgba(217, 164, 65, 0.95), rgba(217, 164, 65, 0));
+  animation: glint 5.5s cubic-bezier(0.45, 0, 0.25, 1) 1.2s infinite both;
+}
+.chapterLine::after {
+  content: ""; position: absolute; right: -4px; top: -3.5px; width: 8px; height: 8px; border-radius: 50%;
+  background: #7e2b34; box-shadow: 0 0 0 4px rgba(126, 43, 52, 0.1);
+}
+/* A section that follows straight on from the one above sits closer, and a gold thread runs down from the section
+   above into its numbered circle, then turns into its chapter line, so the gap reads as one path. */
+.section.next { --gap: 72px; margin-top: var(--gap); }
+.joined { position: relative; }
+.joined::before {
+  content: ""; position: absolute; left: 35.3px; bottom: 100%; width: 1px; height: var(--gap); transform-origin: top center;
+  background: linear-gradient(180deg, rgba(169, 121, 28, 0.15), rgba(169, 121, 28, 0.6));
+}
+@keyframes thread-draw { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+@supports (animation-timeline: view()) {
+  .joined::before { animation: thread-draw linear both; animation-timeline: view(); animation-range: entry 0% cover 30%; }
+}
+@media (prefers-reduced-motion: reduce) { .joined::before { animation: none; } }
+@media (max-width: 640px) { .section.next { --gap: 52px; } }
+@keyframes glint { 0% { left: 0; opacity: 0; } 12% { opacity: 1; } 70% { opacity: 1; } 82%, 100% { left: calc(100% - 120px); opacity: 0; } }
+@keyframes chapter-draw { from { transform: scaleX(0); opacity: 0.4; } to { transform: scaleX(1); opacity: 1; } }
+@supports (animation-timeline: view()) {
+  .chapterLine { animation: chapter-draw linear both; animation-timeline: view(); animation-range: entry 0% cover 40%; }
+}
+@media (prefers-reduced-motion: reduce) { .chapterLine, .chapterLine::before { animation: none; } .chapterLine::before { display: none; } }
 
 /* The product picture: the dark plan panel, the live run, the graph forming. */
 .shot { margin: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 20px; overflow: hidden; }
@@ -262,7 +300,7 @@
   .small { height: 38px; padding: 0 16px; }
   .main { padding: 14px 16px 40px; }
   .section { margin-top: 72px; }
-  .sectionHead { margin-bottom: 26px; }
+  .sectionHead, .chapter { margin-bottom: 26px; }
   .points strong { font-size: 28px; }
   .foot { margin-top: 90px; padding: 44px 22px 22px; }
   .footGrid { grid-template-columns: 1fr 1fr; }

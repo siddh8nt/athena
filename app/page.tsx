@@ -72,10 +72,13 @@ export default function Landing() {
         <section id="at-work" className={`${s.section} ${s.peek}`}>
           <div className={s.peekHead}>
             <div>
-              <header className={s.sectionHead}>
-                <span className={s.index}>01</span>
-                <h2>Athena at work</h2>
-              </header>
+              <div className={s.chapter}>
+                <header className={s.sectionHead}>
+                  <span className={s.index}>01</span>
+                  <h2>Athena at work</h2>
+                </header>
+                <span className={s.chapterLine} aria-hidden />
+              </div>
             </div>
           </div>
           <figure className={s.shot} aria-label="Athena at work on an example brand">
@@ -116,11 +119,14 @@ export default function Landing() {
           </figure>
         </section>
 
-        <section id="why" className={s.section}>
-          <header className={s.sectionHead}>
-            <span className={s.index}>02</span>
-            <h2>Why Athena</h2>
-          </header>
+        <section id="why" className={`${s.section} ${s.next}`}>
+          <div className={`${s.chapter} ${s.joined}`}>
+            <header className={s.sectionHead}>
+              <span className={s.index}>02</span>
+              <h2>Why Athena</h2>
+            </header>
+            <span className={s.chapterLine} aria-hidden />
+          </div>
           <ol className={s.points}>
             <li><em>i.</em><strong>It reads your brand</strong><span>Your site, decks and spreadsheets become one Brand Graph. Every fact keeps its source, and any of it is yours to edit.</span></li>
             <li><em>ii.</em><strong>It ranks who to win</strong><span>The Analyst measures the crowds who share your customers&apos; taste and ranks them: win first, win next, watch.</span></li>

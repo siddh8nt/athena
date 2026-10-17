@@ -2146,3 +2146,12 @@ button.nav-item:hover:not(:disabled) { background: rgba(255, 255, 255, 0.045); c
 .record-more-n { font-size: 11px; color: var(--faint); align-self: center; }
 .record-foot { margin: 0; padding-top: 8px; border-top: 1px solid var(--line-soft); font-size: 11.5px; color: var(--faint); }
 @media (prefers-reduced-motion: reduce) { .gb, .gb-row, .gb-bar, .gb-now .gb-mark::before, .ob-graph-reveal, .record, .record-body, .record-steps > li { animation: none; } }
+
+/* The build card's Answer: the waiting question lifts once so the eye lands on it. */
+.q-tray-call .question { animation: q-call 0.9s cubic-bezier(0.2, 0.8, 0.2, 1); }
+@keyframes q-call {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent, #8b2335) 0%, transparent); }
+  30% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent, #8b2335) 22%, transparent); }
+  100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent, #8b2335) 0%, transparent); }
+}
+@media (prefers-reduced-motion: reduce) { .q-tray-call .question { animation: none; } }

@@ -174,6 +174,7 @@ export function Onboard({
   const sent = useRef<Set<string>>(new Set());
   const busy = useRef(false);
   const end = useRef<HTMLDivElement>(null);
+  const dockRef = useRef<HTMLDivElement>(null);
   // Time spent working, run by run (not the time spent waiting on the founder's answers).
   const worked = useRef(0);
 
@@ -885,7 +886,7 @@ export function Onboard({
         <div ref={end} />
       </section>
 
-      <div className="ob-dock">
+      <div className="ob-dock" ref={dockRef}>
         <QuestionTray items={questions} />
         <div className="ob-dock-actions">{dock}</div>
         {composer}
@@ -907,14 +908,27 @@ export function Onboard({
               <div className="ob-graph-reveal">{graph}</div>
             ) : (
               <GraphBuild
-                stages={buildStages({ kb, full, running, grouping, waiting: waitingOnYou, comparing: lines.some((l) => l.run === runs.current && l.ev.tool === "compare") })}
+                stages={buildStages({ kb, full, running, grouping, waiting: waitingOnYou, open: kb?.conflicts.filter((c) => picked[c.id] === undefined).length ?? 0, comparing: lines.some((l) => l.run === runs.current && l.ev.tool === "compare") })}
                 counts={[
                   pagesAll ? `${fmt(pagesAll)} page${pagesAll === 1 ? "" : "s"} read` : "",
                   kept.length ? `${kept.length} file${kept.length === 1 ? "" : "s"}` : "",
                   kb?.facts.length ? `${fmt(kb.facts.length)} facts` : "",
                 ]}
                 waiting={waitingOnYou}
-                onConflicts={() => setView("kept")}
+                onAnswer={() => {
+                  // An open question waits in the tray by the box; a disagreement waits under Conflicts.
+                  const tray = asks.some((q) => !(q.id in answers)) ? dockRef.current?.querySelector<HTMLElement>(".q-tray") : null;
+                  if (!tray) return setView("kept");
+                  // On a phone the panel is its own tab: back to the transcript, where the tray is, then to the question.
+                  setView("transcript");
+                  requestAnimationFrame(() => {
+                    tray.scrollIntoView({ block: "nearest", behavior: "smooth" });
+                    tray.querySelector<HTMLElement>(".question-options button:not(:disabled)")?.focus({ preventScroll: true });
+                    tray.classList.remove("q-tray-call");
+                    void tray.offsetWidth;
+                    tray.classList.add("q-tray-call");
+                  });
+                }}
               />
             )}
           </div>
@@ -935,7 +949,7 @@ export function Onboard({
 type Stage = { label: string; state: "done" | "now" | "todo" | "wait"; sub?: string };
 
 /** Where the Brand Graph's build is, from what the run has reached: read, cross-checked, written, grouped. */
-function buildStages(s: { kb?: Knowledge; full: boolean; running: boolean; grouping?: string; waiting: boolean; comparing: boolean }): Stage[] {
+function buildStages(s: { kb?: Knowledge; full: boolean; running: boolean; grouping?: string; waiting: boolean; open: number; comparing: boolean }): Stage[] {
   const at = !s.kb ? 0 : !(s.full || s.comparing) ? 1 : !s.full ? 2 : s.running || s.grouping ? 3 : 4;
   const state = (i: number): Stage["state"] => (i < at ? "done" : i > at ? "todo" : s.waiting ? "wait" : s.running || (i === 3 && !!s.grouping) ? "now" : "todo");
   const conflicts = s.kb?.conflicts.length ?? 0;
@@ -945,7 +959,7 @@ function buildStages(s: { kb?: Knowledge; full: boolean; running: boolean; group
     {
       label: "Checking where they agree",
       state: check,
-      sub: check === "wait" ? `${conflicts === 1 ? "One thing needs" : `${conflicts} things need`} your call` : conflicts && check === "done" ? `${conflicts} disagreement${conflicts === 1 ? "" : "s"} settled` : undefined,
+      sub: check === "wait" && s.open ? `${s.open === 1 ? "One thing needs" : `${s.open} things need`} your call` : conflicts && check === "done" ? `${conflicts} disagreement${conflicts === 1 ? "" : "s"} settled` : undefined,
     },
     { label: "Writing your brief", state: state(2) },
     { label: "Grouping it into themes", state: state(3) },
@@ -953,7 +967,7 @@ function buildStages(s: { kb?: Knowledge; full: boolean; running: boolean; group
 }
 
 /** The Brand Graph while it's being built: the stages it goes through, what's read so far, and its outline. */
-function GraphBuild({ stages, counts, waiting, onConflicts }: { stages: Stage[]; counts: string[]; waiting: boolean; onConflicts: () => void }) {
+function GraphBuild({ stages, counts, waiting, onAnswer }: { stages: Stage[]; counts: string[]; waiting: boolean; onAnswer: () => void }) {
   const line = counts.filter(Boolean).join(" · ");
   return (
     <div className="gb" role="status" aria-live="polite">
@@ -977,7 +991,7 @@ function GraphBuild({ stages, counts, waiting, onConflicts }: { stages: Stage[];
               {s.sub && <small>{s.sub}</small>}
             </span>
             {s.state === "wait" && (
-              <button type="button" className="gb-act" onClick={onConflicts}>
+              <button type="button" className="gb-act" onClick={onAnswer}>
                 Answer
               </button>
             )}

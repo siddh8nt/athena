@@ -17,6 +17,8 @@ COPY --from=build /app/.next/static ./.next/static
 COPY --from=build /app/public ./public
 # Demo brands' public stockist lists, read at runtime (§7.7).
 COPY --from=build /app/proof/stockists ./proof/stockists
+# Scratch space the node user can write (the Bench's arm cache); the store and uploads use Firestore and Cloud Storage.
+RUN mkdir -p .cache && chown node:node .cache
 USER node
 EXPOSE 8080
 CMD ["node", "server.js"]

@@ -2074,3 +2074,75 @@ button.nav-item:hover:not(:disabled) { background: rgba(255, 255, 255, 0.045); c
   .nav-item { transition: none; }
   .nav.team-rail .team-working .nav-glyph::after { animation: none; }
 }
+
+/* The Brand Graph while it's built (components/Onboard.tsx GraphBuild): no graph until it's checked and grouped, only the
+   build's stages, what's read so far, and the graph's outline; then the graph fades in (founder, 17 Oct). */
+.gb {
+  display: flex; flex-direction: column; gap: 16px; padding: 18px 18px 20px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 12px 32px -22px rgba(20, 18, 15, 0.3);
+  animation: ob-settle 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.gb-head { display: flex; flex-direction: column; gap: 4px; }
+.gb-kicker { font-family: var(--font-caps); font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--faint); }
+.gb-head strong { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; color: var(--fg); }
+.gb-head p { margin: 0; font-size: 12.5px; line-height: 1.5; color: var(--muted); }
+.gb-stages { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; position: relative; }
+.gb-stage { display: flex; align-items: flex-start; gap: 10px; padding: 7px 0; position: relative; font-size: 13px; color: var(--faint); transition: color 0.3s; }
+/* The line joining the stages, filled up to where the build is. */
+.gb-stage:not(:last-child)::after { content: ""; position: absolute; left: 7.5px; top: 25px; bottom: -7px; width: 1px; background: var(--line); }
+.gb-done:not(:last-child)::after { background: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+.gb-mark {
+  flex: none; width: 16px; height: 16px; margin-top: 1px; border-radius: 50%; display: grid; place-items: center;
+  border: 1px solid var(--line); background: var(--surface); color: var(--on-accent); transition: background 0.3s, border-color 0.3s;
+}
+.gb-done { color: var(--fg); }
+.gb-done .gb-mark { background: var(--accent); border-color: var(--accent); animation: pop 0.3s ease-out both; }
+.gb-now { color: var(--fg); }
+.gb-now .gb-mark { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.gb-now .gb-mark::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: wvpulse 1.4s ease-in-out infinite; }
+.gb-wait { color: var(--fg); }
+.gb-wait .gb-mark { border-color: var(--emph); box-shadow: 0 0 0 3px var(--emph-soft); }
+.gb-wait .gb-mark::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--emph); }
+.gb-label { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1; }
+.gb-label small { font-size: 11.5px; color: var(--muted); }
+.gb-act { flex: none; font: inherit; font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--accent); cursor: pointer; }
+.gb-act:hover { border-color: var(--accent); background: var(--accent-soft); }
+.gb-counts { margin: 0; padding-top: 12px; border-top: 1px solid var(--line-soft); font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.gb-outline { display: flex; flex-direction: column; gap: 10px; }
+.gb-row { display: flex; align-items: center; gap: 10px; animation: gb-breathe 2.4s ease-in-out infinite both; }
+.gb-node { flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--sunken); border: 1px solid var(--line); }
+.gb-bar { height: 8px; border-radius: 999px; background: linear-gradient(90deg, var(--sunken) 0%, var(--line-soft) 50%, var(--sunken) 100%); background-size: 200% 100%; animation: sk 1.8s linear infinite; }
+@keyframes gb-breathe { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
+.ob-graph-reveal { animation: gb-reveal 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+@keyframes gb-reveal { from { opacity: 0; transform: translateY(8px); filter: blur(3px); } to { opacity: 1; transform: none; filter: none; } }
+
+/* Onboarding's work, carried into the team chat (components/chat.tsx RecordView): one quiet line above the brief's
+   message that opens to every step and source, so moving on never hides the history (founder, 17 Oct). */
+.record { align-self: flex-start; width: min(100%, 560px); list-style: none; animation: rise 0.25s ease-out both; }
+.record-head {
+  display: flex; align-items: center; gap: 8px; width: 100%; padding: 7px 12px; text-align: left; font: inherit; font-size: 12.5px;
+  color: var(--muted); background: color-mix(in srgb, var(--surface) 72%, transparent); border: 1px solid var(--line); border-radius: 10px;
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); cursor: pointer; transition: border-color 0.15s, color 0.15s;
+}
+.record-head:hover { border-color: color-mix(in srgb, var(--accent) 35%, var(--line)); color: var(--fg); }
+.record-open .record-head { border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom-color: var(--line-soft); }
+.record-mark { flex: none; width: 16px; height: 16px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: var(--on-accent); }
+.record-title { font-weight: 600; color: var(--fg); }
+.record-line { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
+.record-caret { flex: none; width: 7px; height: 7px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(-45deg); transition: transform 0.2s; margin-right: 2px; }
+.record-open .record-caret { transform: rotate(45deg) translate(-2px, -2px); }
+.record-body {
+  padding: 10px 12px 12px; background: var(--surface); border: 1px solid var(--line); border-top: 0; border-radius: 0 0 10px 10px;
+  display: flex; flex-direction: column; gap: 10px; animation: ob-settle 0.25s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.record-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.record-steps > li { display: flex; flex-direction: column; gap: 1px; padding-left: 14px; position: relative; font-size: 13px; line-height: 1.45; color: var(--fg); animation: rise 0.2s ease-out both; }
+.record-steps > li::before { content: ""; position: absolute; left: 2px; top: 8px; width: 5px; height: 5px; border-radius: 50%; background: color-mix(in srgb, var(--accent) 55%, var(--line)); }
+.record-steps small { font-size: 11.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.record-more { align-self: flex-start; font: inherit; font-size: 12px; color: var(--accent); background: none; border: 0; padding: 0; cursor: pointer; }
+.record-more:hover { text-decoration: underline; }
+.record-sources { display: flex; flex-wrap: wrap; gap: 6px; }
+.record-more-n { font-size: 11px; color: var(--faint); align-self: center; }
+.record-foot { margin: 0; padding-top: 8px; border-top: 1px solid var(--line-soft); font-size: 11.5px; color: var(--faint); }
+@media (prefers-reduced-motion: reduce) { .gb, .gb-row, .gb-bar, .gb-now .gb-mark::before, .ob-graph-reveal, .record, .record-body, .record-steps > li { animation: none; } }

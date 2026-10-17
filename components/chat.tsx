@@ -6,6 +6,7 @@ import type { BriefEvent } from "@/app/api/brief/route";
 import { emptyBrief, type BrandBrief } from "@/lib/brief/types";
 import { sourceLabel } from "@/lib/brief/source";
 import { pacer } from "@/lib/stream/pace";
+import { duration, recordLine, type WorkRecord } from "@/lib/agent/record";
 
 // Chapter 1's conversation (§6.2.1): the founder describes the product; the server turns everything into one brief.
 // Shared by the journey; the server streams status lines, Athena's reply as it's written, and the result.
@@ -13,7 +14,8 @@ import { pacer } from "@/lib/stream/pace";
 /** What Athena did for one message: steps as they happen, then the pages it read. Shown under that message. */
 export type Trail = { steps: { text: string; done: boolean }[]; sources: { title?: string; uri?: string }[]; start: number; end?: number };
 /** A chat line. `card` lines are interactive cards the journey places in the conversation. */
-export type Msg = { who: "athena" | "you"; text: string; files?: string[]; trail?: Trail; card?: string };
+/** `record`: what onboarding did, shown above the message it led to. */
+export type Msg = { who: "athena" | "you"; text: string; files?: string[]; trail?: Trail; card?: string; record?: WorkRecord };
 export type FileChip = { name: string; status: string; busy: boolean };
 
 export const ACCEPT = ".png,.jpg,.jpeg,.webp,.pdf,.txt,.csv,.tsv,.xlsx,.pptx,.docx,image/*";
@@ -138,6 +140,17 @@ const domain = (u?: string) => {
   }
 };
 
+/** "fishwife.com/about": a page's site and path, so each page reads as its own source. */
+const page = (u?: string) => {
+  try {
+    if (!u) return undefined;
+    const x = new URL(u);
+    return `${x.hostname.replace(/^www\./, "")}${x.pathname === "/" ? "" : x.pathname.replace(/\/$/, "")}`;
+  } catch {
+    return undefined;
+  }
+};
+
 /** The live activity trail: each step ticks off as it finishes; then it folds into one line with the pages read. */
 export function TrailView({ trail }: { trail: Trail }) {
   const [open, setOpen] = useState(false);
@@ -165,6 +178,58 @@ export function TrailView({ trail }: { trail: Trail }) {
           {pages.map((p, i) => (
             <a key={i} href={p.uri} target="_blank" rel="noreferrer noopener" className="source-chip" style={{ animationDelay: `${i * 70}ms` }}>{p.d}</a>
           ))}
+        </div>
+      )}
+    </li>
+  );
+}
+
+/** Onboarding's work, carried into the chat after it: one line that opens to every step, what it read, and the sources. */
+export function RecordView({ record }: { record: WorkRecord }) {
+  const [open, setOpen] = useState(false);
+  const [all, setAll] = useState(false);
+  const steps = all ? record.steps : record.steps.slice(0, 8);
+  const sources = record.sources.map((s) => ({ ...s, d: page(s.url) ?? s.label }));
+  return (
+    <li className={`record${open ? " record-open" : ""}`}>
+      <button type="button" className="record-head" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+        <span className="record-mark" aria-hidden>
+          <svg width="10" height="10" viewBox="0 0 12 12">
+            <path d="M2.5 6.2l2.3 2.3 4.7-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </span>
+        <span className="record-title">Onboarding</span>
+        <span className="record-line">{recordLine(record)}</span>
+        <span className="record-caret" aria-hidden />
+      </button>
+      {open && (
+        <div className="record-body">
+          <ol className="record-steps">
+            {steps.map((s, i) => (
+              <li key={i} style={{ animationDelay: `${Math.min(i, 10) * 30}ms` }}>
+                <span>{s.text}</span>
+                {!!s.subs.length && <small>{s.subs.length <= 3 ? s.subs.join(" · ") : `${s.subs.slice(0, 2).join(" · ")} and ${s.subs.length - 2} more`}</small>}
+              </li>
+            ))}
+          </ol>
+          {record.steps.length > steps.length && (
+            <button type="button" className="record-more" onClick={() => setAll(true)}>
+              Show all {record.steps.length} steps
+            </button>
+          )}
+          {!!sources.length && (
+            <div className="record-sources">
+              {sources.slice(0, 12).map((p, i) =>
+                p.url ? (
+                  <a key={i} href={p.url} target="_blank" rel="noreferrer noopener" className="source-chip">{p.d}</a>
+                ) : (
+                  <span key={i} className="source-chip">{p.d}</span>
+                ),
+              )}
+              {sources.length > 12 && <span className="record-more-n">+{sources.length - 12}</span>}
+            </div>
+          )}
+          <p className="record-foot">Worked {duration(record.secs)} · everything kept is on your Brand Graph</p>
         </div>
       )}
     </li>

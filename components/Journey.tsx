@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { ACCEPT, TrailView, useBriefChat, type FileChip, type Msg } from "./chat";
+import { ACCEPT, RecordView, TrailView, useBriefChat, type FileChip, type Msg } from "./chat";
+import type { WorkRecord } from "@/lib/agent/record";
 import { BrandGraph, StaleFlag } from "./BrandGraph";
 import { Question, QuestionTray, type TrayItem } from "./Question";
 import { Galaxy } from "./Galaxy";
@@ -18,7 +19,7 @@ import type { Asked } from "./Question";
 import type { AgentStreamEvent } from "@/lib/agent/loop";
 import type { AgentEvent } from "@/lib/blocks/types";
 import type { LiveFact } from "@/lib/knowledge/types";
-import { GUESS, type Turn } from "@/lib/brief/conversation";
+import { GUESS, OPENING, type Turn } from "@/lib/brief/conversation";
 import { briefToInput } from "@/lib/brief/to-input";
 import { itemKey, missingRequired, type BrandBrief } from "@/lib/brief/types";
 import { allNodes } from "@/lib/graph/build";
@@ -201,6 +202,25 @@ export function Journey() {
 
   // Athena and her six specialists (§23.2 step 8): the Analyst first, then goals from the Brand Graph, worked by the team.
   const onboarding = j.stop === "product" && !start.message && !msgs.some((m) => m.who === "you");
+  // Onboarding's transcript lives in its workspace; leaving it, the team chat opens with what the founder gave and the
+  // record of the work, in place of the greeting, so the history carries on rather than resetting.
+  const record = useRef<WorkRecord | undefined>(undefined);
+  const wasOnboarding = useRef(onboarding);
+  useLayoutEffect(() => {
+    const r = record.current;
+    if (wasOnboarding.current && !onboarding && r)
+      setMsgs((m) => {
+        if (m.some((x) => x.record)) return m;
+        const rest = m[0]?.who === "athena" && m[0].text === OPENING ? m.slice(1) : m;
+        const text = r.intake.text.length > 1200 ? `${r.intake.text.slice(0, 1200).trimEnd()}…` : r.intake.text;
+        const intake: Msg[] = text || r.intake.files.length ? [{ who: "you", text, files: r.intake.files }] : [];
+        const i = rest.findIndex((x) => x.who === "athena" && !x.card);
+        if (i < 0) return [...intake, { who: "athena", text: "", record: r }, ...rest];
+        return [...rest.slice(0, i), ...intake, { ...rest[i], record: r }, ...rest.slice(i + 1)];
+      });
+    wasOnboarding.current = onboarding;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onboarding]);
   const tm = useTeam({
     team,
     setTeam: (f) => setJ((x) => ({ ...x, team: f(x.team ?? emptyTeam()) })),
@@ -597,7 +617,7 @@ export function Journey() {
 
       {onboarding ? (
         <main className="journey-main ob-main">
-          <Onboard brief={brief} files={chat.files} addFiles={chat.addFiles} setFiles={chat.setFiles} onBrief={onBrief} onFacts={onRaw} graph={graphEl} dock={dockEl} grouping={working?.by === "graph" ? working.text : undefined} />
+          <Onboard brief={brief} files={chat.files} addFiles={chat.addFiles} setFiles={chat.setFiles} onBrief={onBrief} onFacts={onRaw} graph={graphEl} dock={dockEl} grouping={working?.by === "graph" ? working.text : undefined} onRecord={(r) => (record.current = r)} />
         </main>
       ) : (
         <main className={`journey-main journey-team agent-stage${panelOpen ? " with-panel" : ""}${sheet ? " sheet-on" : ""}`}>
@@ -618,10 +638,13 @@ export function Journey() {
             ) : (
             <ol className="msgs agent-switch" key={`msgs-${view}`}>
               {msgs.map((m, i) => [
-                <li key={i} className={`msg msg-${m.who}`}>
-                  {m.text}
-                  {!!m.files?.length && <span className="msg-files">{m.files.map((f) => <span key={f} className="chip">{f}</span>)}</span>}
-                </li>,
+                m.record && <RecordView key={`r${i}`} record={m.record} />,
+                (m.text || !!m.files?.length) && (
+                  <li key={i} className={`msg msg-${m.who}`}>
+                    {m.text}
+                    {!!m.files?.length && <span className="msg-files">{m.files.map((f) => <span key={f} className="chip">{f}</span>)}</span>}
+                  </li>
+                ),
                 m.trail && <TrailView key={`t${i}`} trail={m.trail} />,
               ])}
               {busy && live && <li className="msg msg-athena streaming">{live}</li>}

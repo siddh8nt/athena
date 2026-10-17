@@ -10,6 +10,7 @@ import type { Upload } from "@/lib/knowledge/uploads";
 import { CONTEXT_PROMPT } from "@/lib/agent/context-prompt";
 import { checklistLine, type CheckItem } from "@/lib/agent/checklist";
 import { addEvent, lineDetail, lineText, settleRun, type Line } from "@/lib/agent/transcript";
+import { buildRecord, type WorkRecord } from "@/lib/agent/record";
 import { ACCEPT } from "./chat";
 import { Question, QuestionTray, type Asked, type TrayItem } from "./Question";
 import { KnowledgePanel, Settle } from "./Knowledge";
@@ -109,6 +110,7 @@ export function Onboard({
   graph,
   dock,
   grouping,
+  onRecord,
 }: {
   brief: BrandBrief;
   files: File[];
@@ -122,6 +124,8 @@ export function Onboard({
   dock: ReactNode;
   /** The graph is still grouping what was read into themes: said here too, since the chat has gone quiet by then. */
   grouping?: string;
+  /** What onboarding did, kept for the team chat after it, so moving on never hides the work. */
+  onRecord?: (r: WorkRecord) => void;
 }) {
   const had = !!brief.name;
   const [phase, setPhase] = useState<"first" | "work">(had ? "work" : "first");
@@ -141,7 +145,10 @@ export function Onboard({
   const [queued, setQueued] = useState<string[]>([]);
   const [again, setAgain] = useState(false);
   const [note, setNote] = useState("");
-  const [briefNote, setBriefNote] = useState("");
+  // The Brand Graph shows once it's built: the full brief written and grouped into themes. Until then the panel shows
+  // the build itself. It stays shown after, through every later run.
+  const [full, setFull] = useState(false);
+  const [shown, setShown] = useState(had);
   const [view, setView] = useState<View>("transcript");
   const [rail, flipRail] = useRail();
   const [ws, setWs] = useState("");
@@ -167,6 +174,8 @@ export function Onboard({
   const sent = useRef<Set<string>>(new Set());
   const busy = useRef(false);
   const end = useRef<HTMLDivElement>(null);
+  // Time spent working, run by run (not the time spent waiting on the founder's answers).
+  const worked = useRef(0);
 
   // The workspace and the files already kept in it.
   useEffect(() => {
@@ -236,6 +245,7 @@ export function Onboard({
   async function run(extra: { said?: string; answers?: Answer[] } = {}) {
     if (busy.current) return;
     busy.current = true;
+    const began = Date.now();
     const n = ++runs.current;
     const fresh = chosen.filter((u) => !sent.current.has(u.hash));
     const form = new FormData();
@@ -291,11 +301,10 @@ export function Onboard({
         else if (e.type === "brief" && e.early) {
           early = true;
           onBrief(e.brief, [], read ? liveFacts(read.kb, read.settled) : [], true);
-          setBriefNote("A first brief from your home and About pages; the full read keeps adding to it.");
         } else if (e.type === "brief") {
           got = true;
           onBrief(e.brief, e.assumptions, read ? liveFacts(read.kb, read.settled) : []);
-          setBriefNote(early ? "Updated in place with everything I read." : "");
+          setFull(true);
           setLines((l) =>
             addEvent(l, said("brief", early || had ? "Updated your brief: every fact with where it came from" : "Wrote your brief: every fact with where it came from", e.assumptions.map((a) => `Assumed: ${a}`)), n),
           );
@@ -305,6 +314,7 @@ export function Onboard({
       // Never a failure state: the inputs stay as they are, and one tap tries again.
     }
     busy.current = false;
+    worked.current += Date.now() - began;
     setRunning(false);
     setThinking(undefined);
     setLines((l) => settleRun(l, n));
@@ -325,6 +335,18 @@ export function Onboard({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [running, pending, queued, again, asks, answers, kb, picked]);
+
+  useEffect(() => {
+    if (!shown && full && !running && !grouping) setShown(true);
+  }, [shown, full, running, grouping]);
+
+  // The record for the chat after onboarding, kept current as the transcript grows.
+  useEffect(() => {
+    if (running || !onRecord) return;
+    const r = buildRecord(lines, { facts: kb?.facts.length ?? 0, conflicts: kb?.conflicts.length ?? 0 }, worked.current / 1000);
+    if (r) onRecord(r);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lines, running, kb]);
 
   useEffect(() => {
     end.current?.scrollIntoView({ block: "end", behavior: "smooth" });
@@ -630,6 +652,7 @@ export function Onboard({
   const progressSteps: ProgressStep[] = items?.length
     ? items.map((i) => ({ label: i.step, state: i.state }))
     : runLines.map((l) => ({ label: lineText(l.ev), state: l.ev.status === "running" ? "now" : "done" }));
+  const pagesAll = lines.reduce((n, l) => n + l.pages.filter((p) => p.ev.tool === "read_page").length, 0);
   const pagesRead = runLines.reduce((n, l) => n + l.pages.filter((p) => p.ev.tool === "read_page").length, 0);
   const qlooCalls = runLines.reduce((n, l) => n + l.ev.callIds.length + l.pages.reduce((m, p) => m + p.ev.callIds.length, 0), 0);
   const progressCounts = [
@@ -880,8 +903,20 @@ export function Onboard({
             </button>
           </div>
           <div className="ob-panel-body" hidden={side !== "brand"}>
-            {briefNote && <p className="ob-brief-note">{briefNote}</p>}
-            {graph}
+            {shown ? (
+              <div className="ob-graph-reveal">{graph}</div>
+            ) : (
+              <GraphBuild
+                stages={buildStages({ kb, full, running, grouping, waiting: waitingOnYou, comparing: lines.some((l) => l.run === runs.current && l.ev.tool === "compare") })}
+                counts={[
+                  pagesAll ? `${fmt(pagesAll)} page${pagesAll === 1 ? "" : "s"} read` : "",
+                  kept.length ? `${kept.length} file${kept.length === 1 ? "" : "s"}` : "",
+                  kb?.facts.length ? `${fmt(kb.facts.length)} facts` : "",
+                ]}
+                waiting={waitingOnYou}
+                onConflicts={() => setView("kept")}
+              />
+            )}
           </div>
           <div className="ob-panel-body" hidden={side !== "kept"}>
             {keptTab}
@@ -893,6 +928,71 @@ export function Onboard({
           <p className="muted small">Your Brand Graph fills in here as I read.</p>
         </aside>
       )}
+    </div>
+  );
+}
+
+type Stage = { label: string; state: "done" | "now" | "todo" | "wait"; sub?: string };
+
+/** Where the Brand Graph's build is, from what the run has reached: read, cross-checked, written, grouped. */
+function buildStages(s: { kb?: Knowledge; full: boolean; running: boolean; grouping?: string; waiting: boolean; comparing: boolean }): Stage[] {
+  const at = !s.kb ? 0 : !(s.full || s.comparing) ? 1 : !s.full ? 2 : s.running || s.grouping ? 3 : 4;
+  const state = (i: number): Stage["state"] => (i < at ? "done" : i > at ? "todo" : s.waiting ? "wait" : s.running || (i === 3 && !!s.grouping) ? "now" : "todo");
+  const conflicts = s.kb?.conflicts.length ?? 0;
+  const check = state(1);
+  return [
+    { label: "Reading your sources", state: state(0) },
+    {
+      label: "Checking where they agree",
+      state: check,
+      sub: check === "wait" ? `${conflicts === 1 ? "One thing needs" : `${conflicts} things need`} your call` : conflicts && check === "done" ? `${conflicts} disagreement${conflicts === 1 ? "" : "s"} settled` : undefined,
+    },
+    { label: "Writing your brief", state: state(2) },
+    { label: "Grouping it into themes", state: state(3) },
+  ];
+}
+
+/** The Brand Graph while it's being built: the stages it goes through, what's read so far, and its outline. */
+function GraphBuild({ stages, counts, waiting, onConflicts }: { stages: Stage[]; counts: string[]; waiting: boolean; onConflicts: () => void }) {
+  const line = counts.filter(Boolean).join(" · ");
+  return (
+    <div className="gb" role="status" aria-live="polite">
+      <div className="gb-head">
+        <span className="gb-kicker">Brand Graph</span>
+        <strong>{waiting ? "Waiting on your answers" : "Building your Brand Graph"}</strong>
+        <p>It appears here once every fact is checked and grouped, each with where it came from.</p>
+      </div>
+      <ol className="gb-stages">
+        {stages.map((s) => (
+          <li key={s.label} className={`gb-stage gb-${s.state}`}>
+            <span className="gb-mark" aria-hidden>
+              {s.state === "done" && (
+                <svg width="10" height="10" viewBox="0 0 12 12">
+                  <path d="M2.5 6.2l2.3 2.3 4.7-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              )}
+            </span>
+            <span className="gb-label">
+              <span className={s.state === "now" ? "shimmer-text" : ""}>{s.label}</span>
+              {s.sub && <small>{s.sub}</small>}
+            </span>
+            {s.state === "wait" && (
+              <button type="button" className="gb-act" onClick={onConflicts}>
+                Answer
+              </button>
+            )}
+          </li>
+        ))}
+      </ol>
+      {line && <p className="gb-counts">{line}</p>}
+      <div className="gb-outline" aria-hidden>
+        {[72, 54, 86, 46, 64].map((w, i) => (
+          <div key={i} className="gb-row" style={{ animationDelay: `${i * 140}ms` }}>
+            <span className="gb-node" />
+            <span className="gb-bar" style={{ width: `${w}%` }} />
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

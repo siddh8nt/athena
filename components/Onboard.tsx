@@ -18,6 +18,7 @@ import { PACKS } from "@/lib/journey/packs";
 import { pacer } from "@/lib/stream/pace";
 import { RunProgress, StepTimer, type ProgressStep } from "./Progress";
 import { PanelGrip } from "./Resize";
+import { NavIcon, RailToggle, useRail } from "./SideNav";
 
 // Onboarding as a workspace (PRD §23.2 step 7.2). First, one box: the founder types, pastes or drops anything, and
 // the model sorts it (a website, files, notes or an AI summary). On send the box docks at the bottom as the steering
@@ -142,6 +143,7 @@ export function Onboard({
   const [note, setNote] = useState("");
   const [briefNote, setBriefNote] = useState("");
   const [view, setView] = useState<View>("transcript");
+  const [rail, flipRail] = useRail();
   const [ws, setWs] = useState("");
   const [kept, setKept] = useState<Kept[]>([]);
   const [meter, setMeter] = useState<Meter>();
@@ -780,13 +782,24 @@ export function Onboard({
       </nav>
 
       {/* Reserved for Athena and the six specialists (§23.2 step 8f); for now, Athena alone. */}
-      <aside className="ob-team" aria-label="Who's working">
-        <div className={`ob-agent ${running ? "ob-agent-live" : ""}`}>
-          <Mark size={20} />
-          <div>
-            <strong>Athena</strong>
-            <small className="muted">{status}</small>
+      <aside className={`ob-team nav${rail ? " team-rail" : ""}`} aria-label="Who's working">
+        <div className="nav-head">
+          <span className="nav-title">Workspace</span>
+          <RailToggle rail={rail} onFlip={flipRail} />
+        </div>
+        <div className="team-list">
+          <span className="nav-section">Agents</span>
+          <div className={`nav-item on${running ? " team-working" : ""}`} aria-current="page" title={`Athena: ${status}`}>
+            <span className="nav-glyph">
+              <NavIcon name="athena" />
+            </span>
+            <span className="nav-label">
+              <span className="nav-name">Athena</span>
+              <span className="nav-sub">{status}</span>
+            </span>
+            {running && <span className="nav-state spin" aria-label="Working" />}
           </div>
+          <p className="nav-note">Your specialists join once your brief is written.</p>
         </div>
       </aside>
 

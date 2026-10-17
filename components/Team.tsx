@@ -16,6 +16,7 @@ import { nodesAdded } from "@/lib/graph/types";
 import { MARKS, MARK_LABEL, type AgentStatus, type Goal, type Mark, type TeamEvent, type TeamState, type Work, type WorkItem } from "@/lib/team/types";
 import { pacer } from "@/lib/stream/pace";
 import { RunProgress, StepTimer, type ProgressStep } from "./Progress";
+import { NavIcon, RailToggle, useRail } from "./SideNav";
 
 // Athena and her six specialists in the journey (PRD §23.2 step 8): the goals on top, the team in the left panel with
 // live status, each specialist's workspace (its transcript, its results with their tool calls, the founder's outcome
@@ -305,71 +306,54 @@ function statusText(id: AgentId, s: AgentStatus): string {
 }
 
 /** The left panel (§23.2 step 8f): Athena and the six, each with live status. On a phone the list is a menu. */
-const RAIL = "athena:team-rail";
-
 export function TeamPanel({ live, team, active, onOpen, athena }: { live: TeamLive; team: TeamState; active: View; onOpen: (id: View) => void; athena?: string }) {
   const ids = panelIds(team);
   const on = (id: AgentId) => team.goals.some((g) => isSpecialist(id) && g.team.includes(id));
-  // Collapsed to a rail of agent badges with live status, or expanded to the list; the choice is remembered.
-  const [rail, setRail] = useState(false);
-  useEffect(() => {
-    try {
-      setRail(localStorage.getItem(RAIL) === "1");
-    } catch {
-      // Storage unavailable: the panel starts expanded.
-    }
-  }, []);
-  const flip = () =>
-    setRail((r) => {
-      try {
-        localStorage.setItem(RAIL, r ? "0" : "1");
-      } catch {
-        // Storage unavailable: the choice lasts this visit.
-      }
-      return !r;
-    });
+  // Collapsed to a rail of icons with live status, or open to the list; the choice is remembered.
+  const [rail, flip] = useRail();
+  const item = (id: View, name: string, status: AgentStatus["state"] | undefined, sub: string | undefined, title: string) => (
+    <button type="button" className={`nav-item${status ? ` team-${status}` : ""}${active === id ? " on" : ""}${id !== "dashboard" && on(id) ? " team-on-goal" : ""}`} aria-current={active === id ? "page" : undefined} onClick={() => onOpen(id)} title={title}>
+      <span className="nav-glyph">
+        <NavIcon name={id} />
+      </span>
+      <span className="nav-label">
+        <span className="nav-name">{name}</span>
+        {sub && <span className="nav-sub">{sub}</span>}
+      </span>
+      {status === "working" && <span className="nav-state spin" aria-label="Working" />}
+      {status === "waiting" && <span className="nav-state nav-wait" aria-label="Waiting" />}
+    </button>
+  );
   return (
-    <aside className={`team${rail ? " team-rail" : ""}`} aria-label="Athena and her team">
-      <button type="button" className="linkish small team-fold" aria-expanded={!rail} onClick={flip} aria-label={rail ? "Show the team" : "Fold the team to a rail"} title={rail ? "Show the team" : "Fold the team to a rail"}>
-        {rail ? "»" : "«"}
-      </button>
+    <aside className={`team nav${rail ? " team-rail" : ""}`} aria-label="Athena and her team">
+      <div className="nav-head">
+        <span className="nav-title">Workspace</span>
+        <RailToggle rail={rail} onFlip={flip} />
+      </div>
       <label className="team-menu">
         <span className="small muted">Workspace</span>
         <select value={active} onChange={(e) => onOpen(e.target.value as View)}>
+          <option value="dashboard">Dashboard</option>
           {ids.map((id) => (
             <option key={id} value={id}>
               {nameOf(id)} · {statusText(id, statusOf(id, live, team))}
             </option>
           ))}
-          <option value="dashboard">Your dashboard</option>
         </select>
       </label>
-      <ol className="team-list">
-        {ids.map((id) => {
-          const s = statusOf(id, live, team);
-          const text = id === "athena" && athena && s.state !== "working" ? athena : statusText(id, s);
-          return (
-            <li key={id}>
-              <button type="button" className={`team-agent team-${s.state} ${active === id ? "on" : ""} ${on(id) ? "team-on-goal" : ""}`} aria-current={active === id ? "true" : undefined} onClick={() => onOpen(id)} title={rail ? `${nameOf(id)}: ${text}` : undefined}>
-                <span className="team-badge" aria-hidden>{nameOf(id).slice(0, 1)}</span>
-                <span className="team-text">
-                  <strong>{nameOf(id)}</strong>
-                  <small>{text}</small>
-                </span>
-              </button>
-            </li>
-          );
-        })}
-        <li className="team-dash">
-          <button type="button" className={`team-agent ${active === "dashboard" ? "on" : ""}`} aria-current={active === "dashboard" ? "true" : undefined} onClick={() => onOpen("dashboard")} title={rail ? "Your dashboard" : undefined}>
-            <span className="team-badge" aria-hidden>▦</span>
-            <span className="team-text">
-              <strong>Your dashboard</strong>
-              <small>The whole team, and what Athena needs from you</small>
-            </span>
-          </button>
-        </li>
-      </ol>
+      <div className="team-list">
+        {item("dashboard", "Dashboard", undefined, undefined, "The whole team, and what Athena needs from you")}
+        <span className="nav-section">Agents</span>
+        <ul>
+          {ids.map((id) => {
+            const s = statusOf(id, live, team);
+            const text = id === "athena" && athena && s.state !== "working" ? athena : statusText(id, s);
+            // The status line shows only while an agent is at work or waiting; otherwise the name stands alone.
+            const sub = s.state === "working" || s.state === "waiting" ? text : undefined;
+            return <li key={id}>{item(id, nameOf(id), s.state, sub, `${nameOf(id)}: ${text}`)}</li>;
+          })}
+        </ul>
+      </div>
     </aside>
   );
 }

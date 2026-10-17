@@ -1992,3 +1992,85 @@ input[type="checkbox"] { accent-color: var(--accent); }
 .msg.graph-wait { display: flex; align-items: center; gap: 8px; font-weight: 600; border-style: dashed; }
 .msg.graph-wait .prog-step-time, .bg-working .prog-step-time { font-weight: 400; white-space: nowrap; margin-left: auto; }
 @media (prefers-reduced-motion: reduce) { .bg-graph-hold.loading > :not(.bg-veil) { transition: none; } }
+
+/* ── The sidebar: flush, quiet, collapsible (⌘B) ─────────────────────────────────────────
+   One near-black column under the top bar, hairline edge, line icons, sentence-case labels. The active item is a soft
+   lift, not a fill; live status is a spinner or a dot at the row's end, with one line of what's happening. */
+@media (min-width: 901px) {
+  .journey-main.agent-stage, .ob-work { --nav-w: 232px; transition: grid-template-columns 200ms var(--ease-slow); }
+  .journey-main.agent-stage:has(.team-rail), .ob-work:has(.team-rail) { --nav-w: 56px; }
+  .journey-main.agent-stage { grid-template-columns: var(--nav-w) minmax(0, 1fr); }
+  .ob-work { grid-template-columns: var(--nav-w) minmax(0, 1fr); }
+  .ob-work.ob-has-panel { grid-template-columns: var(--nav-w) minmax(0, 1fr) var(--panel-col, minmax(400px, 46%)); }
+  .journey-main.agent-stage:has(.team-rail), .ob-work:has(.team-rail) { grid-template-columns: var(--nav-w) minmax(0, 1fr); }
+  .ob-work.ob-has-panel:has(.team-rail) { grid-template-columns: var(--nav-w) minmax(0, 1fr) var(--panel-col, minmax(400px, 46%)); }
+}
+@media (max-width: 1100px) and (min-width: 901px) {
+  .journey-main.agent-stage, .ob-work { --nav-w: 208px; }
+  .journey-main.agent-stage:has(.team-rail), .ob-work:has(.team-rail) { --nav-w: 56px; }
+}
+.journey-main .team.nav, .ob-team.nav {
+  margin: 0; border-radius: 0; padding: 10px 8px 12px; gap: 2px; position: relative; overflow: hidden auto;
+  background: #161412; box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.06); color: #e9e4da;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; animation: none;
+}
+.journey-main .team.nav::before, .ob-team.nav::before { content: none; }
+.nav-head { display: flex; align-items: center; justify-content: space-between; height: 32px; padding: 0 2px 0 10px; margin-bottom: 6px; }
+.nav-title { font-size: 12px; font-weight: 600; color: #8c867c; letter-spacing: 0; white-space: nowrap; }
+.nav .nav-toggle {
+  display: grid; place-items: center; width: 28px; height: 28px; min-height: 0; padding: 0; border: 0; border-radius: 6px;
+  background: transparent; color: #8c867c; flex: none;
+}
+.nav .nav-toggle:hover:not(:disabled) { background: rgba(255, 255, 255, 0.06); color: #f5f1ea; }
+.nav .team-list { display: flex; flex-direction: column; gap: 1px; }
+.nav .team-list ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 1px; }
+.nav-section { display: block; margin: 14px 0 4px; padding: 0 10px; font-size: 11.5px; font-weight: 500; color: #6f6a62; white-space: nowrap; }
+.nav-item {
+  width: 100%; display: flex; align-items: center; gap: 10px; min-height: 32px; padding: 6px 10px; border: 0; border-radius: 7px;
+  background: transparent; color: #a9a397; text-align: left; font-family: inherit; font-size: 13px; font-weight: 500;
+  transition: background-color 100ms ease-out, color 100ms ease-out;
+}
+button.nav-item:hover:not(:disabled) { background: rgba(255, 255, 255, 0.045); color: #ece7de; border-color: transparent; }
+.nav-item.on, button.nav-item.on:hover:not(:disabled) { background: rgba(255, 255, 255, 0.08); color: #fbf8f2; }
+.nav-glyph { position: relative; display: grid; place-items: center; width: 16px; height: 16px; flex: none; color: #7f796f; }
+.nav-item:hover .nav-glyph, .nav-item.on .nav-glyph { color: inherit; }
+.nav-icon { display: block; }
+.nav-label { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.nav-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 20px; }
+.nav-sub { font-size: 11.5px; font-weight: 400; line-height: 16px; color: #8c867c; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nav-item:has(.nav-sub) { align-items: flex-start; }
+.nav-item:has(.nav-sub) .nav-glyph { margin-top: 2px; }
+.nav-item:has(.nav-sub) .nav-state { margin-top: 4px; }
+.nav-item.team-working .nav-sub { color: #cfc8bb; }
+.nav-item.team-waiting { opacity: 1; }
+.nav-item.team-waiting .nav-sub { color: #d9a441; }
+.nav-item.team-on-goal .nav-name::after { content: none; }
+.nav .nav-state { flex: none; }
+.nav .nav-state.spin { width: 12px; height: 12px; margin: 0; border-width: 1.5px; border-color: rgba(255, 255, 255, 0.14); border-top-color: #e9e4da; }
+.nav-wait { width: 6px; height: 6px; border-radius: 50%; background: #d9a441; margin-right: 3px; }
+.nav-note { margin: 10px 10px 0; font-size: 11.5px; line-height: 1.45; color: #6f6a62; }
+
+/* Collapsed: a 56px rail of icons; live status rides on the icon's corner. */
+.nav.team-rail { padding: 10px 8px 12px; align-items: stretch; }
+.nav.team-rail .nav-head { justify-content: center; padding: 0; }
+.nav.team-rail .nav-title, .nav.team-rail .nav-label, .nav.team-rail .nav-state, .nav.team-rail .nav-note { display: none; }
+.nav.team-rail .nav-section { height: 1px; margin: 10px 8px; padding: 0; overflow: hidden; color: transparent; background: rgba(255, 255, 255, 0.07); }
+.nav.team-rail .nav-item, .nav.team-rail .nav-item:has(.nav-sub) { align-items: center; justify-content: center; width: 40px; height: 36px; padding: 0; margin: 0 auto; }
+.nav.team-rail .nav-item:has(.nav-sub) .nav-glyph { margin-top: 0; }
+.nav.team-rail .team-working .nav-glyph::after, .nav.team-rail .team-waiting .nav-glyph::after {
+  content: ""; position: absolute; top: -3px; right: -4px; width: 7px; height: 7px; border-radius: 50%; box-shadow: 0 0 0 2px #161412;
+}
+.nav.team-rail .team-working .nav-glyph::after { background: #e9e4da; animation: wvpulse 1.2s ease-in-out infinite; }
+.nav.team-rail .team-waiting .nav-glyph::after { background: #d9a441; }
+
+/* Phones: the sidebar is a menu under the top bar, as before. */
+@media (max-width: 900px) {
+  .journey-main .team.nav { margin: 0; padding: 8px 12px; flex-direction: row; align-items: center; box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.06); }
+  .nav .nav-head { display: none; }
+  .nav .team-list { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .journey-main.agent-stage, .ob-work { transition: none; }
+  .nav-item { transition: none; }
+  .nav.team-rail .team-working .nav-glyph::after { animation: none; }
+}

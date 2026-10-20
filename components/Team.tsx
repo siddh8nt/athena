@@ -113,7 +113,8 @@ export function useTeam(p: {
     else if (e.type === "reply") {
       const who: AgentId = e.agent ?? "athena";
       setLive((l) => ({ ...l, replies: { ...l.replies, [who]: [...(l.replies[who] ?? []), e.text].slice(-6) } }));
-      if (who === "athena") p.say(e.text);
+      // Only Athena speaks in the chat (§23.2 step 8.5): a subagent's answer comes into the thread through her.
+      p.say(who === "athena" ? e.text : `From the ${nameOf(who)}: ${e.text}`);
     } else if (e.type === "memory") p.onMemory(e);
     else if (e.type === "galaxy") p.onGalaxy?.(e.galaxy);
   };
@@ -324,8 +325,15 @@ export function TeamPanel({ live, team, active, onOpen, athena }: { live: TeamLi
       {status === "waiting" && <span className="nav-state nav-wait" aria-label="Waiting" />}
     </button>
   );
+  const row = (id: AgentId) => {
+    const s = statusOf(id, live, team);
+    const text = id === "athena" && athena && s.state !== "working" ? athena : statusText(id, s);
+    // The status line shows only while Athena or a subagent is at work or waiting; otherwise the name stands alone.
+    const sub = s.state === "working" || s.state === "waiting" ? text : undefined;
+    return item(id, nameOf(id), s.state, sub, `${nameOf(id)}: ${text}`);
+  };
   return (
-    <aside className={`team nav${rail ? " team-rail" : ""}`} aria-label="Athena and her team">
+    <aside className={`team nav${rail ? " team-rail" : ""}`} aria-label="Athena and her subagents">
       <div className="nav-head">
         <span className="nav-title">Workspace</span>
         <RailToggle rail={rail} onFlip={flip} />
@@ -343,15 +351,10 @@ export function TeamPanel({ live, team, active, onOpen, athena }: { live: TeamLi
       </label>
       <div className="team-list">
         {item("dashboard", "Dashboard", undefined, undefined, "The whole team, and what Athena needs from you")}
-        <span className="nav-section">Agents</span>
+        {row("athena")}
+        <span className="nav-section">Subagents</span>
         <ul>
-          {ids.map((id) => {
-            const s = statusOf(id, live, team);
-            const text = id === "athena" && athena && s.state !== "working" ? athena : statusText(id, s);
-            // The status line shows only while an agent is at work or waiting; otherwise the name stands alone.
-            const sub = s.state === "working" || s.state === "waiting" ? text : undefined;
-            return <li key={id}>{item(id, nameOf(id), s.state, sub, `${nameOf(id)}: ${text}`)}</li>;
-          })}
+          {ids.filter((id) => id !== "athena").map((id) => <li key={id}>{row(id)}</li>)}
         </ul>
       </div>
     </aside>
@@ -378,8 +381,11 @@ export function GoalsBar({ goals: all }: { goals: Goal[] }) {
 
 const and = (xs: string[]) => (xs.length > 1 ? `${xs.slice(0, -1).join(", ")} and ${xs.at(-1)}` : xs[0] ?? "");
 
-/** Shown whenever a run is paused on the founder: who is asking, who waits on it, and a way to each question. */
-export function PausedForYou({ live, view, onGo }: { live: TeamLive; view: View; onGo: (id: AgentId) => void }) {
+/**
+ * Shown whenever a run is paused on the founder: who is asking and who waits on it. Every question waits in the one
+ * chat's tray (§23.2 step 8.5g); away from the chat, `onGo` opens it.
+ */
+export function PausedForYou({ live, onGo }: { live: TeamLive; onGo?: () => void }) {
   const open = Object.entries(live.blocking).filter(([id]) => !(id in live.answers));
   if (!open.length) return null;
   const by = new Map<AgentId, number>();
@@ -394,27 +400,27 @@ export function PausedForYou({ live, view, onGo }: { live: TeamLive; view: View;
         {held.length > 0 && ` ${and(held).replace(/^t/, "T")} ${held.length > 1 ? "wait" : "waits"} on ${asking.length > 1 ? "them" : "it"}.`} Nothing more is found until you answer{asking.length > 1 || open.length > 1 ? " them all" : ""}.
       </p>
       <div className="paused-go">
-        {asking.map(([id]) =>
-          view === id ? (
-            <small key={id} className="muted">The {nameOf(id)}&apos;s {by.get(id)! > 1 ? "questions are" : "question is"} below.</small>
-          ) : (
-            <button key={id} type="button" className="primary" onClick={() => onGo(id)}>
-              Answer the {nameOf(id)}
-            </button>
-          ),
+        {onGo ? (
+          <button type="button" className="primary" onClick={onGo}>
+            Answer in the chat
+          </button>
+        ) : (
+          <small className="muted">{open.length > 1 ? "They wait" : "It waits"} above the reply box.</small>
         )}
       </div>
     </div>
   );
 }
 
-/** One specialist's workspace (§23.2 step 8b–d, g): its transcript, then its work. */
-export function SpecialistWorkspace({ id, live, team, onAnswer }: { id: SpecialistId; live: TeamLive; team: TeamState; onAnswer: (q: TeamAsk, a: string) => void }) {
+/**
+ * The head of a subagent's page (§23.2 step 8b–d): what it's for, its live progress and its steps. Its questions and
+ * answers are in the one chat with Athena (§23.2 step 8.5j), so they aren't repeated here.
+ */
+export function SpecialistWorkspace({ id, live, team }: { id: SpecialistId; live: TeamLive; team: TeamState }) {
   const s = specialist(id);
   const st = statusOf(id, live, team);
   const work = team.works[id];
   const lines = live.lines[id] ?? [];
-  const replies = live.replies[id] ?? [];
   const goals = team.goals.filter((g) => g.team.includes(id));
   return (
     <div className="spec">
@@ -424,21 +430,9 @@ export function SpecialistWorkspace({ id, live, team, onAnswer }: { id: Speciali
         {goals.length > 0 && <p className="small">For {goals.map((g) => `“${g.label}”`).join(", ")}</p>}
         {st.state === "waiting" && <p className="small muted spec-wait">Waiting: {st.reason}.</p>}
       </header>
-      {live.asked[id] && <p className="msg msg-you spec-asked">{live.asked[id]}</p>}
       {st.state === "working" && <AgentProgress lines={lines} who={`The ${s.name}`} />}
       {lines.length > 0 && <Transcript lines={lines} />}
       {work && st.state !== "working" && <p className="spec-reply">{work.headline}</p>}
-      {replies.map((r, i) => (
-        <p key={i} className="spec-reply">{r}</p>
-      ))}
-      {/* Answered asks stay here as one-line records; the open ones wait in the tray above the box. */}
-      {live.asks.some((q) => q.agent === id && q.id in live.answers) && (
-        <div className="onboard-asks">
-          {live.asks.filter((q) => q.agent === id && q.id in live.answers).map((q) => (
-            <Question key={q.id} q={q} answer={live.answers[q.id]} onAnswer={(a) => onAnswer(q, a)} />
-          ))}
-        </div>
-      )}
       {!work && st.state === "idle" && !lines.length && <p className="small muted">Done when: {s.doneWhen}</p>}
     </div>
   );

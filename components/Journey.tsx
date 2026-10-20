@@ -30,13 +30,13 @@ import { keepFile, workspace } from "@/lib/knowledge/workspace";
 import { bySource, mergeNotes, themesOf, type Synth } from "@/lib/knowledge/notes";
 import { pacer } from "@/lib/stream/pace";
 import { RunProgress, StepTimer } from "./Progress";
-import { PanelGrip } from "./Resize";
+import { AthenaRoom, DashboardPage, SubagentPage, type Page } from "./Views";
 import type { Channel } from "@/lib/journey/growth";
 import { crowdAfterFits, emptyJourney, loadedJourney, type CrowdCard, type CrowdsResult, type Journey as JourneyState } from "@/lib/journey/types";
 import type { Galaxy as GalaxyData } from "@/lib/taste/galaxy";
 import { packBySlug } from "@/lib/journey/packs";
 import { emptyTeam, type Mark, type TeamEvent, type TeamState, type WorkItem } from "@/lib/team/types";
-import { SPECIALIST_IDS, isSpecialist, nameOf, specialist, type AgentId, type SpecialistId } from "@/lib/agent/specialists";
+import { SPECIALIST_IDS, isSpecialist, nameOf, panelIds, specialist, type AgentId, type SpecialistId } from "@/lib/agent/specialists";
 import { growthQuestion, seedOf, type GrowthQuestion } from "@/lib/journey/flow";
 
 // The journey (PRD §23.2 step 8.1): one path. Onboarding writes the Brand Graph; one growth question in the
@@ -65,6 +65,17 @@ function readEntry(): { fresh: boolean; message: string } {
   }
 }
 
+/** The view in the URL (§23.2 step 8.5): `?agent=athena` or a subagent's id; anything else is the dashboard. */
+function pageFromUrl(): Page {
+  try {
+    const a = new URLSearchParams(window.location.search).get("agent");
+    return a === "athena" || isSpecialist(a) ? a : "dashboard";
+  } catch {
+    return "dashboard";
+  }
+}
+const urlOf = (p: Page) => (p === "dashboard" ? "/plan" : `/plan?agent=${p}`);
+
 function load(): Saved | undefined {
   try {
     const s = JSON.parse(localStorage.getItem(STORE) ?? "null") as Saved | null;
@@ -85,9 +96,22 @@ type Memory = Extract<TeamEvent, { type: "memory" }>;
 export function Journey() {
   const [start] = useState(entry);
   // Clean the URL after render (changing it during render upsets Next's router), so a reload resumes.
+  // A sample brand starts in the chat, so it opens on the Athena tab; a fresh start has onboarding first.
   useEffect(() => {
-    if (start.fresh) window.history.replaceState(null, "", "/plan");
-  }, [start.fresh]);
+    if (start.fresh) window.history.replaceState(null, "", start.message ? urlOf("athena") : "/plan");
+  }, [start.fresh, start.message]);
+  // The open view lives in the URL, so a reload, Back and Forward keep their place.
+  const [page, setPage] = useState<Page>(() => (start.fresh && start.message ? "athena" : pageFromUrl()));
+  const go = (p: Page, replace = false) => {
+    setPage(p);
+    if (replace) window.history.replaceState(null, "", urlOf(p));
+    else if (urlOf(p) !== window.location.pathname + window.location.search) window.history.pushState(null, "", urlOf(p));
+  };
+  useEffect(() => {
+    const back = () => setPage(pageFromUrl());
+    window.addEventListener("popstate", back);
+    return () => window.removeEventListener("popstate", back);
+  }, []);
   const [saved] = useState(() => (start.fresh ? undefined : load()));
   const chat = useBriefChat(saved);
   const { brief, msgs, setMsgs, turn, busy, live, queued, first } = chat;
@@ -208,6 +232,9 @@ export function Journey() {
   const wasOnboarding = useRef(onboarding);
   useLayoutEffect(() => {
     const r = record.current;
+    // Leaving onboarding opens Athena's chat, where the next question waits. (Until the dashboard holds the knowledge
+    // base and the chat drawer, §23.2 step 8.5 b and j, the chat is where the founder carries on.)
+    if (wasOnboarding.current && !onboarding) go("athena", true);
     if (wasOnboarding.current && !onboarding && r)
       setMsgs((m) => {
         if (m.some((x) => x.record)) return m;
@@ -296,22 +323,29 @@ export function Journey() {
     void tm.propose();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [j.stop, !!j.crowds, tm.live.running]);
-  const view = tm.active;
-  const workOf = (id: AgentId) => (id === "athena" ? "Athena's work" : `the ${nameOf(id)}'s work`);
-  const inWorkspace = isSpecialist(view) ? view : undefined;
+  // The team's focus is a tab in the Athena tab's panel (§23.2 step 8.5): when the flow hands the work on, Athena
+  // brings that subagent's tab forward; it never moves the founder off the page they're on. "See your dashboard" does.
+  const tab: AgentId = tm.active === "dashboard" ? "athena" : tm.active;
+  useEffect(() => {
+    if (tm.active !== "dashboard") return;
+    tm.setActive("athena");
+    go("dashboard");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tm.active]);
+  const subPage = isSpecialist(page) ? page : undefined;
+  // Typed into the chat on a subagent's page, or after "Ask the Analyst about this": that subagent is asked.
+  const inWorkspace = subPage ?? (about ? "analyst" : undefined);
   // The floating panel (§23.2 step 8.4b): open beside the chat on a desktop; a full-screen sheet on a phone.
   const [panelOpen, setPanelOpen] = useState(true);
   const [sheet, setSheet] = useState(false);
   const panelBody = useRef<HTMLDivElement>(null);
-  // Whenever the flow hands the work to another agent (a Next, an option picked, a handoff), its workspace comes forward:
-  // the panel opens on its work if it was hidden, and its card in the team panel scrolls into sight.
-  const shownView = useRef(view);
+  // A tab brought forward opens the panel on it if it was hidden.
+  const shownTab = useRef(tab);
   useEffect(() => {
-    if (shownView.current === view) return;
-    shownView.current = view;
+    if (shownTab.current === tab) return;
+    shownTab.current = tab;
     setPanelOpen(true);
-    document.querySelector(".team-list [aria-current='true']")?.scrollIntoView({ block: "nearest", behavior: "smooth" });
-  }, [view]);
+  }, [tab]);
   // Sequential panels (§23.2 step 8.4e): each new section lands below the last, and the panel scrolls to it.
   useEffect(() => {
     const el = panelBody.current;
@@ -323,7 +357,7 @@ export function Journey() {
     });
     mo.observe(el, { childList: true });
     return () => mo.disconnect();
-  }, [view]);
+  }, [tab, page]);
   const crowdIdOf = (name: string) => j.crowds?.crowds.find((c) => c.name === name)?.id;
 
   // Onboarding (§23.2 step 3): a new founder starts from the three ways in, not a chat. Sample brands and founders
@@ -541,9 +575,11 @@ export function Journey() {
       chat.setFiles([]);
       if (fs.length) setMsgs((m) => [...m, { who: "you", text: message, files: fs.map((f) => f.name) }]);
       if (fs.length) void readFiles(fs);
-      // In a specialist's workspace, the steering box asks that specialist.
-      if (message && inWorkspace) tm.askSpecialist(inWorkspace, message, inWorkspace === "analyst" ? about : undefined);
-      else if (message) void graphSend(message, fs.length > 0);
+      // On a subagent's page the chat asks that subagent; its answer comes back into the thread through Athena.
+      if (message && inWorkspace) {
+        if (!fs.length) setMsgs((m) => [...m, { who: "you", text: message }]);
+        tm.askSpecialist(inWorkspace, message, inWorkspace === "analyst" ? about : undefined);
+      } else if (message) void graphSend(message, fs.length > 0);
       setAbout(undefined);
       return;
     }
@@ -569,31 +605,172 @@ export function Journey() {
   const dockEl = <Dock j={j} turn={turn} busy={busy} researching={chat.researching} onReply={(r) => void chat.send(r)} onNext={() => move("growth")} />;
   const analyst = tm.live.status.analyst;
   const analystStep = analyst?.state === "working" ? analyst.step : undefined;
-  // The open chat's questions for the founder, as one list for the tray: a specialist's own asks in its workspace;
-  // in Athena's chat the growth question, the edit questions and Athena's own asks.
-  const teamQs = (id: string): TrayItem[] => tm.live.asks.filter((q) => q.agent === id).map((q) => ({ q, answer: tm.live.answers[q.id], onAnswer: (a: string) => tm.answer(q, a) }));
-  const questions: TrayItem[] = inWorkspace
-    ? teamQs(inWorkspace)
-    : [
-        ...(j.stop === "growth" || j.told ? [{ q: gq, answer: j.told?.answer, onAnswer: answerGrowth }] : []),
-        ...editQs.filter((q) => q.by === "chat").map((q) => ({ q, onAnswer: (a: string) => answer(q, a) })),
-        ...teamQs("athena"),
-      ];
+  // Every question for the founder, as one list for the tray of the one chat: the growth question, the edit questions,
+  // and Athena's and every subagent's asks, whichever page the founder is on.
+  const questions: TrayItem[] = [
+    ...(j.stop === "growth" || j.told ? [{ q: gq, answer: j.told?.answer, onAnswer: answerGrowth }] : []),
+    ...editQs.filter((q) => q.by === "chat").map((q) => ({ q, onAnswer: (a: string) => answer(q, a) })),
+    ...tm.live.asks.map((q) => ({ q, answer: tm.live.answers[q.id], onAnswer: (a: string) => tm.answer(q, a) })),
+  ];
+  const stateOf = (id: AgentId) => {
+    const s = tm.live.status[id]?.state;
+    return s === "working" || s === "waiting" ? s : undefined;
+  };
+
+  // The sidebar: Dashboard, Athena, then the subagents.
+  const navEl = <TeamPanel live={tm.live} team={team} active={page} onOpen={(id) => (go(id), setAbout(undefined))} />;
+
+  // The one chat with Athena (§23.2 step 8.5j): the same thread, draft and questions on the Athena tab and every subagent page.
+  const chatEl = (
+    <section className="chat agent-chat" aria-live="polite">
+      <div className="agent-chat-head">
+        <strong>Athena</strong>
+        {page === "athena" && (
+          <button type="button" className="linkish small agent-panel-open" onClick={() => (setPanelOpen(true), setSheet(true))}>
+            {tab === "athena" ? "See Athena's work" : `See the ${nameOf(tab)}'s work`}
+          </button>
+        )}
+      </div>
+      <PausedForYou live={tm.live} />
+      <ol className="msgs">
+        {msgs.map((m, i) => [
+          m.record && <RecordView key={`r${i}`} record={m.record} />,
+          (m.text || !!m.files?.length) && (
+            <li key={i} className={`msg msg-${m.who}`}>
+              {m.text}
+              {!!m.files?.length && <span className="msg-files">{m.files.map((f) => <span key={f} className="chip">{f}</span>)}</span>}
+            </li>
+          ),
+          m.trail && <TrailView key={`t${i}`} trail={m.trail} />,
+        ])}
+        {busy && live && <li className="msg msg-athena streaming">{live}</li>}
+        {queued && <li className="msg msg-athena typing">Finishing my research, then I&apos;ll read that…</li>}
+        {working?.by === "chat" && <li className="msg msg-athena typing">{working.text}</li>}
+        {/* Once the chat has nothing running, the graph's grouping is the work still going: said where the founder is looking. */}
+        {working?.by === "graph" && !busy && !queued && (
+          <li className="msg msg-athena graph-wait" role="status">
+            <span className="spin" aria-hidden /> <span className="shimmer-text">The Brand Graph is still grouping what I read into themes</span>
+            <StepTimer />
+          </li>
+        )}
+        {/* Answered questions stay here as one-line records; the open ones wait in the tray above the box. */}
+        {questions.filter((it) => it.answer !== undefined).map((it) => (
+          <li key={it.q.id} className="msg-question">
+            <Question q={it.q} answer={it.answer} onAnswer={it.onAnswer} />
+          </li>
+        ))}
+        {preview && (
+          <li className="msg msg-athena graph-preview">
+            <p>{preview.line}</p>
+            <div className="replies">
+              <button
+                type="button"
+                className="primary"
+                onClick={() => {
+                  const a = apply(preview.ops, preview.by);
+                  setPreview(undefined);
+                  if (preview.by === "chat") say(a?.edit.note ?? "That's already on your graph.");
+                }}
+              >
+                Apply
+              </button>
+              <button type="button" onClick={() => setPreview(undefined)}>Not now</button>
+            </div>
+          </li>
+        )}
+        <div ref={end} />
+      </ol>
+      <QuestionTray items={questions} />
+      {dockEl}
+
+      <form
+        className="composer"
+        onSubmit={(e) => {
+          e.preventDefault();
+          send();
+        }}
+      >
+        {!!chat.files.length && (
+          <ul className="chips">
+            {chat.files.map((f, i) => (
+              <li key={`${f.name}${i}`} className="chip">
+                {f.name} <button type="button" className="linkish" aria-label={`Remove ${f.name}`} onClick={() => chat.setFiles(chat.files.filter((_, k) => k !== i))}>✕</button>
+              </li>
+            ))}
+          </ul>
+        )}
+        <textarea
+          autoFocus
+          rows={first ? 3 : 2}
+          value={text}
+          maxLength={8000}
+          placeholder={first ? "e.g. We're Fishwife: premium tinned fish with playful packaging, about $9 a tin. Sold online and in 1,500 shops. eatfishwife.com" : subPage ? specialist(subPage).prompt.replace(/^Ask the \w+/, "Ask Athena") : j.stop === "product" ? "Reply, or drop in a file" : "Ask or change anything: \"drop gyms\", \"what about Austin?\""}
+          onChange={(e) => setText(e.target.value)}
+          onPaste={(e) => {
+            if (e.clipboardData.files.length) {
+              e.preventDefault();
+              chat.addFiles(e.clipboardData.files);
+            }
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              send();
+            }
+          }}
+        />
+        <div className="row-actions">
+          <button type="button" onClick={() => pick.current?.click()}>Add files</button>
+          <input ref={pick} type="file" multiple accept={ACCEPT} hidden onChange={(e) => e.target.files && chat.addFiles(e.target.files)} />
+          <span className="muted small">Decks, stockist sheets, photos, PDFs.</span>
+          <button type="submit" className="primary" disabled={(busy && !chat.researching) || !!queued || (first ? !text.trim() : !text.trim() && !chat.files.length)}>Send</button>
+        </div>
+      </form>
+    </section>
+  );
+
+  // Each one's own output (§23.2 step 8.4f), shown in its tab on the Athena tab and on its own page.
+  const outputOf = (id: AgentId) =>
+    id === "athena" ? (
+      <>
+        <div id="stop-product">{graphEl}</div>
+        <GoalsBar goals={team.goals} />
+        {j.fits && (j.strategy || planRunning) && <AthenaPlan j={j} steps={planSteps} running={planRunning} />}
+      </>
+    ) : id === "analyst" ? (
+      <div id="stop-analyst">
+        {(["crowds", "fits", "strategy"] as const).map((r) => g.held[r] && <StaleFlag key={r} run={r} line={staleLine(r, g.held[r]!)} onRerun={() => onRerun(r)} />)}
+        <AnalystResults
+          j={j}
+          step={analystStep}
+          measured={measured}
+          forming={forming}
+          fits={{ steps: [], running: !!analystStep && !j.fits, asks, answers, onAnswer: (q, a) => setAnswers((x) => ({ ...x, [q.id]: a })) }}
+          onHandoff={tm.handoff}
+          onAsk={askAbout}
+          probing={j.crowds ? analystStep : undefined}
+          alone={alone}
+        />
+      </div>
+    ) : (
+      <SpecialistPanel id={id} j={j} team={team} live={tm.live} alone={alone} onMark={tm.mark} onHandoff={tm.handoff} crowdId={crowdIdOf} />
+    );
+
+  const dropZone = {
+    onDragOver: (e: React.DragEvent) => {
+      e.preventDefault();
+      setDrag(true);
+    },
+    onDragLeave: () => setDrag(false),
+    onDrop: (e: React.DragEvent) => {
+      e.preventDefault();
+      setDrag(false);
+      if (e.dataTransfer.files.length) chat.addFiles(e.dataTransfer.files);
+    },
+  };
 
   return (
-    <div
-      className={`journey ${drag ? "dragging" : ""} ${onboarding ? "ob-on" : ""}`}
-      onDragOver={(e) => {
-        e.preventDefault();
-        setDrag(true);
-      }}
-      onDragLeave={() => setDrag(false)}
-      onDrop={(e) => {
-        e.preventDefault();
-        setDrag(false);
-        if (e.dataTransfer.files.length) chat.addFiles(e.dataTransfer.files);
-      }}
-    >
+    <div className={`journey ${drag ? "dragging" : ""} ${onboarding ? "ob-on" : ""}`} {...dropZone}>
       <header className="topbar journey-top">
         <Link href="/" className="wordmark-link"><strong>Athena</strong></Link>
         {/* Hidden through onboarding (§23.2 step 7.2a); the goals take the progress rail's place (step 8a). */}
@@ -607,7 +784,7 @@ export function Journey() {
               } catch {
                 // Ignore.
               }
-              window.location.reload();
+              window.location.replace("/plan");
             }}
           >
             Start over
@@ -619,166 +796,40 @@ export function Journey() {
         <main className="journey-main ob-main">
           <Onboard brief={brief} files={chat.files} addFiles={chat.addFiles} setFiles={chat.setFiles} onBrief={onBrief} onFacts={onRaw} graph={graphEl} dock={dockEl} grouping={working?.by === "graph" ? working.text : undefined} onRecord={(r) => (record.current = r)} />
         </main>
+      ) : page === "dashboard" ? (
+        <DashboardPage nav={navEl} paused={<PausedForYou live={tm.live} onGo={() => go("athena")} />} onChat={() => go("athena")}>
+          <Dashboard
+            live={tm.live}
+            team={team}
+            runs={Object.fromEntries(SPECIALIST_IDS.map((id) => [id, startFor(id, j, team)]))}
+            inputs={j.inputs ?? {}}
+            onInput={(id, a) => setJ((x) => ({ ...x, inputs: { ...x.inputs, [id]: a } }))}
+            onOpen={(id) => go(id)}
+            onHandoff={(h) => (tm.handoff(h), go("athena"))}
+            working={<WhatsWorking team={team} graphRev={g.log.length} busy={tm.live.running > 0} onRefresh={tm.refresh} />}
+          />
+        </DashboardPage>
+      ) : subPage ? (
+        <SubagentPage id={subPage} nav={navEl} chat={chatEl} bodyRef={panelBody}>
+          <SpecialistWorkspace id={subPage} live={tm.live} team={team} />
+          {outputOf(subPage)}
+        </SubagentPage>
       ) : (
-        <main className={`journey-main journey-team agent-stage${panelOpen ? " with-panel" : ""}${sheet ? " sheet-on" : ""}`}>
-          <TeamPanel live={tm.live} team={team} active={tm.active} onOpen={(id) => (tm.setActive(id), setAbout(undefined), setPanelOpen(true))} />
-          <section className="chat agent-chat" aria-live="polite">
-            <div className="agent-chat-head agent-switch" key={`head-${view}`}>
-              <strong>{view === "dashboard" ? "Your dashboard" : nameOf(view)}</strong>
-              <button type="button" className="linkish small agent-panel-open" onClick={() => (setPanelOpen(true), setSheet(true))}>
-                {view === "dashboard" ? "Open the dashboard" : `See ${workOf(view)}`}
-              </button>
-            </div>
-            <PausedForYou live={tm.live} view={view} onGo={tm.setActive} />
-            {inWorkspace ? (
-              <div className="msgs spec-wrap agent-switch" key={`msgs-${view}`}>
-                <SpecialistWorkspace id={inWorkspace} live={tm.live} team={team} onAnswer={tm.answer} />
-                <div ref={end} />
-              </div>
-            ) : (
-            <ol className="msgs agent-switch" key={`msgs-${view}`}>
-              {msgs.map((m, i) => [
-                m.record && <RecordView key={`r${i}`} record={m.record} />,
-                (m.text || !!m.files?.length) && (
-                  <li key={i} className={`msg msg-${m.who}`}>
-                    {m.text}
-                    {!!m.files?.length && <span className="msg-files">{m.files.map((f) => <span key={f} className="chip">{f}</span>)}</span>}
-                  </li>
-                ),
-                m.trail && <TrailView key={`t${i}`} trail={m.trail} />,
-              ])}
-              {busy && live && <li className="msg msg-athena streaming">{live}</li>}
-              {queued && <li className="msg msg-athena typing">Finishing my research, then I&apos;ll read that…</li>}
-              {working?.by === "chat" && <li className="msg msg-athena typing">{working.text}</li>}
-              {/* Once the chat has nothing running, the graph's grouping is the work still going: said where the founder is looking. */}
-              {working?.by === "graph" && !busy && !queued && (
-                <li className="msg msg-athena graph-wait" role="status">
-                  <span className="spin" aria-hidden /> <span className="shimmer-text">The Brand Graph is still grouping what I read into themes</span>
-                  <StepTimer />
-                </li>
-              )}
-              {/* Answered questions stay here as one-line records; the open ones wait in the tray above the box. */}
-              {questions.filter((it) => it.answer !== undefined).map((it) => (
-                <li key={it.q.id} className="msg-question">
-                  <Question q={it.q} answer={it.answer} onAnswer={it.onAnswer} />
-                </li>
-              ))}
-              {preview && (
-                <li className="msg msg-athena graph-preview">
-                  <p>{preview.line}</p>
-                  <div className="replies">
-                    <button
-                      type="button"
-                      className="primary"
-                      onClick={() => {
-                        const a = apply(preview.ops, preview.by);
-                        setPreview(undefined);
-                        if (preview.by === "chat") say(a?.edit.note ?? "That's already on your graph.");
-                      }}
-                    >
-                      Apply
-                    </button>
-                    <button type="button" onClick={() => setPreview(undefined)}>Not now</button>
-                  </div>
-                </li>
-              )}
-              <div ref={end} />
-            </ol>
-            )}
-            <QuestionTray key={`tray-${view}`} items={questions} />
-            {dockEl}
-
-            <form
-              className="composer"
-              onSubmit={(e) => {
-                e.preventDefault();
-                send();
-              }}
-            >
-              {!!chat.files.length && (
-                <ul className="chips">
-                  {chat.files.map((f, i) => (
-                    <li key={`${f.name}${i}`} className="chip">
-                      {f.name} <button type="button" className="linkish" aria-label={`Remove ${f.name}`} onClick={() => chat.setFiles(chat.files.filter((_, k) => k !== i))}>✕</button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-              <textarea
-                autoFocus
-                rows={first ? 3 : 2}
-                value={text}
-                maxLength={8000}
-                placeholder={first ? "e.g. We're Fishwife: premium tinned fish with playful packaging, about $9 a tin. Sold online and in 1,500 shops. eatfishwife.com" : inWorkspace ? specialist(inWorkspace).prompt : j.stop === "product" ? "Reply, or drop in a file" : "Ask or change anything: \"drop gyms\", \"what about Austin?\""}
-                onChange={(e) => setText(e.target.value)}
-                onPaste={(e) => {
-                  if (e.clipboardData.files.length) {
-                    e.preventDefault();
-                    chat.addFiles(e.clipboardData.files);
-                  }
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    send();
-                  }
-                }}
-              />
-              <div className="row-actions">
-                <button type="button" onClick={() => pick.current?.click()}>Add files</button>
-                <input ref={pick} type="file" multiple accept={ACCEPT} hidden onChange={(e) => e.target.files && chat.addFiles(e.target.files)} />
-                <span className="muted small">Decks, stockist sheets, photos, PDFs.</span>
-                <button type="submit" className="primary" disabled={(busy && !chat.researching) || !!queued || (first ? !text.trim() : !text.trim() && !chat.files.length)}>Send</button>
-              </div>
-            </form>
-          </section>
-
-          {panelOpen && <PanelGrip prop="--panel-user" chat=".chat" panel=".agent-panel" store="athena.panel-w" />}
-          <aside className={`agent-panel${panelOpen ? "" : " agent-panel-shut"}`} aria-label={view === "dashboard" ? "Your dashboard" : workOf(view)}>
-            <div className="agent-panel-bar">
-              <button type="button" className="linkish small agent-panel-back" onClick={() => setSheet(false)}>← Back to the chat</button>
-              <button type="button" className="linkish small agent-panel-hide" onClick={() => setPanelOpen(false)} aria-label="Hide the panel">Hide ›</button>
-            </div>
-            <div className="agent-panel-body" ref={panelBody} key={view}>
-              {view === "athena" && (
-                <>
-                  <div id="stop-product">{graphEl}</div>
-                  <GoalsBar goals={team.goals} />
-                  {j.fits && (j.strategy || planRunning) && <AthenaPlan j={j} steps={planSteps} running={planRunning} />}
-                </>
-              )}
-              {view === "analyst" && (
-                <div id="stop-analyst">
-                  {(["crowds", "fits", "strategy"] as const).map((r) => g.held[r] && <StaleFlag key={r} run={r} line={staleLine(r, g.held[r]!)} onRerun={() => onRerun(r)} />)}
-                  <AnalystResults
-                    j={j}
-                    step={analystStep}
-                    measured={measured}
-                    forming={forming}
-                    fits={{ steps: [], running: !!analystStep && !j.fits, asks, answers, onAnswer: (q, a) => setAnswers((x) => ({ ...x, [q.id]: a })) }}
-                    onHandoff={tm.handoff}
-                    onAsk={askAbout}
-                    probing={j.crowds ? analystStep : undefined}
-                    alone={alone}
-                  />
-                </div>
-              )}
-              {inWorkspace && inWorkspace !== "analyst" && <SpecialistPanel id={inWorkspace} j={j} team={team} live={tm.live} alone={alone} onMark={tm.mark} onHandoff={tm.handoff} crowdId={crowdIdOf} />}
-              {view === "dashboard" && (
-                <Dashboard
-                  live={tm.live}
-                  team={team}
-                  runs={Object.fromEntries(SPECIALIST_IDS.map((id) => [id, startFor(id, j, team)]))}
-                  inputs={j.inputs ?? {}}
-                  onInput={(id, a) => setJ((x) => ({ ...x, inputs: { ...x.inputs, [id]: a } }))}
-                  onOpen={tm.setActive}
-                  onHandoff={tm.handoff}
-                  working={<WhatsWorking team={team} graphRev={g.log.length} busy={tm.live.running > 0} onRefresh={tm.refresh} />}
-                />
-              )}
-            </div>
-          </aside>
-        </main>
+        <AthenaRoom
+          nav={navEl}
+          chat={chatEl}
+          tabs={panelIds(team)}
+          tab={tab}
+          onTab={(id) => (tm.setActive(id), setPanelOpen(true))}
+          state={stateOf}
+          open={panelOpen}
+          sheet={sheet}
+          onHide={() => setPanelOpen(false)}
+          onBack={() => setSheet(false)}
+          panelRef={panelBody}
+        >
+          {outputOf(tab)}
+        </AthenaRoom>
       )}
     </div>
   );

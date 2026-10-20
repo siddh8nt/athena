@@ -2155,3 +2155,53 @@ button.nav-item:hover:not(:disabled) { background: rgba(255, 255, 255, 0.045); c
   100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent, #8b2335) 0%, transparent); }
 }
 @media (prefers-reduced-motion: reduce) { .q-tray-call .question { animation: none; } }
+
+/* ── Step 8.5a: the dashboard and the subagent pages, around the one chat with Athena ─────── */
+.journey-main.page-stage { position: relative; }
+.dash-page, .sub-page { min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 18px; padding: 28px 32px 40px; }
+.dash-page-body, .sub-page-body { display: flex; flex-direction: column; gap: 16px; width: 100%; max-width: 1180px; margin: 0 auto; }
+.sub-page-body > * { animation: rise 0.3s ease-out both; }
+.page-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; max-width: 1180px; margin: 0 auto; }
+.page-head strong { font-family: var(--font-display); font-weight: 400; font-size: 34px; letter-spacing: -0.01em; line-height: 1.1; }
+.page-kicker { font-family: var(--font-caps); font-weight: 700; font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.chat-open { display: inline-flex; align-items: center; gap: 8px; min-height: 34px; padding: 0 16px; border-radius: 999px; border: 0; background: #14120f; color: #f3efe6; font-family: var(--font-caps); font-weight: 700; font-size: 12.5px; transition: background-color 140ms ease-out, transform 140ms var(--ease-slow); }
+.chat-open:hover:not(:disabled) { background: #241f1a; }
+.chat-open:active:not(:disabled) { transform: scale(0.97); }
+.sub-chat-open, .chat-dock-back { display: none; }
+.dash-page > .paused { width: 100%; max-width: 1180px; margin: 0 auto; }
+
+/* The subagent page: its work on the left, the chat docked on the right. */
+@media (min-width: 901px) {
+  .journey-main.agent-stage.sub-stage, .journey-main.agent-stage.sub-stage:has(.team-rail) { grid-template-columns: var(--nav-w, 232px) minmax(0, 1fr) var(--dock-w, minmax(360px, 34%)); }
+}
+.chat-dock { display: flex; flex-direction: column; min-height: 0; border-left: 1px solid var(--line-soft); background: color-mix(in srgb, var(--bg) 70%, transparent); }
+.chat-dock > .chat { flex: 1; min-height: 0; border-right: 0; }
+.sub-stage .chat-dock .msgs { padding-left: 18px; padding-right: 18px; }
+.sub-stage .chat-dock .composer, .sub-stage .chat-dock .chat > .q-tray { width: calc(100% - 32px); }
+
+/* The panel's tabs: Athena and every subagent in the team, on the panel's dark bar. */
+.agent-panel-bar { align-items: center; gap: 8px; }
+.panel-tabs { display: flex; gap: 4px; flex: 1; min-width: 0; overflow-x: auto; scrollbar-width: none; padding-bottom: 8px; }
+.panel-tabs::-webkit-scrollbar { display: none; }
+.panel-tab { flex: none; display: inline-flex; align-items: center; gap: 6px; min-height: 28px; padding: 0 12px; border: 0; border-radius: 999px; background: none; color: #c2baab; font-size: 12px; white-space: nowrap; }
+.panel-tab:hover:not(:disabled) { background: #241f1a; color: #f3efe6; }
+.panel-tab.on, .panel-tab.on:hover:not(:disabled) { background: var(--accent); color: var(--on-accent); }
+.panel-tab .spin { width: 10px; height: 10px; }
+.agent-panel-hide { flex: none; padding-bottom: 8px; }
+
+@media (max-width: 1100px) and (min-width: 901px) {
+  .journey-main.agent-stage.sub-stage, .journey-main.agent-stage.sub-stage:has(.team-rail) { --dock-w: 340px; }
+}
+@media (max-width: 900px) {
+  .journey:has(.page-stage) { height: 100dvh; overflow: hidden; }
+  .journey-main.agent-stage.sub-stage, .journey-main.agent-stage.dash-stage { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr); }
+  .dash-page, .sub-page { padding: 16px 16px 32px; gap: 14px; }
+  .page-head strong { font-size: 28px; }
+  .sub-chat-open { display: inline-flex; }
+  .chat-dock { position: fixed; inset: 0; z-index: 50; display: none; border: 0; background: var(--bg); }
+  .sub-stage.sheet-on .chat-dock { display: flex; }
+  /* The main area isolates its stacking, so an open sheet lifts the whole area over the top bar. */
+  .journey-main.sheet-on { z-index: 6; }
+  .chat-dock-back { display: inline; align-self: flex-start; margin: 12px 16px 0; font-family: var(--font-caps); font-weight: 700; font-size: 12px; color: var(--muted); }
+  .panel-tabs { padding-bottom: 6px; }
+}

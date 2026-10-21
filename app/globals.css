@@ -1105,7 +1105,7 @@ span.ob-source { color: var(--muted); }
 .agent-stage.with-panel .chat { padding-right: calc(var(--panel-w) + 24px); }
 .agent-chat-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; width: 100%; max-width: 720px; margin: 0 auto; padding: 14px 24px 4px; }
 .agent-chat-head strong { font-size: 14px; }
-.agent-stage.with-panel .agent-panel-open { display: none; }
+.agent-stage .agent-panel-open { display: none; }
 .agent-stage .msgs { width: 100%; max-width: 720px; margin: 0 auto; padding: 8px 24px 16px; }
 .agent-stage .chat > .dock, .agent-stage .chat > .replies { width: 100%; max-width: 720px; margin: 0 auto; }
 .agent-stage .composer { width: calc(100% - 48px); max-width: 672px; margin: 0 auto 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); padding: 8px 10px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 10px 28px -16px rgba(0, 0, 0, 0.18); }
@@ -1141,7 +1141,7 @@ span.ob-source { color: var(--muted); }
   .journey-main.agent-stage { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
   .agent-stage.with-panel .chat { padding-right: 0; }
   .agent-stage .chat, .journey-main.agent-stage .chat { max-height: none; min-height: 0; border-bottom: 0; }
-  .agent-stage.with-panel .agent-panel-open { display: inline; }
+  .agent-stage .agent-panel-open { display: inline; }
   .agent-chat-head, .agent-stage .msgs { padding-left: 16px; padding-right: 16px; }
   .agent-stage .composer { width: calc(100% - 32px); margin-bottom: calc(10px + env(safe-area-inset-bottom)); }
   .agent-panel { position: fixed; inset: 0; width: auto; border-radius: 0; border: 0; z-index: 50; display: none; }
@@ -2187,7 +2187,32 @@ button.nav-item:hover:not(:disabled) { background: rgba(255, 255, 255, 0.045); c
 .panel-tab:hover:not(:disabled) { background: #241f1a; color: #f3efe6; }
 .panel-tab.on, .panel-tab.on:hover:not(:disabled) { background: var(--accent); color: var(--on-accent); }
 .panel-tab .spin { width: 10px; height: 10px; }
-.agent-panel-hide { flex: none; padding-bottom: 8px; }
+/* Collapse and expand (founder, 21 Oct): the panel folds to a slim rail on the right edge, never away; the rail names
+   what it holds, shows who is working, and opens the panel again. The width eases, the content fades back in. */
+.agent-panel-hide { flex: none; display: grid; place-items: center; width: 28px; height: 28px; margin-bottom: 8px; padding: 0; border: 0; border-radius: 50%; background: none; color: #c2baab; transition: background-color 140ms ease-out, color 140ms ease-out; }
+.agent-panel-hide:hover { background: #241f1a; color: #f3efe6; }
+.panel-chev { display: block; width: 7px; height: 7px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: translateX(-1px) rotate(-45deg); }
+.panel-chev-open { transform: translateX(1px) rotate(135deg); }
+.panel-rail { display: none; }
+@media (min-width: 901px) {
+  .journey-team .agent-panel { transition: width 0.4s var(--ease-slow); }
+  .journey-team .agent-panel-shut { display: flex; width: 52px; cursor: pointer; }
+  .journey-team .agent-panel-shut > .agent-panel-bar, .journey-team .agent-panel-shut > .agent-panel-body { display: none; }
+  .journey-team .agent-panel:not(.agent-panel-shut) > .agent-panel-bar, .journey-team .agent-panel:not(.agent-panel-shut) > .agent-panel-body { animation: panel-in 0.3s 0.12s var(--ease-slow) both; }
+  .journey-team.agent-stage:not(.with-panel) .chat { padding-right: 76px; }
+  .journey-team.agent-stage:not(.with-panel) .chat::before { right: 76px; }
+  .panel-rail { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 14px; width: 100%; padding: 14px 0; border: 0; background: none; color: var(--muted); font: inherit; cursor: pointer; animation: panel-in 0.3s 0.15s var(--ease-slow) both; transition: color 140ms ease-out, background-color 140ms ease-out; }
+  .panel-rail:hover { color: var(--fg); background: color-mix(in srgb, var(--accent) 5%, transparent); }
+  .panel-rail .panel-chev { width: 8px; height: 8px; }
+  .panel-rail-label { writing-mode: vertical-rl; font-family: var(--font-caps); font-weight: 700; font-size: 11.5px; letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap; }
+  .panel-rail-dots { display: flex; flex-direction: column; gap: 6px; }
+  .panel-rail-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+  .panel-rail-working { animation: rail-pulse 1.4s ease-in-out infinite; }
+  .panel-rail-waiting { background: #c9952b; }
+}
+@keyframes panel-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes rail-pulse { 50% { opacity: 0.35; } }
+@media (prefers-reduced-motion: reduce) { .journey-team .agent-panel, .panel-rail, .panel-rail-working, .journey-team .agent-panel > * { transition: none; animation: none; } }
 
 @media (max-width: 1100px) and (min-width: 901px) {
   .journey-main.agent-stage.sub-stage, .journey-main.agent-stage.sub-stage:has(.team-rail) { --dock-w: 340px; }

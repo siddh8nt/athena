@@ -855,7 +855,8 @@ export function Journey() {
           onFollow={tm.followRun}
           open={panelOpen}
           sheet={sheet}
-          onHide={() => setPanelOpen(false)}
+          onHide={() => (setPanelOpen(false), setSheet(false))}
+          onShow={() => setPanelOpen(true)}
           onBack={() => setSheet(false)}
           panelRef={panelBody}
         >

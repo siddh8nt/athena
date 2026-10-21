@@ -47,7 +47,8 @@ export function DashboardPage({ nav, chat, paused, open, setOpen, children }: { 
 
 /**
  * The Athena tab: her chat, with the subagents' work in the panel on the right, one tab each. The panel opens beside
- * the chat on a desktop and is a full-screen sheet on a phone.
+ * the chat on a desktop and collapses to a slim rail that opens it again (founder, 21 Oct); on a phone it is a
+ * full-screen sheet.
  */
 export function AthenaRoom(p: {
   nav: ReactNode;
@@ -63,6 +64,7 @@ export function AthenaRoom(p: {
   open: boolean;
   sheet: boolean;
   onHide: () => void;
+  onShow: () => void;
   onBack: () => void;
   panelRef: React.RefObject<HTMLDivElement | null>;
   children: ReactNode;
@@ -74,6 +76,18 @@ export function AthenaRoom(p: {
       {p.chat}
       {p.open && <PanelGrip prop="--panel-user" chat=".chat" panel=".agent-panel" store="athena.panel-w" />}
       <aside className={`agent-panel${p.open ? "" : " agent-panel-shut"}`} aria-label={label}>
+        {!p.open && (
+          <button type="button" className="panel-rail" onClick={p.onShow} aria-label={`Show ${label}`} title={`Show ${label}`}>
+            <span className="panel-chev panel-chev-open" aria-hidden />
+            <span className="panel-rail-label">{p.tab === "athena" ? "Athena's work" : `The ${nameOf(p.tab)}`}</span>
+            <span className="panel-rail-dots" aria-hidden>
+              {p.tabs.map((id) => {
+                const s = p.state(id);
+                return s ? <span key={id} className={`panel-rail-dot panel-rail-${s}`} title={`The ${nameOf(id)}`} /> : null;
+              })}
+            </span>
+          </button>
+        )}
         <div className="agent-panel-bar">
           <button type="button" className="linkish small agent-panel-back" onClick={p.onBack}>← Back to the chat</button>
           <div className="panel-tabs" role="tablist" aria-label="Athena and the subagents">
@@ -93,7 +107,9 @@ export function AthenaRoom(p: {
               <span className="nav-wait" aria-hidden /> Follow the run
             </button>
           )}
-          <button type="button" className="linkish small agent-panel-hide" onClick={p.onHide} aria-label="Hide the panel">Hide ›</button>
+          <button type="button" className="agent-panel-hide" onClick={p.onHide} aria-label="Collapse the panel" title="Collapse">
+            <span className="panel-chev" aria-hidden />
+          </button>
         </div>
         <div className="agent-panel-body" ref={p.panelRef} key={p.tab}>
           {p.children}

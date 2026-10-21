@@ -482,7 +482,7 @@ export async function runSpecialist(r: SpecialistInput): Promise<Work | undefine
     ...(id === "scout" && t.found.scout ? { page: t.found.scout } : {}),
     ...(id === "navigator" && navigatorPageOf(t) ? { page: navigatorPageOf(t) } : {}),
     ...(id === "rep" && t.found.rep ? { page: repPage(t.found.rep, { outcomes: latest(t.outcomes), pitches: t.found.pitch, at: Date.now() }) } : {}),
-    shared: id === "navigator" && (t.city || t.found.navigator) ? { ...(t.city ? { city: t.city } : {}), ...(t.found.navigator ? { nav: saveNav(t.found.navigator) } : {}) } : id === "scout" && t.next ? { crowd: t.next.name } : id === "analyst" && t.crowd ? { crowd: t.crowd.name } : undefined,
+    shared: id === "navigator" && (t.city || t.found.navigator) ? { ...(t.city ? { city: t.city } : {}), ...(t.found.navigator ? { nav: saveNav(t.found.navigator) } : {}) } : id === "rep" && t.found.rep ? { rep: t.found.rep, ...(t.found.pitch ? { pitch: t.found.pitch } : {}) } : id === "scout" && t.next ? { crowd: t.next.name } : id === "analyst" && t.crowd ? { crowd: t.crowd.name } : undefined,
   };
   if (id === "analyst" && t.ranked) t.ranked = { ...t.ranked, answer: { headline: done.headline, reasons: done.claims.map((c) => ({ crowd: "", text: c.text, sources: c.sources })), assumptions: [] }, sources: done.sources };
   r.send({ type: "work", agent: id, work: done });

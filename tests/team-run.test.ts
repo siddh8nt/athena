@@ -162,6 +162,22 @@ describe("outcomes change the next run (§23.2 step 8g)", () => {
     expect(again.changed).toBeTruthy();
     expect(again.headline).not.toBe(rep.headline);
   }, 120_000);
+
+  it("keeps the shops it found, so the next run pitches from them without a new read", async () => {
+    const first = await run({ goals: ["launch_city"] });
+    expect(first.step("rep", "read_shops")?.status).toBe("ok");
+    const works = Object.fromEntries((["analyst", "navigator", "rep"] as const).map((id) => [id, first.work(id)!])) as Partial<Record<SpecialistId, Work>>;
+    const back = readTeam(JSON.parse(JSON.stringify({ ...emptyTeam(), works })));
+    expect(back.works.rep?.shared?.rep?.shops.length).toBe(first.work("rep")?.shared?.rep?.shops.length);
+    expect(back.works.rep?.shared?.pitch).toEqual(first.work("rep")?.shared?.pitch);
+
+    const next = await run({ goals: ["launch_city"], state: back });
+    expect(next.step("rep", "read_shops")?.why).toMatch(/^Using the \d+ shops read earlier this session/);
+    expect(next.step("rep", "read_shops")?.summary).toMatch(/^From the shops read earlier this session: /);
+    expect(next.step("rep", "draft_pitch")?.status).toBe("ok");
+    expect(next.work("rep")?.results.filter((x) => x.kind === "venue").map((x) => x.id)).toEqual(first.work("rep")?.results.filter((x) => x.kind === "venue").map((x) => x.id));
+    expect(next.work("rep")!.qlooCalls).toBeLessThan(first.work("rep")!.qlooCalls);
+  }, 120_000);
 });
 
 describe("registries (§23.2 step 8e)", () => {

@@ -12,7 +12,7 @@ import { resolveBrand } from "@/lib/methods/resolve";
 import { metroOf } from "./tools";
 import { heldCrowds } from "./evidence";
 import { restoreNav } from "./navigator";
-import type { TeamCtx, TeamEnrich } from "./plays";
+import { repLists, type TeamCtx, type TeamEnrich } from "./plays";
 
 // The team's shared memory built from the Brand Graph the client sends (PRD §23.2 step 8b): the brand as the
 // specialists read it, the measured crowds and ranking, and what earlier runs settled (the Navigator's city, the
@@ -65,7 +65,7 @@ export async function buildCtx(r: CtxInput): Promise<TeamCtx> {
   const nav = saved && r.crowds ? restoreNav(saved, r.crowds.crowds, works.navigator?.page) : undefined;
   const crowdNamed = (n?: string) => (n ? r.crowds?.crowds.find((c) => c.name === n) : undefined);
 
-  return {
+  const ctx: TeamCtx = {
     brand: {
       name,
       product: b?.sells?.value ?? name,
@@ -96,9 +96,17 @@ export async function buildCtx(r: CtxInput): Promise<TeamCtx> {
     ...(crowdNamed(nextName) ? { next: crowdNamed(nextName) } : {}),
     ...(r.answers?.length ? { answers: r.answers } : {}),
     ...(r.notes?.length ? { notes: r.notes } : {}),
-    found: { ...(works.scout?.page ? { scout: works.scout.page } : {}), ...(nav ? { navigator: nav } : {}) },
+    found: {
+      ...(works.scout?.page ? { scout: works.scout.page } : {}),
+      ...(nav ? { navigator: nav } : {}),
+      ...(works.rep?.shared?.rep ? { rep: works.rep.shared.rep } : {}),
+      ...(works.rep?.shared?.pitch ? { pitch: works.rep.shared.pitch } : {}),
+    },
     outcomes: r.team.outcomes,
     // Probed and still under three crowds: the graph was seeded wider already (§23.5 c).
     probe: { ran: r.probes.length, wider: r.probes.length > 0 && heldCrowds(r.crowds) < 3 },
   };
+  // The Rep's shops from an earlier request: a pitch works from them, not a new read (§23.5 f).
+  if (ctx.found.rep) repLists(ctx);
+  return ctx;
 }

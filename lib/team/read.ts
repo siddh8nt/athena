@@ -1,6 +1,8 @@
 import { SPECIALIST_IDS, type SpecialistId } from "@/lib/agent/specialists";
 import { readWorkflow } from "@/lib/agent/workflow";
-import type { SavedNav } from "@/lib/agent/navigator";
+import type { Role, SavedNav } from "@/lib/agent/navigator";
+import type { RepRead, Shop } from "@/lib/agent/rep";
+import type { Evidence, Source } from "@/lib/blocks/types";
 import type { AreaFigures } from "@/lib/enrich/census";
 import { MARKS, emptyTeam, type Answer, type Goal, type Mark, type Outcome, type TeamState, type Work, type WorkItem } from "./types";
 
@@ -95,6 +97,134 @@ export function readNav(raw: unknown): SavedNav | undefined {
   return crowds.length && cities.length ? { crowds, cities, cap: num(r.cap) || 2, calls: num(r.calls), callIds: strs(r.callIds, 300, 80) } : undefined;
 }
 
+const ROLES = ["anchor", "spillover", "popup", "online"];
+const TIERS = ["win_first", "win_next", "watch"];
+const EVIDENCE = ["contribution", "tag", "growth", "price", "fit", "rank"];
+const opt = (k: string, v: string) => (v ? { [k]: v } : {});
+const optNum = (k: string, v: unknown) => (typeof v === "number" && Number.isFinite(v) ? { [k]: v } : {});
+const named = (v: unknown, n: number) =>
+  (Array.isArray(v) ? v : []).slice(0, n).flatMap((x) => (str(rec(x).id, 120) && str(rec(x).name, 160) ? [{ id: str(rec(x).id, 120), name: str(rec(x).name, 160) }] : []));
+const why = (v: unknown) =>
+  (Array.isArray(v) ? v : []).slice(0, 6).flatMap((x) => (str(rec(x).id, 120) && typeof rec(x).score === "number" ? [{ id: str(rec(x).id, 120), score: num(rec(x).score) }] : []));
+const enriched = (v: unknown) => {
+  const e = rec(v);
+  return str(e.value, 300) && str(e.source, 40) ? { value: str(e.value, 300), source: str(e.source, 40) as Source, ...opt("url", str(e.url, 300)), ...opt("callId", str(e.callId, 80)) } : undefined;
+};
+
+function readShop(raw: unknown): Shop | undefined {
+  const s = rec(raw);
+  const id = str(s.id, 120);
+  const name = str(s.name, 200);
+  const metroId = str(s.metroId, 80);
+  if (!id || !name || !metroId) return undefined;
+  const contact = rec(s.contact);
+  const phone = enriched(contact.phone);
+  const website = enriched(contact.website);
+  const site = rec(s.site);
+  const crowds = Object.fromEntries(Object.entries(rec(s.crowds)).slice(0, 3).filter(([, v]) => typeof v === "number" && Number.isFinite(v)).map(([k, v]) => [k.slice(0, 80), v as number]));
+  const role = str(s.role, 20);
+  const reasons = (Array.isArray(s.reasons) ? s.reasons : []).slice(0, 6).flatMap((x): Evidence[] => {
+    const e = rec(x);
+    const kind = str(e.kind, 20);
+    return EVIDENCE.includes(kind) && str(e.label, 300) ? [{ kind: kind as Evidence["kind"], label: str(e.label, 300), ...optNum("value", e.value), callId: str(e.callId, 80) }] : [];
+  });
+  const emails = (Array.isArray(site.emails) ? site.emails : []).slice(0, 3).flatMap((x) => (str(rec(x).value, 200) && str(rec(x).src, 300) ? [{ value: str(rec(x).value, 200), src: str(rec(x).src, 300) }] : []));
+  return {
+    rank: num(s.rank),
+    id,
+    name,
+    ...opt("address", str(s.address, 300)),
+    ...opt("neighbourhood", str(s.neighbourhood, 120)),
+    ...optNum("lat", s.lat),
+    ...optNum("lon", s.lon),
+    ...optNum("priceLevel", s.priceLevel),
+    ...optNum("popularity", s.popularity),
+    reasons,
+    tags: named(s.tags, 10),
+    contact: { ...(phone ? { phone } : {}), ...(website ? { website } : {}) },
+    ...(why(s.why).length ? { why: why(s.why) } : {}),
+    metroId,
+    city: str(s.city, 120),
+    ...opt("hood", str(s.hood, 120)),
+    ...(ROLES.includes(role) ? { role: role as Role } : {}),
+    ...optNum("rating", s.rating),
+    ...opt("hours", str(s.hours, 200)),
+    ...(s.events === true ? { events: true } : {}),
+    kind: str(s.kind, 60),
+    crowds,
+    stocked: s.stocked === true,
+    ...opt("widened", str(s.widened, 200)),
+    ...(str(site.src, 300)
+      ? {
+          site: {
+            brands: strs(site.brands, 40, 120),
+            sameNiche: strs(site.sameNiche, 20, 120),
+            ...opt("wholesale", str(site.wholesale, 300)),
+            emails,
+            ...opt("form", str(site.form, 300)),
+            ...opt("size", str(site.size, 120)),
+            src: str(site.src, 300),
+          },
+        }
+      : {}),
+    ...(s.faire === true ? { faire: true } : {}),
+    callId: str(s.callId, 80),
+  };
+}
+
+/** The Rep's read as a journey kept it (§23.5 f): a pitch or a question about the shops works from it, not a new read. */
+export function readRep(raw: unknown): RepRead | undefined {
+  const r = rec(raw);
+  const crowds = (Array.isArray(r.crowds) ? r.crowds : []).slice(0, 3).flatMap((x) => {
+    const c = rec(x);
+    const id = str(c.id, 80);
+    const tier = str(c.tier, 20);
+    if (!id || !TIERS.includes(tier)) return [];
+    return [{ id, name: str(c.name, 160), tier: tier as RepRead["crowds"][number]["tier"], ...(c.nearMiss === true ? { nearMiss: true } : {}), brands: named(c.brands, 12), cities: strs(c.cities, 12, 80) }];
+  });
+  const cities = (Array.isArray(r.cities) ? r.cities : []).slice(0, 12).flatMap((x) => {
+    const c = rec(x);
+    const metroId = str(c.metroId, 80);
+    const center = nums(c.center, 2) as [number, number] | undefined;
+    if (!metroId || !center) return [];
+    const bbox = nums(c.bbox, 4) as [number, number, number, number] | undefined;
+    const hoods = (Array.isArray(c.hoods) ? c.hoods : []).slice(0, 24).flatMap((y) => {
+      const h = rec(y);
+      return str(h.name, 120) && ROLES.includes(str(h.role, 20)) ? [{ name: str(h.name, 120), role: str(h.role, 20) as Role }] : [];
+    });
+    return [{ metroId, name: str(c.name, 120), center, ...(bbox ? { bbox } : {}), yours: c.yours === true, notes: strs(c.notes, 12, 300), hoods }];
+  });
+  const shops = (Array.isArray(r.shops) ? r.shops : []).slice(0, 300).map(readShop).filter((s): s is Shop => !!s);
+  const retailers = Object.fromEntries(
+    Object.entries(rec(r.retailers)).slice(0, 3).map(([k, v]) => [
+      k.slice(0, 80),
+      (Array.isArray(v) ? v : []).slice(0, 20).flatMap((x) => {
+        const p = rec(x);
+        if (!str(p.id, 120) || !str(p.name, 160)) return [];
+        return [{ id: str(p.id, 120), name: str(p.name, 160), affinity: num(p.affinity), rank: num(p.rank), ownLabel: p.ownLabel === true, qlooPick: p.qlooPick === true, callId: str(p.callId, 80), ...(why(p.why).length ? { why: why(p.why) } : {}), cities: strs(p.cities, 12, 80) }];
+      }),
+    ]),
+  );
+  const brand = rec(r.brand);
+  const budget = str(r.budget, 10);
+  if (!crowds.length || !cities.length || !shops.length) return undefined;
+  return {
+    crowds,
+    cities,
+    shops,
+    retailers,
+    budget: budget === "mid" || budget === "high" ? budget : "low",
+    brand: { name: str(brand.name, 160), product: str(brand.product, 200) },
+    competitors: strs(r.competitors, 12, 160),
+    calls: num(r.calls),
+    callIds: strs(r.callIds, 300, 80),
+  };
+}
+
+/** Pitches written this session, by shop id. */
+const readPitches = (raw: unknown) =>
+  Object.fromEntries(Object.entries(rec(raw)).slice(0, 30).flatMap(([k, v]) => (str(rec(v).body, 4000) ? [[k.slice(0, 120), { subject: str(rec(v).subject, 300), body: str(rec(v).body, 4000) }]] : [])));
+
 function readItem(raw: unknown): WorkItem | undefined {
   const x = rec(raw);
   const id = str(x.id, 200);
@@ -121,10 +251,14 @@ function readWork(raw: unknown, agent: SpecialistId): Work | undefined {
   const city = rec(shared.city);
   const handoff = rec(w.handoff);
   const nav = agent === "navigator" ? readNav(shared.nav) : undefined;
+  const rep = agent === "rep" ? readRep(shared.rep) : undefined;
+  const pitch = agent === "rep" ? readPitches(shared.pitch) : {};
   const kept = {
     ...(str(city.id, 80) && str(city.name, 120) ? { city: { id: str(city.id, 80), name: str(city.name, 120) } } : {}),
     ...(str(shared.crowd, 120) ? { crowd: str(shared.crowd, 120) } : {}),
     ...(nav ? { nav } : {}),
+    ...(rep ? { rep } : {}),
+    ...(Object.keys(pitch).length ? { pitch } : {}),
   };
   return {
     agent,

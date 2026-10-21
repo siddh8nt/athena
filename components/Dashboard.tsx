@@ -3,6 +3,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { GoalsBar, statusOf, type TeamLive, type View } from "./Team";
 import { inputById } from "@/lib/team/inputs";
+import { TIER_LABEL } from "@/lib/team/page";
 import { KIND_LABEL, planStale } from "@/lib/agent/synthesis";
 import { SPECIALIST_IDS, nameOf, specialist, type AgentId, type SpecialistId } from "@/lib/agent/specialists";
 import type { Answer, GrowthPlan, StepState, TeamState, Work, Workflow, WorkflowStep } from "@/lib/team/types";
@@ -374,8 +375,9 @@ export function Dashboard(p: {
 }
 
 /**
- * Athena's growth plan (§23.2 step 8.5m): per target crowd, who, where, through what, the words and when, each line
- * cited to the subagent whose work it comes from; then what the sources disagree on and what's still open.
+ * Athena's plan (§23.5 m): numbered steps, shared moves first, then each crowd in its order. Each step says what to do,
+ * for which crowds, where, through what, the words, when and the cost, every line cited to the subagent it came from,
+ * and which earlier steps it waits on; then what the sources disagree on and what's still open.
  */
 export function GrowthPlanView({ plan, team, running, onOpen, onUpdate }: { plan?: GrowthPlan; team: TeamState; running: boolean; onOpen: (id: View) => void; onUpdate: () => void }) {
   if (!plan) {
@@ -403,7 +405,8 @@ export function GrowthPlanView({ plan, team, running, onOpen, onUpdate }: { plan
       </section>
     );
   }
-  const stale = planStale(plan, team.works);
+  // A plan saved before the numbered steps is written again from the same work.
+  const stale = !plan.steps || planStale(plan, team.works);
   return (
     <section className="gplan" aria-label="Athena's plan">
       <header className="gplan-head">
@@ -413,32 +416,52 @@ export function GrowthPlanView({ plan, team, running, onOpen, onUpdate }: { plan
       </header>
       {stale && (
         <div className="stale-flag gplan-stale">
-          <span className="small">A subagent has newer work than this plan.</span>
+          <span className="small">{plan.steps ? "A subagent has newer work than this plan." : "This plan was written before the numbered steps."}</span>
           <button type="button" className="linkish small" disabled={running} onClick={onUpdate}>
             {running ? "Updating" : "Update the plan"}
           </button>
         </div>
       )}
-      {plan.crowds.map((c) => (
-        <article key={c.crowd} className="gplan-crowd">
-          <h4>
-            <span className="bg-tier">{c.tier}</span> {c.crowd}
-          </h4>
-          <dl className="gplan-lines">
-            {c.lines.map((l, i) => (
-              <div key={`${l.kind}${i}`}>
-                <dt>{KIND_LABEL[l.kind]}</dt>
-                <dd>
-                  {l.text}{" "}
-                  <button type="button" className="cite gplan-cite" onClick={() => onOpen(l.agent)} title={`Open the ${nameOf(l.agent)}'s work`}>
-                    the {nameOf(l.agent)}
-                  </button>
-                </dd>
+      {plan.steps && plan.steps.length > 0 && (
+        <ol className="gplan-steps">
+          {plan.steps.map((st, i) => (
+            <li key={st.n} className="gplan-step">
+              {(i === 0 || plan.steps![i - 1].phase !== st.phase) && <span className="eyebrow gplan-phase">{st.phase === "shared" ? "Shared moves" : TIER_LABEL[st.phase]}</span>}
+              <div className="gplan-step-head">
+                <span className="gplan-n" aria-hidden="true">{st.n}</span>
+                <div>
+                  <h4>{st.what}</h4>
+                  <p className="small muted">
+                    For {st.crowds.join(", ")}
+                    {st.depends.length > 0 && ` · after step${st.depends.length > 1 ? "s" : ""} ${st.depends.join(", ")}`}
+                  </p>
+                </div>
               </div>
-            ))}
-          </dl>
-        </article>
-      ))}
+              <dl className="gplan-lines">
+                {st.lines.map((l, j) => (
+                  <div key={`${l.kind}${j}`}>
+                    <dt>{KIND_LABEL[l.kind]}</dt>
+                    <dd>
+                      {l.url ? (
+                        <a href={l.url} target="_blank" rel="noreferrer">
+                          {l.text}
+                        </a>
+                      ) : (
+                        l.text
+                      )}{" "}
+                      {l.agent && (
+                        <button type="button" className="cite gplan-cite" onClick={() => onOpen(l.agent!)} title={`Open the ${nameOf(l.agent)}'s work`}>
+                          the {nameOf(l.agent)}
+                        </button>
+                      )}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </li>
+          ))}
+        </ol>
+      )}
       {plan.disagreements.length > 0 && (
         <div className="gplan-more">
           <h5>Where the sources disagree</h5>

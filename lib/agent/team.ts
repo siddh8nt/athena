@@ -28,7 +28,7 @@ import { timeContext } from "@/lib/time/now";
 import { reachOf } from "@/lib/journey/types";
 import { defaultCalendar } from "./fits";
 import { checkWorkflow, fallbackWorkflow, readySteps, resetFrom, setStep, type Have } from "./workflow";
-import { buildPlan } from "./synthesis";
+import { athenaPlan } from "./athena-plan";
 import { missingInputs } from "@/lib/team/inputs";
 
 // The team runner (PRD §23.2 step 8): Athena turns the founder's goals into work for the specialists and runs them,
@@ -669,6 +669,8 @@ export type WorkflowInput = TeamInput & {
   answered: { question: string }[];
   /** Disagreements still open on the Brand Graph, for the plan. */
   disagreements?: string[];
+  /** An outcome mark came in: Athena writes her plan again from the same results, quietly (§23.5 m). */
+  resynth?: boolean;
 };
 
 /**
@@ -691,9 +693,10 @@ export async function runWorkflow(r: WorkflowInput): Promise<{ works: Partial<Re
   for (const g of r.goals) r.send({ type: "assign", goal: g, team: g.team, line: [teamLine(g.team), g.outside ?? ""].filter(Boolean).join(" ") });
 
   // A step cut off mid-run, or one paused for an answer that's now in, starts again; with no crowds, everything does.
-  w = { ...w, steps: w.steps.map((s) => (s.state === "running" || s.state === "paused" ? { ...s, state: "todo" } : s)) };
+  w = { ...w, steps: w.steps.map((s) => (s.state === "running" || s.state === "paused" || (r.resynth && s.id === "athena") ? { ...s, state: "todo" } : s)) };
   if (!t.crowds?.crowds.length && w.steps.find((s) => s.id === "analyst")?.state === "done") w = resetFrom(w, ["analyst"]);
-  const stale = staleRuns(r.state, r.graphRev).filter((s) => w.steps.some((x) => x.id === s.agent && x.state === "done"));
+  // A re-plan after a mark only writes the plan again: what the marks make stale re-runs when the founder asks.
+  const stale = r.resynth ? [] : staleRuns(r.state, r.graphRev).filter((s) => w.steps.some((x) => x.id === s.agent && x.state === "done"));
   if (stale.length) {
     w = resetFrom(w, stale.map((s) => s.agent));
     say(`The Brand Graph changed since ${list(stale.map((s) => `the ${nameOf(s.agent)}`))} ran, so ${stale.length > 1 ? "they run" : "it runs"} again, with what depends on ${stale.length > 1 ? "them" : "it"}.`);
@@ -731,11 +734,13 @@ export async function runWorkflow(r: WorkflowInput): Promise<{ works: Partial<Re
   const synthesize = () => {
     w = setStep(w, "athena", "running");
     emit();
-    plan = buildPlan({ works: { ...r.state.works, ...works }, fits: t.fits?.fits, disagreements: r.disagreements });
+    const crowds = (t.fits?.fits ?? []).map((f) => ({ id: f.crowd, name: f.name, tier: f.tier, ...(f.reasons[0] ? { why: f.reasons[0] } : {}) }));
+    plan = athenaPlan({ works: { ...r.state.works, ...works }, crowds, outcomes: r.state.outcomes, disagreements: r.disagreements, answers: [...r.answered, ...(t.answers ?? [])] });
     r.send({ type: "plan", plan });
     w = setStep(w, "athena", "done");
     emit();
-    say(`Your growth plan is ready. ${plan.headline}`);
+    // After a mark, the plan updates in place: one short line, not the announcement again.
+    say(r.resynth && !ran.size ? "I updated the plan from your marks." : `Your plan is ready. ${plan.headline}`);
   };
 
   const running = new Map<string, Promise<void>>();

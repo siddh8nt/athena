@@ -168,6 +168,8 @@ export function Onboard({
   // What the model sorted out of the box, kept for the runs after (§23.2 step 7.2b).
   const [websites, setWebsites] = useState<string[]>([]);
   const [pasted, setPasted] = useState("");
+  // The founder's own words as the model read them: sent again with every later run, so an answer never starts over.
+  const [steer, setSteer] = useState("");
   const pick = useRef<HTMLInputElement>(null);
   const box = useRef<HTMLTextAreaElement>(null);
   const runs = useRef(0);
@@ -252,6 +254,7 @@ export function Onboard({
     const form = new FormData();
     form.set("websites", websites.join(" "));
     if (pasted) form.set("pasted", pasted);
+    if (steer) form.set("steer", steer);
     if (extra.said) form.set("said", extra.said);
     form.set("ws", ws);
     form.set("hashes", JSON.stringify(chosen.map((u) => u.hash)));
@@ -285,6 +288,7 @@ export function Onboard({
         } else if (e.type === "sorted") {
           setWebsites(e.websites);
           setPasted(e.pasted ?? "");
+          setSteer(e.steer ?? "");
         } else if (e.type === "checklist")
           // A run started by an answer sends the checklist again from the top: a step already done stays done.
           setItems((was) => e.items.map((i) => (i.state !== "done" && was?.some((w) => w.step === i.step && w.state === "done") ? { ...i, state: "done" } : i)));

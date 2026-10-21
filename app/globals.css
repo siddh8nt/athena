@@ -2330,6 +2330,14 @@ button.nav-item:hover:not(:disabled) { background: rgba(255, 255, 255, 0.045); c
 .gplan-lines dd { margin: 0; font-size: 14.5px; line-height: 1.5; color: var(--fg); }
 .gplan-cite { cursor: pointer; border: 0; min-height: 0; font-family: var(--font-caps); font-weight: 700; vertical-align: 1px; white-space: nowrap; transition: background-color 140ms ease-out; }
 .gplan-cite:hover:not(:disabled) { background: color-mix(in srgb, var(--emph) 30%, var(--emph-soft)); color: var(--emph-ink); }
+.gplan-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.gplan-step { display: flex; flex-direction: column; gap: 10px; padding-top: 14px; border-top: 1px solid var(--line-soft, var(--line)); }
+.gplan-phase { color: var(--emph-ink, var(--muted)); }
+.gplan-step-head { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 12px; align-items: start; }
+.gplan-step-head h4 { margin: 0 0 2px; font-family: var(--font-display); font-weight: 400; font-size: 19px; line-height: 1.25; letter-spacing: -0.01em; text-transform: none; color: var(--fg); }
+.gplan-step-head p { margin: 0; }
+.gplan-n { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; font-family: var(--font-caps); font-weight: 800; font-size: 13px; background: var(--emph-soft); color: var(--emph-ink); }
+.gplan-step .gplan-lines { padding-left: 42px; }
 .gplan-more { padding-top: 12px; border-top: 1px solid var(--line-soft, var(--line)); }
 .gplan-more h5 { margin: 0 0 6px; font-family: var(--font-caps); font-weight: 800; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
 .gplan-more ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
@@ -2386,6 +2394,7 @@ button.nav-item:hover:not(:disabled) { background: rgba(255, 255, 255, 0.045); c
   .gplan { padding: 16px; }
   .gplan-head h2 { font-size: 24px; }
   .gplan-lines > div { grid-template-columns: 1fr; gap: 2px; }
+  .gplan-step .gplan-lines { padding-left: 0; }
   .run-trail { margin-left: 0; }
   .ans-list { grid-template-columns: 1fr; }
 }

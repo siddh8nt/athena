@@ -164,7 +164,7 @@ export const POST = dated(async function post(req: Request) {
       input.name ||= sorted?.name;
       kb.websites = input.websites;
       kb.pasted = input.pasted;
-      out({ type: "sorted", websites: input.websites, pasted: input.pasted });
+      out({ type: "sorted", websites: input.websites, pasted: input.pasted, steer: input.steer });
       const parts = [
         ...input.websites.map((w) => `your website ${w.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "")}`),
         names.length ? (names.length === 1 ? names[0] : `${names.length} files`) : "",

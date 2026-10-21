@@ -35,8 +35,8 @@ export type AgentStreamEvent =
   | { type: "answer"; answer: AgentAnswer; sources: Omit<Source, "data" | "args">[] }
   /** Onboarding's answer (§23.2 step 3): the brief, every fact with its sources. early: the first brief from the home and About pages (§23.2 step 7.2f), replaced in place by the full one. */
   | { type: "brief"; brief: BrandBrief; assumptions: string[]; dropped: number; early?: boolean }
-  /** What the model read in the one box (§23.2 step 7.2b): websites and pasted text the client keeps for later runs. */
-  | { type: "sorted"; websites: string[]; pasted?: string }
+  /** What the model read in the one box (§23.2 step 7.2b): websites, pasted text and the founder's own words the client keeps for later runs. */
+  | { type: "sorted"; websites: string[]; pasted?: string; steer?: string }
   /** The agent's plan as it stands (§23.2 step 7.2e). */
   | { type: "checklist"; items: CheckItem[] }
   /** What onboarding read (§23.2 step 4): every fact with where it is, the conflicts, and which option is in use. */

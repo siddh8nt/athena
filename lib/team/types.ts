@@ -118,13 +118,17 @@ export type Workflow = { goals: string[]; steps: WorkflowStep[]; by: "agent" | "
 /** `from: "graph"`: Athena took it from the Brand Graph instead of asking. */
 export type Answer = { id: string; agent: AgentId; question: string; answer: string; from?: "graph" };
 
-/** One line of Athena's plan, cited to the subagent whose work it comes from (§23.2 step 8.5m). */
-export type PlanLine = { kind: "who" | "where" | "through" | "words" | "when"; agent: SpecialistId; text: string };
+/** One line of a plan step, cited to the subagent whose result it comes from (§23.5 m). `url`: its source, for a date. */
+export type PlanLine = { kind: "who" | "where" | "through" | "words" | "when" | "cost"; agent?: SpecialistId; text: string; url?: string };
 
-/** Athena's growth plan (§23.2 step 8.5m): per target crowd, who, where, through what, the words and when; then what's left. */
+/** One numbered step of Athena's plan (§23.5 m): what to do, for which crowds, and the earlier steps it waits on. */
+export type PlanStep = { n: number; what: string; crowds: string[]; phase: "shared" | "win_first" | "win_next" | "watch"; lines: PlanLine[]; depends: number[] };
+
+/** Athena's growth plan (§23.5 m): numbered steps, shared moves first, then Win first, Win next and Watch; then what's left. */
 export type GrowthPlan = {
   headline: string;
-  crowds: { crowd: string; tier: string; lines: PlanLine[] }[];
+  /** Missing on a plan saved before the steps: the view asks for an update. */
+  steps?: PlanStep[];
   disagreements: string[];
   open: string[];
   /** The subagents' works it was read from, by when each finished, so a newer run shows the plan as out of date. */

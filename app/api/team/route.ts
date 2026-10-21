@@ -161,7 +161,7 @@ export const POST = dated(async function post(req: Request) {
       const disagreements = strs(raw.disagreements, 6, 200);
       const before = { crowds: t.crowds, fits: t.fits, probes: t.probes.join("|") };
       let calls = 0;
-      await runWorkflow({ goals, team: t, state: team, graphRev, qloo, env, send: (e) => (e.type === "done" ? (calls = e.qlooCalls) : send(e)), llm, workflow, answered: [...answers, ...(team.answered ?? [])], disagreements });
+      await runWorkflow({ goals, team: t, state: team, graphRev, qloo, env, send: (e) => (e.type === "done" ? (calls = e.qlooCalls) : send(e)), llm, workflow, answered: [...answers, ...(team.answered ?? [])], disagreements, resynth: raw.resynth === true });
       if (t.crowds !== before.crowds || t.fits !== before.fits || t.probes.join("|") !== before.probes) {
         const ranked = t.fits !== before.fits;
         send({ type: "memory", crowds: t.crowds, seed: t.seed, ...(ranked ? { fits: t.fits, ...(t.ranked ?? {}) } : {}), probes: t.probes });

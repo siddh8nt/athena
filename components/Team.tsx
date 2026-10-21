@@ -227,7 +227,8 @@ export function useTeam(p: {
     if (!goals.length) return;
     const c = change.current;
     change.current = {};
-    setFollow(true);
+    // A quiet re-plan after a mark leaves the founder where they are.
+    if (!extra.resynth) setFollow(true);
     void post("plan", {
       goals,
       ...(c.skip?.length || c.add?.length ? { change: { skip: c.skip ?? [], add: c.add ?? [] } } : {}),
@@ -403,8 +404,16 @@ export function useTeam(p: {
       const w = t.works.scout;
       return w?.page ? { ...t, works: { ...t.works, scout: { ...w, page: withHooks(w.page, crowdId, lines) } } } : t;
     });
-  const mark = (agent: SpecialistId, item: WorkItem, m: Mark) =>
+  // A mark changes Athena's plan (§23.5 m): once the marks settle and nothing is running, she writes it again from
+  // the same results, with no new research.
+  const resynth = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const mark = (agent: SpecialistId, item: WorkItem, m: Mark) => {
     p.setTeam((t) => ({ ...t, outcomes: [...t.outcomes, { item: item.id, agent, kind: item.kind, name: item.name, ...(item.group ? { group: item.group } : {}), mark: m, at: Date.now() }].slice(-300) }));
+    if (!latestTeam.current.plan) return;
+    clearTimeout(resynth.current);
+    const again = () => (liveRef.current.running ? (resynth.current = setTimeout(again, 3000)) : replan({ resynth: true }));
+    resynth.current = setTimeout(again, 2500);
+  };
 
   /** The Analyst measures and ranks the crowds, once, for the whole journey (§23.2 step 8.1a). */
   const measure = () => {

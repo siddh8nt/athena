@@ -5,7 +5,6 @@ import { planWorkflow, runWorkflow } from "@/lib/agent/team";
 import { buildCtx } from "@/lib/agent/team-ctx";
 import { GOALS } from "@/lib/agent/goals";
 import { checkInterpret, codeInterpret, interpret } from "@/lib/agent/interpret";
-import { buildPlan } from "@/lib/agent/synthesis";
 import { emptyBrief } from "@/lib/brief/types";
 import { emptyTeam, type TeamEvent, type Work, type Workflow } from "@/lib/team/types";
 
@@ -60,42 +59,21 @@ describe("the workflow run (§23.2 step 8.5f)", () => {
     expect(again.filter((e) => e.type === "ask")).toEqual([]);
     expect(second.workflow.steps.every((s) => s.state === "done")).toBe(true);
     const plan = again.find((e) => e.type === "plan");
-    expect(plan && plan.type === "plan" && plan.plan.crowds[0].lines.length).toBeGreaterThan(0);
+    expect(plan && plan.type === "plan" && Array.isArray(plan.plan.steps)).toBe(true);
     // The plan is the very last step: nothing runs after it.
     const at = again.findIndex((e) => e.type === "plan");
     expect(again.slice(at).some((e) => e.type === "status" && e.status.state === "working")).toBe(false);
+
+    // A mark re-writes the plan only (§23.2 step 8.6m): the marked subagent is stale, but nothing re-runs.
+    const shop = second.works.rep?.results[0];
+    const marked = { ...state, works: second.works as never, outcomes: [{ item: shop?.id ?? "x", agent: "rep" as const, kind: "shop", name: shop?.name ?? "x", mark: "no" as never, at: Date.now() + 1 }] };
+    const third: TeamEvent[] = [];
+    const resynth = await runWorkflow({ goals: g, team: t, state: marked, graphRev: 0, qloo, env: {} as never, send: (e) => third.push(e), llm: false, workflow: second.workflow, answered, resynth: true });
+    expect(third.filter((e) => e.type === "status" && e.status.state === "working" && e.status.step === "Starting")).toEqual([]);
+    expect(third.some((e) => e.type === "plan")).toBe(true);
+    expect(third.some((e) => e.type === "reply" && e.text === "I updated the plan from your marks.")).toBe(true);
+    expect(resynth.workflow.steps.every((s) => s.state === "done")).toBe(true);
   }, 60_000);
-});
-
-describe("the plan (§23.2 step 8.5m)", () => {
-  const work = (agent: Work["agent"], results: [string, string, string?][], extra: Partial<Work> = {}): Work => ({
-    agent, goal: "g", headline: `${agent} headline`, results: results.map(([kind, name, detail]) => ({ id: `${kind}:${name}`, kind, name, why: "", ...(detail ? { detail } : {}), sources: [], callIds: [] })), claims: [], sources: [], ms: 0, qlooCalls: 0, at: 1, by: "rules", ...extra,
-  });
-
-  it("writes who, where, through what, the words and when for the crowd to win first, each cited to its subagent", () => {
-    const p = buildPlan({
-      works: {
-        analyst: work("analyst", [["crowd", "Coastal cooks"]]),
-        navigator: work("navigator", [["city", "Fernvale"], ["neighbourhood", "Old Dock"]]),
-        rep: work("rep", [["venue", "Fig Larder"]]),
-        scout: work("scout", [["message", "Small tins, big taste"]]),
-        promoter: work("promoter", [["event", "Harbour Food Fair", "in May"]], { handoff: { need: "a launch date" } }),
-      },
-      fits: [{ crowd: "c1", name: "Coastal cooks", tier: "win_first" }],
-      disagreements: ["Two sources disagree on the price"],
-    });
-    expect(p.crowds[0].crowd).toBe("Coastal cooks");
-    expect(p.crowds[0].lines.map((l) => `${l.kind}:${l.agent}`)).toEqual(["who:analyst", "where:navigator", "through:rep", "words:scout", "when:promoter"]);
-    expect(p.crowds[0].lines[1].text).toBe("Fernvale, starting in Old Dock.");
-    expect(p.disagreements).toEqual(["Two sources disagree on the price"]);
-    expect(p.open[0]).toMatch(/^The Promoter needs a launch date/);
-  });
-
-  it("gives the Scout's crowd to win next its own section", () => {
-    const p = buildPlan({ works: { scout: work("scout", [["message", "Hello"]], { shared: { crowd: "Night owls" } }) }, fits: [{ crowd: "c1", name: "Coastal cooks", tier: "win_first" }, { crowd: "c2", name: "Night owls", tier: "win_next" }] });
-    expect(p.crowds.map((c) => `${c.crowd} (${c.tier})`)).toEqual(["Coastal cooks (Win first)", "Night owls (Win next)"]);
-    expect(p.crowds[1].lines.map((l) => l.agent)).toEqual(["scout"]);
-  });
 });
 
 describe("a typed answer (§23.2 step 8.5h)", () => {

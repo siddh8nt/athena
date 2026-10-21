@@ -52,9 +52,23 @@ describe("workflow", () => {
   });
 
   it("keeps the model's order where it is valid", () => {
+    const raw = { steps: [{ id: "analyst" }, { id: "navigator" }, { id: "scout" }, { id: "promoter" }, { id: "rep" }] };
+    const w = checkWorkflow(raw, [goal("launch_city"), goal("online")], noFits)!;
+    expect(ids(w)).toEqual(["analyst", "navigator", "scout", "promoter", "rep", "athena"]);
+  });
+
+  it("never puts a lane before an earlier one (§23.5 i): the Matchmaker goes after the Scout even when the model puts it first", () => {
     const raw = { steps: [{ id: "analyst" }, { id: "matchmaker" }, { id: "scout" }] };
     const w = checkWorkflow(raw, [goal("partners")], noFits)!;
-    expect(ids(w)).toEqual(["analyst", "matchmaker", "scout", "athena"]);
+    expect(ids(w)).toEqual(["analyst", "scout", "matchmaker", "athena"]);
+    const mm = w.steps.find((s) => s.id === "matchmaker")!;
+    expect(mm.needs).toEqual(["analyst"]);
+    expect(mm.after).toEqual(["scout"]);
+  });
+
+  it("has the Promoter wait for the Navigator's cities when the Navigator is in the plan, even with a home city", () => {
+    const w = fallbackWorkflow([goal("show_up")], { fits: true, home: true });
+    expect(w.steps.find((s) => s.id === "promoter")!.needs).toEqual(["analyst", "navigator"]);
   });
 
   it("returns nothing for a plan with no known step, so the fallback runs", () => {
@@ -66,11 +80,26 @@ describe("workflow", () => {
     let w = fallbackWorkflow([goal("partners"), goal("step_up")], noFits);
     expect(readySteps(w).map((s) => s.id)).toEqual(["analyst"]);
     w = setStep(w, "analyst", "done");
-    expect(readySteps(w).map((s) => s.id)).toEqual(["scout", "navigator", "matchmaker"]);
-    w = setStep(setStep(setStep(w, "scout", "done"), "navigator", "done"), "matchmaker", "running");
+    expect(readySteps(w).map((s) => s.id)).toEqual(["scout", "navigator"]);
+    w = setStep(w, "scout", "done");
+    expect(readySteps(w).map((s) => s.id)).toEqual(["navigator"]);
+    w = setStep(setStep(w, "navigator", "done"), "matchmaker", "running");
     expect(readySteps(w).map((s) => s.id)).toEqual(["rep"]);
     w = setStep(setStep(w, "matchmaker", "done"), "rep", "done");
     expect(readySteps(w).map((s) => s.id)).toEqual(["athena"]);
+  });
+
+  it("re-runs only what uses a step: a Scout reset leaves the Matchmaker, which only follows it, as it was", () => {
+    let w = fallbackWorkflow([goal("partners")], noFits);
+    for (const s of w.steps) w = setStep(w, s.id, "done");
+    const again = resetFrom(w, ["scout"]);
+    expect(again.steps.filter((s) => s.state === "todo").map((s) => s.id)).toEqual(["scout", "athena"]);
+  });
+
+  it("lets a lane go on once an earlier step is dropped from the plan", () => {
+    let w = fallbackWorkflow([goal("partners")], noFits);
+    w = setStep(w, "analyst", "done");
+    expect(readySteps(dropStep(w, "scout", noFits)).map((s) => s.id)).toEqual(["matchmaker"]);
   });
 
   it("re-runs only what an edit affects: the step and what depends on it", () => {

@@ -345,7 +345,6 @@ function winFirst(s: AgentState): CrowdCard | undefined {
   return s.crowds?.crowds.find((c) => c.id === f?.crowd) ?? s.crowds?.crowds.find((c) => c.main);
 }
 
-/** Runs one specialist on the loop. Resolves with its work (never throws); the work streams as it's checked. */
 /** The Navigator's page from its read, with the shops the Rep found and the moments the Promoter found filled in (§23.5 i). */
 function navigatorPageOf(t: TeamCtx): CrowdPage | undefined {
   if (!t.found.navigator) return undefined;
@@ -358,12 +357,17 @@ function navigatorPageOf(t: TeamCtx): CrowdPage | undefined {
   return navigatorPage(t.found.navigator, yoursOf(t), { channel: t.brand.channel, fill, outcomes: latest(t.outcomes) });
 }
 
-/** Once the Rep or the Promoter has run, the Navigator's page is sent again with what they found. */
+/** Once the Rep or the Promoter has run, the Navigator's page is sent again with what they found, and its trail says so. */
 function refillNavigator(t: TeamCtx, id: SpecialistId, nav: Work | undefined, send: (e: TeamEvent) => void) {
   const page = (id === "rep" || id === "promoter") && nav ? navigatorPageOf(t) : undefined;
-  if (nav && page) send({ type: "work", agent: "navigator", work: { ...nav, page } });
+  if (!nav || !page) return;
+  send({ type: "work", agent: "navigator", work: { ...nav, page } });
+  const what = id === "rep" ? `the ${(t.found.rep?.shops ?? []).filter((s) => !s.stocked).length} shops the Rep found` : `the ${t.found.promo?.events.length ?? 0} events the Promoter found`;
+  const why = `City pages now show ${what}, by neighbourhood: links only, the verdicts stay the Navigator's own`;
+  send({ type: "step", agent: "navigator", event: { t: 0, tool: "back_fill", why, status: "ok", callIds: [], summary: "" } });
 }
 
+/** Runs one specialist on the loop. Resolves with its work (never throws); the work streams as it's checked. */
 export async function runSpecialist(r: SpecialistInput): Promise<Work | undefined> {
   const { id, team: t } = r;
   const s = specialist(id);
@@ -645,9 +649,9 @@ export async function planWorkflow(goals: Goal[], t: TeamCtx, llm: boolean, gen:
         prompt:
           `The goals: ${JSON.stringify(goals.map((g) => ({ label: g.label, team: g.team })))}\n` +
           `The brand: ${JSON.stringify({ name: t.brand.name, sells: t.brand.product, channel: t.brand.channel, home_city: t.brand.homeMetro ? metroById(t.brand.homeMetro).name : "not known", stockists: t.brand.stockists.length, crowds_measured: have.fits })}\n` +
-          `The subagents: ${JSON.stringify(SPECIALISTS.map((s) => ({ id: s.id, mission: s.mission, delivers: s.delivers, needs: s.needs.map((n) => `${n.key} from ${n.from}${n.home ? " (a home city will do)" : ""}`) })))}\n` +
+          `The subagents: ${JSON.stringify(SPECIALISTS.map((s) => ({ id: s.id, mission: s.mission, delivers: s.delivers, needs: s.needs.map((n) => `${n.key} from ${n.from}${n.home ? " (a home city will do when the Navigator isn't in the plan)" : ""}`), lane: s.lane })))}\n` +
           (t.answers?.length ? `The founder's answers so far: ${JSON.stringify(t.answers)}\n` : "") +
-          "List the steps in the order they should run: the Analyst first (it measures the crowds everyone works from), then only the subagents these goals need, each after what it needs. For each: task (what it does for these goals, one short line, no numbers), why (one sentence, plain words), needs (ids of earlier steps). Your own synthesis comes last on its own; don't list it.\n" +
+          "List the steps in the order they should run: the Analyst first (it measures the crowds everyone works from), then only the subagents these goals need, each after what it needs and after every subagent in an earlier lane (lane 2: Scout and Navigator side by side; lane 3: Rep, Matchmaker and Promoter side by side). For each: task (what it does for these goals, one short line, no numbers), why (one sentence, plain words), needs (ids of earlier steps). Your own synthesis comes last on its own; don't list it.\n" +
           'Return {"steps":[{"id","task","why","needs":[ids]}]}',
       });
       const w = checkWorkflow(parseJson(res.text), goals, have);

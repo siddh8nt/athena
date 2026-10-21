@@ -26,6 +26,9 @@ export type Specialist = {
   /** What goals it can deliver, so Athena only suggests goals the team can do. */
   delivers: string[];
   needs: Need[];
+  /** Its place in the run order (§23.5 i): Analyst → (Scout ∥ Navigator) → (Rep ∥ Matchmaker ∥ Promoter). A subagent
+   *  starts after every earlier lane in the plan, even one it takes nothing from. */
+  lane: 1 | 2 | 3;
   budget: AgentBudget;
   /** The result kinds it returns, for the Brand Graph and the outcome marks. */
   kinds: string[];
@@ -50,6 +53,7 @@ export const SPECIALISTS: Specialist[] = [
     ],
     delivers: ["know who your customers are", "find your strongest crowd", "see where you stand against rivals"],
     needs: [],
+    lane: 1,
     budget: { qloo: 150, ms: 150_000, turns: 8 },
     kinds: ["crowd", "rival"],
   },
@@ -68,6 +72,7 @@ export const SPECIALISTS: Specialist[] = [
     ],
     delivers: ["reach a new crowd", "find the words for your crowd", "set a look and feel"],
     needs: [CROWDS],
+    lane: 2,
     budget: { qloo: 80, ms: 160_000, turns: 6 },
     kinds: ["crowd", "message", "mood", "podcast", "creator"],
   },
@@ -87,6 +92,7 @@ export const SPECIALISTS: Specialist[] = [
     ],
     delivers: ["launch in a city", "choose where to grow next"],
     needs: [CROWDS],
+    lane: 2,
     budget: { qloo: 60, ms: 120_000, turns: 6 },
     kinds: ["city", "neighbourhood"],
   },
@@ -106,6 +112,7 @@ export const SPECIALISTS: Specialist[] = [
     ],
     delivers: ["get into shops", "step up to bigger retailers"],
     needs: [CROWDS, { key: "city", from: "navigator", why: "needs a city first" }],
+    lane: 3,
     budget: { qloo: 130, ms: 150_000, turns: 6 },
     kinds: ["venue", "retailer", "draft"],
   },
@@ -128,6 +135,7 @@ export const SPECIALISTS: Specialist[] = [
     ],
     delivers: ["find partners", "get on podcasts", "work with creators"],
     needs: [CROWDS],
+    lane: 3,
     budget: { qloo: 150, ms: 180_000, turns: 6 },
     kinds: ["creator", "partner", "podcast", "draft"],
   },
@@ -148,6 +156,7 @@ export const SPECIALISTS: Specialist[] = [
     delivers: ["show up at events", "reach people online"],
     // Events need a city: the Navigator's when it's on the goal, else the home city; online audiences need none.
     needs: [CROWDS, { key: "city", from: "navigator", why: "needs a city for events first", home: true }],
+    lane: 3,
     budget: { qloo: 80, ms: 150_000, turns: 6 },
     kinds: ["event", "moment", "audience", "draft"],
   },

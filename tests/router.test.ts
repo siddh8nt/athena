@@ -56,6 +56,11 @@ describe("router", () => {
     expect(r.do === "workflow" && r.reply).toMatch(/Rep/);
   });
 
+  it("hands to a subagent already in the plan when the move would only bring it in again", () => {
+    const r = checkRoute({ do: "workflow", change: { add: ["rep"] }, reply: "I have added the Rep back." }, input({ message: "Have the Rep look again, fresh." }));
+    expect(r).toEqual({ do: "handoff", to: "rep", task: "Have the Rep look again, fresh.", reply: "I've asked the Rep to work on it again." });
+  });
+
   it("asks a clarifying question only with real options; a question with none is said as a reply", () => {
     expect(checkRoute({ do: "clarify", question: "Which city?", options: ["Austin", { label: "Denver" }] }, input())).toEqual({
       do: "clarify",

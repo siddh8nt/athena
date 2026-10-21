@@ -1,7 +1,7 @@
 import "server-only";
 import { generate, parseJson } from "@/lib/llm/vertex";
 import { TOOLS } from "./tools";
-import { ATHENA, SPECIALISTS, isSpecialist, nameOf, type AgentId } from "./specialists";
+import { ATHENA, SPECIALISTS, isSpecialist, nameOf, type AgentId, type SpecialistId } from "./specialists";
 import { checkChange } from "./interpret";
 import type { BrandBrief } from "@/lib/brief/types";
 import type { Answer, Route, TeamState } from "@/lib/team/types";
@@ -132,6 +132,11 @@ export function checkRoute(raw: unknown, i: RouteInput): Route {
   if (move === "workflow") {
     const c = checkChange(r.change, i.team.workflow);
     if (c.change) return { do: "workflow", change: c.change, reply: reply.slice(0, 300) || c.line || "I've changed the plan." };
+    // Bringing in a subagent that's already in the plan changes nothing: what was asked is fresh work from it.
+    const again = (Array.isArray((r.change as Record<string, unknown> | undefined)?.add) ? ((r.change as Record<string, unknown>).add as unknown[]) : []).find(
+      (id): id is SpecialistId => isSpecialist(id) && !!i.team.workflow?.steps.some((s) => s.id === id),
+    );
+    if (again) return { do: "handoff", to: again, task: i.message.trim().slice(0, 300), reply: `I've asked the ${nameOf(again)} to work on it again.` };
   }
   if (move === "clarify") {
     const question = clean(r.question, 240);
@@ -148,7 +153,7 @@ const PROMPT = `Decide your one move for the founder's latest message, and write
 - "tools": answering needs a fresh look in the data (a lookup, a comparison, a number not already found). Say one short line in reply about what you'll look up.
 - "graph": the founder is telling you something about the brand to add, change or remove in the Brand Graph (a stockist, a city, a competitor, a price, a fact).
 - "handoff": the founder wants a subagent's work done again, done differently or taken further ("find more shops", "make the words more playful"). Writing something for the founder to send (a pitch, an email, an ask, a note to a shop or a partner) is always a handoff: the subagent who found the recipient writes it, checked against the evidence and with the contact it found; you never draft it yourself in a reply. Give to (its id), task (what it should do, in a sentence) and reply (one line saying who you've asked and why).
-- "workflow": the founder wants the plan's steps changed: a subagent skipped or brought in, or a US city to work on. Give change: {"skip"?: [ids], "add"?: [ids], "city"?: "City name"} and a one-line reply.
+- "workflow": the founder wants the plan's steps changed: a subagent skipped or brought in, or a US city to work on. "add" is only for a subagent not in the plan yet; one already in it that should read or work again is a "handoff". Give change: {"skip"?: [ids], "add"?: [ids], "city"?: "City name"} and a one-line reply.
 - "clarify": the message could mean two or more quite different things, and guessing wrong would waste the team's work. This includes a message that points back ("that one", "the bigger one", "do it") when more than one earlier thing fits: ask before starting a subagent on a guess. Ask one short question with 2 to 4 options, each a plain reading of what they might mean, naming the things it could refer to.
 Return JSON only: {"do": "reply"|"tools"|"graph"|"handoff"|"workflow"|"clarify", "reply"?: string, "to"?: string, "task"?: string, "change"?: {...}, "question"?: string, "options"?: [string]}`;
 

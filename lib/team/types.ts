@@ -102,6 +102,9 @@ export type WorkflowStep = {
   task: string;
   /** Steps that must be done first, by id. */
   needs: (SpecialistId | "athena")[];
+  /** Steps in the plan that run first for the run order alone (§23.5 i): nothing of theirs is used, so re-running one
+   *  doesn't re-run this. */
+  after?: (SpecialistId | "athena")[];
   why: string;
   /** The founder inputs (lib/team/inputs.ts) Athena asks just before this step, when not already known. */
   inputs: string[];

@@ -1134,12 +1134,15 @@ export function topEvent(read: Pick<PromoRead, "events">, crowd?: string): Promo
   return [...xs].sort((a, b) => score(b) - score(a) || a.date.localeCompare(b.date))[0];
 }
 
-/** The Navigator's back-fill: each city's events from the Promoter, as names. Links only, never a verdict input. */
-export function promoFill(read: PromoRead): { metroId: string; names: string[] }[] {
+/** The Navigator's back-fill: each city's events from the Promoter, soonest first, and by neighbourhood where one is
+ *  known. Links only, never a verdict input. */
+export function promoFill(read: PromoRead): { metroId: string; names: string[]; hoods: { hood: string; names: string[] }[] }[] {
+  const named = (e: PromoEvent) => `${e.name} (${dayOf(e.date)})`;
   return read.cities
-    .map((c) => ({
-      metroId: c.metroId,
-      names: read.events.filter((e) => e.metroId === c.metroId).map((e) => `${e.name} (${dayOf(e.date)})`),
-    }))
+    .map((c) => {
+      const here = read.events.filter((e) => e.metroId === c.metroId).sort((a, b) => a.date.localeCompare(b.date));
+      const hoods = [...new Set(here.flatMap((e) => (e.hood ? [e.hood.name] : [])))];
+      return { metroId: c.metroId, names: here.map(named), hoods: hoods.map((hood) => ({ hood, names: here.filter((e) => e.hood?.name === hood).map(named) })) };
+    })
     .filter((x) => x.names.length);
 }

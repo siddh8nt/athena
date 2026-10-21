@@ -231,7 +231,7 @@ export async function readCities(qloo: QlooClient, inputs: CrowdInput[], deps: N
 /** What the Rep and the Promoter found, filled in after they run: links on the page, never inputs to a verdict. */
 export type BackFill = {
   venues?: { metroId: string; points: { name: string; lat?: number; lon?: number; neighbourhood?: string }[] }[];
-  moments?: { metroId: string; names: string[] }[];
+  moments?: { metroId: string; names: string[]; hoods?: { hood: string; names: string[] }[] }[];
 };
 
 const money = (n?: number) => (n ? `$${Math.round(n / 1000)}k` : "—");
@@ -338,12 +338,12 @@ export function crowdSize(city: CityRead, crowd: string): number | undefined {
   return zips.size ? [...zips.values()].reduce((a, b) => a + b, 0) : undefined;
 }
 
-function hoodRow(read: NavRead, city: CityRead, h: Hood, role: Role, anchor: string | undefined, venues?: number, shops = false): Row {
+function hoodRow(read: NavRead, city: CityRead, h: Hood, role: Role, anchor: string | undefined, venues?: number, shops = false, events?: string[], showEvents = false): Row {
   const heat = read.crowds.map((c) => `${band(city, c.crowd.id, h.heat[c.crowd.id])}`);
   const z = h.area?.zip;
   const t = h.area?.tract;
   return {
-    cells: [label(h), ...heat, z ? people(z.residents) : t ? people(t.residents) : "—", z ? money(z.income) : t ? money(t.income) : "—", ...(shops ? [venues ? String(venues) : "—"] : []), ROLE_LABEL[role]],
+    cells: [label(h), ...heat, z ? people(z.residents) : t ? people(t.residents) : "—", z ? money(z.income) : t ? money(t.income) : "—", ...(shops ? [venues ? String(venues) : "—"] : []), ...(showEvents ? [events?.length ? String(events.length) : "—"] : []), ROLE_LABEL[role]],
     detail: {
       title: label(h),
       kind: "neighbourhood",
@@ -354,6 +354,7 @@ function hoodRow(read: NavRead, city: CityRead, h: Hood, role: Role, anchor: str
         ...(t ? [{ label: t.name, value: `${people(t.residents)} residents · median income ${money(t.income)}` }] : []),
         { label: "Role", value: ROLE_LABEL[role] },
         ...(venues ? [{ label: "Matching shops", value: `${venues}, from the Rep` }] : []),
+        ...(events?.length ? [{ label: "Events here, from the Promoter", value: events.join(" · ") }] : []),
       ],
       lines: [hoodAction(h, role, anchor, venues)],
     },
@@ -379,7 +380,9 @@ function cityPage(read: NavRead, city: CityRead, v: Verdict, opts: { channel?: "
           : v === "test"
             ? `A pop-up or an event first${start[0] ? `, in ${start[0]}` : ""}, to test demand`
             : "Online first, until a crowd here grows";
-  const moments = opts.fill?.moments?.find((m) => m.metroId === city.metroId)?.names ?? [];
+  const here = opts.fill?.moments?.find((m) => m.metroId === city.metroId);
+  const moments = here?.names ?? [];
+  const events = new Map((here?.hoods ?? []).map((x) => [x.hood, x.names]));
   const blocks: Block[] = [
     {
       type: "facts",
@@ -419,8 +422,8 @@ function cityPage(read: NavRead, city: CityRead, v: Verdict, opts: { channel?: "
       ? {
           type: "table",
           label: `Every hot neighbourhood (${city.hoods.length})`,
-          columns: ["Neighbourhood", ...read.crowds.map((c) => c.crowd.name), "Residents", "Income", ...(venues.size ? ["Shops"] : []), "Role"],
-          rows: city.hoods.map((h) => hoodRow(read, city, h, role.get(h.name) ?? "online", anchors[0] ? label(anchors[0]) : undefined, venues.get(h.name), venues.size > 0)),
+          columns: ["Neighbourhood", ...read.crowds.map((c) => c.crowd.name), "Residents", "Income", ...(venues.size ? ["Shops"] : []), ...(events.size ? ["Events"] : []), "Role"],
+          rows: city.hoods.map((h) => hoodRow(read, city, h, role.get(h.name) ?? "online", anchors[0] ? label(anchors[0]) : undefined, venues.get(h.name), venues.size > 0, events.get(h.name), events.size > 0)),
         }
       : { type: "note", text: `The taste map of ${city.name} is spread evenly, with no neighbourhood standing out yet` },
   ];

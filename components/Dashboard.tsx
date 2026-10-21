@@ -29,12 +29,12 @@ function nodeState(step: WorkflowStep, live: TeamLive): StepState {
 
 const STATE_LABEL: Record<StepState, string> = { todo: "To do", running: "Working", paused: "Paused for you", done: "Done" };
 
-/** Each step's column: the Analyst first, every other step one after the deepest step it needs, Athena last. */
+/** Each step's column: the Analyst first, every other step one after the deepest step it needs or follows, Athena last. */
 function columns(w: Workflow): WorkflowStep[][] {
   const depth = new Map<string, number>();
   const of = (s: WorkflowStep): number => {
     if (depth.has(s.id)) return depth.get(s.id)!;
-    const needs = s.needs.map((id) => w.steps.find((x) => x.id === id)).filter((x): x is WorkflowStep => !!x);
+    const needs = [...s.needs, ...(s.after ?? [])].map((id) => w.steps.find((x) => x.id === id)).filter((x): x is WorkflowStep => !!x);
     const d = needs.length ? 1 + Math.max(...needs.map(of)) : 0;
     depth.set(s.id, d);
     return d;

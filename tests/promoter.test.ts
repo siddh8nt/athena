@@ -150,10 +150,12 @@ describe("the Promoter's page", () => {
     expect(cal).toMatch(/"city":"US-wide"/);
   });
 
-  it("hands the Navigator each city's events", () => {
-    const fill = promoFill(read());
+  it("hands the Navigator each city's events, soonest first and by neighbourhood", () => {
+    const fill = promoFill(read({ events: [ev("Later Fair", { date: inDays(200) }), ev("Smorgasburg", { crowds: ["a", "b"], hood: { name: "Williamsburg", role: "anchor" } }), ev("Maxwell Street Market", { metroId: "chicago", city: "Chicago" })] }));
     expect(fill.map((f) => f.metroId)).toEqual(["nyc", "chicago"]);
     expect(fill[0].names[0]).toMatch(/^Smorgasburg \(/);
+    expect(fill[0].names[1]).toMatch(/^Later Fair/);
+    expect(fill[0].hoods).toEqual([{ hood: "Williamsburg", names: [fill[0].names[0]] }]);
   });
 
   it("comes back from the client shape-checked, dropping an event with no source", () => {

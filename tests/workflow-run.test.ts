@@ -33,17 +33,17 @@ describe("the workflow run (§23.2 step 8.5f)", () => {
 
     const events: TeamEvent[] = [];
     const first = await runWorkflow({ goals: g, team: t, state, graphRev: 0, qloo, env: {} as never, send: (e) => events.push(e), llm: false, workflow, answered: [] });
-    // The Navigator's regions are asked before it starts; the Scout and Matchmaker don't wait on it.
+    // The Navigator's regions are asked before it starts; the Scout goes on beside it, and lane 3 waits for both (§23.5 i).
     const asks = events.flatMap((e) => (e.type === "ask" ? [`${e.agent}:${e.ask.id}`] : []));
     expect(asks).toContain("navigator:input_regions");
     const started = events.flatMap((e) => (e.type === "status" && e.status.state === "working" && e.status.step === "Starting" ? [e.agent] : []));
     expect(started.slice(0, 1)).toEqual(["analyst"]);
     expect(started).toContain("scout");
-    expect(started).toContain("matchmaker");
+    expect(started).not.toContain("matchmaker");
     expect(started).not.toContain("navigator");
     expect(started).not.toContain("rep");
     const state1 = Object.fromEntries(first.workflow.steps.map((s) => [s.id, s.state]));
-    expect(state1).toMatchObject({ analyst: "done", scout: "done", matchmaker: "done", navigator: "paused", rep: "todo", athena: "todo" });
+    expect(state1).toMatchObject({ analyst: "done", scout: "done", matchmaker: "todo", navigator: "paused", rep: "todo", athena: "todo" });
     // Each handoff is narrated, with the subagent's trail under it.
     expect(events.some((e) => e.type === "reply" && e.run === "scout" && /^Handing to the Scout/.test(e.text))).toBe(true);
     // The workflow streams whole after every change.
@@ -55,7 +55,8 @@ describe("the workflow run (§23.2 step 8.5f)", () => {
     const answered = [{ question: "Which regions can you reach: ship to, visit, sell in?" }, { question: "What can you spend on growth in the next three months?" }, { question: "Which shops already stock you? Name them, or add a stockist sheet." }];
     const second = await runWorkflow({ goals: g, team: t, state: { ...state, works: works as never }, graphRev: 0, qloo, env: {} as never, send: (e) => again.push(e), llm: false, workflow: first.workflow, answered });
     const ran = again.flatMap((e) => (e.type === "status" && e.status.state === "working" && e.status.step === "Starting" ? [e.agent] : []));
-    expect(ran).toEqual(["navigator", "rep"]);
+    expect(ran[0]).toBe("navigator");
+    expect([...ran].sort()).toEqual(["matchmaker", "navigator", "rep"]);
     expect(again.filter((e) => e.type === "ask")).toEqual([]);
     expect(second.workflow.steps.every((s) => s.state === "done")).toBe(true);
     const plan = again.find((e) => e.type === "plan");

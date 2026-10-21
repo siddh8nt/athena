@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { GoalsBar, statusOf, type TeamLive, type View } from "./Team";
 import { inputById } from "@/lib/team/inputs";
 import { KIND_LABEL, planStale } from "@/lib/agent/synthesis";
@@ -48,8 +48,11 @@ function columns(w: Workflow): WorkflowStep[][] {
   return athena ? [...cols, [athena]] : cols;
 }
 
-/** The workflow as a diagram (§23.2 step 8.5c): opening questions, the Analyst, the lanes, Athena's synthesis. */
-export function WorkflowDiagram({ team, live, onOpen, onChat }: { team: TeamState; live: TeamLive; onOpen: (id: View) => void; onChat: () => void }) {
+/**
+ * The workflow as a diagram (§23.2 step 8.5c): opening questions, the Analyst, the lanes, Athena's synthesis.
+ * `compact` is the copy in the Athena tab's panel (§23.5 a4): the same live states, stacked to fit the narrow column.
+ */
+export function WorkflowDiagram({ team, live, onOpen, onChat, compact }: { team: TeamState; live: TeamLive; onOpen: (id: View) => void; onChat: () => void; compact?: boolean }) {
   const w = team.workflow;
   if (!w) return null;
   const opening: StepState = live.asks.some((a) => a.id === "goals" && !(a.id in live.answers)) ? "paused" : "done";
@@ -70,7 +73,7 @@ export function WorkflowDiagram({ team, live, onOpen, onChat }: { team: TeamStat
     return s.task;
   };
   return (
-    <div className="wf" role="group" aria-label="Athena's workflow">
+    <div className={`wf${compact ? " wf-compact" : ""}`} role="group" aria-label="Athena's workflow">
       <div className="wf-col">{node("athena", opening, "Opening questions", "Your goals for the plan", onChat)}</div>
       {cols.map((col, i) => (
         <div key={i} className="wf-col">
@@ -149,20 +152,104 @@ function tileLine(id: SpecialistId, team: TeamState, live: TeamLive, step?: Work
   return { text: specialist(id).mission, tone: "muted" };
 }
 
+/** The dashboard's tabs (§23.5 a1), kept in the URL as `/plan?tab=…` so Back and Forward move between them. */
+const DASH_TABS = [
+  { id: "overview", label: "Overview" },
+  { id: "knowledge", label: "Brand Knowledge Base" },
+  { id: "plan", label: "Athena's plan" },
+  { id: "answers", label: "Your answers" },
+  { id: "working", label: "What's working" },
+] as const;
+export type DashTab = (typeof DASH_TABS)[number]["id"];
+
+function tabFromUrl(): DashTab {
+  try {
+    const t = new URLSearchParams(window.location.search).get("tab");
+    return DASH_TABS.find((x) => x.id === t)?.id ?? "overview";
+  } catch {
+    return "overview";
+  }
+}
+
+/** One part of the Brand Knowledge Base: folds to its title and a one-line summary. */
+export type KbPart = { id: string; title: string; sub?: string; body: ReactNode };
+
+const FOLD_STORE = "athena.kb-folded";
+function readFolded(): string[] {
+  try {
+    const v: unknown = JSON.parse(localStorage.getItem(FOLD_STORE) ?? "[]");
+    return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+/** The Brand Knowledge Base tab (§23.5 a1): each part collapses and expands, one at a time or all together; remembered. */
+function KnowledgeBase({ parts }: { parts: KbPart[] }) {
+  const [folded, setFolded] = useState<string[]>(readFolded);
+  const set = (f: string[]) => {
+    setFolded(f);
+    try {
+      localStorage.setItem(FOLD_STORE, JSON.stringify(f));
+    } catch {
+      // Only a convenience.
+    }
+  };
+  const all = parts.every((x) => folded.includes(x.id));
+  return (
+    <section className="dash-sec dash-kb">
+      <div className="dash-sec-head">
+        <h3>Brand Knowledge Base</h3>
+        <small className="muted">What Athena knows about your brand. Every subagent reads it.</small>
+        <button type="button" className="linkish small kb-all" onClick={() => set(all ? [] : parts.map((x) => x.id))}>
+          {all ? "Expand all" : "Collapse all"}
+        </button>
+      </div>
+      {parts.map((x) => {
+        const shut = folded.includes(x.id);
+        return (
+          <div key={x.id} className={`kb-fold${shut ? " kb-shut" : ""}`}>
+            <button type="button" className="kb-fold-head" aria-expanded={!shut} onClick={() => set(shut ? folded.filter((f) => f !== x.id) : [...folded, x.id])}>
+              <span className="kb-chev" aria-hidden />
+              <strong>{x.title}</strong>
+              {x.sub && <small className="muted">{x.sub}</small>}
+            </button>
+            {!shut && <div className="kb-fold-body">{x.body}</div>}
+          </div>
+        );
+      })}
+    </section>
+  );
+}
+
 export function Dashboard(p: {
   live: TeamLive;
   team: TeamState;
   graphRev: number;
-  /** The Brand Knowledge Base: the Brand Graph, the onboarding record and the file drop (§23.2 step 8.5b). */
-  kb: ReactNode;
+  /** The Brand Knowledge Base: the Brand Graph, the file drop and the onboarding record (§23.2 step 8.5b), each foldable. */
+  kb: KbPart[];
   working: ReactNode;
+  /** Set while a step waits on the founder: the Overview tab carries the paused dot. */
+  paused?: string;
   onOpen: (id: View) => void;
   onChat: () => void;
   onStart: () => void;
   onAdd: (id: SpecialistId) => void;
   onEditAnswer: (a: Answer, v: string) => void;
+  onUpdatePlan: () => void;
 }) {
   const { team, live } = p;
+  const [tab, setTab] = useState<DashTab>(tabFromUrl);
+  useEffect(() => {
+    const back = () => setTab(tabFromUrl());
+    window.addEventListener("popstate", back);
+    return () => window.removeEventListener("popstate", back);
+  }, []);
+  const pick = (t: DashTab) => {
+    setTab(t);
+    const url = t === "overview" ? "/plan" : `/plan?tab=${t}`;
+    if (url !== window.location.pathname + window.location.search) window.history.pushState(null, "", url);
+  };
   const w = team.workflow;
   const goals = goalsOf(team);
   const busy = live.running > 0;
@@ -175,8 +262,9 @@ export function Dashboard(p: {
       : w
         ? "Writes your growth plan once the team's steps are done."
         : "Leads the team: your goals, the workflow, the final plan.";
-  return (
-    <div className="dash">
+  const count: Partial<Record<DashTab, number>> = { answers: team.answered?.length || undefined };
+  const overview = (
+    <>
       {!w && !goals.length ? (
         <section className="dash-start">
           <span className="eyebrow">Next</span>
@@ -202,7 +290,7 @@ export function Dashboard(p: {
 
       <section className="dash-sec">
         <h3>Your team</h3>
-        <button type="button" className={`dash-lead${live.status.athena?.state === "working" ? " dash-working" : ""}`} onClick={() => p.onOpen("athena")}>
+        <button type="button" className={`dash-lead${live.status.athena?.state === "working" ? " dash-working" : ""}`} onClick={() => (plan ? pick("plan") : p.onOpen("athena"))}>
           <span className="team-badge" aria-hidden>A</span>
           <span className="dash-lead-body">
             <strong>Athena</strong>
@@ -245,30 +333,42 @@ export function Dashboard(p: {
           })}
         </ul>
       </section>
-
-      {!!team.answered?.length && (
-        <section className="dash-sec">
-          <div className="dash-sec-head">
-            <h3>Your answers</h3>
-            <small className="muted">Change one and only the steps that read it run again.</small>
-          </div>
-          <ul className="ans-list">
-            {team.answered.map((a) => (
-              <AnswerRow key={`${a.id}:${a.answer}`} a={a} busy={busy} onEdit={(v) => p.onEditAnswer(a, v)} />
-            ))}
-          </ul>
-        </section>
-      )}
-
-      {p.working && <section className="dash-sec">{p.working}</section>}
-
-      <section className="dash-sec dash-kb">
-        <div className="dash-sec-head">
-          <h3>Brand Knowledge Base</h3>
-          <small className="muted">What Athena knows about your brand. Every subagent reads it.</small>
-        </div>
-        {p.kb}
-      </section>
+    </>
+  );
+  return (
+    <div className="dash">
+      <div className="dash-tabs" role="tablist" aria-label="Your dashboard">
+        {DASH_TABS.map((t) => (
+          <button key={t.id} type="button" role="tab" aria-selected={tab === t.id} className={`dash-tab${tab === t.id ? " on" : ""}`} onClick={() => pick(t.id)}>
+            {t.id === "overview" && p.paused && <span className="dash-tab-paused" aria-label="Paused for you" />}
+            {t.label}
+            {count[t.id] !== undefined && <span className="dash-tab-n">{count[t.id]}</span>}
+          </button>
+        ))}
+      </div>
+      <div className="dash-tab-body" key={tab} role="tabpanel">
+        {tab === "overview" && overview}
+        {tab === "knowledge" && <KnowledgeBase parts={p.kb} />}
+        {tab === "plan" && <GrowthPlanView plan={plan} team={team} running={busy} onOpen={(id) => (id === "dashboard" ? pick("overview") : p.onOpen(id))} onUpdate={p.onUpdatePlan} />}
+        {tab === "answers" && (
+          <section className="dash-sec">
+            <div className="dash-sec-head">
+              <h3>Your answers</h3>
+              <small className="muted">Change one and only the steps that read it run again.</small>
+            </div>
+            {team.answered?.length ? (
+              <ul className="ans-list">
+                {team.answered.map((a) => (
+                  <AnswerRow key={`${a.id}:${a.answer}`} a={a} busy={busy} onEdit={(v) => p.onEditAnswer(a, v)} />
+                ))}
+              </ul>
+            ) : (
+              <p className="small muted">Athena keeps what you tell her here, and what she took from your Brand Graph, as the plan runs.</p>
+            )}
+          </section>
+        )}
+        {tab === "working" && <section className="dash-sec">{p.working}</section>}
+      </div>
     </div>
   );
 }

@@ -446,8 +446,12 @@ export function TeamPanel({ live, team, active, onOpen, athena }: { live: TeamLi
   const on = (id: AgentId) => team.goals.some((g) => isSpecialist(id) && g.team.includes(id));
   // Collapsed to a rail of icons with live status, or open to the list; the choice is remembered.
   const [rail, flip] = useRail();
+  // Whoever holds a question the run waits on pulses gently until it is answered (§23.5 a3).
+  const paused = new Set<View>(
+    live.asks.filter((a) => !(a.id in live.answers) && (a.id in live.blocking || a.id === "goals")).map((a) => a.agent),
+  );
   const item = (id: View, name: string, status: AgentStatus["state"] | undefined, sub: string | undefined, title: string) => (
-    <button type="button" className={`nav-item${status ? ` team-${status}` : ""}${active === id ? " on" : ""}${id !== "dashboard" && on(id) ? " team-on-goal" : ""}`} aria-current={active === id ? "page" : undefined} onClick={() => onOpen(id)} title={title}>
+    <button type="button" className={`nav-item${status ? ` team-${status}` : ""}${active === id ? " on" : ""}${id !== "dashboard" && on(id) ? " team-on-goal" : ""}${paused.has(id) ? " nav-paused" : ""}`} aria-current={active === id ? "page" : undefined} onClick={() => onOpen(id)} title={title}>
       <span className="nav-glyph">
         <NavIcon name={id} />
       </span>

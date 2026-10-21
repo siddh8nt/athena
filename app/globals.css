@@ -2390,3 +2390,93 @@ button.nav-item:hover:not(:disabled) { background: rgba(255, 255, 255, 0.045); c
   .ans-list { grid-template-columns: 1fr; }
 }
 .spec-draft { margin-top: 4px; font-size: 13px; }
+
+/* ---- Step 8.6a (§23.5 a): the tabbed dashboard, the Paused alert, compact goals and the workflow in the panel ---- */
+/* Paused is amber, never red (a3): it isn't a failure. The banner is its own row above the top bar, so it never scrolls,
+   and every drawer and sheet (which cover the top bar) opens just beneath it at var(--alert-h). */
+.journey { --alert-h: 48px; grid-template-rows: auto auto 1fr; grid-template-areas: "alert" "top" "main"; }
+@keyframes paused-glow { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--emph) 0%, transparent); } 50% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--emph) 26%, transparent); } }
+.paused-banner {
+  grid-area: alert; position: relative; z-index: 55; box-sizing: border-box; height: var(--alert-h); display: flex; align-items: center; gap: 12px; padding: 0 24px;
+  background: color-mix(in srgb, var(--emph) 15%, var(--bg)); border-bottom: 1px solid color-mix(in srgb, var(--emph) 45%, var(--line));
+  animation: ob-settle 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.paused-banner p { margin: 0; flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 10px; font-size: 13.5px; white-space: nowrap; }
+.paused-banner strong { flex: none; color: var(--emph-ink); font-weight: 700; }
+.paused-banner-q { min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--fg); }
+.paused-banner-more { flex: none; color: var(--muted); font-size: 12.5px; }
+.paused-banner-dot { flex: none; width: 9px; height: 9px; border-radius: 50%; background: var(--emph); animation: paused-pulse 1.6s ease-in-out infinite; }
+.paused-banner button.primary { flex: none; background: var(--emph); border-color: var(--emph); color: #14120f; }
+.paused-banner button.primary:hover:not(:disabled) { background: color-mix(in srgb, var(--emph) 86%, #000); border-color: color-mix(in srgb, var(--emph) 86%, #000); }
+/* The chat drawer opens under the banner, so Answer stays in reach while the question is open. */
+.journey:has(> .paused-banner) .chat-drawer, .journey:has(> .paused-banner) .chat-scrim { top: var(--alert-h); }
+
+/* The paused node, the chat button, the sidebar row and the paused box: amber, with a gentle glow. */
+.wf-paused, .wf-paused:hover:not(:disabled) { border-color: var(--emph); background: color-mix(in srgb, var(--emph-soft) 60%, var(--surface)); animation: paused-glow 2.4s ease-in-out infinite; }
+.wf-paused .wf-state { color: var(--emph-ink); }
+.wf-paused .wf-dot { background: var(--emph); border-color: var(--emph); }
+.chat-open-paused, .chat-open-paused:hover:not(:disabled) { background: var(--emph); border-color: var(--emph); color: #14120f; animation: paused-glow 2.4s ease-in-out infinite; }
+.chat-open-paused:hover:not(:disabled) { background: color-mix(in srgb, var(--emph) 86%, #000); }
+.chat-open-paused .chat-badge { background: rgba(20, 18, 15, 0.12); }
+.nav-item.nav-paused { background: color-mix(in srgb, var(--emph-soft) 70%, transparent); animation: paused-glow 2.4s ease-in-out infinite; }
+.nav-item.nav-paused .nav-glyph { color: var(--emph-ink); }
+.paused { background: color-mix(in srgb, var(--emph) 10%, transparent); border-color: color-mix(in srgb, var(--emph) 40%, transparent); border-left-color: var(--emph); }
+.paused strong { color: var(--emph-ink); }
+.paused strong::before { background: var(--emph); }
+
+/* Goals in the Athena tab's panel keep their natural height (a2); the panel's body scrolls the rest. */
+.agent-panel-body > .goals { flex: none; align-content: flex-start; }
+
+/* The dashboard's tabs (a1): a row on a computer, a swipeable strip on a phone. */
+.dash-tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--line); overflow-x: auto; scrollbar-width: none; scroll-snap-type: x proximity; overscroll-behavior-x: contain; }
+.dash-tabs::-webkit-scrollbar { display: none; }
+.dash-tabs button.dash-tab {
+  flex: none; display: inline-flex; align-items: center; gap: 7px; min-height: 40px; padding: 0 12px; margin-bottom: -1px; border: 0; border-bottom: 2px solid transparent;
+  border-radius: 0; background: none; color: var(--muted); white-space: nowrap; scroll-snap-align: start; transition: color 140ms ease-out, border-color 140ms ease-out;
+}
+.dash-tabs button.dash-tab:hover:not(:disabled) { background: none; color: var(--fg); border-color: transparent; border-bottom-color: var(--line); }
+.dash-tabs button.dash-tab.on, .dash-tabs button.dash-tab.on:hover:not(:disabled) { color: var(--fg); border-bottom-color: var(--fg); }
+.dash-tab-paused { width: 7px; height: 7px; border-radius: 50%; background: var(--emph); animation: paused-pulse 1.6s ease-in-out infinite; }
+.dash-tab-n { min-width: 18px; padding: 1px 6px; border-radius: 999px; background: var(--sunken, var(--line)); color: var(--muted); font-size: 11px; text-align: center; }
+.dash-tab-body { display: flex; flex-direction: column; gap: 18px; min-width: 0; animation: rise 0.25s ease-out both; }
+
+/* The Brand Knowledge Base: each part folds to its title and a one-line summary. */
+.dash-kb { gap: 10px; }
+.dash-kb .dash-sec-head { justify-content: flex-start; }
+.kb-all { margin-left: auto; }
+.kb-fold { border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+.kb-fold button.kb-fold-head {
+  display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; width: 100%; min-height: 52px; padding: 14px 16px; border: 0; border-radius: 14px;
+  background: none; color: var(--fg); text-align: left; font-family: inherit; font-weight: 400; font-size: inherit;
+}
+.kb-fold button.kb-fold-head:hover:not(:disabled) { background: color-mix(in srgb, var(--fg) 3%, transparent); }
+.kb-fold-head strong { font-size: 15px; font-weight: 600; }
+.kb-fold-head small { font-size: 12.5px; }
+.kb-chev { flex: none; align-self: center; width: 7px; height: 7px; border-right: 1.5px solid var(--muted); border-bottom: 1.5px solid var(--muted); transform: translateY(-2px) rotate(45deg); transition: transform 180ms ease-out; }
+.kb-shut .kb-chev { transform: rotate(-45deg); }
+.kb-fold-body { padding: 0 16px 16px; min-width: 0; animation: rise 0.25s ease-out both; }
+.kb-fold-body .brand-graph { border: 0; box-shadow: none; padding: 0; }
+
+/* The workflow in the Athena tab's panel (a4): the same nodes, stacked top to bottom, parallel steps side by side. */
+.wf.wf-compact { grid-auto-flow: row; grid-auto-columns: auto; grid-template-columns: minmax(0, 1fr); gap: 16px; overflow: visible; padding: 0; }
+.wf-compact .wf-col { display: grid; grid-template-columns: repeat(auto-fit, minmax(128px, 1fr)); gap: 8px; }
+.wf-compact .wf-col + .wf-col::before { left: 50%; top: -16px; width: 1px; height: 16px; }
+.wf-compact .wf-col + .wf-col::after { left: calc(50% - 3px); top: -7px; transform: rotate(135deg); }
+.wf-compact .wf-node { min-height: 0; padding: 9px 11px; gap: 2px; border-radius: 12px; }
+.wf-compact .wf-node strong { font-size: 15.5px; }
+.wf-compact .wf-node small { font-size: 12px; -webkit-line-clamp: 1; }
+
+@media (max-width: 900px) {
+  /* Phone: the same banner, pinned above every sheet; the sheets open beneath it. */
+  .journey { --alert-h: 58px; }
+  .paused-banner { padding: 0 16px; gap: 10px; }
+  .paused-banner p { flex-direction: column; align-items: flex-start; gap: 1px; font-size: 13px; }
+  .paused-banner-q { width: 100%; }
+  .paused-banner-more { display: none; }
+  .journey:has(> .paused-banner) .agent-panel, .journey:has(> .paused-banner) .chat-dock { top: var(--alert-h); }
+  .dash-tabs { margin: 0 -16px; padding: 0 16px; scroll-padding: 0 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .paused-banner, .paused-banner-dot, .dash-tab-paused, .wf-paused, .chat-open-paused, .nav-item.nav-paused, .dash-tab-body, .kb-fold-body { animation: none; }
+  .kb-chev { transition: none; }
+}

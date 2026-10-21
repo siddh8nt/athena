@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { PanelGrip } from "./Resize";
 import { nameOf, type AgentId, type SpecialistId } from "@/lib/agent/specialists";
 
@@ -119,10 +119,9 @@ export function AthenaRoom(p: {
   );
 }
 
-/** A subagent's page: its work in the main area, with the same chat with Athena docked beside it. */
-export function SubagentPage({ id, nav, chat, bodyRef, children }: { id: SpecialistId; nav: ReactNode; chat: ReactNode; bodyRef: React.RefObject<HTMLDivElement | null>; children: ReactNode }) {
-  // On a phone the chat is a sheet over the page, opened from the page's head.
-  const [sheet, setSheet] = useState(false);
+/** A subagent's page: its work in the main area, with the same chat with Athena docked beside it. On a phone the chat
+ *  is a sheet over the page, opened from the page's head or by the Paused banner's Answer. */
+export function SubagentPage({ id, nav, chat, bodyRef, sheet, setSheet, children }: { id: SpecialistId; nav: ReactNode; chat: ReactNode; bodyRef: React.RefObject<HTMLDivElement | null>; sheet: boolean; setSheet: (o: boolean) => void; children: ReactNode }) {
   return (
     <main className={`journey-main agent-stage page-stage sub-stage${sheet ? " sheet-on" : ""}`}>
       {nav}
@@ -142,5 +141,72 @@ export function SubagentPage({ id, nav, chat, bodyRef, children }: { id: Special
         {chat}
       </div>
     </main>
+  );
+}
+
+/**
+ * Paused, so it can't be missed (§23.5 a3): an amber strip across the top of every page naming who asks and what, with
+ * one Answer that opens the chat at the question. Amber, never red: paused isn't a failure.
+ */
+export function PausedBanner({ who, question, more, onAnswer }: { who: string; question?: string; more: number; onAnswer: () => void }) {
+  return (
+    <div className="paused-banner" role="alert">
+      <span className="paused-banner-dot" aria-hidden />
+      <p>
+        <strong>Paused · {who} needs you</strong>
+        {question && <span className="paused-banner-q">{question}</span>}
+        {more > 0 && <span className="paused-banner-more">+{more} more</span>}
+      </p>
+      <button type="button" className="primary" onClick={onAnswer}>
+        Answer
+      </button>
+    </div>
+  );
+}
+
+const PAUSED_TITLE = "Paused · Athena needs you";
+/** The tab's icon while paused: Athena's A with an amber dot, so it shows from another tab too. */
+const PAUSED_ICON = `data:image/svg+xml,${encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="#14120f"/><text x="13" y="23" font-family="Georgia,serif" font-size="20" fill="#f3efe6" text-anchor="middle">A</text><circle cx="25" cy="7" r="6" fill="#d9a441" stroke="#14120f" stroke-width="2"/></svg>',
+)}`;
+
+/** While a step waits on the founder, the browser tab says so in its title and icon; both come back once it's answered. */
+export function usePausedTab(paused: boolean) {
+  useEffect(() => {
+    if (!paused) return;
+    const title = document.title;
+    document.title = PAUSED_TITLE;
+    const link = document.createElement("link");
+    link.rel = "icon";
+    link.href = PAUSED_ICON;
+    link.dataset.paused = "1";
+    document.head.appendChild(link);
+    // The app router may set the title again on a re-render; keep the paused one while paused.
+    const keep = new MutationObserver(() => {
+      if (document.title !== PAUSED_TITLE) document.title = PAUSED_TITLE;
+    });
+    const t = document.querySelector("title");
+    if (t) keep.observe(t, { childList: true, characterData: true, subtree: true });
+    return () => {
+      keep.disconnect();
+      link.remove();
+      document.title = title === PAUSED_TITLE ? "Your plan · Athena" : title;
+    };
+  }, [paused]);
+}
+
+/** Brings the open question in the chat's tray into view and onto its first option, with the tray's call-out. */
+export function focusTray() {
+  // Twice: the drawer or sheet that holds the chat may only mount on this frame.
+  requestAnimationFrame(() =>
+    requestAnimationFrame(() => {
+      const tray = [...document.querySelectorAll<HTMLElement>(".q-tray")].find((t) => t.offsetParent !== null);
+      if (!tray) return;
+      tray.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      tray.querySelector<HTMLElement>(".question-options button:not(:disabled)")?.focus({ preventScroll: true });
+      tray.classList.remove("q-tray-call");
+      void tray.offsetWidth;
+      tray.classList.add("q-tray-call");
+    }),
   );
 }

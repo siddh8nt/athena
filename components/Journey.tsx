@@ -13,7 +13,7 @@ import { Onboard } from "./Onboard";
 import { Fits, When, tiersFor } from "./Fits";
 import { fromCity, fromCrowd, type Handoff } from "@/lib/agent/handoffs";
 import { GoalsBar, Handoffs, PausedForYou, RunTrail, SpecialistWorkspace, TeamPanel, WhatsWorking, WorkView, useTeam, type TeamLive } from "./Team";
-import { Dashboard, GrowthPlanView } from "./Dashboard";
+import { Dashboard, GrowthPlanView, WorkflowDiagram, type KbPart } from "./Dashboard";
 import { INPUTS } from "@/lib/team/inputs";
 import type { StrategyView } from "./Strategy";
 import type { Asked } from "./Question";
@@ -29,7 +29,7 @@ import type { GraphInput } from "@/lib/graph/types";
 import { keepFile, workspace } from "@/lib/knowledge/workspace";
 import { bySource, mergeNotes, themesOf, type Synth } from "@/lib/knowledge/notes";
 import { RunProgress, StepTimer } from "./Progress";
-import { AthenaRoom, DashboardPage, SubagentPage, type Page } from "./Views";
+import { AthenaRoom, DashboardPage, PausedBanner, SubagentPage, focusTray, usePausedTab, type Page } from "./Views";
 import type { Channel } from "@/lib/journey/growth";
 import { crowdAfterFits, emptyJourney, loadedJourney, type CrowdCard, type Journey as JourneyState } from "@/lib/journey/types";
 import type { Galaxy as GalaxyData } from "@/lib/taste/galaxy";
@@ -321,6 +321,8 @@ export function Journey() {
   // The floating panel (§23.2 step 8.4b): open beside the chat on a desktop; a full-screen sheet on a phone.
   const [panelOpen, setPanelOpen] = useState(true);
   const [sheet, setSheet] = useState(false);
+  // On a phone a subagent page's chat is a sheet over it.
+  const [subSheet, setSubSheet] = useState(false);
   const panelBody = useRef<HTMLDivElement>(null);
   // A tab brought forward opens the panel on it if it was hidden.
   const shownTab = useRef(tab);
@@ -742,6 +744,8 @@ export function Journey() {
       <>
         {/* The goals open Athena's tab (§23.2 step 8.5p); the Brand Graph lives on the dashboard alone (8.5b). */}
         <GoalsBar goals={team.goals} />
+        {/* The workflow as on the dashboard (§23.5 a4), compact: a node opens its subagent's tab here. */}
+        <WorkflowDiagram compact team={team} live={tm.live} onOpen={(id) => (id === "dashboard" ? go(id) : (tm.pickTab(id as AgentId), setPanelOpen(true)))} onChat={() => (setSheet(false), focusTray())} />
         <p className="small muted">
           What the team knows about the brand is in the{" "}
           <button type="button" className="linkish" onClick={() => go("dashboard")}>
@@ -773,20 +777,37 @@ export function Journey() {
   // The Brand Knowledge Base on the dashboard (§23.2 step 8.5b): the Brand Graph with its stale flags, sources and
   // files, the record of onboarding with what the sources disagreed on and what was kept, and a drop zone for more.
   const onboardRecord = msgs.find((m) => m.record)?.record;
-  const kbEl = (
-    <>
-      {graphEl}
-      <label className="kb-drop" onDragOver={(e) => e.preventDefault()} onDrop={(e) => (e.preventDefault(), e.stopPropagation(), e.dataTransfer.files.length && void readFiles([...e.dataTransfer.files]))}>
-        <strong>Add to what Athena knows</strong>
-        <span className="small muted">Drop a deck, a stockist sheet, photos or a PDF, or click to pick. It goes on the Brand Graph, and the subagents it changes are flagged to bring up to date.</span>
-        <input type="file" multiple accept={ACCEPT} hidden onChange={(e) => e.target.files?.length && void readFiles([...e.target.files])} />
-      </label>
-      {onboardRecord && <RecordView record={onboardRecord} />}
-    </>
-  );
+  const kbParts: KbPart[] = [
+    { id: "graph", title: "Brand Graph", sub: "Themes and notes from your site and files, editable", body: graphEl },
+    {
+      id: "files",
+      title: "Add to what Athena knows",
+      sub: "Decks, stockist sheets, photos, PDFs",
+      body: (
+        <label className="kb-drop" onDragOver={(e) => e.preventDefault()} onDrop={(e) => (e.preventDefault(), e.stopPropagation(), e.dataTransfer.files.length && void readFiles([...e.dataTransfer.files]))}>
+          <strong>Drop files here</strong>
+          <span className="small muted">Drop a deck, a stockist sheet, photos or a PDF, or click to pick. It goes on the Brand Graph, and the subagents it changes are flagged to bring up to date.</span>
+          <input type="file" multiple accept={ACCEPT} hidden onChange={(e) => e.target.files?.length && void readFiles([...e.target.files])} />
+        </label>
+      ),
+    },
+    ...(onboardRecord ? [{ id: "record", title: "How onboarding went", sub: "What the sources disagreed on and what was kept", body: <RecordView record={onboardRecord} /> }] : []),
+  ];
   // Who the run waits on, for the dashboard's chat button.
   const pausedAgent = Object.entries(tm.live.blocking).find(([id]) => !(id in tm.live.answers))?.[1].agent;
   const pausedFor = pausedAgent ? (pausedAgent === "athena" ? "Athena" : `the ${nameOf(pausedAgent)}`) : tm.live.asks.some((a) => a.id === "goals" && !(a.id in tm.live.answers)) ? "your goals" : undefined;
+  // The question the run waits on, for the Paused banner on every page and the tab's title and icon (§23.5 a3).
+  const openAsks = tm.live.asks.filter((a) => !(a.id in tm.live.answers) && (a.id in tm.live.blocking || a.id === "goals"));
+  const pausedAsk = openAsks.find((a) => a.id in tm.live.blocking) ?? openAsks[0];
+  const pausedWho = pausedAsk ? (pausedAsk.agent === "athena" ? "Athena" : `The ${nameOf(pausedAsk.agent)}`) : undefined;
+  usePausedTab(!onboarding && !!pausedAsk);
+  /** Answer: open the chat wherever this page keeps it, at the question. */
+  const answerPaused = () => {
+    if (page === "dashboard") setDrawer(true);
+    else if (subPage) setSubSheet(true);
+    else setSheet(false);
+    focusTray();
+  };
   /** "Build your growth plan with Athena" (§23.2 step 8.5c): the chat opens on her opening question. */
   const startPlan = () => {
     setDrawer(true);
@@ -808,6 +829,8 @@ export function Journey() {
 
   return (
     <div className={`journey ${drag ? "dragging" : ""} ${onboarding ? "ob-on" : ""}`} {...dropZone}>
+      {/* Above the top bar, so every sheet and drawer opens just beneath it (§23.5 a3). */}
+      {!onboarding && pausedAsk && pausedWho && <PausedBanner who={pausedWho} question={pausedAsk.question} more={openAsks.length - 1} onAnswer={answerPaused} />}
       <header className="topbar journey-top">
         <Link href="/" className="wordmark-link"><strong>Athena</strong></Link>
         {/* Hidden through onboarding (§23.2 step 7.2a); the goals take the progress rail's place (step 8a). */}
@@ -828,7 +851,6 @@ export function Journey() {
           </button>
         </div>
       </header>
-
       {onboarding ? (
         <main className="journey-main ob-main">
           <Onboard brief={brief} files={chat.files} addFiles={chat.addFiles} setFiles={chat.setFiles} onBrief={onBrief} onFacts={onRaw} graph={graphEl} dock={dockEl} grouping={working?.by === "graph" ? working.text : undefined} onRecord={(r) => (record.current = r)} />
@@ -839,17 +861,19 @@ export function Journey() {
             live={tm.live}
             team={team}
             graphRev={g.log.length}
-            kb={kbEl}
+            kb={kbParts}
+            paused={pausedFor}
             working={<WhatsWorking team={team} graphRev={g.log.length} busy={tm.live.running > 0} onRefresh={tm.refresh} />}
             onOpen={(id) => go(id)}
             onChat={() => setDrawer(true)}
             onStart={startPlan}
             onAdd={(id) => (tm.addToPlan(id), setDrawer(true))}
             onEditAnswer={tm.editAnswer}
+            onUpdatePlan={tm.refresh}
           />
         </DashboardPage>
       ) : subPage ? (
-        <SubagentPage id={subPage} nav={navEl} chat={chatEl} bodyRef={panelBody}>
+        <SubagentPage id={subPage} nav={navEl} chat={chatEl} bodyRef={panelBody} sheet={subSheet} setSheet={setSubSheet}>
           <SpecialistWorkspace id={subPage} live={tm.live} team={team} />
           {outputOf(subPage)}
         </SubagentPage>

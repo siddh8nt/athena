@@ -1,5 +1,7 @@
 import { SPECIALIST_IDS, type SpecialistId } from "@/lib/agent/specialists";
 import { readWorkflow } from "@/lib/agent/workflow";
+import type { SavedNav } from "@/lib/agent/navigator";
+import type { AreaFigures } from "@/lib/enrich/census";
 import { MARKS, emptyTeam, type Answer, type Goal, type Mark, type Outcome, type TeamState, type Work, type WorkItem } from "./types";
 
 // The team as the client sends it back (a stateless server: the journey holds its own state). Everything is
@@ -31,6 +33,68 @@ export function readGoal(raw: unknown): Goal | undefined {
 
 export const readGoals = (raw: unknown, n = 5) => (Array.isArray(raw) ? raw : []).map(readGoal).filter((g): g is Goal => !!g).slice(0, n);
 
+const nums = (v: unknown, n: number) => (Array.isArray(v) && v.length === n && v.every((x) => typeof x === "number" && Number.isFinite(x)) ? (v as number[]) : undefined);
+const figs = (v: unknown) => {
+  const x = rec(v);
+  return { ...(num(x.residents) ? { residents: num(x.residents) } : {}), ...(num(x.income) ? { income: num(x.income) } : {}) };
+};
+
+function readArea(raw: unknown): AreaFigures | undefined {
+  const a = rec(raw);
+  const zip = rec(a.zip);
+  const tract = rec(a.tract);
+  const out: AreaFigures = {
+    ...(str(zip.id, 10) ? { zip: { id: str(zip.id, 10), ...figs(zip) } } : {}),
+    ...(str(tract.id, 30) && str(tract.name, 120) ? { tract: { id: str(tract.id, 30), name: str(tract.name, 120), ...figs(tract) } } : {}),
+  };
+  return out.zip || out.tract ? out : undefined;
+}
+
+/** The Navigator's read as a journey kept it (§23.5 e): the Rep and Promoter of a later run work its cities. Cells
+ * are left out: they never travel, only the page draws them. */
+export function readNav(raw: unknown): SavedNav | undefined {
+  const r = rec(raw);
+  const crowds = (Array.isArray(r.crowds) ? r.crowds : []).slice(0, 3).flatMap((x) => {
+    const c = rec(x);
+    const id = str(c.id, 80);
+    const tier = str(c.tier, 20);
+    if (!id || !["win_first", "win_next", "watch"].includes(tier)) return [];
+    const cities = (Array.isArray(c.cities) ? c.cities : []).slice(0, 12).flatMap((y) => {
+      const f = rec(y);
+      const metroId = str(f.metroId, 80);
+      const name = str(f.name, 120);
+      return metroId && name
+        ? [{ metroId, name, ...(typeof f.score === "number" && Number.isFinite(f.score) ? { score: f.score } : {}), z: num(f.z), reason: str(f.reason, 300), leans: strs(f.leans, 8, 120) }]
+        : [];
+    });
+    return [{ id, tier: tier as SavedNav["crowds"][number]["tier"], cities }];
+  });
+  const cities = (Array.isArray(r.cities) ? r.cities : []).slice(0, 8).flatMap((x) => {
+    const c = rec(x);
+    const metroId = str(c.metroId, 80);
+    const name = str(c.name, 120);
+    const center = nums(c.center, 2) as [number, number] | undefined;
+    if (!metroId || !name || !center) return [];
+    const bbox = nums(c.bbox, 4) as [number, number, number, number] | undefined;
+    const census = figs(c.census);
+    const hoods = (Array.isArray(c.hoods) ? c.hoods : []).slice(0, 16).flatMap((y) => {
+      const h = rec(y);
+      const hn = str(h.name, 120);
+      if (!hn) return [];
+      const at = nums(h.at, 2) as [number, number] | undefined;
+      const heat = Object.fromEntries(Object.entries(rec(h.heat)).slice(0, 3).filter(([, v]) => typeof v === "number" && Number.isFinite(v)).map(([k, v]) => [k.slice(0, 80), v as number]));
+      const area = readArea(h.area);
+      return [{ name: hn, ...(h.around === true ? { around: true } : {}), ...(at ? { at } : {}), cells: num(h.cells), heat, ...(area ? { area } : {}) }];
+    });
+    const layers = (Array.isArray(c.layers) ? c.layers : []).slice(0, 3).flatMap((y) => {
+      const l = rec(y);
+      return str(l.crowd, 80) ? [{ crowd: str(l.crowd, 80), cells: [] as [number, number, number][], ...(str(l.callId, 80) ? { callId: str(l.callId, 80) } : {}) }] : [];
+    });
+    return [{ metroId, name, center, ...(bbox ? { bbox } : {}), ...(Object.keys(census).length ? { census } : {}), rivals: strs(c.rivals, 8, 120), yours: c.yours === true, layers, hoods }];
+  });
+  return crowds.length && cities.length ? { crowds, cities, cap: num(r.cap) || 2, calls: num(r.calls), callIds: strs(r.callIds, 300, 80) } : undefined;
+}
+
 function readItem(raw: unknown): WorkItem | undefined {
   const x = rec(raw);
   const id = str(x.id, 200);
@@ -56,6 +120,12 @@ function readWork(raw: unknown, agent: SpecialistId): Work | undefined {
   const shared = rec(w.shared);
   const city = rec(shared.city);
   const handoff = rec(w.handoff);
+  const nav = agent === "navigator" ? readNav(shared.nav) : undefined;
+  const kept = {
+    ...(str(city.id, 80) && str(city.name, 120) ? { city: { id: str(city.id, 80), name: str(city.name, 120) } } : {}),
+    ...(str(shared.crowd, 120) ? { crowd: str(shared.crowd, 120) } : {}),
+    ...(nav ? { nav } : {}),
+  };
   return {
     agent,
     goal: str(w.goal, 160),
@@ -72,7 +142,7 @@ function readWork(raw: unknown, agent: SpecialistId): Work | undefined {
     at: num(w.at),
     ...(str(w.outcomes, 400) ? { outcomes: str(w.outcomes, 400) } : {}),
     ...(str(w.changed, 400) ? { changed: str(w.changed, 400) } : {}),
-    ...(str(city.id, 80) && str(city.name, 120) ? { shared: { city: { id: str(city.id, 80), name: str(city.name, 120) } } } : str(shared.crowd, 120) ? { shared: { crowd: str(shared.crowd, 120) } } : {}),
+    ...(Object.keys(kept).length ? { shared: kept } : {}),
     by: w.by === "agent" ? "agent" : "rules",
   };
 }

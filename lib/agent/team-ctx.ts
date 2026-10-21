@@ -11,6 +11,7 @@ import type { LiveFact } from "@/lib/knowledge/types";
 import { resolveBrand } from "@/lib/methods/resolve";
 import { metroOf } from "./tools";
 import { heldCrowds } from "./evidence";
+import { restoreNav } from "./navigator";
 import type { TeamCtx, TeamEnrich } from "./plays";
 
 // The team's shared memory built from the Brand Graph the client sends (PRD §23.2 step 8b): the brand as the
@@ -60,6 +61,8 @@ export async function buildCtx(r: CtxInput): Promise<TeamCtx> {
   const city = works.navigator?.shared?.city;
   const hoods = works.navigator?.results.filter((x) => x.kind === "neighbourhood").map((x) => x.name);
   const nextName = works.scout?.shared?.crowd;
+  const saved = works.navigator?.shared?.nav;
+  const nav = saved && r.crowds ? restoreNav(saved, r.crowds.crowds, works.navigator?.page) : undefined;
   const crowdNamed = (n?: string) => (n ? r.crowds?.crowds.find((c) => c.name === n) : undefined);
 
   return {
@@ -93,7 +96,7 @@ export async function buildCtx(r: CtxInput): Promise<TeamCtx> {
     ...(crowdNamed(nextName) ? { next: crowdNamed(nextName) } : {}),
     ...(r.answers?.length ? { answers: r.answers } : {}),
     ...(r.notes?.length ? { notes: r.notes } : {}),
-    found: works.scout?.page ? { scout: works.scout.page } : {},
+    found: { ...(works.scout?.page ? { scout: works.scout.page } : {}), ...(nav ? { navigator: nav } : {}) },
     outcomes: r.team.outcomes,
     // Probed and still under three crowds: the graph was seeded wider already (§23.5 c).
     probe: { ran: r.probes.length, wider: r.probes.length > 0 && heldCrowds(r.crowds) < 3 },

@@ -95,16 +95,18 @@ export const SPECIALISTS: Specialist[] = [
     name: "Rep",
     role: "Shops, retailers and the pitch",
     prompt: 'Ask the Rep: "more independent shops, fewer chains", "write the pitch for the top shop"',
-    mission: "Find the independent shops and venues in the city whose regulars match the crowd, the bigger retailers to step up to, and write the pitch.",
-    doneWhen: "There is a shortlist of venues and retailers the brand isn't in yet, and a pitch for the top one.",
+    mission:
+      "For each of the three crowds, find the shops in the Navigator's cities whose regulars match it, crowd → city → neighbourhood → shop: anchors first, then spillover. A shop that fits two or three crowds is found once and ranked higher. Rank the national retailers per crowd, and write the pitch for the top shop.",
+    doneWhen: "Each crowd has its shops in its cities and its national retailers, none the brand is already in, each shop with how it buys and a public contact when there is one, and a pitch for the top shop.",
     rules: [
-      "Never suggest a shop or retailer the brand is already stocked in.",
-      "When few venues come back, widen to the next neighbourhood.",
-      "Read the outcomes first: kinds of venue that said no are tried less, kinds that said yes more.",
+      "Never suggest a shop or retailer the brand is already stocked in; show those as already there.",
+      "When an anchor neighbourhood has few shops, widen to the nearest one and say so.",
+      "Read the outcomes first: kinds of shop that said no are tried less, kinds that said yes more.",
+      "Contacts come only from a shop's own pages, each with the page it was on; never guess an email. Drafts are for the founder to copy or open in mail, never sent.",
     ],
     delivers: ["get into shops", "step up to bigger retailers"],
     needs: [CROWDS, { key: "city", from: "navigator", why: "needs a city first" }],
-    budget: { qloo: 40, ms: 100_000, turns: 6 },
+    budget: { qloo: 130, ms: 150_000, turns: 6 },
     kinds: ["venue", "retailer", "draft"],
   },
   {
@@ -138,7 +140,7 @@ export const SPECIALISTS: Specialist[] = [
     delivers: ["show up at events", "reach people online"],
     // Events need a city: the Navigator's when it's on the goal, else the home city; online audiences need none.
     needs: [CROWDS, { key: "city", from: "navigator", why: "needs a city for events first", home: true }],
-    budget: { qloo: 40, ms: 100_000, turns: 6 },
+    budget: { qloo: 130, ms: 150_000, turns: 6 },
     kinds: ["event", "audience", "creator", "draft"],
   },
 ];

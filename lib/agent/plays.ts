@@ -7,7 +7,7 @@ import { results } from "@/lib/qloo/client";
 import type { BlockContext, TagChip } from "@/lib/blocks/types";
 import { fingerprint } from "@/lib/blocks/fingerprint";
 import type { MarketsEnrichers, Neighbourhood } from "@/lib/blocks/markets";
-import { places, type VenuePick } from "@/lib/blocks/places";
+import type { VenuePick } from "@/lib/blocks/places";
 import { partners, type PartnerCard, type PartnersData } from "@/lib/blocks/partners";
 import { message, positionAgainst, type MessageData, type PositionCard } from "@/lib/blocks/message";
 import { moments, type DateLookup, type Moment, type ShowLookup } from "@/lib/blocks/moments";
@@ -16,8 +16,9 @@ import type { Look, LookEvidence } from "./looks";
 import { by, oneLineEvidence, readCrowd, scoutPage, writeCrowd, type CrowdInput } from "./scout";
 import { mergePage, type CrowdPage, type CrowdTier } from "@/lib/team/page";
 import { isStrong, readCities, roles, verdict, VERDICT_LABEL, type NavRead } from "./navigator";
+import { budgetOf, contactOf, entryRoute, FEW_IN_HOOD, FITS, offerFor, readShops, shopCities, wholesaleOf, type RepRead, type Shop, type ShopSite } from "./rep";
 import { onlineStop, type OnlineData } from "@/lib/stops/online";
-import { alreadyIn, nextRetailers, type RetailCategory, type RetailerPick } from "@/lib/stops/retailers";
+import type { RetailCategory, RetailerPick } from "@/lib/stops/retailers";
 import { buildPlaybook, VENUE_TAGS, type CategoryId, type Motion, type Tier } from "@/lib/playbook/config";
 import { METROS, metroById } from "@/lib/playbook/metros";
 import { locationParams, resolveTyped } from "@/lib/places/location";
@@ -71,6 +72,10 @@ export type TeamEnrich = {
   podcastDetails?: (cards: PartnerCard[]) => Promise<void>;
   writeHooks?: (ev: HookEvidence) => Promise<Hooks | undefined>;
   writeLooks?: (ev: LookEvidence) => Promise<Look | undefined>;
+  /** Reads shops' own sites for brands carried, a wholesale page and a public buyer email (§23.5 f, l). */
+  shopSites?: (shops: Shop[], brand: { name: string; product: string }) => Promise<Map<string, ShopSite>>;
+  /** The shop names a web search finds on Faire, labelled as found by search. */
+  faire?: (city: string, names: string[]) => Promise<Set<string>>;
 };
 
 /**
@@ -122,6 +127,12 @@ export type TeamCtx = {
     scout?: CrowdPage;
     /** The Navigator's read (§23.5 e): its page is built from it, with what the Rep and the Promoter found filled in. */
     navigator?: NavRead;
+    /** The Rep's read (§23.5 f): shops per crowd, city and neighbourhood, and national retailers per crowd. */
+    rep?: RepRead;
+    /** Pitches written this session, by shop id, shown in the shop's detail. */
+    pitch?: Record<string, { subject: string; body: string }>;
+    /** Shops that host events, for the Promoter. */
+    hosts?: Shop[];
   };
   outcomes: Outcome[];
   /** Probes the Analyst ran this session, whether the last one changed the crowds, and whether one ran with fewer than three crowds (§23.5 c). */
@@ -200,6 +211,24 @@ export function scoutCrowds(t: TeamCtx, s?: AgentState): CrowdInput[] {
   if (ranked.length) return ranked.slice(0, 3);
   const order: CrowdTier[] = ["win_first", "win_next", "watch"];
   return [...crowds].sort((a, b) => Number(!!a.nearMiss) - Number(!!b.nearMiss) || Number(b.main) - Number(a.main)).slice(0, 3).map((crowd, i) => ({ crowd, tier: crowd.nearMiss ? "watch" : order[i] }));
+}
+
+/** The Navigator's read of where every crowd lives, held for the run. */
+async function mapCities(t: TeamCtx, s: AgentState, qloo: QlooClient, status: (text: string) => void, cap = t.brand.capacity ?? 2) {
+  const read = await readCities(qloo, scoutCrowds(t, s), {
+    rivals: t.brand.competitors.slice(0, 5),
+    ownId: t.brand.ownId,
+    comparables: t.brand.comparables,
+    yours: yoursOf(t),
+    cap,
+    must: homeGoal(t)?.id,
+    census: t.enrich.markets?.census,
+    names: t.enrich.markets?.neighbourhoods,
+    areas: t.enrich.markets?.areas,
+    status,
+  });
+  t.found.navigator = read;
+  return read;
 }
 
 export const PLAYS: Tool[] = [
@@ -383,23 +412,10 @@ export const PLAYS: Tool[] = [
     async run(a, { qloo, state, status }) {
       const t = state.team;
       if (!t || !(state.crowds ?? t.crowds)?.crowds.length) return none("needs the crowds first");
-      const inputs = scoutCrowds(t, state);
       const cap = Math.max(1, Math.min(5, typeof a.capacity === "number" ? Math.round(a.capacity) : (t.brand.capacity ?? 2)));
       const yours = yoursOf(t);
       const home = homeGoal(t);
-      const read = await readCities(qloo, inputs, {
-        rivals: t.brand.competitors.slice(0, 5),
-        ownId: t.brand.ownId,
-        comparables: t.brand.comparables,
-        yours,
-        cap,
-        must: home?.id,
-        census: t.enrich.markets?.census,
-        names: t.enrich.markets?.neighbourhoods,
-        areas: t.enrich.markets?.areas,
-        status,
-      });
-      t.found.navigator = read;
+      const read = await mapCities(t, state, qloo, status, cap);
       const outcomes = latest(t.outcomes);
       const v = (id: string) => verdict(read, id, yours, outcomes);
       // The Rep and the Promoter work the first city: home when going deeper there, else the best launch.
@@ -481,103 +497,102 @@ export const PLAYS: Tool[] = [
 
   // ---- Rep -------------------------------------------------------------------------------------------------------
   {
-    name: "find_places",
+    name: "read_shops",
     for: ["rep"],
     description:
-      "Independent shops and venues in the city whose regulars match the crowd, starting in the top neighbourhood. Leaves out every stockist and every venue the founder already heard back from, moves venue kinds that said yes up and kinds that said no down, " +
-      `and widens to the next neighbourhood (then the whole city, then a second page) while fewer than ${FEW_VENUES} remain. 1 Qloo call per area searched, at most 5. Needs a city.`,
-    properties: { neighbourhood: { type: "string", description: "Start in this neighbourhood instead of the top one." } },
-    qloo: () => 5,
-    maxMs: 45_000,
-    when: once("find_places", (t) => (t.city ? { args: {}, why: `Finding shops in ${t.hoods?.[0] ? `${t.hoods[0]}, ` : ""}${t.city.name} whose regulars match your crowd` } : skip("shops need a city first", "a city"))),
-    async run(a, { qloo, state, status }) {
+      "Reads the shops for all three crowds, crowd → city → neighbourhood → shop. Each crowd's cities come from the Navigator; per city one read per crowd, then one read around each anchor neighbourhood for every crowd at once, " +
+      `widening to the nearest neighbourhood when an anchor has fewer than ${FEW_IN_HOOD}. A shop that fits two or three crowds is found once, tagged with each and ranked higher. Every matching shop is kept, with its basics from Qloo, ` +
+      "and the top shops' own sites are read for the brands they carry, a wholesale page and a public buyer email. National retailers are ranked per crowd, with which of the cities have their stores. " +
+      "Leaves out every stockist; shop types that said no move down, those that said yes move up. The offer is sized to the founder's budget. About 60–120 Qloo calls.",
+    properties: {},
+    qloo: () => 120,
+    maxMs: 120_000,
+    when: once("read_shops", (t) =>
+      t.found.navigator?.cities.length
+        ? { args: {}, why: `Finding the shops for each crowd in ${list(shopCities(t.found.navigator).map((c) => c.name))}` }
+        : skip("shops need the cities first", "a city"),
+    ),
+    async run(_a, { qloo, state, status }) {
       const t = state.team;
-      if (!t?.city) return none("needs a city first");
-      const city = t.city;
+      const nav = t?.found.navigator;
+      if (!t || !nav?.cities.length) return none("needs the cities first");
+      const ctx = blockCtx(t, qloo, status);
       const chips = await fp(t, qloo, status);
-      const start = str(a.neighbourhood, 80);
-      const areas = [...new Set([...(start ? [start] : []), ...(t.hoods ?? []).slice(0, 3)])];
-      const seen = new Map<string, VenuePick & { area: string }>();
-      const tried: string[] = [];
-      const widened: string[] = [];
-      const kept = () => {
-        const fresh = [...seen.values()].filter((v) => !alreadyIn(v.name, t.brand.stockists));
-        return applyOutcomes(fresh.map((v) => ({ ...v, qid: v.id, id: itemId("venue", v.name), kind: "venue", group: venueGroup(v, CHANNEL_IDS) })), t.outcomes, "rep");
-      };
-      const search = async (label: string, target: string, page = 1) => {
-        tried.push(label);
-        const r = await places(blockCtx(t, qloo, status, { target }), { fingerprint: chips, page }).catch(() => undefined);
-        for (const v of r?.data.picks ?? []) if (!seen.has(v.id)) seen.set(v.id, { ...v, area: label });
-        return r?.data.hasMore ?? false;
-      };
-      for (const hood of areas) {
-        const where = await resolveTyped(`${hood}, ${city.name}`).catch(() => undefined);
-        if (where?.status !== "ok") continue;
-        if (tried.length) widened.push(`only ${kept().items.length} after ${tried.at(-1)}, so widened to ${hood}`);
-        await search(hood, where.id);
-        if (kept().items.length >= FEW_VENUES) break;
-      }
-      let more = false;
-      if (kept().items.length < FEW_VENUES) {
-        if (tried.length) widened.push(`only ${kept().items.length} in ${list(tried)}, so widened to all of ${city.name}`);
-        more = await search(city.name, city.id);
-      }
-      if (kept().items.length < FEW_VENUES && more) {
-        widened.push(`still only ${kept().items.length}, so read a second page`);
-        await search(`${city.name} (more)`, city.id, 2);
-      }
-      // An empty city isn't the end: the Navigator ranked a next city, so the shops come from there instead.
-      const next = t.cities?.find((c) => c.metroId !== city.id);
-      let movedTo: string | undefined;
-      if (!kept().items.length && next) {
-        widened.push(`nothing in ${city.name} yet, so widened to ${next.name}, the Navigator's next city`);
-        await search(next.name, next.metroId);
-        if (kept().items.length) movedTo = next.name;
-      }
-      const { items: ranked, moved, dropped } = kept();
-      const stocked = [...seen.values()].filter((v) => alreadyIn(v.name, t.brand.stockists)).map((v) => v.name);
-      t.found.places = ranked.slice(0, 20).map((v) => ({ ...v, id: v.qid }));
-      if (!ranked.length) return { summary: `no independent venues matched in ${list([city.name, ...(next ? [next.name] : [])])} yet`, data: { searched: tried, widened }, status: "empty" };
-      const read = outcomeLine(t.outcomes, "rep");
+      const names = new Map([...nav.crowds.flatMap((c) => c.crowd.signal), ...t.brand.comparables].map((r) => [r.id, r.name]));
+      const b = t.brand;
+      const read = await readShops(qloo, nav, {
+        brand: { name: b.name, product: b.product, stockists: b.stockists, competitors: b.competitors, tier: b.tier },
+        channels: ctx.pb.placeChannels,
+        tierParams: ctx.pb.tierParams,
+        exclude: ctx.pb.exclude,
+        names,
+        fingerprint: chips,
+        kindOf: (v) => venueGroup(v, CHANNEL_IDS),
+        retail: b.retail,
+        budget: budgetOf(t.answers),
+        status,
+        sites: t.enrich.shopSites,
+        faire: t.enrich.faire,
+      });
+      t.found.rep = read;
+      const fitting = read.shops.filter((s) => !s.stocked && Object.values(s.crowds).some((x) => x >= FITS));
+      const { items: ranked, moved, dropped } = applyOutcomes(fitting.map((s) => ({ s, id: itemId("venue", s.name), kind: "venue", group: s.kind })), t.outcomes, "rep");
+      t.found.places = ranked.map((x) => x.s);
+      t.found.hosts = read.shops.filter((s) => s.events && !s.stocked);
+      const retail = [...new Map(read.crowds.flatMap((c) => read.retailers[c.id] ?? []).map((r) => [r.name, r])).values()];
+      t.found.retailers = applyOutcomes(retail.map((r) => ({ r, id: itemId("retailer", r.name), kind: "retailer", group: r.ownLabel ? "own-label retailer" : "retailer" })), t.outcomes, "rep").items.map((x) => x.r);
+      const crowdName = (id: string) => read.crowds.find((c) => c.id === id)?.name ?? id;
+      const multi = fitting.filter((s) => Object.values(s.crowds).filter((x) => x >= FITS).length > 1);
+      const empty = read.cities.filter((c) => !fitting.some((s) => s.metroId === c.metroId));
+      const full = read.cities.filter((c) => !empty.includes(c));
+      const stocked = read.shops.filter((s) => s.stocked).map((s) => s.name);
+      const widened = read.cities.flatMap((c) => c.notes);
+      if (!fitting.length) return { summary: `no independent shops matched in ${list(read.cities.map((c) => c.name))} yet`, data: { cities: read.cities.map((c) => c.name), widened }, status: "empty" };
       return {
-        summary: `${ranked.length} venues in ${movedTo ?? list(tried)}${widened.length ? ` (${widened.at(-1)})` : ""}${stocked.length ? `; left out ${stocked.length} you're already in` : ""}${read && (moved || dropped) ? `; re-ordered on your outcomes` : ""}`,
+        summary:
+          `${fitting.length} shops in ${list(full.map((c) => c.name))}${multi.length ? `, ${multi.length} for two or three crowds` : ""}` +
+          `${empty.length ? `; nothing in ${list(empty.map((c) => c.name))} yet` : ""}` +
+          `${widened.length ? ` (${widened.at(-1)})` : ""}${stocked.length ? `; left out ${stocked.length} you're already in` : ""}${moved || dropped ? "; re-ordered on your outcomes" : ""}`,
         data: {
-          city: movedTo ?? city.name,
-          moved_from: movedTo ? city.name : undefined,
-          searched: tried,
+          cities: read.cities.map((c) => ({ city: c.name, shops: fitting.filter((s) => s.metroId === c.metroId).length, entry_route: entryRoute(read, c.metroId).route })),
+          crowds: read.crowds.map((c) => ({
+            crowd: c.name,
+            tier: c.tier,
+            cities: c.cities.map((id) => read.cities.find((x) => x.metroId === id)?.name ?? id),
+            shops: fitting.filter((s) => (s.crowds[c.id] ?? 0) >= FITS).length,
+            top_retailers: (read.retailers[c.id] ?? []).slice(0, 3).map((r) => r.name),
+          })),
           widened,
           left_out_as_stockists: stocked,
-          outcomes_read: read || undefined,
           heard_back_left_out: dropped,
-          venues: ranked.slice(0, 15).map((v) => ({ name: v.name, kind: v.group, area: v.area, neighbourhood: v.neighbourhood, why: v.reasons.slice(0, 2).map((x) => x.label) })),
+          budget: read.budget,
+          offer: offerFor(read.budget),
+          shops: ranked.slice(0, 15).map(({ s }) => ({
+            name: s.name,
+            city: s.city,
+            neighbourhood: s.hood ?? s.neighbourhood,
+            kind: s.kind,
+            crowds: Object.keys(s.crowds).filter((k) => s.crowds[k] >= FITS).map(crowdName),
+            wholesale: wholesaleOf(s),
+            contact: contactOf(s),
+          })),
         },
-        status: ranked.length < FEW_VENUES ? "thin" : "ok",
-        items: ranked.slice(0, 15).map((v) => item("venue", v.name, v.reasons[0]?.label ?? `Its regulars match ${aimed(t, state)?.name ?? "your crowd"}`, { group: v.group, detail: [v.neighbourhood, v.address].filter(Boolean).join(" · ") || undefined, ref: v.qid })),
-      };
-    },
-  },
-  {
-    name: "next_retailers",
-    for: ["rep"],
-    description: "The bigger retailers whose shoppers match the crowd, for a brand ready to step up from independent shops; leaves out retailers it's already in. About 15 Qloo calls the first time.",
-    properties: {},
-    qloo: () => 15,
-    maxMs: 40_000,
-    when: once("next_retailers", (t) =>
-      t.goals.includes("step_up") || t.brand.stockists.length >= 3 ? { args: {}, why: "Finding the bigger retailers whose shoppers match your crowd" } : skip(`not stepping up yet: ${t.brand.stockists.length ? `${t.brand.stockists.length} ${t.brand.stockists.length === 1 ? "shop" : "shops"} so far` : "no shops yet"}, so independents come first`),
-    ),
-    async run(_a, { qloo, state }) {
-      const t = state.team;
-      const crowd = t && aimed(t, state);
-      if (!t || !crowd) return none("needs the crowds first");
-      const r = await nextRetailers(qloo, crowd.signal.map((s) => s.id).slice(0, 10), t.brand.stockists, t.brand.product, { category: t.brand.retail });
-      const fresh = applyOutcomes(r.picks.map((p) => ({ ...p, qid: p.id, id: itemId("retailer", p.name), kind: "retailer", group: p.ownLabel ? "own-label retailer" : "retailer" })), t.outcomes, "rep").items;
-      t.found.retailers = fresh.map((p) => ({ ...p, id: p.qid }));
-      return {
-        summary: fresh.length ? `${fresh.slice(0, 4).map((p) => p.name).join(", ")}${r.already.length ? `; left out ${list(r.already)}, where you already are` : ""}` : "no retailer matched yet",
-        data: { retailers: fresh.slice(0, 8).map((p) => ({ name: p.name, rank: p.rank, own_label: p.ownLabel })), already_in: r.already, category: r.category },
-        status: fresh.length ? "ok" : "empty",
-        items: fresh.slice(0, 8).map((p) => item("retailer", p.name, p.ownLabel ? "Its shoppers match your crowd; it sells mostly its own label, so pitch a co-branded line" : "Its shoppers match your crowd", { group: p.group, ref: p.qid })),
+        status: "ok",
+        items: [
+          ...ranked.slice(0, 15).map(({ s }) =>
+            item("venue", s.name, s.reasons[0]?.label ?? `Its regulars match ${crowdName(Object.keys(s.crowds)[0])}`, {
+              group: s.kind,
+              detail: [s.city, s.hood ?? s.neighbourhood, s.address].filter(Boolean).join(" · ") || undefined,
+              ref: s.id,
+            }),
+          ),
+          ...(t.found.retailers ?? []).slice(0, 5).map((p) =>
+            item("retailer", p.name, p.ownLabel ? "Its shoppers match your crowds; it sells mostly its own label, so pitch a co-branded line" : "Its shoppers match your crowds", {
+              group: p.ownLabel ? "own-label retailer" : "retailer",
+              ref: p.id,
+            }),
+          ),
+        ],
       };
     },
   },
@@ -585,14 +600,17 @@ export const PLAYS: Tool[] = [
     name: "draft_pitch",
     for: ["rep"],
     description: "A short first-contact pitch to one venue, opening on what both crowds love; every name in it is checked against the evidence. Nothing is sent. 1 Qloo call.",
-    properties: { venue: { type: "string", description: "The venue's name, from find_places; the top one when empty." } },
+    properties: { venue: { type: "string", description: "The shop's name, from read_shops; the top one when empty." } },
     qloo: () => 1,
     when: once("draft_pitch", (t) => (t.found.places?.length ? { args: {}, why: `Writing the pitch to ${t.found.places[0].name}` } : undefined)),
     async run(a, { qloo, state }) {
       const t = state.team;
       const v = t?.found.places?.find((x) => x.name === str(a.venue, 120)) ?? t?.found.places?.[0];
       if (!t || !v) return none("needs a venue first");
-      return drafted(t, qloo, { kind: "venue", id: v.id, name: v.name, neighbourhood: v.neighbourhood, tags: v.tags.map((x) => x.name), reasons: v.reasons.map((x) => x.label) });
+      const r = await drafted(t, qloo, { kind: "venue", id: v.id, name: v.name, neighbourhood: v.neighbourhood, tags: v.tags.map((x) => x.name), reasons: v.reasons.map((x) => x.label) });
+      const d = r.data as { subject?: string; body?: string } | undefined;
+      if (d?.body) t.found.pitch = { ...t.found.pitch, [v.id]: { subject: d.subject ?? "", body: d.body } };
+      return r;
     },
   },
 

@@ -17,7 +17,7 @@ import { HeatLayers } from "./HeatLayers";
 const ACROSS = "across";
 const TONES = ["More playful", "More premium", "Shorter"];
 /** Kinds a founder reaches out to or tries, and so can mark. */
-const MARKABLE = new Set(["message", "rival", "show", "podcast", "creator", "neighbourhood", "step"]);
+const MARKABLE = new Set(["message", "rival", "show", "podcast", "creator", "neighbourhood", "step", "venue", "retailer"]);
 
 type Picked = { named: Named; kind: string; src?: PageSource; crowd?: PageTab["crowd"]; detail?: Detail };
 
@@ -214,6 +214,8 @@ function BlockView({ b, section, ctx }: { b: Block; section: string; ctx: Ctx })
   if (b.type === "paths") return <Paths b={b} />;
   if (b.type === "heat") return <HeatLayers b={b} />;
   if (b.type === "table") return <Table b={b} ctx={ctx} />;
+  if (b.type === "pipeline") return <Pipeline b={b} ctx={ctx} />;
+  if (b.type === "working") return <Working b={b} ctx={ctx} />;
   if (b.type === "checks")
     return (
       <div className="crowd-lines">
@@ -248,9 +250,12 @@ function BlockView({ b, section, ctx }: { b: Block; section: string; ctx: Ctx })
 /** A table whose rows open: a city's own page on Across all three, or a sheet with the row's detail. On a phone it scrolls sideways inside its card. */
 function Table({ b, ctx }: { b: Extract<Block, { type: "table" }>; ctx: Ctx }) {
   const open = (r: (typeof b.rows)[number]) => (r.goto ? ctx.go(r.goto) : r.detail ? ctx.pick({ named: { name: r.detail.title, item: r.detail.item }, kind: r.detail.kind ?? "row", detail: r.detail, crowd: ctx.tab?.crowd }) : undefined);
+  const [by, setBy] = useState<Record<string, string>>({});
+  const rows = b.rows.filter((r) => Object.entries(by).every(([f, v]) => !v || r.facets?.[f]?.includes(v)));
   return (
     <div className="nav-table">
       {b.label && <p className="crowd-label">{b.label}</p>}
+      {!!b.facets?.length && <Facets facets={b.facets} rows={b.rows} by={by} setBy={setBy} />}
       <div className="nav-table-scroll">
         <table>
           <thead>
@@ -263,7 +268,7 @@ function Table({ b, ctx }: { b: Extract<Block, { type: "table" }>; ctx: Ctx }) {
             </tr>
           </thead>
           <tbody>
-            {b.rows.map((r, i) => {
+            {rows.map((r, i) => {
               const m = r.detail?.item ? ctx.marks.get(r.detail.item) : undefined;
               const live = !!(r.goto || r.detail);
               return (
@@ -288,6 +293,130 @@ function Table({ b, ctx }: { b: Extract<Block, { type: "table" }>; ctx: Ctx }) {
             })}
           </tbody>
         </table>
+      </div>
+    </div>
+  );
+}
+
+/** Filters above a list: one select per facet, with the values its rows have. A facet with one value isn't offered. */
+function Facets({ facets, rows, by, setBy }: { facets: string[]; rows: { facets?: Record<string, string[]> }[]; by: Record<string, string>; setBy: (x: Record<string, string>) => void }) {
+  const values = (f: string) => [...new Set(rows.flatMap((r) => r.facets?.[f] ?? []))].sort();
+  const shown = facets.filter((f) => values(f).length > 1);
+  if (!shown.length) return null;
+  return (
+    <div className="nav-facets" role="group" aria-label="Filter">
+      {shown.map((f) => (
+        <label key={f} className="small">
+          <span className="muted">{f}</span>
+          <select value={by[f] ?? ""} onChange={(e) => setBy({ ...by, [f]: e.target.value })}>
+            <option value="">All</option>
+            {values(f).map((v) => (
+              <option key={v} value={v}>
+                {v}
+              </option>
+            ))}
+          </select>
+        </label>
+      ))}
+    </div>
+  );
+}
+
+/** Outreach as a board: To pitch, then a column per mark, from the founder's marks as they make them. */
+function Pipeline({ b, ctx }: { b: Extract<Block, { type: "pipeline" }>; ctx: Ctx }) {
+  const [by, setBy] = useState<Record<string, string>>({});
+  const items = b.items.filter((x) => Object.entries(by).every(([f, v]) => !v || x.facets?.[f]?.includes(v)));
+  const cols: { id: Mark | "todo"; label: string }[] = [{ id: "todo", label: "To pitch" }, ...MARKS.map((m) => ({ id: m, label: MARK_LABEL[m] }))];
+  return (
+    <div className="nav-pipeline">
+      {b.label && <p className="crowd-label">{b.label}</p>}
+      {!!b.facets?.length && <Facets facets={b.facets} rows={b.items} by={by} setBy={setBy} />}
+      <div className="nav-pipe-cols">
+        {cols.map((c) => {
+          const here = items.filter((x) => (ctx.marks.get(x.item) ?? "todo") === c.id);
+          return (
+            <div key={c.id} className="nav-pipe-col">
+              <p className="small">
+                <strong>{c.label}</strong> <span className="muted">{here.length}</span>
+              </p>
+              <ul>
+                {here.slice(0, 40).map((x) => (
+                  <li key={x.item} className="nav-pipe-card">
+                    <span>{x.name}</span>
+                    <Marks name={x.name} mark={ctx.marks.get(x.item)} onMark={(m) => ctx.mark(x.item, x.kind, x.name, m, x.group)} />
+                  </li>
+                ))}
+                {here.length > 40 && <li className="small muted">and {here.length - 40} more</li>}
+              </ul>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/** Yes rates from the founder's marks, by shop type, tier and neighbourhood. Until something is heard back, it says how it fills. */
+function Working({ b, ctx }: { b: Extract<Block, { type: "working" }>; ctx: Ctx }) {
+  const heard = b.items.filter((x) => {
+    const m = ctx.marks.get(x.item);
+    return m && m !== "pitched";
+  });
+  if (!heard.length) return <p className="small muted">{b.label ? `${b.label}: ` : ""}as you mark shops Yes, No or No reply, the yes rate by shop type, tier and neighbourhood shows here.</p>;
+  return (
+    <div className="nav-working">
+      {b.label && <p className="crowd-label">{b.label}</p>}
+      {b.by.map((f) => {
+        const groups = [...new Set(heard.map((x) => x.facets[f]).filter(Boolean))];
+        const rate = (v: string) => {
+          const g = heard.filter((x) => x.facets[f] === v);
+          return { yes: g.filter((x) => ctx.marks.get(x.item) === "yes").length, n: g.length };
+        };
+        const ranked = groups.map((v) => ({ v, ...rate(v) })).sort((a, z) => z.yes / z.n - a.yes / a.n || z.n - a.n);
+        return (
+          <div key={f} className="crowd-group">
+            <p className="small muted crowd-group-label">By {f.toLowerCase()}</p>
+            <ul className="small">
+              {ranked.map((r) => (
+                <li key={r.v}>
+                  <strong>{r.v}</strong> · {r.yes} yes of {r.n} heard back
+                </li>
+              ))}
+            </ul>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/** A draft to copy, or open in the mail app when a public email was found. Athena never sends it. */
+function Draft({ d }: { d: NonNullable<Detail["draft"]> }) {
+  const [copied, setCopied] = useState(false);
+  const text = d.subject ? `Subject: ${d.subject}\n\n${d.body}` : d.body;
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1600);
+    } catch {
+      // The draft stays on screen to select by hand.
+    }
+  };
+  const mail = d.to ? `mailto:${encodeURIComponent(d.to)}?${new URLSearchParams({ ...(d.subject ? { subject: d.subject } : {}), body: d.body }).toString().replace(/\+/g, "%20")}` : undefined;
+  return (
+    <div className="nav-draft">
+      <p className="crowd-label">Draft{d.to ? ` to ${d.to}` : ""}</p>
+      {d.toSrc && <p className="small muted">Email found on {d.toSrc}</p>}
+      {d.subject && <p className="small"><strong>{d.subject}</strong></p>}
+      <pre className="nav-draft-body">{d.body}</pre>
+      <div className="nav-draft-acts">
+        <button type="button" onClick={copy}>{copied ? "Copied" : "Copy"}</button>
+        {mail && (
+          <a className="button" href={mail}>
+            Open in mail app
+          </a>
+        )}
       </div>
     </div>
   );
@@ -453,7 +582,17 @@ function Sheet({ p, marks, mark, onHandoff, onClose }: { p: Picked; marks: Map<s
           </p>
         ))}
         {src && <p className="small muted">From {src.label}{src.callId ? ` · call ${src.callId}` : ""}</p>}
-        {n.item && MARKABLE.has(kind) && <Marks name={n.name} mark={marks.get(n.item)} onMark={(m) => mark(n.item!, kind, n.name, m)} />}
+        {detail?.draft && <Draft d={detail.draft} />}
+        {!!detail?.links?.length && (
+          <p className="small nav-sheet-links">
+            {detail.links.map((l) => (
+              <a key={l.url} href={l.url} target="_blank" rel="noopener noreferrer">
+                {l.label}
+              </a>
+            ))}
+          </p>
+        )}
+        {n.item && MARKABLE.has(kind) && <Marks name={n.name} mark={marks.get(n.item)} onMark={(m) => mark(n.item!, kind, n.name, m, detail?.group)} />}
         {next.length > 0 && <Handoffs list={next} onHandoff={(h) => (onClose(), onHandoff!(h))} />}
       </div>
     </div>,

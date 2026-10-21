@@ -142,7 +142,7 @@ describe("the page", () => {
     expect(checks.type === "checks" && checks.checks[0].text).toBe("Launch in New York, starting in SoHo");
   });
   it("adds a Shops column only once the Rep's venues are in, and never lets them change a verdict", () => {
-    const fill = { venues: { metroId: "nyc", points: [{ name: "Shop", lat: 40.7231, lon: -74.0001 }] } };
+    const fill = { venues: [{ metroId: "nyc", points: [{ name: "Shop", lat: 40.7231, lon: -74.0001 }] }] };
     const page = navigatorPage(nav(), [], { fill, at: 1 });
     const nyc = page.across!.sections.find((s) => s.id === "city:nyc")!;
     const t = nyc.blocks.find((b) => b.type === "table");

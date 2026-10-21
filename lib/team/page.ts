@@ -28,16 +28,35 @@ export type Block =
   | { type: "steps"; steps: { text: string; signal?: string; crowd?: string }[] }
   | { type: "note"; text: string }
   /** Rows a founder scans; a row opens its detail sheet, or `goto` opens that section (a city's own page). */
-  | { type: "table"; label?: string; columns: string[]; rows: Row[] }
-  /** A city's taste heat, one layer per crowd, each toggled. Cells are [lat, lon, heat 0–1]. */
-  | { type: "heat"; city: { name: string; center: [number, number]; bbox?: [number, number, number, number] }; layers: { crowd: string; name: string; tier: CrowdTier; cells: [number, number, number][] }[] }
+  /** `facets`: the filters above it (crowd, city, wholesale…); each row says which values it has. */
+  | { type: "table"; label?: string; columns: string[]; rows: Row[]; facets?: string[] }
+  /** A city's taste heat, one layer per crowd, each toggled. Cells are [lat, lon, heat 0–1]. `pins`: places on it
+   * (shops), coloured by the tier of the crowd they fit best, grey for ones the brand is already in. */
+  | { type: "heat"; city: { name: string; center: [number, number]; bbox?: [number, number, number, number] }; layers: { crowd: string; name: string; tier: CrowdTier; cells: [number, number, number][] }[]; pins?: Pin[] }
+  /** Outreach as a board: To pitch, then a column per mark. The columns come from the founder's marks, live. */
+  | { type: "pipeline"; label?: string; items: { item: string; name: string; kind: string; group?: string; facets?: Record<string, string[]> }[]; facets?: string[] }
+  /** Yes rates from the founder's marks, by each of `by` (shop type, tier, neighbourhood), computed live. */
+  | { type: "working"; label?: string; items: { item: string; facets: Record<string, string> }[]; by: string[] }
   /** Next steps: ticked when done, then marked for whether they worked, so the subagent re-ranks from them. */
   | { type: "checks"; label?: string; checks: { text: string; item: string; detail?: string; group?: string }[] };
 
 /** A table row's detail: what opens when the founder taps it. */
-export type Detail = { title: string; facts: { label: string; value: string }[]; lines?: string[]; item?: string; kind?: string };
+export type Detail = {
+  title: string;
+  facts: { label: string; value: string }[];
+  lines?: string[];
+  item?: string;
+  kind?: string;
+  /** The outcome group its mark files under (the shop type, so "what's working" can read it). */
+  group?: string;
+  /** A draft to copy or open in the mail app; never sent. `to` only when a public email was found, with its source. */
+  draft?: { subject?: string; body: string; to?: string; toSrc?: string };
+  links?: { label: string; url: string }[];
+};
 
-export type Row = { cells: string[]; goto?: string; detail?: Detail };
+export type Row = { cells: string[]; goto?: string; detail?: Detail; facets?: Record<string, string[]> };
+
+export type Pin = { name: string; lat: number; lon: number; tier?: CrowdTier; grey?: boolean };
 
 export type Section = { id: string; title: string; summary?: string; blocks: Block[] };
 

@@ -54,6 +54,23 @@ export function HeatLayers({ b }: { b: Heat }) {
             },
           });
         }
+        // Shops on top, coloured by the crowd they fit best; ones the brand is already in are grey.
+        if (b.pins?.length) {
+          const grey = css("--muted", "#8a8a8a");
+          m.addSource("pins", {
+            type: "geojson",
+            data: { type: "FeatureCollection", features: b.pins.map((p) => ({ type: "Feature", properties: { name: p.name, c: p.grey ? grey : color(p.tier ?? "watch") }, geometry: { type: "Point", coordinates: [p.lon, p.lat] } })) } as never,
+          });
+          m.addLayer({ id: "pins", type: "circle", source: "pins", paint: { "circle-color": ["get", "c"], "circle-radius": 5, "circle-stroke-width": 1.5, "circle-stroke-color": "#fff" } });
+          const tip = new ml.Popup({ closeButton: false, closeOnClick: false, offset: 8 });
+          m.on("mouseenter", "pins", (e) => {
+            const f = e.features?.[0];
+            if (!f) return;
+            m.getCanvas().style.cursor = "pointer";
+            tip.setLngLat((f.geometry as unknown as { coordinates: [number, number] }).coordinates).setText(String(f.properties?.name ?? "")).addTo(m);
+          });
+          m.on("mouseleave", "pins", () => ((m.getCanvas().style.cursor = ""), tip.remove()));
+        }
       });
       map.current = m;
       created = m;
@@ -76,7 +93,7 @@ export function HeatLayers({ b }: { b: Heat }) {
     for (const l of b.layers) if (m.getLayer(`heat-${l.crowd}`)) m.setLayoutProperty(`heat-${l.crowd}`, "visibility", off.includes(l.crowd) ? "none" : "visible");
   }, [off, b.layers]);
 
-  if (!b.layers.length) return null;
+  if (!b.layers.length && !b.pins?.length) return null;
   return (
     <div className="nav-heat">
       <div className="nav-heat-keys" role="group" aria-label={`Crowd layers on the map of ${b.city.name}`}>
@@ -92,6 +109,12 @@ export function HeatLayers({ b }: { b: Heat }) {
             {l.name}
           </button>
         ))}
+        {!!b.pins?.some((p) => p.grey) && (
+          <span className="small muted">
+            <span className="nav-heat-dot" style={{ background: "var(--muted, #8a8a8a)" }} aria-hidden />
+            Already yours
+          </span>
+        )}
       </div>
       <div ref={el} className="nav-heat-map" role="img" aria-label={`Where each crowd's taste runs hot in ${b.city.name}`} />
     </div>

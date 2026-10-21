@@ -230,7 +230,7 @@ export async function readCities(qloo: QlooClient, inputs: CrowdInput[], deps: N
 
 /** What the Rep and the Promoter found, filled in after they run: links on the page, never inputs to a verdict. */
 export type BackFill = {
-  venues?: { metroId: string; points: { name: string; lat?: number; lon?: number; neighbourhood?: string }[] };
+  venues?: { metroId: string; points: { name: string; lat?: number; lon?: number; neighbourhood?: string }[] }[];
   moments?: { metroId: string; names: string[] };
 };
 
@@ -306,8 +306,9 @@ export function roles(city: CityRead): Map<string, Role> {
 /** Venues the Rep found, counted to the nearest neighbourhood within 2.5 km, else by name. */
 function venueCounts(city: CityRead, fill?: BackFill): Map<string, number> {
   const out = new Map<string, number>();
-  if (!fill?.venues || fill.venues.metroId !== city.metroId) return out;
-  for (const v of fill.venues.points) {
+  const here = fill?.venues?.find((x) => x.metroId === city.metroId);
+  if (!here) return out;
+  for (const v of here.points) {
     let best: Hood | undefined;
     let bestKm = 2.5;
     if (v.lat !== undefined && v.lon !== undefined)
@@ -537,3 +538,29 @@ export function navigatorPage(read: NavRead, yours: string[], opts: { channel?: 
 }
 
 export type { CrowdTier, PageSource };
+
+/** The read as it's saved with the Navigator's work, so a later run's Rep and Promoter have its cities: crowds by id
+ * (their cards come back from the measured crowds) and no heat cells (those are on the saved page already). */
+export type SavedNav = Omit<NavRead, "crowds"> & { crowds: (Omit<CrowdCities, "crowd"> & { id: string })[] };
+
+export function saveNav(r: NavRead): SavedNav {
+  return {
+    ...r,
+    crowds: r.crowds.map(({ crowd, ...c }) => ({ ...c, id: crowd.id })),
+    cities: r.cities.map((c) => ({ ...c, layers: c.layers.map((l) => ({ ...l, cells: [] })) })),
+  };
+}
+
+/** The saved read back, with each crowd's card and each city's heat from the saved page; crowds no longer measured drop out. */
+export function restoreNav(s: SavedNav, cards: CrowdInput["crowd"][], page?: CrowdPage): NavRead | undefined {
+  const crowds = s.crowds.flatMap(({ id, ...c }) => {
+    const crowd = cards.find((x) => x.id === id);
+    return crowd ? [{ ...c, crowd }] : [];
+  });
+  if (!crowds.length) return undefined;
+  const heat = (metroId: string, crowd: string) => {
+    const b = page?.across?.sections.find((x) => x.id === `city:${metroId}`)?.blocks.find((x) => x.type === "heat");
+    return (b?.type === "heat" && b.layers.find((l) => l.crowd === crowd)?.cells) || [];
+  };
+  return { ...s, crowds, cities: s.cities.map((c) => ({ ...c, layers: c.layers.map((l) => ({ ...l, cells: heat(c.metroId, l.crowd) })) })) };
+}

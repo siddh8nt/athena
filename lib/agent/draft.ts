@@ -42,7 +42,12 @@ const ASK: Record<DraftTo["kind"], { system: string; ask: string; fallback: stri
   },
 };
 
-export async function writeDraft(input: { qloo?: QlooClient; brand: string; product?: string; to: DraftTo; partners: DraftPartner[]; generate?: typeof generate; llm?: boolean }): Promise<DraftResponse> {
+/** How long the model gets to write before the template is used; inside the Rep's 30 s tool limit. */
+export const DRAFT_MS = 20_000;
+
+export async function writeDraft(input: { qloo?: QlooClient; brand: string; product?: string; to: DraftTo; partners: DraftPartner[]; generate?: typeof generate; llm?: boolean; maxMs?: number }): Promise<DraftResponse> {
+  // Writing stops at the deadline and the template stands in, so a slow model never leaves the founder without a draft.
+  const until = Date.now() + (input.maxMs ?? DRAFT_MS);
   const { brand, product = "", to, partners } = input;
   const { name: venueName, neighbourhood = "", tags, reasons } = to;
   const words = ASK[to.kind];
@@ -78,9 +83,11 @@ export async function writeDraft(input: { qloo?: QlooClient; brand: string; prod
   const gen = input.generate ?? generate;
 
   let feedback = "";
-  for (let attempt = 0; attempt < 3; attempt++) {
+  for (let attempt = 0; attempt < 3 && Date.now() < until; attempt++) {
     try {
-      const res = await gen({
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const late = new Promise<undefined>((res) => (timer = setTimeout(() => res(undefined), Math.max(0, until - Date.now()))));
+      const res = await Promise.race([gen({
         model: "flash",
         json: true,
         thinking: "LOW",
@@ -96,7 +103,8 @@ export async function writeDraft(input: { qloo?: QlooClient; brand: string; prod
           `Each sentence lists claims: {"kind": "brand"|"venue"|"partner"|"tag", "ref": exact name}.\n` +
           `Return {"subject": "...", "sentences": [{"text","claims"}]}` +
           feedback,
-      });
+      }), late]).finally(() => clearTimeout(timer));
+      if (!res) break;
       const j = parseJson<{ subject?: string; sentences?: Sentence[] }>(res.text);
       if (!j?.sentences?.length) continue;
       const v = validate(j.sentences, allowed as never, [brand, venueName, ...found.map((x) => x.name)]);

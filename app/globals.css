@@ -2550,6 +2550,22 @@ button.nav-item:hover:not(:disabled) { background: rgba(255, 255, 255, 0.045); c
 .nav-table tr.nav-row { cursor: pointer; }
 .nav-table tr.nav-row:hover { background: var(--sunken); }
 .nav-table .linkish { font: inherit; font-weight: 600; text-align: left; padding: 0; }
+/* The Rep (§23.5 f): filters, the outreach board, what's working, and the draft in a shop's sheet. */
+.nav-facets { display: flex; flex-wrap: wrap; gap: 8px 12px; margin: 0 0 10px; }
+.nav-facets label { display: flex; flex-direction: column; gap: 2px; }
+.nav-facets select { font: inherit; font-size: 13px; padding: 4px 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface, transparent); color: inherit; max-width: 14em; }
+.nav-pipe-cols { display: grid; grid-template-columns: repeat(5, minmax(150px, 1fr)); gap: 10px; overflow-x: auto; }
+.nav-pipe-col { border: 1px solid var(--line); border-radius: 12px; padding: 8px; background: var(--sunken); min-width: 150px; }
+.nav-pipe-col ul { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.nav-pipe-card { display: flex; flex-direction: column; gap: 4px; padding: 6px 8px; border-radius: 8px; background: var(--bg); font-size: 13px; }
+.nav-pipe-card .spec-marks button { font-size: 11px; padding: 1px 6px; }
+.nav-working ul { list-style: none; margin: 4px 0 10px; padding: 0; }
+.nav-draft { margin-top: 12px; border-top: 1px solid var(--line-soft); padding-top: 10px; }
+.nav-draft-body { white-space: pre-wrap; font: inherit; font-size: 13px; background: var(--sunken); border-radius: 10px; padding: 10px; margin: 6px 0; max-height: 40vh; overflow: auto; }
+.nav-draft-acts { display: flex; gap: 8px; }
+.nav-draft-acts button, .nav-draft-acts a { font: inherit; font-size: 13px; padding: 5px 12px; border: 1px solid var(--line); border-radius: 999px; background: transparent; color: inherit; text-decoration: none; cursor: pointer; }
+.nav-sheet-links { display: flex; flex-wrap: wrap; gap: 10px; }
+@media (max-width: 640px) { .nav-pipe-cols { grid-template-columns: repeat(5, 72%); } }
 .nav-heat { display: flex; flex-direction: column; gap: 8px; }
 .nav-heat-keys { display: flex; flex-wrap: wrap; gap: 6px; }
 .nav-heat-keys button { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; min-height: 30px; padding: 0 12px; border-radius: 999px; opacity: 0.55; }

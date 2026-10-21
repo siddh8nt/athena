@@ -12,7 +12,8 @@ import { checkClaims, type Claim } from "./cite";
 import { CLAIMS, PLAIN_NUMBERS, runAgent, type AgentBudget, type AgentRun, type Finisher, type Source } from "./loop";
 import { TOOLS, type AgentState, type Decision, type FounderQuestion, type Tool } from "./tools";
 import { PLAYS, aimed, yoursOf, type TeamCtx } from "./plays";
-import { navigatorPage, type BackFill } from "./navigator";
+import { navigatorPage, saveNav, type BackFill } from "./navigator";
+import { repPage } from "./rep";
 import type { CrowdPage } from "@/lib/team/page";
 import { SPECIALISTS, nameOf, specialist, waitingOn, type SpecialistId } from "./specialists";
 import { GOALS, checkCustom, checkGoals, customQuestion, proposeGoals, teamFor, teamLine, type GoalFacts } from "./goals";
@@ -347,12 +348,12 @@ function winFirst(s: AgentState): CrowdCard | undefined {
 function navigatorPageOf(t: TeamCtx): CrowdPage | undefined {
   if (!t.found.navigator) return undefined;
   const city = t.city?.id;
-  const fill: BackFill = city
-    ? {
-        ...(t.found.places?.length ? { venues: { metroId: city, points: t.found.places.map((p) => ({ name: p.name, lat: p.lat, lon: p.lon, neighbourhood: p.neighbourhood })) } } : {}),
-        ...(t.found.moments?.length ? { moments: { metroId: city, names: t.found.moments.slice(0, 8).map((m) => m.name) } } : {}),
-      }
-    : {};
+  const shops = (t.found.rep?.shops ?? []).filter((s) => !s.stocked);
+  const metros = [...new Set(shops.map((s) => s.metroId))];
+  const fill: BackFill = {
+    ...(metros.length ? { venues: metros.map((metroId) => ({ metroId, points: shops.filter((s) => s.metroId === metroId).map((s) => ({ name: s.name, lat: s.lat, lon: s.lon, neighbourhood: s.hood ?? s.neighbourhood })) })) } : {}),
+    ...(city && t.found.moments?.length ? { moments: { metroId: city, names: t.found.moments.slice(0, 8).map((m) => m.name) } } : {}),
+  };
   return navigatorPage(t.found.navigator, yoursOf(t), { channel: t.brand.channel, fill, outcomes: latest(t.outcomes) });
 }
 
@@ -480,7 +481,8 @@ export async function runSpecialist(r: SpecialistInput): Promise<Work | undefine
     ...(r.previous ? { changed: whatChanged(r.previous, work) } : {}),
     ...(id === "scout" && t.found.scout ? { page: t.found.scout } : {}),
     ...(id === "navigator" && navigatorPageOf(t) ? { page: navigatorPageOf(t) } : {}),
-    shared: id === "navigator" && t.city ? { city: t.city } : id === "scout" && t.next ? { crowd: t.next.name } : id === "analyst" && t.crowd ? { crowd: t.crowd.name } : undefined,
+    ...(id === "rep" && t.found.rep ? { page: repPage(t.found.rep, { outcomes: latest(t.outcomes), pitches: t.found.pitch, at: Date.now() }) } : {}),
+    shared: id === "navigator" && (t.city || t.found.navigator) ? { ...(t.city ? { city: t.city } : {}), ...(t.found.navigator ? { nav: saveNav(t.found.navigator) } : {}) } : id === "scout" && t.next ? { crowd: t.next.name } : id === "analyst" && t.crowd ? { crowd: t.crowd.name } : undefined,
   };
   if (id === "analyst" && t.ranked) t.ranked = { ...t.ranked, answer: { headline: done.headline, reasons: done.claims.map((c) => ({ crowd: "", text: c.text, sources: c.sources })), assumptions: [] }, sources: done.sources };
   r.send({ type: "work", agent: id, work: done });
@@ -529,6 +531,8 @@ export async function runTeam(r: TeamInput): Promise<Partial<Record<SpecialistId
   // A specialist that can't work without a city brings in the Navigator; one a home city will do for just waits on it.
   const cityless = !t.city ? batch.find((id) => specialist(id).needs.some((n) => n.key === "city" && !n.home)) : undefined;
   if (cityless) add("navigator", `The ${nameOf(cityless)} needs a city first, so the Navigator chooses one`);
+  // The Rep works each crowd's cities from the Navigator's read; a journey saved before that read was kept maps them again.
+  if (batch.includes("rep") && !batch.includes("navigator") && !t.found.navigator?.cities.length) add("navigator", "The Rep needs each crowd's cities, so the Navigator maps them");
   for (const s of staleRuns(r.state, r.graphRev)) if (!batch.includes(s.agent)) add(s.agent, `The ${nameOf(s.agent)} re-runs: ${s.why}`);
   // Order the work flows in: the Analyst before those it feeds.
   batch.sort((a, b) => SPECIALISTS.findIndex((s) => s.id === a) - SPECIALISTS.findIndex((s) => s.id === b));

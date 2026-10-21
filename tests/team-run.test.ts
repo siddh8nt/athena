@@ -90,19 +90,23 @@ describe("the true-agent test (§23.2 step 8h)", () => {
     expect(tools.indexOf("probe_entity")).toBeLessThan(tools.indexOf("rank_fits"));
   }, 60_000);
 
-  it("changes course when the chosen city has no venues: the Rep widens to the Navigator's next city", async () => {
+  it("reads shops in every city a crowd is given, and says plainly when a city has none yet", async () => {
     const plain = await run({ goals: ["launch_city"] });
     const city = plain.work("navigator")?.results.filter((x) => x.kind === "city").map((x) => x.name) ?? [];
     expect(city.length).toBeGreaterThanOrEqual(2);
-    expect(plain.step("rep", "find_places")?.summary).not.toMatch(/widened to/);
-
-    const planted = await run({ goals: ["launch_city"], emptyCity: city[0] });
-    const find = planted.step("rep", "find_places");
-    expect(find?.summary).toMatch(new RegExp(`venues in ${city[1]}.*nothing in ${city[0]} yet, so widened to ${city[1]}, the Navigator's next city`));
-    const rep = planted.work("rep")!;
+    const read = plain.step("rep", "read_shops");
+    expect(read?.status).toBe("ok");
+    expect(read?.summary).toMatch(new RegExp(`^[0-9]+ shops in ${city[0]}`));
+    const rep = plain.work("rep")!;
     expect(rep.results.some((x) => x.kind === "venue")).toBe(true);
     expect(rep.headline).toMatch(/^Start with /);
-    expect(planted.step("rep", "draft_pitch")?.status).toBe("ok");
+    expect(plain.step("rep", "draft_pitch")?.status).toBe("ok");
+
+    const planted = await run({ goals: ["launch_city"], emptyCity: city[0] });
+    const empty = planted.step("rep", "read_shops");
+    expect(empty?.status).toBe("empty");
+    expect(empty?.summary).toMatch(new RegExp(`no independent shops matched in .*${city[0]}.* yet`));
+    expect(empty?.summary).not.toMatch(/failed|not found/i);
   }, 90_000);
 
   it("drops a one-way partner and asks the next one instead", async () => {
@@ -122,15 +126,15 @@ describe("the true-agent test (§23.2 step 8h)", () => {
   it("goes deeper at home instead of choosing a new city, and steps up only when asked to", async () => {
     const home = await run({ goals: ["deepen_home"], home: "Portland, OR" });
     expect(home.step("navigator", "read_cities")?.why).toMatch(/Mapping your crowds in Portland, OR/);
-    expect(home.step("rep", "find_places")?.why).toMatch(/Portland/);
-    expect(home.step("rep", "next_retailers")?.why).toMatch(/^Not stepping up yet/);
+    expect(home.step("rep", "read_shops")?.why).toMatch(/^Finding the shops for each crowd in Portland, OR/);
 
     const launch = await run({ goals: ["launch_city"], home: "Portland, OR" });
     expect(launch.step("navigator", "read_cities")?.status).toBe("ok");
     expect(launch.work("navigator")?.results.some((x) => x.kind === "city" && /Portland/.test(x.name))).toBe(false);
 
     const up = await run({ goals: ["step_up"], home: "Portland, OR" });
-    expect(up.step("rep", "next_retailers")?.why).toBe("Finding the bigger retailers whose shoppers match your crowd");
+    expect(up.step("rep", "read_shops")?.status).toBe("ok");
+    expect(up.work("rep")?.results.some((x) => x.kind === "retailer")).toBe(true);
   }, 120_000);
 
   it("says plainly why the other side can't be checked, by whether the brand is in Qloo", async () => {

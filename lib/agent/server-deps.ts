@@ -8,6 +8,7 @@ import { censusAreas, censusMarket } from "@/lib/enrich/census";
 import { overtureNeighbourhoods } from "@/lib/enrich/neighbourhoods";
 import { groundedFestivalDates } from "@/lib/enrich/festival-dates";
 import { addWikidataWebsites } from "@/lib/enrich/wikidata";
+import { faireShops, shopSites } from "@/lib/enrich/shop-sites";
 import { llmConfigured } from "@/lib/llm/vertex";
 import { lastRun } from "./last-run";
 import { chooseComparables, classifyBusiness, parseAccounts, readWebsite } from "./intake";
@@ -64,7 +65,7 @@ export function teamEnrich(): TeamEnrich {
     festivalDate: groundedFestivalDates(llm),
     websites: addWikidataWebsites,
     podcastDetails: addApplePodcastDetails,
-    ...(llm ? { writeHooks: cachedHooks, writeLooks: cachedLooks } : {}),
+    ...(llm ? { writeHooks: cachedHooks, writeLooks: cachedLooks, shopSites, faire: faireShops } : {}),
   };
 }
 

@@ -9,7 +9,7 @@ export type Input = Asked & { helps: SpecialistId[] };
 
 export const INPUTS: Input[] = [
   { id: "input_regions", question: "Which regions can you reach: ship to, visit, sell in?", why: "The Navigator ranks only cities you can serve.", helps: ["navigator"], unranked: true, multi: false, assumed: "anywhere in the US", options: [{ label: "Anywhere in the US" }, { label: "Near home only" }, { label: "One or two coasts" }] },
-  { id: "input_stockists", question: "Which shops already stock you? Name them, or add a stockist sheet.", why: "The Rep leaves them out and finds shops like them.", helps: ["rep"], unranked: true, multi: false, assumed: "the stockists on your Brand Graph", options: [{ label: "The ones on my Brand Graph" }, { label: "None yet" }] },
+  { id: "input_stockists", question: "Which shops already stock you? Name them, or add a stockist sheet.", why: "The Rep leaves them out and finds shops like them.", helps: ["rep"], unranked: true, multi: false, assumed: "no stockists yet", options: [{ label: "None yet" }, { label: "Only online, my own store" }] },
   { id: "input_budget", question: "What can you spend on growth in the next three months?", why: "The Rep and the Promoter size shop pitches and events to it.", helps: ["rep", "promoter"], unranked: true, multi: false, assumed: "a small budget", options: [{ label: "Under $1,000" }, { label: "$1,000 to $10,000" }, { label: "Over $10,000" }] },
   { id: "input_launch", question: "When is your next launch or push?", why: "The Promoter picks events with lead times that fit it.", helps: ["promoter"], unranked: true, multi: false, assumed: "no fixed date", options: [{ label: "Within a month" }, { label: "In 1 to 3 months" }, { label: "No fixed date" }] },
 ];

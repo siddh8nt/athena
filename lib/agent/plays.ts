@@ -12,6 +12,9 @@ import { partners, type PartnerCard, type PartnersData } from "@/lib/blocks/part
 import { message, positionAgainst, type MessageData, type PositionCard } from "@/lib/blocks/message";
 import { moments, type DateLookup, type Moment, type ShowLookup } from "@/lib/blocks/moments";
 import type { HookEvidence, Hooks } from "./hooks";
+import type { Look, LookEvidence } from "./looks";
+import { by, oneLineEvidence, readCrowd, scoutPage, writeCrowd, type CrowdInput } from "./scout";
+import { mergePage, type CrowdPage, type CrowdTier } from "@/lib/team/page";
 import { onlineStop, type OnlineData } from "@/lib/stops/online";
 import { alreadyIn, nextRetailers, type RetailCategory, type RetailerPick } from "@/lib/stops/retailers";
 import { buildPlaybook, VENUE_TAGS, type CategoryId, type Motion, type Tier } from "@/lib/playbook/config";
@@ -66,6 +69,7 @@ export type TeamEnrich = {
   websites?: (cards: PartnerCard[]) => Promise<void>;
   podcastDetails?: (cards: PartnerCard[]) => Promise<void>;
   writeHooks?: (ev: HookEvidence) => Promise<Hooks | undefined>;
+  writeLooks?: (ev: LookEvidence) => Promise<Look | undefined>;
 };
 
 /**
@@ -113,6 +117,8 @@ export type TeamCtx = {
     online?: OnlineData;
     retailers?: RetailerPick[];
     rivals?: PositionCard[];
+    /** The Scout's page (§23.5 d): its last one when it starts, merged with what it reads now. */
+    scout?: CrowdPage;
   };
   outcomes: Outcome[];
   /** Probes the Analyst ran this session, whether the last one changed the crowds, and whether one ran with fewer than three crowds (§23.5 c). */
@@ -178,6 +184,19 @@ const dayOf = (d: string) => (/^\d{4}-\d{2}-\d{2}$/.test(d) ? new Date(`${d}T12:
 
 /** Narrated why for a skip: the reason, and when another specialist can fill the need, what's needed. */
 const skip = (reason: string, need?: string): Decision => ({ skip: reason, ...(need ? { need } : {}) }) as Decision;
+
+/** The crowds the Scout reads, in tab order: the ranked tiers, else the main crowd first. */
+export function scoutCrowds(t: TeamCtx, s?: AgentState): CrowdInput[] {
+  const crowds = (s?.crowds ?? t.crowds)?.crowds ?? [];
+  const fits = (s?.fits ?? t.fits)?.fits ?? [];
+  const ranked = fits.flatMap((f) => {
+    const crowd = crowds.find((c) => c.id === f.crowd);
+    return crowd ? [{ crowd, tier: f.tier as CrowdTier }] : [];
+  });
+  if (ranked.length) return ranked.slice(0, 3);
+  const order: CrowdTier[] = ["win_first", "win_next", "watch"];
+  return [...crowds].sort((a, b) => Number(!!a.nearMiss) - Number(!!b.nearMiss) || Number(b.main) - Number(a.main)).slice(0, 3).map((crowd, i) => ({ crowd, tier: crowd.nearMiss ? "watch" : order[i] }));
+}
 
 export const PLAYS: Tool[] = [
   // ---- Analyst ---------------------------------------------------------------------------------------------------
@@ -278,51 +297,68 @@ export const PLAYS: Tool[] = [
     },
   },
   {
-    name: "write_message",
+    name: "read_crowds",
     for: ["scout"],
-    description: "The words for a crowd: the themes it over-indexes on, its references (shows, films, music, books), its age and gender lean, and hooks written from that evidence. Aims at the next crowd when there is one. About 8 Qloo calls.",
-    properties: {},
-    qloo: () => 9,
-    maxMs: 45_000,
-    when: once("write_message", (t, s) => ((s.crowds ?? t.crowds)?.crowds.length ? { args: {}, why: t.next ? `Finding the words for ${t.next.name}` : "Finding the words your crowd responds to" } : undefined)),
-    async run(_a, { qloo, state, status }) {
-      const t = state.team;
-      if (!t) return none("needs the team's brand");
-      const crowd = t.next ?? aimed(t, state);
-      const chips = await fp(t, qloo, status);
-      const r = await message(blockCtx(t, qloo, status, { crowd }), { fingerprint: chips, writeHooks: t.enrich.writeHooks, product: t.brand.product });
-      t.found.message = r.data;
-      const d = r.data;
-      return {
-        summary: `${crowd ? `For ${crowd.name}: ` : ""}${d.themes.slice(0, 4).map((x) => x.name).join(", ") || "no clear themes"}`,
-        data: { crowd: crowd?.name, themes: d.themes.map((x) => x.name), references: d.references.map((x) => `${x.name} (${x.kind})`), label: d.label, hooks: d.hooks?.hooks, ideas: d.hooks?.ideas, tone: d.hooks?.tone },
-        status: d.themes.length ? "ok" : "thin",
-        items: [
-          ...(d.hooks?.hooks ?? []).slice(0, 3).map((h) => item("message", h.text, `A hook built on what ${crowd?.name ?? "your crowd"} loves`, { group: "hook" })),
-          ...d.themes.slice(0, 4).map((x) => item("message", x.name, `A theme ${crowd?.name ?? "your crowd"} over-indexes on`, { group: "theme" })),
-        ],
-      };
+    description:
+      "Reads every crowd the Analyst ranked (Win first, Win next, Watch) on its own: who they are, the words (themes, hooks, their own phrases, words to avoid), a mood board, the products to lead with, where their attention goes (shows, podcasts, creators) and the rivals already there; then what runs across all three (the paths between them, the order to win them, one message). " +
+      "tone rewrites the hooks (\"more playful\", \"shorter\"); crowd_ids reads only those crowds and keeps the rest of the page. About 14 Qloo calls per crowd.",
+    properties: {
+      crowd_ids: { type: "array", items: { type: "string" }, description: "Only these crowds; empty for all three." },
+      tone: { type: "string", description: "How the founder wants the hooks this time, when they said." },
     },
-  },
-  {
-    name: "mood_board",
-    for: ["scout"],
-    description: "A mood board of the crowd's taste: the shows, films, music and books it loves, with the style tags of the fingerprint. Reads write_message's evidence; 0 Qloo calls after it.",
-    properties: {},
-    qloo: (_a, s) => (s.team?.found.message ? 0 : 9),
-    when: once("mood_board", (t) => (t.found.message ? { args: {}, why: "Setting the mood board from the crowd's references" } : undefined)),
-    async run(_a, { qloo, state, status }) {
+    qloo: (a, s) => 14 * Math.min(3, Array.isArray(a.crowd_ids) && a.crowd_ids.length ? a.crowd_ids.length : (s.crowds ?? s.team?.crowds)?.crowds.length ?? 3),
+    maxMs: 140_000,
+    when: once("read_crowds", (t, s) => ((s.crowds ?? t.crowds)?.crowds.length ? { args: {}, why: "Reading each crowd: who they are, their words, their look and where their attention goes" } : undefined)),
+    async run(a, { qloo, state, status }) {
+      const started = Date.now();
       const t = state.team;
-      if (!t) return none("needs the team's brand");
-      if (!t.found.message) t.found.message = (await message(blockCtx(t, qloo, status, { crowd: t.next ?? aimed(t, state) }), { fingerprint: await fp(t, qloo, status), product: t.brand.product })).data;
-      const d = t.found.message;
-      const KIND: Record<string, string> = { tv_show: "TV", movie: "film", artist: "music", book: "books" };
-      const refs = d.references.slice(0, 10);
+      const crowds = state.crowds ?? t?.crowds;
+      if (!t || !crowds?.crowds.length) return none("needs the crowds first");
+      const ids = Array.isArray(a.crowd_ids) ? a.crowd_ids.map((x) => str(x, 40)).filter(Boolean) : [];
+      const inputs = scoutCrowds(t, state).filter((x) => !ids.length || ids.includes(x.crowd.id));
+      if (!inputs.length) return none("none of those crowds is measured");
+      const tone = str(a.tone, 80) || undefined;
+      const avoid = latest(t.outcomes).filter((o) => o.agent === "scout" && o.kind === "message" && o.mark === "no").map((o) => o.name);
+      const knowledge = [...(t.facts ?? []), ...(t.notes ?? []).map((n) => n.text)];
+      const chips = await fp(t, qloo, status);
+      const brand = { name: t.brand.name, product: t.brand.product, ownId: t.brand.ownId, competitors: t.brand.competitors };
+      status(`Reading ${list(inputs.map((x) => x.crowd.name))}`);
+      // The writing gets until 20 s before the tool's cap, so the page always lands; a slow write drops out of it.
+      const deps = { brand, fingerprint: chips, knowledge, writeHooks: t.enrich.writeHooks, writeLooks: t.enrich.writeLooks, tone, avoid, until: started + 120_000 };
+      // The rival map is the Analyst's: linked here, and only built when the Analyst hasn't yet (its calls are cached).
+      const [read, rivals] = await Promise.all([
+        Promise.all(inputs.map((x) => readCrowd(blockCtx(t, qloo, () => {}, { crowd: x.crowd }), x, deps))),
+        t.found.rivals ?? (t.brand.ownId && t.brand.competitors.length ? positionAgainst(qloo, t.brand.ownId, t.brand.competitors.slice(0, 3)).catch(() => undefined) : undefined),
+      ]);
+      t.found.rivals = rivals;
+      // All the writing at once: each crowd's hooks and look, and the line that works for all three.
+      status("Writing each crowd's hooks and look, and the line for all three");
+      const ev = read.length > 1 ? oneLineEvidence(read, crowds.meetings ?? [], brand, chips) : undefined;
+      const [reads, oneLine] = await Promise.all([Promise.all(read.map((r) => writeCrowd(r, deps))), ev && t.enrich.writeHooks ? by(t.enrich.writeHooks(ev).catch(() => undefined), deps.until) : undefined]);
+      const page = scoutPage(reads, { brand, rivals: t.found.rivals, meetings: crowds.meetings ?? [], channel: t.brand.channel, oneLine });
+      t.found.scout = mergePage(t.found.scout, page);
+      const next = reads.find((r) => r.crowd.id === t.next?.id) ?? reads.find((r) => r.tier === "win_next") ?? reads[0];
+      t.found.message = next.message;
       return {
-        summary: refs.slice(0, 4).map((r) => r.name).join(", ") || "too little to set a mood",
-        data: { references: refs.map((r) => ({ name: r.name, kind: KIND[r.kind] })), style: d.styleTags.map((x) => x.name), themes: d.themes.map((x) => x.name) },
-        status: refs.length ? "ok" : "thin",
-        items: [...refs.map((r) => item("mood", r.name, `On the mood board: ${KIND[r.kind]} the crowd loves`, { group: KIND[r.kind], ref: r.id })), ...d.styleTags.map((x) => item("mood", x.name, "A style the brand's taste carries", { group: "style" }))],
+        summary: reads.map((r) => `${r.crowd.name}: ${r.message.themes.slice(0, 3).map((x) => x.name).join(", ") || "few clear themes"}`).join("; "),
+        data: reads.map((r) => ({
+          crowd: r.crowd.name,
+          tier: r.tier,
+          themes: r.message.themes.map((x) => x.name),
+          hooks: r.message.hooks?.hooks.map((h) => h.text),
+          phrases: r.phrases.map((p) => p.name),
+          lead_with: r.look?.lead?.product,
+          podcasts: r.online.podcasts.map((p) => p.name),
+          creators: r.online.creators.map((p) => p.name),
+        })),
+        status: reads.every((r) => r.message.themes.length) ? "ok" : "thin",
+        items: reads.flatMap((r) => [
+          ...(r.message.hooks?.hooks ?? []).slice(0, 3).map((h) => item("message", h.text, `A hook for ${r.crowd.name}, built on what it loves`, { group: "hook", detail: r.crowd.name })),
+          ...r.message.themes.slice(0, 2).map((x) => item("message", x.name, `A theme ${r.crowd.name} over-indexes on`, { group: "theme", detail: r.crowd.name })),
+          ...r.message.references.slice(0, 3).map((x) => item("mood", x.name, `On ${r.crowd.name}'s mood board`, { group: "mood", ref: x.id, detail: r.crowd.name })),
+          ...r.online.podcasts.slice(0, 2).map((p) => item("podcast", p.name, `A podcast ${r.crowd.name} loves`, { group: "podcast", ref: p.id, detail: r.crowd.name })),
+          ...r.online.creators.slice(0, 2).map((p) => item("creator", p.name, `${p.role}, followed by ${r.crowd.name}`, { group: "creator", ref: p.id, detail: r.crowd.name })),
+        ]),
       };
     },
   },

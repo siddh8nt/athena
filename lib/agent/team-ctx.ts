@@ -93,7 +93,7 @@ export async function buildCtx(r: CtxInput): Promise<TeamCtx> {
     ...(crowdNamed(nextName) ? { next: crowdNamed(nextName) } : {}),
     ...(r.answers?.length ? { answers: r.answers } : {}),
     ...(r.notes?.length ? { notes: r.notes } : {}),
-    found: {},
+    found: works.scout?.page ? { scout: works.scout.page } : {},
     outcomes: r.team.outcomes,
     // Probed and still under three crowds: the graph was seeded wider already (§23.5 c).
     probe: { ran: r.probes.length, wider: r.probes.length > 0 && heldCrowds(r.crowds) < 3 },

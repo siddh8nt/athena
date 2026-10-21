@@ -16,6 +16,8 @@ import { latest, staleRuns, whatsWorking } from "@/lib/agent/outcomes";
 import { nodesAdded } from "@/lib/graph/types";
 import { MARKS, MARK_LABEL, type AgentStatus, type Answer, type Goal, type Mark, type Route, type TeamEvent, type TeamState, type Work, type WorkItem } from "@/lib/team/types";
 import { pacer } from "@/lib/stream/pace";
+import { withHooks, type Line as PageLine } from "@/lib/team/page";
+import { CrowdTabs } from "./CrowdTabs";
 import { RunProgress, StepTimer, type ProgressStep } from "./Progress";
 import { NavIcon, RailToggle, useRail } from "./SideNav";
 
@@ -395,6 +397,12 @@ export function useTeam(p: {
   /** Bring stale specialists up to date: the workflow resumes, and the stale steps run again with what reads them. */
   const refresh = () => (latestTeam.current.workflow ? replan() : void post("run", { goals: latestTeam.current.goals }));
 
+  /** The Scout's hooks for one crowd, rewritten in place by a tone button (§23.5 d2); kept on its page. */
+  const hooks = (crowdId: string, lines: PageLine[]) =>
+    p.setTeam((t) => {
+      const w = t.works.scout;
+      return w?.page ? { ...t, works: { ...t.works, scout: { ...w, page: withHooks(w.page, crowdId, lines) } } } : t;
+    });
   const mark = (agent: SpecialistId, item: WorkItem, m: Mark) =>
     p.setTeam((t) => ({ ...t, outcomes: [...t.outcomes, { item: item.id, agent, kind: item.kind, name: item.name, ...(item.group ? { group: item.group } : {}), mark: m, at: Date.now() }].slice(-300) }));
 
@@ -417,7 +425,7 @@ export function useTeam(p: {
     setActive(lastStarted.current);
   };
 
-  return { live, active, setActive, follow, pickTab, followRun, propose, answer, editAnswer, askAthena, askSpecialist, chat, refresh, mark, start, measure, handoff, addToPlan };
+  return { live, active, setActive, follow, pickTab, followRun, propose, answer, editAnswer, askAthena, askSpecialist, chat, refresh, mark, hooks, start, measure, handoff, addToPlan };
 }
 
 const omitKey = <T,>(o: Record<string, T>, k: string): Record<string, T> => Object.fromEntries(Object.entries(o).filter(([x]) => x !== k));
@@ -664,7 +672,7 @@ function Transcript({ lines }: { lines: Line[] }) {
 const secs = (ms: number) => (ms < 1000 ? "under a second" : `${Math.round(ms / 1000)} s`);
 
 /** A finished run (§23.2 step 8c): its headline, time, Qloo calls and nodes added; then each result with its marks. */
-export function WorkView({ work, team, updating, alone, onMark, onHandoff, crowdId }: { work: Work; team: TeamState; updating: boolean; alone: AloneRequest; onMark: (item: WorkItem, m: Mark) => void; onHandoff?: (h: Handoff) => void; crowdId?: (name: string) => string | undefined }) {
+export function WorkView({ work, team, updating, alone, onMark, onHandoff, crowdId, onHooks }: { work: Work; team: TeamState; updating: boolean; alone: AloneRequest; onMark: (item: WorkItem, m: Mark) => void; onHandoff?: (h: Handoff) => void; crowdId?: (name: string) => string | undefined; onHooks?: (crowdId: string, lines: PageLine[]) => void }) {
   const next = onHandoff && work.agent !== "navigator" ? fromWork(work, crowdId ?? (() => undefined)) : [];
   const nodes = nodesAdded(work);
   const marks = new Map(latest(team.outcomes).filter((o) => o.agent === work.agent).map((o) => [o.item, o.mark]));
@@ -688,7 +696,9 @@ export function WorkView({ work, team, updating, alone, onMark, onHandoff, crowd
           ))}
         </p>
       ))}
-      {work.results.length > 0 && (
+      {work.page ? (
+        <CrowdTabs page={work.page} agent={work.agent} outcomes={team.outcomes} onMark={onMark} onHandoff={onHandoff} onHooks={onHooks} />
+      ) : work.results.length > 0 && (
         <ol className="spec-results">
           {work.results.map((r) => (
             <Result key={r.id} work={work} item={r} mark={marks.get(r.id)} team={team} alone={alone} onMark={(m) => onMark(r, m)} onHandoff={onHandoff} />
@@ -702,7 +712,7 @@ export function WorkView({ work, team, updating, alone, onMark, onHandoff, crowd
 }
 
 /** Kinds a founder reaches out to, and so can mark. */
-const MARKABLE = new Set(["venue", "retailer", "partner", "podcast", "event", "creator", "audience", "draft", "city", "neighbourhood"]);
+const MARKABLE = new Set(["venue", "retailer", "partner", "podcast", "event", "creator", "audience", "draft", "city", "neighbourhood", "message", "show", "rival"]);
 
 /** Handoff buttons (§23.2 step 8.3b): each starts the next specialist on what this came from. */
 export function Handoffs({ list, onHandoff }: { list: Handoff[]; onHandoff: (h: Handoff) => void }) {

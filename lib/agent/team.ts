@@ -457,6 +457,7 @@ export async function runSpecialist(r: SpecialistInput): Promise<Work | undefine
     by,
     ...(heard ? { outcomes: heard } : {}),
     ...(r.previous ? { changed: whatChanged(r.previous, work) } : {}),
+    ...(id === "scout" && t.found.scout ? { page: t.found.scout } : {}),
     shared: id === "navigator" && t.city ? { city: t.city } : id === "scout" && t.next ? { crowd: t.next.name } : id === "analyst" && t.crowd ? { crowd: t.crowd.name } : undefined,
   };
   if (id === "analyst" && t.ranked) t.ranked = { ...t.ranked, answer: { headline: done.headline, reasons: done.claims.map((c) => ({ crowd: "", text: c.text, sources: c.sources })), assumptions: [] }, sources: done.sources };

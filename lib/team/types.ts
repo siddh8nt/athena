@@ -6,6 +6,7 @@ import type { Galaxy } from "@/lib/taste/galaxy";
 import type { SeedInput } from "@/lib/taste/seed";
 import type { FounderQuestion } from "@/lib/agent/tools";
 import type { AgentId, SpecialistId } from "@/lib/agent/specialists";
+import type { CrowdPage } from "./page";
 
 // The team as the client sees it (PRD §23.2 step 8): goals, each specialist's work, and the founder's outcome marks.
 // Pure types, client-safe.
@@ -60,6 +61,8 @@ export type Work = {
   changed?: string;
   /** What the team learnt that others can use: the city chosen, the crowd to aim at. */
   shared?: { city?: { id: string; name: string }; crowd?: string };
+  /** Its page (§23.5 b): a tab per crowd and Across all three; saved with the work, so others reuse it. */
+  page?: CrowdPage;
   /** How the run decided: the model, or code's evidence rules when the model wasn't there. */
   by: "agent" | "rules";
 };

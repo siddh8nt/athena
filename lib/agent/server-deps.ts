@@ -12,15 +12,26 @@ import { llmConfigured } from "@/lib/llm/vertex";
 import { lastRun } from "./last-run";
 import { chooseComparables, classifyBusiness, parseAccounts, readWebsite } from "./intake";
 import { writeHooks, type HookEvidence, type Hooks } from "./hooks";
+import { writeLook, type Look, type LookEvidence } from "./looks";
 import { getStore } from "@/lib/store";
 
 /** Hooks are cached per exact evidence for 7 days: the same Qloo evidence gets the same checked copy. */
-async function cachedHooks(ev: HookEvidence): Promise<Hooks | undefined> {
+export async function cachedHooks(ev: HookEvidence): Promise<Hooks | undefined> {
   const key = JSON.stringify(ev);
   const hit = await getStore().get<Hooks>("hooks", key);
   if (hit) return hit.value;
   const fresh = await writeHooks(ev);
   if (fresh && (fresh.hooks.length || fresh.ideas.length)) await getStore().set("hooks", key, fresh, 7 * 24 * 60 * 60 * 1000);
+  return fresh;
+}
+
+/** A crowd's look, cached the same way: the same evidence and Knowledge Base get the same checked look. */
+async function cachedLooks(ev: LookEvidence): Promise<Look | undefined> {
+  const key = JSON.stringify(ev);
+  const hit = await getStore().get<Look>("looks", key);
+  if (hit) return hit.value;
+  const fresh = await writeLook(ev);
+  if (fresh && (fresh.palette.length || fresh.lead)) await getStore().set("looks", key, fresh, 7 * 24 * 60 * 60 * 1000);
   return fresh;
 }
 import type { PlanDeps, PlanEvent } from "./plan";
@@ -53,7 +64,7 @@ export function teamEnrich(): TeamEnrich {
     festivalDate: groundedFestivalDates(llm),
     websites: addWikidataWebsites,
     podcastDetails: addApplePodcastDetails,
-    ...(llm ? { writeHooks: cachedHooks } : {}),
+    ...(llm ? { writeHooks: cachedHooks, writeLooks: cachedLooks } : {}),
   };
 }
 

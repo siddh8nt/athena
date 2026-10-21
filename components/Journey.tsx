@@ -16,6 +16,7 @@ import { fromCity, fromCrowd, type Handoff } from "@/lib/agent/handoffs";
 import { GoalsBar, Handoffs, PausedForYou, RunTrail, SpecialistWorkspace, TeamPanel, WhatsWorking, WorkView, useTeam, type TeamLive } from "./Team";
 import { Dashboard, GrowthPlanView, WorkflowDiagram, type KbPart } from "./Dashboard";
 import { INPUTS } from "@/lib/team/inputs";
+import type { Line as PageLine } from "@/lib/team/page";
 import type { StrategyView } from "./Strategy";
 import type { Asked } from "./Question";
 import type { AgentEvent } from "@/lib/blocks/types";
@@ -772,7 +773,7 @@ export function Journey() {
         />
       </div>
     ) : (
-      <SpecialistPanel id={id} j={j} team={team} live={tm.live} alone={alone} onMark={tm.mark} onHandoff={tm.handoff} crowdId={crowdIdOf} />
+      <SpecialistPanel id={id} j={j} team={team} live={tm.live} alone={alone} onMark={tm.mark} onHandoff={tm.handoff} onHooks={tm.hooks} crowdId={crowdIdOf} />
     );
 
   // The Brand Knowledge Base on the dashboard (§23.2 step 8.5b): the Brand Graph with its stale flags, sources and
@@ -924,7 +925,7 @@ function Dock(props: { j: JourneyState; turn: Turn; busy: boolean; researching: 
  * One specialist's panel (§23.2 step 8.4f): only what it owns (the Navigator the crowds' cities, the Promoter the
  * calendar), its results with their handoffs, or the one-click start when it hasn't run.
  */
-function SpecialistPanel({ id, j, team, live, alone, onMark, onHandoff, crowdId }: { id: SpecialistId; j: JourneyState; team: TeamState; live: TeamLive; alone: AloneRequest; onMark: (agent: SpecialistId, item: WorkItem, m: Mark) => void; onHandoff: (h: Handoff) => void; crowdId: (name: string) => string | undefined }) {
+function SpecialistPanel({ id, j, team, live, alone, onMark, onHandoff, onHooks, crowdId }: { id: SpecialistId; j: JourneyState; team: TeamState; live: TeamLive; alone: AloneRequest; onMark: (agent: SpecialistId, item: WorkItem, m: Mark) => void; onHandoff: (h: Handoff) => void; onHooks: (crowdId: string, lines: PageLine[]) => void; crowdId: (name: string) => string | undefined }) {
   const [lit, setLit] = useState<number | null>(null);
   const crowds = j.crowds?.crowds ?? [];
   const calendar = j.fits?.calendar;
@@ -943,7 +944,7 @@ function SpecialistPanel({ id, j, team, live, alone, onMark, onHandoff, crowdId 
       {step && (
         <RunProgress who={`The ${nameOf(id)}`} current={step} steps={[]} />
       )}
-      {w && <WorkView work={w} team={team} updating={!!step} alone={alone} onMark={(item, m) => onMark(id, item, m)} onHandoff={onHandoff} crowdId={crowdId} />}
+      {w && <WorkView work={w} team={team} updating={!!step} alone={alone} onMark={(item, m) => onMark(id, item, m)} onHandoff={onHandoff} crowdId={crowdId} onHooks={onHooks} />}
       {!w && !step && start && <Handoffs list={[start]} onHandoff={onHandoff} />}
     </>
   );

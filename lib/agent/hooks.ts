@@ -15,6 +15,10 @@ export type HookEvidence = {
   positioning: string[];
   /** What the brand sells, so hooks use only evidence that fits the product. */
   product?: string;
+  /** How to pitch them this time ("more playful", "shorter"), from the founder's buttons or chat. */
+  tone?: string;
+  /** Hooks the founder marked no: never written again. */
+  avoid?: string[];
 };
 
 export type Hooks = { hooks: Sentence[]; ideas: Sentence[]; tone?: Sentence; removed: number };
@@ -54,6 +58,10 @@ export async function writeHooks(ev: HookEvidence): Promise<Hooks | undefined> {
 What the brand sells: ${ev.product ?? "see the brand name"}
 
 ` +
+          (ev.tone ? `How the founder wants them this time: ${ev.tone}. Keep every other rule.
+` : "") +
+          (ev.avoid?.length ? `The founder turned these down; write different ones: ${ev.avoid.map((x) => `"${x}"`).join("; ")}
+` : "") +
           `Write 5 hooks (≤ 12 words each), 5 content ideas (≤ 25 words, a concrete post or activation each) and 1 tone line (≤ 20 words, how the brand should sound).
 ` +
           `Good examples of the style (for a different brand): "Pour it like the chefs on Chef's Table do." · "A slow Sunday, a hot pan, something worth sharing."

@@ -7,7 +7,7 @@ import { withCalls } from "./run";
 import type { BlockContext, TagChip } from "./types";
 import type { HookEvidence, Hooks } from "@/lib/agent/hooks";
 
-export type Reference = { kind: "tv_show" | "movie" | "artist" | "book"; id: string; name: string; rank: number; callId: string };
+export type Reference = { kind: "tv_show" | "movie" | "artist" | "book"; id: string; name: string; rank: number; callId: string; image?: string };
 export type PositionCard = { competitorId: string; competitorName: string; shared: string[]; onlyYou: string[]; onlyThem: string[]; callIds: string[]; note?: string };
 export type Skew = { age: Record<string, number>; gender: Record<string, number>; weak: boolean; callId: string };
 export type Interest = { id: string; name: string; type: string; rank: number; callId: string };
@@ -25,6 +25,12 @@ export type MessageData = {
 };
 
 const REF_KINDS: Reference["kind"][] = ["tv_show", "movie", "artist", "book"];
+
+/** Qloo's own image for an entity, when it has one (images.qloo.com). */
+function imageOf(e: { properties?: Record<string, unknown> }): { image?: string } {
+  const url = (e.properties?.image as { url?: unknown } | undefined)?.url;
+  return typeof url === "string" && /^https:\/\//.test(url) ? { image: url } : {};
+}
 
 
 async function topTags(qloo: QlooClient, signal: string | string[]) {
@@ -72,7 +78,7 @@ export async function positionAgainst(qloo: QlooClient, you: string, competitors
 /** Message (§9.15–9.17). Hooks and content ideas are written by the agent from this evidence. */
 export function message(
   ctx: BlockContext,
-  opts: { fingerprint: TagChip[]; competitors?: { id: string; name: string }[]; writeHooks?: (ev: HookEvidence) => Promise<Hooks | undefined>; product?: string } = { fingerprint: [] },
+  opts: { fingerprint: TagChip[]; competitors?: { id: string; name: string }[]; writeHooks?: (ev: HookEvidence) => Promise<Hooks | undefined>; product?: string; tone?: string; avoid?: string[] } = { fingerprint: [] },
 ) {
   return withCalls(ctx, "message", async ({ pb, qloo, emit }) => {
     const signal = blockSignal(pb, "message");
@@ -87,7 +93,7 @@ export function message(
     const themes: TagChip[] = (results(themeRes).tags ?? []).filter((t) => isAllowedTheme(t.name)).slice(0, 6).map((t, i) => ({ id: t.id ?? t.tag_id ?? t.name, name: t.name, type: tagType(t), rank: i + 1, callId: themeRes.call.id }));
     const styleTags = opts.fingerprint.filter((t) => /aesthetic|emotional_tone|personal_style|design/.test(t.type)).slice(0, 4);
     const references: Reference[] = refRes.flatMap((res, k) =>
-      (results(res).entities ?? []).slice(0, 3).map((e, i) => ({ kind: REF_KINDS[k], id: e.entity_id, name: e.name, rank: i + 1, callId: res.call.id })),
+      (results(res).entities ?? []).slice(0, 3).map((e, i) => ({ kind: REF_KINDS[k], id: e.entity_id, name: e.name, rank: i + 1, callId: res.call.id, ...imageOf(e) })),
     );
 
     const d = results(demoRes).demographics?.[0]?.query;
@@ -123,6 +129,8 @@ export function message(
           interests: interests.length >= 3 ? interests.map((i) => i.name) : [],
           positioning: positions.flatMap((p) => p.onlyYou),
           product: opts.product,
+          ...(opts.tone ? { tone: opts.tone } : {}),
+          ...(opts.avoid?.length ? { avoid: opts.avoid } : {}),
         })
         .catch(() => undefined);
       if (hooks) emit({ tool: "build_message", why: "Hooks written and checked", status: "ok", callIds: [], summary: `${hooks.hooks.length} hooks, ${hooks.ideas.length} content ideas${hooks.removed ? `; ${hooks.removed} unsupported sentence${hooks.removed === 1 ? "" : "s"} removed` : ""}` });

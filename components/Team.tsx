@@ -1,19 +1,20 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Question, type Asked } from "./Question";
+import { useRef, useState } from "react";
+import type { Asked } from "./Question";
 import { WithWithout, type AloneRequest } from "./WithWithout";
 import type { AgentEvent } from "@/lib/blocks/types";
 import type { Galaxy } from "@/lib/taste/galaxy";
 import type { BenchTask } from "@/lib/bench/lines";
 import type { AloneStop } from "@/lib/proof/alone";
 import { addEvent, lineDetail, lineText, settleRun, type Line } from "@/lib/agent/transcript";
-import { ATHENA, SPECIALIST_IDS, isSpecialist, nameOf, panelIds, specialist, type AgentId, type SpecialistId } from "@/lib/agent/specialists";
+import { ATHENA, isSpecialist, nameOf, panelIds, specialist, type AgentId, type SpecialistId } from "@/lib/agent/specialists";
 import { GOALS, pickGoals, teamFor, teamLine } from "@/lib/agent/goals";
 import { fromCity, fromWork, type Handoff } from "@/lib/agent/handoffs";
+import { resetFrom } from "@/lib/agent/workflow";
 import { latest, staleRuns, whatsWorking } from "@/lib/agent/outcomes";
 import { nodesAdded } from "@/lib/graph/types";
-import { MARKS, MARK_LABEL, type AgentStatus, type Goal, type Mark, type TeamEvent, type TeamState, type Work, type WorkItem } from "@/lib/team/types";
+import { MARKS, MARK_LABEL, type AgentStatus, type Answer, type Goal, type Mark, type Route, type TeamEvent, type TeamState, type Work, type WorkItem } from "@/lib/team/types";
 import { pacer } from "@/lib/stream/pace";
 import { RunProgress, StepTimer, type ProgressStep } from "./Progress";
 import { NavIcon, RailToggle, useRail } from "./SideNav";
@@ -44,10 +45,11 @@ export type TeamLive = {
 
 /** What the journey shows: one agent's workspace, or the founder's dashboard (§23.2 step 8.4h). */
 export type View = AgentId | "dashboard";
-/** The option on every "What next?" that opens the dashboard. */
-export const SEE_DASHBOARD = "See your dashboard";
 
 const emptyLive = (): TeamLive => ({ status: {}, lines: {}, replies: {}, asks: [], answers: {}, asked: {}, running: 0, held: {}, blocking: {} });
+
+/** What a typed answer changed in the workflow (§23.2 step 8.5h), carried on the re-post that resumes it. */
+type Change = { skip?: SpecialistId[]; add?: SpecialistId[]; city?: { id: string; name: string } };
 
 /** Streams the team route; each event lands in the journey's team state or this visit's live view. */
 export function useTeam(p: {
@@ -59,24 +61,44 @@ export function useTeam(p: {
   onMemory: (m: Memory) => void;
   /** The Taste Galaxy as it forms while the Analyst measures (§23.2 step 8.1b). */
   onGalaxy?: (g: Galaxy) => void;
-  say: (text: string) => void;
-  /** A crowd's id by its name, for the handoffs a finished run offers. */
-  crowdId?: (name: string) => string | undefined;
+  /** Athena says it in the chat; `run` puts that subagent's live step trail under the line. */
+  say: (text: string, run?: SpecialistId) => void;
+  /** Athena's reply as it streams in (§23.2 step 8.5n); her reply event replaces it. */
+  stream?: (delta: string) => void;
+  /** The router sent the message to the Brand Graph's reader. */
+  onGraph?: (message: string) => void;
 }) {
   const [live, setLive] = useState<TeamLive>(emptyLive);
   const [active, setActive] = useState<View>("athena");
+  // The panel follows the subagent started last (§23.2 step 8.5i), until the founder picks a tab themselves.
+  const [follow, setFollow] = useState(true);
+  const followRef = useRef(true);
+  followRef.current = follow;
+  const lastStarted = useRef<AgentId>("athena");
   const latestTeam = useRef(p.team);
   latestTeam.current = p.team;
+  // Seen at once by a post that follows, before React applies the update.
+  const setTeam = (f: (t: TeamState) => TeamState) => {
+    latestTeam.current = f(latestTeam.current);
+    p.setTeam(f);
+  };
   const run = useRef(0);
   const custom = useRef("");
-  // The handoffs Athena offers in the chat after a run, by their label (§23.2 step 8.3d).
-  const offered = useRef(new Map<string, Handoff>());
   // An agent's questions come before its results: a run that asks pauses, and once the founder has answered every
-  // question from it, the agent runs again on the same goal with the answers.
+  // question from it, the work carries on with the answers.
   const open = useRef(new Map<string, { agent: AgentId; n: number }>());
-  const runs = useRef(new Map<number, Record<string, unknown>>());
+  const runs = useRef(new Map<number, Record<string, unknown> & { action: string }>());
+  // Streams still open, and the workflow runs to resume as soon as theirs ends.
+  const streaming = useRef(new Set<number>());
+  const resumeAfter = useRef(new Set<number>());
+  const change = useRef<Change>({});
   const liveRef = useRef(live);
   liveRef.current = live;
+
+  const bring = (id: AgentId) => {
+    lastStarted.current = id;
+    if (followRef.current) setActive(id);
+  };
 
   const handle = (e: TeamEvent, n: number) => {
     if (e.type === "goals") p.setTeam((t) => ({ ...t, proposed: e.goals }));
@@ -84,17 +106,29 @@ export function useTeam(p: {
     else if (e.type === "assign") line("athena", { t: 0, tool: "assign", why: `${e.goal.label}: ${e.line || "Athena takes it herself."}`, status: "ok", callIds: [], summary: "" }, n);
     else if (e.type === "status") setLive((l) => ({ ...l, status: { ...l.status, [e.agent]: e.status } }));
     else if (e.type === "step") line(e.agent, e.event, n);
-    else if (e.type === "ask" && e.ask.id === "goals") {
-      // The goals question is the Analyst's workspace's last step (§23.2 step 8.4g): Athena proposes, in its chat.
-      setActive("analyst");
-      setLive((l) => ({ ...l, asks: [...l.asks.filter((a) => a.id !== "goals"), { ...e.ask, agent: "analyst" }], answers: omit(l.answers, "goals") }));
+    else if (e.type === "workflow") setTeam((t) => ({ ...t, workflow: e.workflow }));
+    else if (e.type === "known") setTeam((t) => ({ ...t, answered: [...(t.answered ?? []).filter((x) => x.id !== e.answer.id), e.answer].slice(-24) }));
+    else if (e.type === "plan") setTeam((t) => ({ ...t, plan: e.plan }));
+    else if (e.type === "delta") p.stream?.(e.text);
+    else if (e.type === "route") route(e.route, n);
+    else if (e.type === "ask" && e.ask.id === "clarify") {
+      // Athena's clarifying question pauses nothing: the message waits for it, the team's work carries on.
+      const id = `clarify-r${n}`;
+      setActive("athena");
+      setLive((l) => ({ ...l, asks: [...l.asks.filter((a) => !a.id.startsWith("clarify-")), { ...e.ask, id, agent: "athena" }], answers: omit(l.answers, id) }));
+    } else if (e.type === "ask" && e.ask.id === "goals") {
+      // The goals question is Athena's opening question: she proposes, in the chat.
+      setLive((l) => ({ ...l, asks: [...l.asks.filter((a) => a.id !== "goals"), { ...e.ask, agent: "athena" }], answers: omit(l.answers, "goals") }));
     } else if (e.type === "ask") {
       // Each run numbers its questions from one, so the run's own number keeps them apart: a later run's first question
-      // never hides, or shares a Skip with, an earlier one still showing.
-      const id = e.ask.id === "custom" ? e.ask.id : `${e.ask.id}-r${n}`;
+      // never hides, or shares a Skip with, an earlier one still showing. An input (budget, regions) is one question
+      // whichever run asks it.
+      const id = e.ask.id === "custom" || e.ask.id.startsWith("input_") ? e.ask.id : `${e.ask.id}-r${n}`;
       if (id !== "custom") {
         open.current.set(id, { agent: e.agent, n });
         setLive((l) => ({ ...l, blocking: { ...l.blocking, [id]: { agent: e.agent, n } } }));
+        // A question brings its subagent's tab forward, following or not.
+        setActive(e.agent);
       }
       setLive((l) => ({ ...l, asks: [...l.asks.filter((a) => a.id !== id), { ...e.ask, id, agent: e.agent }], answers: omit(l.answers, id) }));
     }
@@ -102,7 +136,6 @@ export function useTeam(p: {
       const h = e;
       setLive((l) => ({ ...l, held: { ...l.held, [h.agent]: { on: h.on, n } } }));
     } else if (e.type === "work") {
-      if (e.agent !== "analyst") offerNext(e.work);
       p.setTeam((t) => ({
         ...t,
         previous: { ...t.previous, ...(t.works[e.agent] ? { [e.agent]: t.works[e.agent] } : {}) },
@@ -113,8 +146,11 @@ export function useTeam(p: {
     else if (e.type === "reply") {
       const who: AgentId = e.agent ?? "athena";
       setLive((l) => ({ ...l, replies: { ...l.replies, [who]: [...(l.replies[who] ?? []), e.text].slice(-6) } }));
-      // Only Athena speaks in the chat (§23.2 step 8.5): a subagent's answer comes into the thread through her.
-      p.say(who === "athena" ? e.text : `From the ${nameOf(who)}: ${e.text}`);
+      // Only Athena speaks in the chat (§23.2 step 8.5k): a handoff she narrates carries the subagent's step trail,
+      // and a subagent's answer comes into the thread as hers, with its trail under it.
+      const trail = e.run ?? (isSpecialist(who) ? who : undefined);
+      if (e.run) bring(e.run);
+      p.say(e.text, trail);
     } else if (e.type === "memory") p.onMemory(e);
     else if (e.type === "galaxy") p.onGalaxy?.(e.galaxy);
   };
@@ -123,15 +159,19 @@ export function useTeam(p: {
   /** One call to the team route. A dropped stream settles quietly: running lines go, the last results stay. */
   const post = async (action: string, extra: Record<string, unknown> = {}) => {
     const n = ++run.current;
-    runs.current.set(n, extra);
+    runs.current.set(n, { ...extra, action });
+    streaming.current.add(n);
     setLive((l) => ({ ...l, running: l.running + 1 }));
     const body = p.body();
-    // The founder's answers in the journey (the growth question) and to the team's own questions, read as facts.
+    // The founder's answers in the journey (the growth question), to the workflow's questions, and to the team's own
+    // questions this visit, read as facts. The latest answer to a question stands.
     const given = Array.isArray(body.answers) ? (body.answers as { question: string; answer: string }[]) : [];
     const now = liveRef.current;
     // A skipped question counts as its recommended option, so the agent doesn't ask it again.
-    const facts = now.asks.filter((a) => a.id in now.answers && !/^(goals|custom|next_)/.test(a.id));
-    const asked = [...given, ...facts.filter((a) => now.answers[a.id] || a.assumed).map((a) => ({ question: a.question, answer: now.answers[a.id] || a.assumed }))];
+    const facts = now.asks.filter((a) => a.id in now.answers && !/^(goals|custom)/.test(a.id));
+    const all = [...given, ...(latestTeam.current.answered ?? []), ...facts.filter((a) => now.answers[a.id] || a.assumed).map((a) => ({ question: a.question, answer: now.answers[a.id] || a.assumed }))];
+    const byQ = new Map(all.map((a) => [a.question, { question: a.question, answer: a.answer }]));
+    const asked = [...byQ.values()].slice(-16);
     try {
       const res = await fetch("/api/team", {
         method: "POST",
@@ -160,6 +200,7 @@ export function useTeam(p: {
     } catch {
       // Past the time limit or offline: what the team found so far stays up.
     } finally {
+      streaming.current.delete(n);
       setLive((l) => ({
         ...l,
         running: Math.max(0, l.running - 1),
@@ -167,63 +208,117 @@ export function useTeam(p: {
         // Anyone still marked working when the stream ends is settled from what they last returned.
         status: Object.fromEntries(Object.entries(l.status).map(([k, s]) => [k, s?.state === "working" ? settled(k as AgentId, latestTeam.current) : s])),
       }));
+      // Answered while the workflow was still running its other steps: it resumes now, from where it stands.
+      if (resumeAfter.current.delete(n)) replan();
     }
   };
 
-  /** Every run ends with "What next?" in its own chat (§23.2 step 8.4h): what its results hand on to, and the dashboard. */
-  const offerNext = (work: Work) => {
-    const next = fromWork(work, p.crowdId ?? (() => undefined));
-    for (const h of next) offered.current.set(h.label, h);
-    const id = `next_${work.agent}`;
-    const ask: TeamAsk = {
-      id,
-      agent: work.agent,
-      question: "What next?",
-      why: `Done: ${work.headline.replace(/\.$/, "")}.`,
-      options: [...next.map((h) => ({ label: h.label, hint: `With the ${nameOf(h.to)}.` })), { label: SEE_DASHBOARD, hint: "The whole team, and what I still need from you." }],
-      multi: false,
-      assumed: next[0]?.label ?? SEE_DASHBOARD,
-    };
-    setLive((l) => ({ ...l, asks: [...l.asks.filter((a) => a.id !== id), ask], answers: omit(l.answers, id) }));
+  /** The goals the workflow was planned for, as the route reads them. */
+  const workflowGoals = (): Goal[] => {
+    const t = latestTeam.current;
+    const ids = t.workflow?.goals ?? [];
+    return t.goals.filter((g) => ids.includes(g.id));
   };
-  /** A handoff (§23.2 step 8.3b): the next specialist starts with the crowd or city it came from, and its panel opens. */
+  /** The workflow carries on (§23.2 step 8.5f): done steps stay done, the rest run, the plan comes last. */
+  const replan = (extra: Record<string, unknown> = {}) => {
+    const goals = workflowGoals();
+    if (!goals.length) return;
+    const c = change.current;
+    change.current = {};
+    setFollow(true);
+    void post("plan", {
+      goals,
+      ...(c.skip?.length || c.add?.length ? { change: { skip: c.skip ?? [], add: c.add ?? [] } } : {}),
+      ...(c.city ? { focus: { city: c.city.id } } : {}),
+      ...extra,
+    });
+  };
+
+  /** A handoff (§23.2 step 8.3b): a subagent not yet in the workflow joins it; one already in runs on what it came from. */
   const handoff = (h: Handoff) => {
+    const w = latestTeam.current.workflow;
+    if (w && !w.steps.some((s) => s.id === h.to)) return addToPlan(h.to, h.focus);
+    setFollow(true);
     setActive(h.to);
     const g: Goal = { id: `handoff_${h.to}`, label: h.label, why: "Handed on from a result", team: [h.to], conflicts: [] };
     p.setTeam((t) => ({ ...t, goals: [...t.goals.filter((x) => x.id !== g.id), g].slice(-5) }));
     void post("run", { goals: [g], focus: h.focus });
   };
+  /** A subagent the goals didn't need, added to the workflow from its tile (§23.2 step 8.5d) or a handoff. */
+  const addToPlan = (id: SpecialistId, focus?: Handoff["focus"]) => {
+    change.current = { ...change.current, add: [...(change.current.add ?? []), id] };
+    replan(focus ? { focus } : {});
+  };
 
-  /** The picked goals go to the team; ones already on top stay. */
+  /** The picked goals go to Athena, who plans the workflow and runs it (§23.2 step 8.5e). */
   const start = (goals: Goal[]) => {
     if (!goals.length) return;
     const fresh = goals.filter((g) => g.team.length);
     for (const g of goals.filter((x) => x.outside)) p.say(g.team.length ? `I've put the ${teamLine(g.team).replace(/^With the /, "").replace(/\.$/, "")} on the part we can do. ${g.outside}` : `${g.outside} Here's what the team can do meanwhile.`);
     if (!fresh.length) return void propose();
-    p.setTeam((t) => ({ ...t, goals: [...t.goals.filter((x) => !fresh.some((g) => g.id === x.id)), ...fresh].slice(-5) }));
-    // A pick opens the first specialist's workspace (§23.2 step 8.4g); the Analyst's when it is the only one at work.
-    const first = SPECIALIST_IDS.find((id) => id !== "analyst" && fresh.some((g) => g.team.includes(id))) ?? (fresh.some((g) => g.team.includes("analyst")) ? "analyst" : undefined);
-    if (first) setActive(first);
-    void post("run", { goals: fresh });
+    setTeam((t) => ({ ...t, goals: [...t.goals.filter((x) => !fresh.some((g) => g.id === x.id)), ...fresh].slice(-5) }));
+    setFollow(true);
+    void post("plan", { goals: fresh });
   };
   const propose = () => post("propose");
 
+  /** A typed answer, read against its question (§23.2 step 8.5h): an option, the founder's own fact, a workflow change. */
+  const read = async (q: TeamAsk, text: string): Promise<{ option?: string; fact?: string; change?: Change; line?: string }> => {
+    try {
+      const res = await fetch("/api/team", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...p.body(), action: "interpret", text, question: { question: q.question, options: q.options.map((o) => ({ label: o.label })) }, team: latestTeam.current }),
+        signal: AbortSignal.timeout(20_000),
+      });
+      return (await res.json()) as { option?: string; fact?: string; change?: Change; line?: string };
+    } catch {
+      return { fact: text };
+    }
+  };
+  const isOption = (q: TeamAsk, a: string) => !a || q.options.some((o) => o.label === a) || (q.multi && a.split(", ").every((x) => q.options.some((o) => o.label === x)));
+  /** Kept on the journey, editable on the dashboard ("Your answers"). */
+  const keep = (q: TeamAsk, a: string) =>
+    setTeam((t) => ({ ...t, answered: [...(t.answered ?? []).filter((x) => x.id !== q.id), { id: q.id, agent: q.agent, question: q.question, answer: a || q.assumed }].slice(-24) }));
+
   /** The founder answered a question from the team: the goals, a custom goal's closest missions, or a founder-only fact. */
-  const answer = (q: TeamAsk, a: string) => {
+  const answer = async (q: TeamAsk, a: string) => {
+    if (q.id.startsWith("clarify-")) {
+      // The message goes back to the router with what they meant.
+      setLive((l) => ({ ...l, answers: { ...l.answers, [q.id]: a || q.assumed } }));
+      const was = runs.current.get(Number(q.id.slice("clarify-r".length)));
+      return void post("chat", { ...was, text: `${String(was?.text ?? "")} (Asked "${q.question}", they meant: ${a || q.assumed})`.slice(0, 600) });
+    }
     // Seen at once by a run started below, before React applies the update.
     liveRef.current = { ...liveRef.current, answers: { ...liveRef.current.answers, [q.id]: a } };
     setLive((l) => ({ ...l, answers: { ...l.answers, [q.id]: a } }));
     const o = open.current.get(q.id);
     if (o) {
-      // The run carries on once every question it asked is answered: whoever asked, and whoever waited on them, run
-      // again on the same goals with the answers.
       open.current.delete(q.id);
       setLive((l) => ({ ...l, blocking: omitKey(l.blocking, q.id) }));
+      let said = a;
+      if (!isOption(q, a)) {
+        const r = await read(q, a);
+        said = r.option ?? r.fact ?? a;
+        if (r.change) change.current = { skip: [...(change.current.skip ?? []), ...(r.change.skip ?? [])], add: [...(change.current.add ?? []), ...(r.change.add ?? [])], ...(r.change.city ? { city: r.change.city } : change.current.city ? { city: change.current.city } : {}) };
+        if (r.line) p.say(r.line);
+        liveRef.current = { ...liveRef.current, answers: { ...liveRef.current.answers, [q.id]: said } };
+        setLive((l) => ({ ...l, answers: { ...l.answers, [q.id]: said } }));
+      }
+      keep(q, said);
+      // The work carries on once every question it asked is answered.
       if ([...open.current.values()].some((x) => x.n === o.n)) return;
+      const before = runs.current.get(o.n) ?? { action: "run" };
+      if (before.action === "plan") {
+        setActive(o.agent);
+        if (streaming.current.has(o.n)) return void resumeAfter.current.add(o.n);
+        return replan();
+      }
+      // Outside the workflow (a handoff, a question to a subagent): whoever asked, and whoever waited on them, run
+      // again on the same goals with the answers.
       const asked = new Set(liveRef.current.asks.filter((x) => x.id.endsWith(`-r${o.n}`)).map((x) => x.agent));
       const waited = Object.entries(liveRef.current.held).filter(([, h]) => h?.n === o.n).map(([id]) => id as SpecialistId);
       const who = new Set<AgentId>([...asked, ...waited]);
-      const before = runs.current.get(o.n) ?? {};
       const goals = ((before.goals as Goal[] | undefined) ?? []).map((g) => ({ ...g, team: g.team.filter((x) => who.has(x)) })).filter((g) => g.team.length);
       setActive(o.agent);
       setLive((l) => ({
@@ -231,7 +326,8 @@ export function useTeam(p: {
         held: Object.fromEntries(Object.entries(l.held).filter(([, h]) => h?.n !== o.n)),
         status: { ...l.status, ...Object.fromEntries([...who].map((id) => [id, { state: "working", step: "Working from your answers" }])) },
       }));
-      return void post("run", { ...before, goals: goals.length ? goals : [{ id: `answered_${o.agent}`, label: "Your answers", why: "With your answers", team: [o.agent], conflicts: [] }] });
+      const { action: _a, ...rest } = before;
+      return void post("run", { ...rest, goals: goals.length ? goals : [{ id: `answered_${o.agent}`, label: "Your answers", why: "With your answers", team: [o.agent], conflicts: [] }] });
     }
     const proposed = latestTeam.current.proposed ?? [];
     if (q.id === "goals") {
@@ -239,14 +335,6 @@ export function useTeam(p: {
       if (picked.length) return start(picked);
       custom.current = a;
       return void post("custom", { text: a });
-    }
-    if (q.id.startsWith("next_")) {
-      // Skip goes ahead with what the question said it would: the handoff it recommended.
-      const pick = a || q.assumed;
-      if (pick === SEE_DASHBOARD) return setActive("dashboard");
-      const h = offered.current.get(pick);
-      // Other: the founder's own next step goes to Athena, who answers or hands it on.
-      return h ? handoff(h) : a ? askAthena(a) : setActive("dashboard");
     }
     if (q.id === "custom") {
       // Skip takes the closest mission the question recommended, so the goal still starts.
@@ -257,19 +345,55 @@ export function useTeam(p: {
     }
   };
 
+  /**
+   * An answer changed on the dashboard (§23.2 step 8.5g): only the step it affects runs again, with what depends on
+   * it, then the plan. The steps it doesn't touch keep their results.
+   */
+  const editAnswer = (ans: Answer, a: string) => {
+    setTeam((t) => ({ ...t, answered: (t.answered ?? []).map((x) => (x.id === ans.id ? { id: x.id, agent: x.agent, question: x.question, answer: a || x.answer } : x)) }));
+    const w = latestTeam.current.workflow;
+    if (!w) return;
+    const hit = w.steps.filter((s) => s.inputs.includes(ans.id) || s.id === ans.agent).map((s) => s.id);
+    if (!hit.length) return;
+    setTeam((t) => ({ ...t, workflow: t.workflow && resetFrom(t.workflow, hit) }));
+    p.say(`Thanks. ${hit.length > 1 ? "The steps" : `The ${nameOf(hit[0])}`} that read it ${hit.length > 1 ? "run" : "runs"} again, then I'll update your plan.`);
+    replan();
+  };
+
+  /** The router's move, carried out here (§23.2 step 8.5n). Athena says the line; the subagent works behind her. */
+  const route = (r: Route, n: number) => {
+    const message = String(runs.current.get(n)?.text ?? "");
+    if (r.do === "graph") return p.onGraph?.(message);
+    if (r.do === "handoff") {
+      p.say(r.reply, r.to);
+      return askSpecialist(r.to, r.task);
+    }
+    if (r.do === "workflow") {
+      change.current = { skip: [...(change.current.skip ?? []), ...(r.change.skip ?? [])], add: [...(change.current.add ?? []), ...(r.change.add ?? [])], ...(r.change.city ? { city: r.change.city } : change.current.city ? { city: change.current.city } : {}) };
+      p.say(r.reply);
+      // Before the workflow starts, the change waits for it; once it has, the plan runs again with it.
+      if (latestTeam.current.workflow) replan();
+    }
+  };
+  /** A typed message to Athena: the router decides what to do with it. */
+  const chat = (text: string, ctx: { page: AgentId | "dashboard"; history: { who: string; text: string }[] }) => {
+    const open = liveRef.current.asks.filter((a) => !(a.id in liveRef.current.answers)).map((a) => a.question);
+    return post("chat", { text, ...ctx, open });
+  };
+
   const askAthena = (text: string) => {
     setActive("athena");
-    void post("ask", { text });
+    return post("ask", { text });
   };
-  /** A question from a specialist's workspace or "Ask the Analyst about this" (§23.2 step 8i). */
+  /** A question from a specialist's workspace or "Ask Athena about this" (§23.2 step 8i). */
   const askSpecialist = (id: SpecialistId, text: string, about?: { id: string; name: string }) => {
     setActive(id);
     setLive((l) => ({ ...l, replies: { ...l.replies, [id]: [] }, asked: { ...l.asked, [id]: text } }));
     if (id === "analyst") return void post("analyst", { text, ...(about ? { asked: about } : {}) });
     void post("run", { goals: [{ id: "ask", label: text.slice(0, 160), why: `You asked the ${nameOf(id)}`, team: [id], conflicts: [] }] });
   };
-  /** Bring stale specialists up to date: the goals on top run again, and Athena adds whoever is stale. */
-  const refresh = () => void post("run", { goals: latestTeam.current.goals });
+  /** Bring stale specialists up to date: the workflow resumes, and the stale steps run again with what reads them. */
+  const refresh = () => (latestTeam.current.workflow ? replan() : void post("run", { goals: latestTeam.current.goals }));
 
   const mark = (agent: SpecialistId, item: WorkItem, m: Mark) =>
     p.setTeam((t) => ({ ...t, outcomes: [...t.outcomes, { item: item.id, agent, kind: item.kind, name: item.name, ...(item.group ? { group: item.group } : {}), mark: m, at: Date.now() }].slice(-300) }));
@@ -277,13 +401,23 @@ export function useTeam(p: {
   /** The Analyst measures and ranks the crowds, once, for the whole journey (§23.2 step 8.1a). */
   const measure = () => {
     const g = GOALS.find((x) => x.id === "know_crowd")!;
-    // The Analyst is now the one at work, so the founder moves to its workspace and watches it measure.
-    setActive("analyst");
+    // The Analyst is now the one at work, so its tab comes forward while it measures.
+    bring("analyst");
     p.setTeam((t) => ({ ...t, goals: t.goals.some((x) => x.id === g.id) ? t.goals : [...t.goals, g] }));
     return post("run", { goals: [g] });
   };
 
-  return { live, active, setActive, propose, answer, askAthena, askSpecialist, refresh, mark, start, measure, handoff };
+  /** A tab picked by hand stops the following; "Follow the run" starts it again on the subagent started last. */
+  const pickTab = (id: AgentId) => {
+    setFollow(false);
+    setActive(id);
+  };
+  const followRun = () => {
+    setFollow(true);
+    setActive(lastStarted.current);
+  };
+
+  return { live, active, setActive, follow, pickTab, followRun, propose, answer, editAnswer, askAthena, askSpecialist, chat, refresh, mark, start, measure, handoff, addToPlan };
 }
 
 const omitKey = <T,>(o: Record<string, T>, k: string): Record<string, T> => Object.fromEntries(Object.entries(o).filter(([x]) => x !== k));
@@ -295,7 +429,7 @@ function settled(id: AgentId, team: TeamState): AgentStatus {
   return w ? { state: "done", last: w.headline } : { state: "idle" };
 }
 
-function statusOf(id: AgentId, live: TeamLive, team: TeamState): AgentStatus {
+export function statusOf(id: AgentId, live: TeamLive, team: TeamState): AgentStatus {
   return live.status[id] ?? settled(id, team);
 }
 
@@ -394,7 +528,7 @@ export function PausedForYou({ live, onGo }: { live: TeamLive; onGo?: () => void
   const asking = [...by.entries()];
   return (
     <div className="paused" role="status">
-      <strong>Paused until you answer</strong>
+      <strong>Paused for you</strong>
       <p>
         {and(asking.map(([id, k]) => `the ${nameOf(id)} has ${k === 1 ? "a question" : `${k} questions`}`)).replace(/^t/, "T")} for you.
         {held.length > 0 && ` ${and(held).replace(/^t/, "T")} ${held.length > 1 ? "wait" : "waits"} on ${asking.length > 1 ? "them" : "it"}.`} Nothing more is found until you answer{asking.length > 1 || open.length > 1 ? " them all" : ""}.
@@ -435,6 +569,41 @@ export function SpecialistWorkspace({ id, live, team }: { id: SpecialistId; live
       {work && st.state !== "working" && <p className="spec-reply">{work.headline}</p>}
       {!work && st.state === "idle" && !lines.length && <p className="small muted">Done when: {s.doneWhen}</p>}
     </div>
+  );
+}
+
+/**
+ * A subagent's step trail under Athena's line in the chat (§23.2 step 8.5k): its live step, then what it found, with
+ * its steps one click away and its page a click further. Only Athena speaks; the subagents show as their work.
+ */
+export function RunTrail({ id, live, team, onOpen }: { id: SpecialistId; live: TeamLive; team: TeamState; onOpen: (id: SpecialistId) => void }) {
+  const [open, setOpen] = useState(false);
+  const s = statusOf(id, live, team);
+  const lines = live.lines[id] ?? [];
+  const run = lines.reduce((n, l) => Math.max(n, l.run), 0);
+  const mine = lines.filter((l) => l.run === run);
+  const working = s.state === "working";
+  const head = working ? s.step : s.state === "waiting" ? `Paused for you: ${s.reason}` : team.works[id]?.headline;
+  if (!head && !mine.length) return null;
+  return (
+    <li className={`run-trail${working ? " run-trail-live" : ""}`}>
+      <div className="run-trail-head">
+        <span className="team-badge" aria-hidden>{nameOf(id).slice(0, 1)}</span>
+        <span className={`run-trail-step${working ? " shimmer-text" : ""}`}>{head ?? "Working"}</span>
+        {working && <StepTimer />}
+      </div>
+      <div className="run-trail-acts">
+        {mine.length > 0 && (
+          <button type="button" className="linkish small" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+            {open ? "Hide the steps" : `${mine.length} step${mine.length === 1 ? "" : "s"}`}
+          </button>
+        )}
+        <button type="button" className="linkish small" onClick={() => onOpen(id)}>
+          Open the {nameOf(id)}
+        </button>
+      </div>
+      {open && <Transcript lines={mine} />}
+    </li>
   );
 }
 
@@ -544,6 +713,26 @@ export function Handoffs({ list, onHandoff }: { list: Handoff[]; onHandoff: (h: 
   );
 }
 
+/** A drafted email as it would be sent: the subject, then its paragraphs, with a copy button. Nothing is sent. */
+function DraftText({ detail }: { detail: string }) {
+  const [copied, setCopied] = useState(false);
+  const [subject, ...body] = detail.split(/\n{2,}/);
+  return (
+    <div className="draft spec-draft">
+      <p className="draft-label">Draft · nothing is sent</p>
+      <p>
+        <strong>Subject:</strong> {subject}
+      </p>
+      {body.map((b, i) => (
+        <p key={i}>{b}</p>
+      ))}
+      <button type="button" className="linkish small" onClick={() => navigator.clipboard?.writeText(`Subject: ${subject}\n\n${body.join("\n\n")}`).then(() => setCopied(true)).catch(() => undefined)}>
+        {copied ? "Copied" : "Copy"}
+      </button>
+    </div>
+  );
+}
+
 function Result({ work, item, mark, team, alone, onMark, onHandoff }: { work: Work; item: WorkItem; mark?: Mark; team: TeamState; alone: AloneRequest; onMark: (m: Mark) => void; onHandoff?: (h: Handoff) => void }) {
   const [know, setKnow] = useState(false);
   const cited = item.sources.map((id) => work.sources.find((s) => s.id === id)).filter((s): s is Work["sources"][number] => !!s);
@@ -552,10 +741,10 @@ function Result({ work, item, mark, team, alone, onMark, onHandoff }: { work: Wo
     <li className="spec-result">
       <div className="spec-result-head">
         <strong>{item.name}</strong>
-        {item.group && <small className="muted"> · {item.group}</small>}
+        {item.group && item.group !== item.kind && <small className="muted"> · {item.group}</small>}
       </div>
       <p className="small">{item.why}</p>
-      {item.detail && <p className="small muted spec-detail">{item.detail}</p>}
+      {item.detail && (item.kind === "draft" ? <DraftText detail={item.detail} /> : <p className="small muted spec-detail">{item.detail}</p>)}
       <div className="spec-result-foot">
         {MARKABLE.has(item.kind) && (
           <span className="spec-marks" role="group" aria-label={`What happened with ${item.name}`}>
@@ -651,71 +840,5 @@ export function WhatsWorking({ team, graphRev, busy, onRefresh }: { team: TeamSt
         </div>
       )}
     </section>
-  );
-}
-
-/** What Athena still needs from the founder (§23.2 step 8.4h): asked one at a time, each naming the agent it helps. */
-export const INPUTS: (Asked & { helps: SpecialistId[] })[] = [
-  { id: "input_budget", question: "What can you spend on growth in the next three months?", why: "The Promoter and the Rep size events and shop pitches to it.", helps: ["promoter", "rep"], unranked: true, multi: false, assumed: "a small budget", options: [{ label: "Under $1,000" }, { label: "$1,000 to $10,000" }, { label: "Over $10,000" }] },
-  { id: "input_launch", question: "When is your next launch or push?", why: "The Promoter picks events with lead times that fit it.", helps: ["promoter"], unranked: true, multi: false, assumed: "no fixed date", options: [{ label: "Within a month" }, { label: "In 1 to 3 months" }, { label: "No fixed date" }] },
-  { id: "input_regions", question: "Which regions can you reach: ship to, visit, sell in?", why: "The Navigator ranks only cities you can serve.", helps: ["navigator"], unranked: true, multi: false, assumed: "anywhere in the US", options: [{ label: "Anywhere in the US" }, { label: "Near home only" }, { label: "One or two coasts" }] },
-  { id: "input_stockists", question: "Which shops already stock you? Name them, or add a stockist sheet.", why: "The Rep leaves them out and finds shops like them.", helps: ["rep"], unranked: true, multi: false, assumed: "the stockists on your Brand Graph", options: [{ label: "The ones on my Brand Graph" }, { label: "None yet" }] },
-];
-
-/** The founder's dashboard (§23.2 step 8.4h, a first version of §23.4 item 6): the team, the inputs, what's working. */
-export function Dashboard({ live, team, runs, inputs, onInput, onOpen, onHandoff, working }: { live: TeamLive; team: TeamState; runs: Partial<Record<SpecialistId, Handoff>>; inputs: Record<string, string>; onInput: (id: string, a: string) => void; onOpen: (id: View) => void; onHandoff: (h: Handoff) => void; working: ReactNode }) {
-  const need = INPUTS.find((q) => inputs[q.id] === undefined);
-  const given = INPUTS.filter((q) => inputs[q.id] !== undefined);
-  return (
-    <div className="dash">
-      <section className="dash-sec">
-        <h3>Your team</h3>
-        <ul className="dash-team">
-          {SPECIALIST_IDS.map((id) => {
-            const s = statusOf(id, live, team);
-            const w = team.works[id];
-            const run = runs[id];
-            return (
-              <li key={id} className={`dash-agent dash-${s.state}`}>
-                <span className="team-badge" aria-hidden>{nameOf(id).slice(0, 1)}</span>
-                <div>
-                  <strong>The {nameOf(id)}</strong>
-                  {s.state === "working" ? (
-                    <p className="small shimmer-text">{s.step}</p>
-                  ) : w ? (
-                    <p className="small">{w.headline}</p>
-                  ) : (
-                    <p className="small muted">{run ? `Would ${run.label.charAt(0).toLowerCase()}${run.label.slice(1)} now.` : specialist(id).mission}</p>
-                  )}
-                  <div className="dash-acts">
-                    {w && <button type="button" className="linkish small" onClick={() => onOpen(id)}>Open the {nameOf(id)}</button>}
-                    {!w && s.state !== "working" && run && (
-                      <button type="button" className="handoff" onClick={() => onHandoff(run)}>
-                        Run
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-      </section>
-      <section className="dash-sec">
-        <h3>What I need from you</h3>
-        {need ? (
-          <>
-            <p className="small muted">Helps the {need.helps.map(nameOf).join(" and the ")}.</p>
-            <Question key={need.id} q={need} onAnswer={(a) => onInput(need.id, a)} />
-          </>
-        ) : (
-          <p className="small muted">That&apos;s everything for now; the team reads your answers on every run.</p>
-        )}
-        {given.map((q) => (
-          <Question key={q.id} q={q} answer={inputs[q.id]} onAnswer={() => undefined} />
-        ))}
-      </section>
-      <section className="dash-sec">{working}</section>
-    </div>
   );
 }

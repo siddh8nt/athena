@@ -27,10 +27,10 @@ const DOES_HELP: Record<Does, string> = {
   read_summary: "read the pasted text as a written account of the business",
   qloo_search: "find the brand in Qloo",
   web_search: "search the web for what's missing about the brand",
-  compare: "put every source together and find where they disagree",
+  compare: "put every source together, synthesize what they say and find where they disagree",
   ask_founder: "ask what only the founder knows",
   finish_brief: "write the brief",
-  other: "anything else",
+  other: "anything else (rarely needed: every step above is ticked from the run itself)",
 };
 
 const hostOf = (u: string) => new URL(u).hostname.replace(/^www\./, "");

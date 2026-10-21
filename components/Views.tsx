@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { PanelGrip } from "./Resize";
 import { nameOf, type AgentId, type SpecialistId } from "@/lib/agent/specialists";
 
@@ -10,21 +10,37 @@ import { nameOf, type AgentId, type SpecialistId } from "@/lib/agent/specialists
 /** Which view is open: `/plan` is the dashboard, `/plan?agent=athena` the Athena tab, `/plan?agent=scout` a subagent page. */
 export type Page = AgentId | "dashboard";
 
-/** The full-screen dashboard: the sidebar and the page, with Athena's chat a click away. */
-export function DashboardPage({ nav, paused, onChat, children }: { nav: ReactNode; paused?: ReactNode; onChat: () => void; children: ReactNode }) {
+/**
+ * The full-screen dashboard (§23.2 step 8.5j): the sidebar and the page, with the one chat with Athena in a drawer
+ * from the side (full screen on a phone). While a step waits on the founder, the drawer's button says who for.
+ */
+export function DashboardPage({ nav, chat, paused, open, setOpen, children }: { nav: ReactNode; chat: ReactNode; paused?: string; open: boolean; setOpen: (o: boolean) => void; children: ReactNode }) {
+  const drawer = useRef<HTMLDivElement>(null);
+  // The chat mounts as the drawer opens, so it opens on the latest line rather than the top of the history.
+  useEffect(() => {
+    const list = open ? drawer.current?.querySelector(".msgs") : null;
+    if (list) list.scrollTop = list.scrollHeight;
+  }, [open]);
   return (
-    <main className="journey-main agent-stage page-stage dash-stage">
+    <main className={`journey-main agent-stage page-stage dash-stage${open ? " drawer-on sheet-on" : ""}`}>
       {nav}
       <section className="dash-page" aria-label="Your dashboard">
         <header className="page-head">
           <strong>Your dashboard</strong>
-          <button type="button" className="chat-open" onClick={onChat}>
+          <button type="button" className={`chat-open${paused ? " chat-open-paused" : ""}`} onClick={() => setOpen(true)} aria-expanded={open}>
             Chat with Athena
+            {paused && <span className="chat-badge">Paused for you · {paused}</span>}
           </button>
         </header>
-        {paused}
         <div className="dash-page-body">{children}</div>
       </section>
+      <div className="chat-drawer" ref={drawer} aria-hidden={!open} inert={!open}>
+        <button type="button" className="linkish small chat-drawer-close" onClick={() => setOpen(false)}>
+          Close ›
+        </button>
+        {open && chat}
+      </div>
+      {open && <button type="button" className="chat-scrim" aria-label="Close the chat" onClick={() => setOpen(false)} />}
     </main>
   );
 }
@@ -41,6 +57,9 @@ export function AthenaRoom(p: {
   onTab: (id: AgentId) => void;
   /** Live state per tab, so a working subagent shows it from its tab. */
   state: (id: AgentId) => "working" | "waiting" | undefined;
+  /** False once the founder picked a tab: "Follow the run" brings back the following (§23.2 step 8.5i). */
+  follow: boolean;
+  onFollow: () => void;
   open: boolean;
   sheet: boolean;
   onHide: () => void;
@@ -69,6 +88,11 @@ export function AthenaRoom(p: {
               );
             })}
           </div>
+          {!p.follow && (
+            <button type="button" className="follow-chip" onClick={p.onFollow}>
+              <span className="nav-wait" aria-hidden /> Follow the run
+            </button>
+          )}
           <button type="button" className="linkish small agent-panel-hide" onClick={p.onHide} aria-label="Hide the panel">Hide ›</button>
         </div>
         <div className="agent-panel-body" ref={p.panelRef} key={p.tab}>

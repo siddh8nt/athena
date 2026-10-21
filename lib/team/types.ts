@@ -78,6 +78,55 @@ export type AgentStatus =
 
 export type Asked = FounderQuestion & { id: string };
 
+/** A step's state on the workflow diagram (§23.2 step 8.5c). */
+export type StepState = "todo" | "running" | "paused" | "done";
+
+/** One step of Athena's workflow (§23.2 step 8.5e): who does it, what for, after which steps, and what it asks first. */
+export type WorkflowStep = {
+  /** The subagent's id, or "athena" for her synthesis: one step each. */
+  id: SpecialistId | "athena";
+  task: string;
+  /** Steps that must be done first, by id. */
+  needs: (SpecialistId | "athena")[];
+  why: string;
+  /** The founder inputs (lib/team/inputs.ts) Athena asks just before this step, when not already known. */
+  inputs: string[];
+  state: StepState;
+};
+
+/** Athena's plan of work for the goals (§23.2 step 8.5e): built by the model and checked by code, or code's own. */
+export type Workflow = { goals: string[]; steps: WorkflowStep[]; by: "agent" | "rules" };
+
+/** A founder's answer the team keeps (§23.2 step 8.5g): shown in "Your answers", editable, read by every run. */
+/** `from: "graph"`: Athena took it from the Brand Graph instead of asking. */
+export type Answer = { id: string; agent: AgentId; question: string; answer: string; from?: "graph" };
+
+/** One line of Athena's plan, cited to the subagent whose work it comes from (§23.2 step 8.5m). */
+export type PlanLine = { kind: "who" | "where" | "through" | "words" | "when"; agent: SpecialistId; text: string };
+
+/** Athena's growth plan (§23.2 step 8.5m): per target crowd, who, where, through what, the words and when; then what's left. */
+export type GrowthPlan = {
+  headline: string;
+  crowds: { crowd: string; tier: string; lines: PlanLine[] }[];
+  disagreements: string[];
+  open: string[];
+  /** The subagents' works it was read from, by when each finished, so a newer run shows the plan as out of date. */
+  from: Partial<Record<SpecialistId, number>>;
+  at: number;
+};
+
+/**
+ * Athena's one move for a typed message (§23.2 step 8.5n), decided by the model and checked by code: reply, use her
+ * tools, edit the Brand Graph, hand to a subagent behind the scenes, change the workflow, or ask a clarifying question.
+ */
+export type Route =
+  | { do: "reply"; reply: string }
+  | { do: "tools"; reply?: string }
+  | { do: "graph" }
+  | { do: "handoff"; to: SpecialistId; task: string; reply: string }
+  | { do: "workflow"; change: { skip?: SpecialistId[]; add?: SpecialistId[]; city?: { id: string; name: string } }; reply: string }
+  | { do: "clarify"; question: string; options: { label: string }[]; reply?: string };
+
 /** The team route's stream. Every specialist's steps carry its id, so each has its own transcript. */
 export type TeamEvent =
   | { type: "goals"; goals: Goal[] }
@@ -86,10 +135,21 @@ export type TeamEvent =
   | { type: "status"; agent: AgentId; status: AgentStatus }
   | { type: "step"; agent: AgentId; event: AgentEvent }
   | { type: "ask"; agent: AgentId; ask: Asked }
+  /** An input the Brand Graph already answers: kept with the founder's answers, never asked. */
+  | { type: "known"; agent: SpecialistId; answer: Answer }
   | { type: "work"; agent: SpecialistId; work: Work }
   /** A specialist that needs what another is waiting on the founder for: it waits too, and runs once they've answered. */
   | { type: "held"; agent: SpecialistId; on: SpecialistId }
-  | { type: "reply"; text: string; agent?: SpecialistId }
+  /** Athena's words in the chat. `run`: the subagent whose step trail goes under it. */
+  | { type: "reply"; text: string; agent?: SpecialistId; run?: SpecialistId }
+  /** Athena's reply as it streams, a few words at a time; the reply event that follows replaces it. */
+  | { type: "delta"; text: string }
+  /** A move the client carries out: the graph's reader, a subagent behind the scenes, or a change to the workflow. */
+  | { type: "route"; route: Route }
+  /** The workflow as it stands, whole, after every change (§23.2 step 8.5f). */
+  | { type: "workflow"; workflow: Workflow }
+  /** Athena's growth plan, the workflow's last step. */
+  | { type: "plan"; plan: GrowthPlan }
   /** The crowds and ranking after the Analyst measured, probed or re-ranked, for the journey to keep. */
   | { type: "memory"; crowds?: CrowdsResult; seed?: SeedInput; fits?: FitsResult; probes: string[]; calendar?: FitsRun["calendar"]; reach?: FitsRun["reach"]; answer?: FitsRun["answer"]; sources?: FitsRun["sources"] }
   /** The Taste Galaxy as it forms, round by round, while the Analyst measures. */
@@ -106,6 +166,12 @@ export type TeamState = {
   outcomes: Outcome[];
   /** The Brand Graph revision each specialist last ran on. */
   rev?: Partial<Record<SpecialistId, number>>;
+  /** Athena's workflow for the goals (§23.2 step 8.5e). */
+  workflow?: Workflow;
+  /** The founder's answers to the team's questions (§23.2 step 8.5g). */
+  answered?: Answer[];
+  /** Athena's growth plan, once the workflow's last step has run. */
+  plan?: GrowthPlan;
 };
 
 export const emptyTeam = (): TeamState => ({ goals: [], works: {}, outcomes: [] });

@@ -79,6 +79,8 @@ export type ToolCtx = {
   status: (text: string) => void;
   /** Sends a founder question to the client (non-blocking). */
   ask: (q: FounderQuestion) => void;
+  /** What the Brand Graph already answers to a question; asked first, so the founder never is. */
+  known?: (q: FounderQuestion) => Promise<string | undefined>;
 };
 
 /** A founder question (§23.2 step 2f, shown by step 3's question component): 2–4 options, the recommended first. */
@@ -114,7 +116,10 @@ export type Tool = {
   when?: (state: AgentState) => Decision | undefined;
 };
 
-const WHY = { type: "string", description: "One short sentence for the founder: why this call, now. Shown as the step's narration." };
+const WHY = {
+  type: "string",
+  description: "One short sentence for the founder: why this call, now, in plain words. Shown as the step's narration, so no scores, decimals or ids from the data (\"the crowd that's still soft\", not \"stability 0.52\").",
+};
 
 /** Function declarations for Gemini, with `why` added to each tool. */
 export function declarations(tools: Tool[]): FunctionDeclaration[] {
@@ -190,7 +195,7 @@ const crowdItems = (r: CrowdsResult) =>
   r.crowds.map((c) => ({ id: itemId("crowd", c.name), kind: "crowd", name: c.name, why: `${c.main ? "Your main crowd" : "A crowd"} of ${c.size}, loving ${c.loves.slice(0, 3).map((l) => l.name).join(", ")}`, group: "crowd", ref: c.id }));
 
 const crowdLine = (r: CrowdsResult) =>
-  r.crowds.length ? `${r.crowds.length} crowd${r.crowds.length > 1 ? "s" : ""}: ${r.crowds.map((c) => `${c.name}${c.stability !== undefined ? ` (stability ${c.stability.toFixed(2)})` : ""}`).join("; ")}` : "no crowds: the seed had too little Qloo knows";
+  r.crowds.length ? `${r.crowds.length} crowd${r.crowds.length > 1 ? "s" : ""}: ${r.crowds.map((c) => `${c.name}${c.stability !== undefined ? (c.stability < 0.6 ? " (still soft)" : " (firm)") : ""}`).join("; ")}` : "no crowds: the seed had too little Qloo knows";
 
 // ---- The registry ----------------------------------------------------------------------------------------------
 
@@ -566,7 +571,8 @@ export const TOOLS: Tool[] = [
       }));
       const key = "Each parameter's score is 0–1 on a fixed scale; the crowd's score is their weighted mean over what was measured. measured: what the number was read from, in words you may quote. Tiers come from the scores; never reorder them.";
       return {
-        summary: r.fits.map((f) => `${f.rank}. ${f.name} (${f.tier.replace("_", " ")}, ${f.score.toFixed(2)})`).join("; "),
+        // The summary is the founder's step line: ranks and tiers in words; the scores stay in the data the model reads.
+        summary: r.fits.map((f) => `${f.rank}. ${f.name} (${f.tier.replace("_", " ")})`).join("; "),
         data: { key, fits: out, weights: r.weights, weight_changes: r.changes, left_out_as_already_sold: r.excluded, ignored },
         items: r.fits.map((f) => ({ id: itemId("crowd", f.name), kind: "crowd", name: f.name, why: `${TIER_LABEL[f.tier]}${f.reasons[0] ? `: ${f.reasons[0]}` : ""}`, group: TIER_LABEL[f.tier], ref: f.crowd })),
       };
@@ -638,12 +644,14 @@ export const TOOLS: Tool[] = [
     },
     required: ["question", "options"],
     qloo: () => 0,
-    async run(a, { state, ask }) {
+    async run(a, { state, ask, known }) {
       const options = (Array.isArray(a.options) ? a.options : []).map((o) => ({ label: str((o as { label?: unknown })?.label, 80), hint: str((o as { hint?: unknown })?.hint, 120) || undefined })).filter((o) => o.label).slice(0, 4);
       if (state.asks >= (state.maxAsks ?? 2)) return { summary: "the questions for this run are asked; carry on with assumptions", data: { asked: false } , status: "thin" };
       if (options.length < 2) return { summary: "a question needs 2–4 options", data: { asked: false }, status: "empty" };
-      state.asks++;
       const q: FounderQuestion = { question: str(a.question, 200), why: str(a.why, 200), options, multi: a.multi_select === true, assumed: options[0].label };
+      const said = await known?.(q);
+      if (said) return { summary: `the Brand Graph already answers this: ${said}`, data: { asked: false, answer: said, note: "Taken from the Brand Graph; the founder wasn't asked. Use it as their answer." } };
+      state.asks++;
       ask(q);
       if (state.waits) {
         state.paused = true;

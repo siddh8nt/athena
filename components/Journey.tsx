@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ACCEPT, RecordView, TrailView, useBriefChat, type FileChip, type Msg } from "./chat";
 import type { WorkRecord } from "@/lib/agent/record";
@@ -11,32 +11,31 @@ import { CrowdGeography } from "./CrowdGeography";
 import { WithWithout, type AloneRequest } from "./WithWithout";
 import { Onboard } from "./Onboard";
 import { Fits, When, tiersFor } from "./Fits";
-import { StrategyCard, StrategyHead, StrategyPending } from "./Strategy";
 import { fromCity, fromCrowd, type Handoff } from "@/lib/agent/handoffs";
-import { Dashboard, GoalsBar, Handoffs, INPUTS, PausedForYou, SpecialistWorkspace, TeamPanel, WhatsWorking, WorkView, useTeam, type TeamLive } from "./Team";
+import { GoalsBar, Handoffs, PausedForYou, RunTrail, SpecialistWorkspace, TeamPanel, WhatsWorking, WorkView, useTeam, type TeamLive } from "./Team";
+import { Dashboard, GrowthPlanView } from "./Dashboard";
+import { INPUTS } from "@/lib/team/inputs";
 import type { StrategyView } from "./Strategy";
 import type { Asked } from "./Question";
-import type { AgentStreamEvent } from "@/lib/agent/loop";
 import type { AgentEvent } from "@/lib/blocks/types";
 import type { LiveFact } from "@/lib/knowledge/types";
 import { GUESS, OPENING, type Turn } from "@/lib/brief/conversation";
 import { briefToInput } from "@/lib/brief/to-input";
-import { itemKey, missingRequired, type BrandBrief } from "@/lib/brief/types";
+import { missingRequired, type BrandBrief } from "@/lib/brief/types";
 import { allNodes } from "@/lib/graph/build";
 import { POINTER, PREVIEW_AT, applyEdit, applyFiles, fillOther, graphState, previewLine, previewOf, rerun, undo, type EditQuestion, type GraphState, type Op } from "@/lib/graph/edit";
 import { staleLine, type RunId } from "@/lib/graph/stale";
 import type { GraphInput } from "@/lib/graph/types";
 import { keepFile, workspace } from "@/lib/knowledge/workspace";
 import { bySource, mergeNotes, themesOf, type Synth } from "@/lib/knowledge/notes";
-import { pacer } from "@/lib/stream/pace";
 import { RunProgress, StepTimer } from "./Progress";
 import { AthenaRoom, DashboardPage, SubagentPage, type Page } from "./Views";
 import type { Channel } from "@/lib/journey/growth";
-import { crowdAfterFits, emptyJourney, loadedJourney, type CrowdCard, type CrowdsResult, type Journey as JourneyState } from "@/lib/journey/types";
+import { crowdAfterFits, emptyJourney, loadedJourney, type CrowdCard, type Journey as JourneyState } from "@/lib/journey/types";
 import type { Galaxy as GalaxyData } from "@/lib/taste/galaxy";
 import { packBySlug } from "@/lib/journey/packs";
 import { emptyTeam, type Mark, type TeamEvent, type TeamState, type WorkItem } from "@/lib/team/types";
-import { SPECIALIST_IDS, isSpecialist, nameOf, panelIds, specialist, type AgentId, type SpecialistId } from "@/lib/agent/specialists";
+import { isSpecialist, nameOf, panelIds, specialist, type AgentId, type SpecialistId } from "@/lib/agent/specialists";
 import { growthQuestion, seedOf, type GrowthQuestion } from "@/lib/journey/flow";
 
 // The journey (PRD §23.2 step 8.1): one path. Onboarding writes the Brand Graph; one growth question in the
@@ -44,6 +43,8 @@ import { growthQuestion, seedOf, type GrowthQuestion } from "@/lib/journey/flow"
 // Athena proposes 3–4 goals and only the specialists those goals need run. State lives in this browser only (a
 // convenience; nothing is lost if it's cleared).
 
+/** What the chat shows while Athena decides what to do with a message. */
+const THINKING = "Thinking it through…";
 const STORE = "athena:journey:v1";
 type Saved = { brief: BrandBrief; msgs: Msg[]; turn: Turn; journey: JourneyState };
 
@@ -149,7 +150,18 @@ export function Journey() {
     end.current?.scrollIntoView({ block: "end", behavior: "smooth" });
   }, [brief, msgs, turn, j]);
 
-  const say = (t: string) => setMsgs((m) => [...m, { who: "athena", text: t }]);
+  // A reply that streamed in (§23.2 step 8.5n) is replaced by the whole of it; anything else is a new line.
+  const say = (t: string, run?: SpecialistId) => {
+    setWorking((w) => (w?.text === THINKING ? undefined : w));
+    setMsgs((m) => [...(m.at(-1)?.live ? m.slice(0, -1) : m), { who: "athena", text: t, ...(run ? { run } : {}) }]);
+  };
+  const stream = (d: string) => {
+    setWorking((w) => (w?.text === THINKING ? undefined : w));
+    setMsgs((m) => {
+      const last = m.at(-1);
+      return last?.live ? [...m.slice(0, -1), { ...last, text: last.text + d }] : [...m, { who: "athena", text: d, live: true }];
+    });
+  };
   const move = (to: JourneyState["stop"]) => setJ((x) => ({ ...x, stop: to, done: [...new Set([...x.done, x.stop])] }));
 
   // The seed the Analyst measures from: held by a Brand Graph edit, the brief the crowds were built from.
@@ -158,7 +170,7 @@ export function Journey() {
   const teamBrief: BrandBrief = j.channel ? { ...brief, channel: { value: j.channel, source: { kind: "message" }, confirmed: true } } : brief;
 
   // What the Analyst measured and ranked comes back here as the journey's crowds and fits (§23.2 step 8.1a): ranked
-  // once, by the Analyst, for every goal after. A probe from "Ask the Analyst about this" lands the same way.
+  // once, by the Analyst, for every goal after. A probe from "Ask Athena about this" lands the same way.
   const onMemory = (m: Memory) =>
     setJ((x) => {
       if (!m.crowds?.crowds.length) return x;
@@ -178,48 +190,9 @@ export function Journey() {
       };
     });
 
-  // A strategy for every most valuable fit (§23.2 step 6): once the Analyst has ranked, the agent reads the context
-  // into who, where, through what and when. A new ranking plans again; the last strategies stay up meanwhile.
-  const [asks, setAsks] = useState<Asked[]>([]);
+  // The Analyst's own questions while it ranks the fits, answered in its results.
+  const [asks] = useState<Asked[]>([]);
   const [answers, setAnswers] = useState<Record<string, string>>({});
-  const told: LiveFact[] = [
-    ...(j.told ? [{ id: "answer-growth", text: `Asked "${j.told.question}", the founder answered: ${j.told.answer}`, where: "your answer", source: "the founder" }] : []),
-    ...asks.filter((q) => answers[q.id]).map((q) => ({ id: `answer-${q.id}`, text: `Asked "${q.question}", the founder answered: ${answers[q.id]}`, where: "your answer", source: "the founder" })),
-  ];
-  const [planSteps, setPlanSteps] = useState<AgentEvent[]>([]);
-  const [planRunning, setPlanRunning] = useState(false);
-  const planKey = useRef("");
-  const strategyFor = j.fits && j.crowds?.crowds.length && j.crowdsFor ? `${j.fits.key}${g.rev.strategy ? `:${g.rev.strategy}` : ""}` : "";
-  const stratBrief = g.held.strategy?.brief ?? teamBrief;
-  const stratFacts = g.held.strategy?.facts ?? j.facts ?? [];
-  useEffect(() => {
-    if (!strategyFor || !j.fits || !j.crowdsFor || j.strategy?.key === strategyFor || planKey.current === strategyFor) return;
-    const key = strategyFor;
-    const run = j.fits;
-    planKey.current = key;
-    setPlanSteps([]);
-    setPlanRunning(true);
-    // A city the founder marked wrong on the Brand Graph is never a place to start.
-    const wrong = new Set((stratBrief.wrong ?? []).map((w) => w.key));
-    const reach = run.reach && Object.fromEntries(Object.entries(run.reach).map(([id, ms]) => [id, ms.filter((m) => !wrong.has(itemKey.city(m.metro)))]));
-    const body = JSON.stringify({ seed: j.crowdsSeed ?? (JSON.parse(j.crowdsFor) as unknown), probes: j.crowds?.probes ?? [], brief: stratBrief, facts: [...stratFacts, ...told], fits: run.fits, calendar: run.calendar, reach });
-    const go = (tries: number): Promise<void> =>
-      agentStream("/api/strategy", body, (e) => {
-        if (planKey.current !== key) return false;
-        if (e.type === "event") {
-          const ev = e.event;
-          setPlanSteps((s) => {
-            const i = ev.status === "running" ? -1 : s.findIndex((x) => x.status === "running" && x.tool === ev.tool && x.why === ev.why);
-            return i >= 0 ? s.map((x, k) => (k === i ? ev : x)) : [...s, ev];
-          });
-        // Every strategy run numbers its questions from one; an id of its own here keeps each question's answer apart.
-        } else if (e.type === "ask") setAsks((a) => (a.some((x) => x.question === e.ask.question) ? a : [...a, { ...e.ask, id: `strategy-${a.length + 1}` }]));
-        else if (e.type === "strategy") setJ((x) => ({ ...x, strategy: { key, result: e.result, answer: e.answer, sources: e.sources } }));
-        return true;
-      }).catch(() => (tries > 0 && planKey.current === key ? go(tries - 1) : undefined));
-    void go(1).finally(() => planKey.current === key && setPlanRunning(false));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [strategyFor]);
 
   // With / Without (§13.2): the crowds' question also goes to Gemini alone, from the same product description.
   const alone: AloneRequest = { brand: brief.name?.value || "The brand", product: String(briefToInput(brief).description ?? "").slice(0, 400) };
@@ -232,9 +205,8 @@ export function Journey() {
   const wasOnboarding = useRef(onboarding);
   useLayoutEffect(() => {
     const r = record.current;
-    // Leaving onboarding opens Athena's chat, where the next question waits. (Until the dashboard holds the knowledge
-    // base and the chat drawer, §23.2 step 8.5 b and j, the chat is where the founder carries on.)
-    if (wasOnboarding.current && !onboarding) go("athena", true);
+    // Leaving onboarding opens the dashboard (§23.2 step 8.5b): the knowledge base it built, and the plan to start.
+    if (wasOnboarding.current && !onboarding) go("dashboard", true);
     if (wasOnboarding.current && !onboarding && r)
       setMsgs((m) => {
         if (m.some((x) => x.record)) return m;
@@ -259,14 +231,21 @@ export function Journey() {
       // The growth answer and the dashboard's inputs (§23.2 step 8.4h), read by every run as the founder's facts.
       answers: [...(j.told ? [j.told] : []), ...INPUTS.filter((q) => j.inputs?.[q.id] !== undefined).map((q) => ({ question: q.question, answer: j.inputs![q.id] || q.assumed }))],
       facts: j.facts ?? [],
+      // What the Brand Graph still asks the founder to settle, for Athena's plan to name.
+      disagreements: editQs.map((q) => q.question),
     }),
     graphRev: g.log.length,
-    crowdId: (name) => j.crowds?.crowds.find((c) => c.name === name)?.id,
     onMemory,
     onGalaxy: setForming,
     say,
+    stream,
+    // The router read it as an edit to the Brand Graph: the graph's reader takes it from here.
+    onGraph: (message) => {
+      setWorking((w) => (w?.text === THINKING ? undefined : w));
+      void graphSend(message, true);
+    },
   });
-  // "Ask the Analyst about this" from a Galaxy node: the Analyst's workspace opens with the question in the steering box.
+  // "Ask Athena about this" from a Galaxy node: the question goes in the chat, and the Analyst probes it behind her.
   const [about, setAbout] = useState<{ id: string; name: string }>();
   const askAbout = (id: string, name: string) => {
     tm.setActive("analyst");
@@ -326,15 +305,9 @@ export function Journey() {
   // The team's focus is a tab in the Athena tab's panel (§23.2 step 8.5): when the flow hands the work on, Athena
   // brings that subagent's tab forward; it never moves the founder off the page they're on. "See your dashboard" does.
   const tab: AgentId = tm.active === "dashboard" ? "athena" : tm.active;
-  useEffect(() => {
-    if (tm.active !== "dashboard") return;
-    tm.setActive("athena");
-    go("dashboard");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tm.active]);
+  // The dashboard's chat drawer (§23.2 step 8.5j).
+  const [drawer, setDrawer] = useState(false);
   const subPage = isSpecialist(page) ? page : undefined;
-  // Typed into the chat on a subagent's page, or after "Ask the Analyst about this": that subagent is asked.
-  const inWorkspace = subPage ?? (about ? "analyst" : undefined);
   // The floating panel (§23.2 step 8.4b): open beside the chat on a desktop; a full-screen sheet on a phone.
   const [panelOpen, setPanelOpen] = useState(true);
   const [sheet, setSheet] = useState(false);
@@ -490,7 +463,9 @@ export function Journey() {
     // A request for the team (who to pitch, where to launch, what's working) goes to Athena, who answers or hands it on.
     if (r.team) {
       if (r.ops.length || r.questions.length || r.reply) take(r, "chat");
-      return void tm.askAthena(message);
+      // Her answer can take a while: the chat says she's on it until it lands.
+      setWorking({ text: THINKING, by: "chat" });
+      return void tm.askAthena(message).finally(() => setWorking((w) => (w?.text === THINKING ? undefined : w)));
     }
     take(r, "chat");
   };
@@ -575,11 +550,17 @@ export function Journey() {
       chat.setFiles([]);
       if (fs.length) setMsgs((m) => [...m, { who: "you", text: message, files: fs.map((f) => f.name) }]);
       if (fs.length) void readFiles(fs);
-      // On a subagent's page the chat asks that subagent; its answer comes back into the thread through Athena.
-      if (message && inWorkspace) {
-        if (!fs.length) setMsgs((m) => [...m, { who: "you", text: message }]);
-        tm.askSpecialist(inWorkspace, message, inWorkspace === "analyst" ? about : undefined);
-      } else if (message) void graphSend(message, fs.length > 0);
+      if (message && !fs.length) setMsgs((m) => [...m, { who: "you", text: message }]);
+      // "Ask Athena about this" on a Galaxy node: the Analyst probes that node behind her.
+      if (message && about) tm.askSpecialist("analyst", message, about);
+      else if (message) {
+        // Every other message goes to Athena's router (§23.2 step 8.5n), with the page it was typed on and the chat
+        // so far: she replies, looks it up, edits the graph, asks a subagent, changes the plan, or asks what they mean.
+        setWorking({ text: THINKING, by: "chat" });
+        void tm
+          .chat(message, { page, history: msgs.filter((m) => m.text && !m.card && !m.live).slice(-30).map(({ who, text }) => ({ who, text })) })
+          .finally(() => setWorking((w) => (w?.text === THINKING ? undefined : w)));
+      }
       setAbout(undefined);
       return;
     }
@@ -610,8 +591,28 @@ export function Journey() {
   const questions: TrayItem[] = [
     ...(j.stop === "growth" || j.told ? [{ q: gq, answer: j.told?.answer, onAnswer: answerGrowth }] : []),
     ...editQs.filter((q) => q.by === "chat").map((q) => ({ q, onAnswer: (a: string) => answer(q, a) })),
-    ...tm.live.asks.map((q) => ({ q, answer: tm.live.answers[q.id], onAnswer: (a: string) => tm.answer(q, a) })),
+    // A subagent's question reads "For the Navigator: …", and one that pauses its step says so (§23.2 step 8.5 g, k).
+    ...tm.live.asks.map((q) => ({ q: { ...q, for: q.agent !== "athena" ? nameOf(q.agent) : undefined, pauses: q.id in tm.live.blocking }, answer: tm.live.answers[q.id], onAnswer: (a: string) => void tm.answer(q, a) })),
   ];
+  // Each question keeps its place in the thread: a marker goes in where it was asked, and the answered record shows
+  // there, before what Athena said after it, not under the latest message.
+  const questionIds = questions.map((it) => it.q.id).join("|");
+  useEffect(() => {
+    setMsgs((m) => {
+      const placed = new Set(m.flatMap((x) => (x.asked ? [x.asked] : [])));
+      const fresh = [...new Set(questions.map((it) => it.q.id))].filter((id) => !placed.has(id));
+      return fresh.length ? [...m, ...fresh.map((id) => ({ who: "athena" as const, text: "", asked: id }))] : m;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [questionIds]);
+  const answeredAt = (id: string) => {
+    const it = questions.find((x) => x.q.id === id && x.answer !== undefined);
+    return it ? (
+      <li key={`q${id}`} className="msg-question">
+        <Question q={it.q} answer={it.answer} onAnswer={it.onAnswer} />
+      </li>
+    ) : null;
+  };
   const stateOf = (id: AgentId) => {
     const s = tm.live.status[id]?.state;
     return s === "working" || s === "waiting" ? s : undefined;
@@ -642,6 +643,8 @@ export function Journey() {
             </li>
           ),
           m.trail && <TrailView key={`t${i}`} trail={m.trail} />,
+          m.run && <RunTrail key={`w${i}`} id={m.run} live={tm.live} team={team} onOpen={(id) => (setDrawer(false), go(id))} />,
+          m.asked && msgs.findIndex((x) => x.asked === m.asked) === i && answeredAt(m.asked),
         ])}
         {busy && live && <li className="msg msg-athena streaming">{live}</li>}
         {queued && <li className="msg msg-athena typing">Finishing my research, then I&apos;ll read that…</li>}
@@ -653,12 +656,6 @@ export function Journey() {
             <StepTimer />
           </li>
         )}
-        {/* Answered questions stay here as one-line records; the open ones wait in the tray above the box. */}
-        {questions.filter((it) => it.answer !== undefined).map((it) => (
-          <li key={it.q.id} className="msg-question">
-            <Question q={it.q} answer={it.answer} onAnswer={it.onAnswer} />
-          </li>
-        ))}
         {preview && (
           <li className="msg msg-athena graph-preview">
             <p>{preview.line}</p>
@@ -733,9 +730,16 @@ export function Journey() {
   const outputOf = (id: AgentId) =>
     id === "athena" ? (
       <>
-        <div id="stop-product">{graphEl}</div>
+        {/* The goals open Athena's tab (§23.2 step 8.5p); the Brand Graph lives on the dashboard alone (8.5b). */}
         <GoalsBar goals={team.goals} />
-        {j.fits && (j.strategy || planRunning) && <AthenaPlan j={j} steps={planSteps} running={planRunning} />}
+        <p className="small muted">
+          What the team knows about the brand is in the{" "}
+          <button type="button" className="linkish" onClick={() => go("dashboard")}>
+            Brand Knowledge Base
+          </button>
+          .
+        </p>
+        <GrowthPlanView plan={team.plan} team={team} running={tm.live.running > 0} onOpen={(id) => (isSpecialist(id) ? go(id) : id === "athena" ? tm.pickTab(id) : go(id))} onUpdate={tm.refresh} />
       </>
     ) : id === "analyst" ? (
       <div id="stop-analyst">
@@ -755,6 +759,29 @@ export function Journey() {
     ) : (
       <SpecialistPanel id={id} j={j} team={team} live={tm.live} alone={alone} onMark={tm.mark} onHandoff={tm.handoff} crowdId={crowdIdOf} />
     );
+
+  // The Brand Knowledge Base on the dashboard (§23.2 step 8.5b): the Brand Graph with its stale flags, sources and
+  // files, the record of onboarding with what the sources disagreed on and what was kept, and a drop zone for more.
+  const onboardRecord = msgs.find((m) => m.record)?.record;
+  const kbEl = (
+    <>
+      {graphEl}
+      <label className="kb-drop" onDragOver={(e) => e.preventDefault()} onDrop={(e) => (e.preventDefault(), e.stopPropagation(), e.dataTransfer.files.length && void readFiles([...e.dataTransfer.files]))}>
+        <strong>Add to what Athena knows</strong>
+        <span className="small muted">Drop a deck, a stockist sheet, photos or a PDF, or click to pick. It goes on the Brand Graph, and the subagents it changes are flagged to bring up to date.</span>
+        <input type="file" multiple accept={ACCEPT} hidden onChange={(e) => e.target.files?.length && void readFiles([...e.target.files])} />
+      </label>
+      {onboardRecord && <RecordView record={onboardRecord} />}
+    </>
+  );
+  // Who the run waits on, for the dashboard's chat button.
+  const pausedAgent = Object.entries(tm.live.blocking).find(([id]) => !(id in tm.live.answers))?.[1].agent;
+  const pausedFor = pausedAgent ? (pausedAgent === "athena" ? "Athena" : `the ${nameOf(pausedAgent)}`) : tm.live.asks.some((a) => a.id === "goals" && !(a.id in tm.live.answers)) ? "your goals" : undefined;
+  /** "Build your growth plan with Athena" (§23.2 step 8.5c): the chat opens on her opening question. */
+  const startPlan = () => {
+    setDrawer(true);
+    if (!tm.live.asks.some((a) => a.id === "goals") && !tm.live.running) void tm.propose();
+  };
 
   const dropZone = {
     onDragOver: (e: React.DragEvent) => {
@@ -797,16 +824,18 @@ export function Journey() {
           <Onboard brief={brief} files={chat.files} addFiles={chat.addFiles} setFiles={chat.setFiles} onBrief={onBrief} onFacts={onRaw} graph={graphEl} dock={dockEl} grouping={working?.by === "graph" ? working.text : undefined} onRecord={(r) => (record.current = r)} />
         </main>
       ) : page === "dashboard" ? (
-        <DashboardPage nav={navEl} paused={<PausedForYou live={tm.live} onGo={() => go("athena")} />} onChat={() => go("athena")}>
+        <DashboardPage nav={navEl} chat={chatEl} paused={pausedFor} open={drawer} setOpen={setDrawer}>
           <Dashboard
             live={tm.live}
             team={team}
-            runs={Object.fromEntries(SPECIALIST_IDS.map((id) => [id, startFor(id, j, team)]))}
-            inputs={j.inputs ?? {}}
-            onInput={(id, a) => setJ((x) => ({ ...x, inputs: { ...x.inputs, [id]: a } }))}
-            onOpen={(id) => go(id)}
-            onHandoff={(h) => (tm.handoff(h), go("athena"))}
+            graphRev={g.log.length}
+            kb={kbEl}
             working={<WhatsWorking team={team} graphRev={g.log.length} busy={tm.live.running > 0} onRefresh={tm.refresh} />}
+            onOpen={(id) => go(id)}
+            onChat={() => setDrawer(true)}
+            onStart={startPlan}
+            onAdd={(id) => (tm.addToPlan(id), setDrawer(true))}
+            onEditAnswer={tm.editAnswer}
           />
         </DashboardPage>
       ) : subPage ? (
@@ -820,8 +849,10 @@ export function Journey() {
           chat={chatEl}
           tabs={panelIds(team)}
           tab={tab}
-          onTab={(id) => (tm.setActive(id), setPanelOpen(true))}
+          onTab={(id) => (tm.pickTab(id), setPanelOpen(true))}
           state={stateOf}
+          follow={tm.follow}
+          onFollow={tm.followRun}
           open={panelOpen}
           sheet={sheet}
           onHide={() => setPanelOpen(false)}
@@ -833,29 +864,6 @@ export function Journey() {
       )}
     </div>
   );
-}
-
-/** Reads an agent's stream (its steps, any question, then its result). The handler returns false to stop listening. */
-async function agentStream(path: string, body: string, on: (e: AgentStreamEvent) => boolean): Promise<void> {
-  const res = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body });
-  if (!res.body) throw new Error("no stream");
-  const reader = res.body.getReader();
-  const dec = new TextDecoder();
-  const pace = pacer();
-  let buf = "";
-  for (;;) {
-    const { done, value } = await reader.read();
-    buf += done ? dec.decode() : dec.decode(value, { stream: true });
-    const parts = buf.split("\n\n");
-    buf = parts.pop() ?? "";
-    for (const p of parts) {
-      if (!p.startsWith("data:")) continue;
-      const e = JSON.parse(p.slice(5)) as AgentStreamEvent;
-      await pace(e);
-      if (!on(e)) return;
-    }
-    if (done) return;
-  }
 }
 
 /** The choices above the composer while the brief is written: the chat's quick replies, then on to the growth question. */
@@ -918,37 +926,6 @@ function startFor(id: SpecialistId, j: JourneyState, team: TeamState): Handoff |
   return undefined;
 }
 
-/** Athena's plan (§23.2 step 8.3a): a strategy for each most valuable fit, stitched from what the team measured. */
-function AthenaPlan({ j, steps, running }: { j: JourneyState; steps: AgentEvent[]; running: boolean }) {
-  const plan = j.strategy;
-  const sources = new Map((plan?.sources ?? []).map((s) => [s.id, s]));
-  const fits = (j.fits?.fits.fits ?? []).filter((f) => f.tier !== "watch" || f.rank === 1);
-  return (
-    <section className="goal-work" id="work-athena">
-      <header className="card-head">
-        <h3>Athena&apos;s plan</h3>
-        <p className="small muted">A strategy for each most valuable fit: who, where, through what and when.</p>
-      </header>
-      <section className="card fits">
-        {fits.map((f) => {
-          const st = plan?.result.strategies.find((x) => x.crowd === f.crowd);
-          if (!st && !running) return null;
-          return (
-            <article key={f.crowd} className="fit">
-              <div className="fit-head">
-                <span className="rank">{f.rank}</span>
-                <h5>{f.name}</h5>
-              </div>
-              {st ? <StrategyCard s={st} said={plan!.answer.lines.filter((l) => l.crowd === f.crowd)} sources={sources} /> : <StrategyPending steps={steps} />}
-            </article>
-          );
-        })}
-        <StrategyHead view={{ run: plan, steps, running }} sources={sources} />
-      </section>
-    </section>
-  );
-}
-
 const SKEW_LABEL = "Aggregate taste-panel signal from Qloo, relative to average. It describes people who share this taste, not your customers. Treat it as something to test, not a fact.";
 
 function skewLine(s: CrowdCard["skew"]): string | undefined {
@@ -964,7 +941,7 @@ type FitsView = { steps: AgentEvent[]; running: boolean; asks: Asked[]; answers:
 /**
  * The Analyst's results (§23.2 step 8.1b): the Taste Galaxy forming live while it measures, then the crowds it ranked
  * as the brand's most valuable fits (Win first, Win next, Watch, as the Analyst set them), each top fit with its
- * strategy, the linked map and the crowd cards. "Ask the Analyst about this" stays on every Galaxy node.
+ * strategy, the linked map and the crowd cards. "Ask Athena about this" stays on every Galaxy node.
  */
 function AnalystResults({ j, step, measured, forming, fits, onAsk, probing, alone, onHandoff }: { j: JourneyState; step?: string; measured: boolean; forming?: GalaxyData; fits: FitsView; onAsk: (id: string, name: string) => void; probing?: string; alone: AloneRequest; onHandoff: (h: Handoff) => void }) {
   const r = j.crowds;

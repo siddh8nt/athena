@@ -1,5 +1,7 @@
 "use client";
 
+import type { SpecialistId } from "@/lib/agent/specialists";
+
 import { useEffect, useRef, useState } from "react";
 import { OPENING, type Turn } from "@/lib/brief/conversation";
 import type { BriefEvent } from "@/app/api/brief/route";
@@ -15,7 +17,7 @@ import { duration, recordLine, type WorkRecord } from "@/lib/agent/record";
 export type Trail = { steps: { text: string; done: boolean }[]; sources: { title?: string; uri?: string }[]; start: number; end?: number };
 /** A chat line. `card` lines are interactive cards the journey places in the conversation. */
 /** `record`: what onboarding did, shown above the message it led to. */
-export type Msg = { who: "athena" | "you"; text: string; files?: string[]; trail?: Trail; card?: string; record?: WorkRecord };
+export type Msg = { who: "athena" | "you"; text: string; files?: string[]; trail?: Trail; card?: string; record?: WorkRecord; /** The subagent whose step trail goes under the line (§23.2 step 8.5k). */ run?: SpecialistId; /** Athena's reply still streaming in (§23.2 step 8.5n). */ live?: boolean; /** Where a question was asked: its answer shows here once given. */ asked?: string };
 export type FileChip = { name: string; status: string; busy: boolean };
 
 export const ACCEPT = ".png,.jpg,.jpeg,.webp,.pdf,.txt,.csv,.tsv,.xlsx,.pptx,.docx,image/*";

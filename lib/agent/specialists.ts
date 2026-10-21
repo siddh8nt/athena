@@ -143,7 +143,7 @@ export const ATHENA = {
   id: "athena" as const,
   name: "Athena",
   role: "Leads the team",
-  mission: "Turn the founder's goals into work for the specialists, run them, answer small asks herself, and keep track of what's working.",
+  mission: "Turn the founder's goals into work for the subagents, run them, answer small asks herself, and keep track of what's working.",
 };
 
 export const specialist = (id: SpecialistId): Specialist => SPECIALISTS.find((s) => s.id === id)!;
@@ -157,4 +157,4 @@ export function waitingOn(id: SpecialistId, have: { crowds: boolean; city: boole
 }
 
 /** Who the team panel shows (§23.2 step 8.2f): Athena and the Analyst from the start; any other specialist once a chosen goal includes it. */
-export const panelIds = (team: { goals: { team: readonly string[] }[] }): AgentId[] => ["athena", ...SPECIALIST_IDS.filter((id) => id === "analyst" || team.goals.some((g) => g.team.includes(id)))];
+export const panelIds = (team: { goals: { team: readonly string[] }[]; workflow?: { steps: { id: string }[] } }): AgentId[] => ["athena", ...SPECIALIST_IDS.filter((id) => id === "analyst" || team.goals.some((g) => g.team.includes(id)) || !!team.workflow?.steps.some((s) => s.id === id))];

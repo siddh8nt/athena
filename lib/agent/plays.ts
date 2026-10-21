@@ -74,6 +74,8 @@ export type TeamEnrich = {
  */
 export type TeamCtx = {
   brand: TeamBrand;
+  /** What the Brand Graph says, one line each: read before anyone asks the founder, so nothing it says is asked. */
+  facts?: string[];
   /** The ids of the goals this run works for ("deepen_home", "step_up"…), so the evidence rules can read them. */
   goals: string[];
   enrich: TeamEnrich;
@@ -163,13 +165,16 @@ async function fp(t: TeamCtx, qloo: QlooClient, status: (s: string) => void): Pr
   return t.found.fingerprint;
 }
 
-/** A venue's kind for outcomes ("café", "wine store"): its first channel tag, else its first tag. */
+/** A venue's kind for outcomes ("café", "wine store"): its first channel tag. Its other tags ("credit cards", "resy") say nothing of what it is. */
 function venueGroup(v: VenuePick, channels: string[]): string {
-  const tag = v.tags.find((x) => channels.includes(x.id)) ?? v.tags[0];
+  const tag = v.tags.find((x) => channels.includes(x.id));
   return (tag?.name ?? "venue").toLowerCase();
 }
 
 const CHANNEL_IDS = Object.values(VENUE_TAGS) as string[];
+
+/** "2026-12-15" as the founder reads it, "Dec 15, 2026"; anything else as it came. */
+const dayOf = (d: string) => (/^\d{4}-\d{2}-\d{2}$/.test(d) ? new Date(`${d}T12:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" }) : d);
 
 /** Narrated why for a skip: the reason, and when another specialist can fill the need, what's needed. */
 const skip = (reason: string, need?: string): Decision => ({ skip: reason, ...(need ? { need } : {}) }) as Decision;
@@ -644,7 +649,7 @@ export const PLAYS: Tool[] = [
       return {
         summary: `${events.length} dated events in ${city}${moved.length ? `; ${moved[0]}` : ""}`,
         data: { city, events: events.slice(0, 8).map((x) => ({ name: x.name, kind: x.kind, date: x.date, venue: x.venue, source: x.source, site: x.site, act: x.qlooName })), moved },
-        items: events.slice(0, 8).map((x) => item("event", x.name, `${x.kind === "show" ? `${x.qlooName}, an artist your crowd loves` : "A festival your crowd loves"}, on ${x.date}${x.site ? ` (${x.site})` : ""}`, { group: x.kind, detail: x.venue, ref: x.qlooId })),
+        items: events.slice(0, 8).map((x) => item("event", x.name, `${x.kind === "show" ? `${x.qlooName}, an artist your crowd loves` : "A festival your crowd loves"}${x.date ? `, on ${dayOf(x.date)}` : ""}${x.site ? ` (${x.site})` : ""}`, { group: x.kind, detail: x.venue, ref: x.qlooId })),
       };
     },
   },
@@ -746,7 +751,9 @@ function topPartner(t: TeamCtx): PartnerCard | undefined {
 async function drafted(t: TeamCtx, qloo: QlooClient, to: DraftTo): Promise<ToolResult> {
   const partnerList = (t.found.partners?.brands ?? []).map((b) => ({ id: b.id, name: b.name, pForward: b.pForward }));
   const d = await writeDraft({ qloo, brand: t.brand.name, product: t.brand.product, to, partners: partnerList, llm: t.llm });
-  const text = d.sentences.map((s) => s.text).join(" ");
+  // The greeting on its own line, then the body as one paragraph: the detail reads as an email, subject first.
+  const [first, ...rest] = d.sentences.map((s) => s.text.trim()).filter(Boolean);
+  const text = first && /,$/.test(first) && rest.length ? `${first}\n\n${rest.join(" ")}` : [first, ...rest].filter(Boolean).join(" ");
   const what = to.kind === "venue" ? "Pitch" : to.kind === "partner" ? "Ask" : "Inquiry";
   return {
     summary: `${what} to ${to.name}: "${d.subject}"`,

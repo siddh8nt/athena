@@ -60,6 +60,21 @@ describe("the checklist", () => {
     expect(checklistLine(c.items())).toBe("All 2 steps done");
   });
 
+  it("ticks a step only the agent can tick once the plan moves past it, or the brief is in", () => {
+    // 20 Oct, live: "Synthesize findings" (does: other) stayed unticked after the brief was written.
+    const c = new Checklist([
+      { step: "Synthesize findings", does: "other" },
+      { step: "Find you in Qloo", does: "qloo_search" },
+      { step: "Check the numbers", does: "other" },
+      { step: "Write your brief", does: "finish_brief" },
+    ]);
+    c.track(ev("qloo_search", "running", { source: { label: "Qloo" } }));
+    expect(c.items()[0].state).toBe("done");
+    expect(c.items()[2].state).toBe("todo");
+    c.finish("Your brief");
+    expect(c.items().map((i) => i.state)).toEqual(["done", "done", "done", "done"]);
+  });
+
   it("keeps only steps Athena can do, at most eight", () => {
     const c = new Checklist([{ step: "  ", does: "other" }, { step: "Dance", does: "dance" as never }, ...Array.from({ length: 10 }, (_, i) => ({ step: `Step ${i}`, does: "other" as const }))]);
     expect(c.items()).toHaveLength(8);

@@ -75,16 +75,23 @@ export class Checklist {
     // A ref tells apart the reads of different sites and files; a lookup's step matches whatever name the plan gave it.
     const ref = does.startsWith("read_") ? e.source?.label : undefined;
     const mine = (i: CheckItem) => i.does === does && (!i.ref || !ref || i.ref === ref);
+    // A step only the agent can tick ("Synthesize findings") is done once the plan has moved past it.
+    const past = (i: CheckItem) => {
+      const at = this.list.indexOf(i);
+      for (const x of this.list.slice(0, at)) if (x.does === "other" && (x.state === "todo" || x.state === "now")) x.state = "done";
+    };
     if (e.status === "running") {
       if (this.list.some((i) => i.state === "now" && mine(i))) return false;
       const i = this.list.find((x) => x.state === "todo" && mine(x));
       if (!i) return false;
       i.state = "now";
+      past(i);
       return true;
     }
     if (e.status === "needs_input") return false;
     const i = this.list.find((x) => x.state === "now" && mine(x)) ?? this.list.find((x) => x.state === "todo" && mine(x));
     if (!i) return false;
+    past(i);
     // Checking the brief can run twice when the agent fixes a fact: writing it is done only once it's sent (finish()).
     if (does === "finish_brief") {
       if (i.state === "now") return false;
@@ -99,7 +106,8 @@ export class Checklist {
   /** The brief is in: steps under way are done, and steps that never came were skipped. */
   finish(result?: string): void {
     for (const i of this.list) {
-      if (i.state === "now" || (i.does === "finish_brief" && i.state === "todo")) Object.assign(i, { state: "done", result: i.does === "finish_brief" && result ? shortResult(result) : i.result });
+      // The agent's own steps ("Synthesize findings") were part of writing it.
+      if (i.state === "now" || ((i.does === "finish_brief" || i.does === "other") && i.state === "todo")) Object.assign(i, { state: "done", result: i.does === "finish_brief" && result ? shortResult(result) : i.result });
       else if (i.state === "todo") i.state = "skipped";
     }
   }

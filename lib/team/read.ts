@@ -1,5 +1,6 @@
 import { SPECIALIST_IDS, type SpecialistId } from "@/lib/agent/specialists";
-import { MARKS, emptyTeam, type Goal, type Mark, type Outcome, type TeamState, type Work, type WorkItem } from "./types";
+import { readWorkflow } from "@/lib/agent/workflow";
+import { MARKS, emptyTeam, type Answer, type Goal, type Mark, type Outcome, type TeamState, type Work, type WorkItem } from "./types";
 
 // The team as the client sends it back (a stateless server: the journey holds its own state). Everything is
 // shape-checked and cut to size; anything malformed is left out, never an error. Client-safe.
@@ -93,6 +94,20 @@ function readOutcome(raw: unknown): Outcome | undefined {
   return { item, agent: o.agent, kind: str(o.kind, 40), name: str(o.name, 200), ...(str(o.group, 60) ? { group: str(o.group, 60) } : {}), mark: o.mark as Mark, at: num(o.at) };
 }
 
+/** The founder's kept answers: one per question id, the latest. */
+export function readAnswers(raw: unknown): Answer[] {
+  const out = new Map<string, Answer>();
+  for (const a of Array.isArray(raw) ? raw : []) {
+    const r = rec(a);
+    const id = str(r.id, 80);
+    const question = str(r.question, 300);
+    const answer = str(r.answer, 400);
+    const agent = r.agent === "athena" || isAgent(r.agent) ? (r.agent as Answer["agent"]) : undefined;
+    if (id && question && answer && agent) out.set(id, { id, agent, question, answer, ...(r.from === "graph" ? { from: "graph" as const } : {}) });
+  }
+  return [...out.values()].slice(-24);
+}
+
 export function readTeam(raw: unknown): TeamState {
   if (!raw || typeof raw !== "object") return emptyTeam();
   const t = rec(raw);
@@ -104,5 +119,7 @@ export function readTeam(raw: unknown): TeamState {
     ...(t.previous ? { previous: readWorks(t.previous) } : {}),
     outcomes: (Array.isArray(t.outcomes) ? t.outcomes : []).map(readOutcome).filter((o): o is Outcome => !!o).slice(-300),
     rev: Object.fromEntries(SPECIALIST_IDS.filter((id) => typeof rev[id] === "number").map((id) => [id, num(rev[id])])),
+    ...(readWorkflow(t.workflow) ? { workflow: readWorkflow(t.workflow) } : {}),
+    ...(Array.isArray(t.answered) ? { answered: readAnswers(t.answered) } : {}),
   };
 }

@@ -68,7 +68,7 @@ export function nextPeak(index: number[], date: string): { month: number; index:
 }
 
 const ordinal = (n: number) => `${n}${n % 100 >= 11 && n % 100 <= 13 ? "th" : (["th", "st", "nd", "rd"][n % 10] ?? "th")}`;
-const pts = (n: number) => `${n} point${n === 1 ? "" : "s"}`;
+const pts = (n: number) => `${n} percentile point${n === 1 ? "" : "s"}`;
 
 /** Each parameter's 0–1 score on a fixed scale, and the line that says what was measured. */
 export function paramScores(c: CrowdEvidence, date: string): Record<Param, ParamScore> {
@@ -95,7 +95,12 @@ export function paramScores(c: CrowdEvidence, date: string): Record<Param, Param
         {
           value: r2(c.specificity),
           score: clamp(0.5 + c.specificity / 0.4),
-          text: c.specificity >= 0 ? `it loves its core ${pts(Math.round(c.specificity * 100))} more than their popularity explains, so spend reaches the crowd, not everyone` : `its core is ${pts(Math.round(-c.specificity * 100))} more mainstream than this crowd alone, so spend spills wider`,
+          text:
+            Math.abs(c.specificity) < 0.02
+              ? "it loves its core about as much as their popularity explains, so spend reaches it no better or worse than anyone"
+              : c.specificity > 0
+                ? `it ranks its core ${pts(Math.round(c.specificity * 100))} higher than their popularity alone explains, so spend reaches the crowd, not everyone`
+                : `its core is ${pts(Math.round(-c.specificity * 100))} more mainstream than this crowd alone, so spend spills wider`,
         };
   out.momentum =
     c.momentum === undefined

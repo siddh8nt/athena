@@ -1,13 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { FounderQuestion } from "@/lib/agent/tools";
 
 // A question from the agent (PRD §23.2 step 3c), asked the way a good assistant asks: 2–4 options built from what it
 // found, its recommendation first, "Other" for anything else, and Skip. The run never waits: until the founder
 // answers, the "Assumed" line says what Athena is going ahead with.
 
-export type Asked = FounderQuestion & { id: string };
+/** `for`: the subagent the question is asked for, said as Athena's "For the Navigator"; `pauses`: its step waits on it. */
+export type Asked = FounderQuestion & { id: string; for?: string; pauses?: boolean };
 
 export type TrayItem = { q: Asked; answer?: string; onAnswer: (answer: string) => void };
 
@@ -18,6 +19,15 @@ export function QuestionTray({ items }: { items: TrayItem[] }) {
   const [sent, setSent] = useState<string[]>([]);
   const [at, setAt] = useState<string>();
   const open = items.filter((it) => it.answer === undefined && !sent.includes(it.q.id));
+  // A question asked after the tray is up comes to the front: it answers what the founder just said.
+  const seen = useRef<Set<string> | null>(null);
+  const ids = open.map((it) => it.q.id).join("|");
+  useEffect(() => {
+    const fresh = open.filter((it) => !seen.current?.has(it.q.id));
+    if (seen.current && fresh.length) setAt(fresh[fresh.length - 1].q.id);
+    seen.current = new Set([...(seen.current ?? []), ...open.map((it) => it.q.id)]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ids]);
   if (!open.length) return null;
   const i = Math.max(0, open.findIndex((it) => it.q.id === at));
   const cur = open[i];
@@ -58,7 +68,7 @@ export function Question({ q, answer, onAnswer }: { q: Asked; answer?: string; o
   if (answer !== undefined)
     return (
       <div className="question question-done">
-        <span className="muted small">{q.question}</span> <strong className="small">{answer || `Skipped; going with ${q.assumed}`}</strong>
+        <span className="muted small">{q.for ? `For the ${q.for}: ` : ""}{q.question}</span> <strong className="small">{answer || `Skipped; going with ${q.assumed}`}</strong>
       </div>
     );
 
@@ -67,7 +77,13 @@ export function Question({ q, answer, onAnswer }: { q: Asked; answer?: string; o
   const sendOther = () => other.trim() && onAnswer([...(q.multi ? picked : []), other.trim()].join(", "));
 
   return (
-    <div className="question" role="group" aria-label={q.question}>
+    <div className={`question${q.pauses ? " question-pauses" : ""}`} role="group" aria-label={q.question}>
+      {q.for && (
+        <p className="question-for">
+          For the {q.for}
+          {q.pauses && <small> · it waits for this</small>}
+        </p>
+      )}
       <p className="question-text">{q.question}</p>
       <ol className="question-options">
         {q.options.map((o, i) => {

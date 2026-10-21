@@ -6,7 +6,11 @@ import { planStream, teamEnrich } from "@/lib/agent/server-deps";
 import { readFits, readSeed, strs } from "@/lib/agent/inputs";
 import { buildCtx } from "@/lib/agent/team-ctx";
 import { readFacts } from "@/lib/agent/inputs";
-import { athenaAsk, customGoal, goalFacts, proposeFor, runTeam } from "@/lib/agent/team";
+import { athenaAsk, customGoal, goalFacts, planWorkflow, proposeFor, runTeam, runWorkflow } from "@/lib/agent/team";
+import { interpret } from "@/lib/agent/interpret";
+import { briefFacts, chunks, routeMessage } from "@/lib/agent/router";
+import { addStep, dropStep } from "@/lib/agent/workflow";
+import { isSpecialist, type AgentId } from "@/lib/agent/specialists";
 import { goalQuestion } from "@/lib/agent/goals";
 import { isMetroId, metroById } from "@/lib/playbook/metros";
 import { readBrief } from "@/lib/brief/form";
@@ -19,16 +23,19 @@ import { dated } from "@/lib/time/now";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-// Athena and her six specialists (PRD §23.2 step 8). One route, five actions:
+// Athena and her six subagents (PRD §23.2 step 8). One route, seven actions:
 //   propose: Athena reads the Brand Graph and proposes 3–5 goals, as a question the founder picks from;
 //   custom:  a goal the founder typed, split into the part the team can do and the part it can't;
-//   run:     the picked goals become work for the specialists, 2–3 at once, streamed per specialist;
+//   plan:    Athena plans the workflow for the picked goals (§23.2 step 8.5e) and runs it, asking what only the
+//            founder knows just before the step that needs it; re-posted with the workflow, it resumes;
+//   run:     the specialists behind the picked goals, 2–3 at once, streamed per specialist (handoffs, re-runs);
+//   interpret: a typed answer read against its question (§23.2 step 8.5h): an option, a fact, a workflow change;
 //   ask:     a small ask Athena answers herself, with every tool;
 //   analyst: "Ask the Analyst about this" from the Galaxy, which may probe, and re-runs what a changed crowd touches.
 // The client holds the team's state and sends it back each time (outcome marks included). Past the run limit, or
 // without a model, the specialists decide by code's evidence rules: the same tools, never an error.
 
-const ACTIONS = ["propose", "custom", "run", "ask", "analyst"] as const;
+const ACTIONS = ["propose", "custom", "plan", "run", "ask", "analyst", "interpret", "chat"] as const;
 type Action = (typeof ACTIONS)[number];
 
 const str = (v: unknown, n: number) => (typeof v === "string" ? v.trim().slice(0, n) : "");
@@ -47,17 +54,69 @@ export const POST = dated(async function post(req: Request) {
   const answers = (Array.isArray(raw.answers) ? raw.answers : [])
     .map((a) => ({ question: str((a as Record<string, unknown>)?.question, 200), answer: str((a as Record<string, unknown>)?.answer, 200) }))
     .filter((a) => a.question && a.answer)
-    .slice(0, 8);
+    .slice(0, 16);
   // The derived notes the founder keeps (§23.2 step 8.2e): deleted ones never arrive.
   const notes = readFacts(raw.facts);
   const qloo = getQloo();
   // Proposing and splitting goals are one small model call each; runs and asks count against the team's limit.
-  const cap = action === "propose" || action === "custom" ? { ok: true } : LIMITS.team(clientIp(req));
+  const cap = action === "propose" || action === "custom" || action === "interpret" ? { ok: true } : LIMITS.team(clientIp(req));
   const llm = cap.ok && qloo.mode === "live" && llmConfigured();
 
+  // A typed answer (§23.2 step 8.5h): no Qloo, no context to build; one small model call, checked by code.
+  if (action === "interpret") {
+    const q = raw.question && typeof raw.question === "object" ? (raw.question as Record<string, unknown>) : {};
+    const options = (Array.isArray(q.options) ? q.options : []).map((o) => ({ label: str((o as Record<string, unknown>)?.label, 120) })).filter((o) => o.label).slice(0, 8);
+    const out = await interpret({ text, question: { question: str(q.question, 300), options }, workflow: team.workflow }, llm);
+    return Response.json(out);
+  }
+
+  // A typed message (§23.2 step 8.5n): one model call decides the move. A reply streams from what the team already
+  // knows, with no Qloo; only "tools" builds the context and looks again.
+  const routed =
+    action === "chat"
+      ? routeMessage(
+          {
+            message: text,
+            history: (Array.isArray(raw.history) ? raw.history : [])
+              .map((m) => ({ who: str((m as Record<string, unknown>)?.who, 10), text: str((m as Record<string, unknown>)?.text, 600) }))
+              .filter((m) => m.text)
+              .slice(-30),
+            page: (raw.page === "dashboard" || raw.page === "athena" || isSpecialist(raw.page) ? raw.page : undefined) as AgentId | "dashboard" | undefined,
+            brand: { name: brief?.name?.value ?? "the brand", sells: brief?.sells?.value, home: brief?.activeCity?.value },
+            facts: briefFacts(brief, notes.map((n) => n.text)),
+            answers: [...answers, ...(team.answered ?? [])],
+            team,
+            open: strs(raw.open, 6, 200),
+          },
+          llm,
+        )
+      : undefined;
+
   return planStream<TeamEvent>(async (send) => {
+    if (routed) {
+      const started = Date.now();
+      const route = await routed;
+      const done = () => send({ type: "done", qlooCalls: 0, ms: Date.now() - started });
+      if (route.do === "reply") {
+        for (const c of chunks(route.reply)) send({ type: "delta", text: c });
+        send({ type: "reply", text: route.reply });
+        return done();
+      }
+      if (route.do === "clarify") {
+        if (route.reply) send({ type: "reply", text: route.reply });
+        send({ type: "ask", agent: "athena", ask: { id: "clarify", question: route.question, why: "So the team works on what you mean", options: route.options, multi: false, assumed: route.options[0].label, unranked: true } });
+        return done();
+      }
+      if (route.do !== "tools") {
+        send({ type: "route", route });
+        return done();
+      }
+      if (route.reply) send({ type: "reply", text: route.reply });
+    }
     const crowds = await cachedCrowds(seed, probes);
     const t = await buildCtx({ brief, seed, crowds: crowds ?? undefined, fits, probes, team, enrich: teamEnrich(), llm, qloo, answers, notes });
+    // Every subagent reads the whole Brand Graph before it asks the founder anything (founder, 21 Oct).
+    t.facts = [...briefFacts(brief, []), ...notes.map((n) => n.text), ...(team.answered ?? []).map((a) => `${a.question} ${a.answer}`)];
     // A handoff (§23.2 step 8.3b) carries what it was started from: the crowd to aim at, the crowd to win next, the city.
     const focus = raw.focus && typeof raw.focus === "object" ? (raw.focus as Record<string, unknown>) : {};
     const crowdBy = (id: string) => (id ? t.crowds?.crowds.find((c) => c.id === id) : undefined);
@@ -84,12 +143,32 @@ export const POST = dated(async function post(req: Request) {
       else send({ type: "ask", agent: "athena", ask: { id: "custom", ...r.question } });
       return finish();
     }
-    if (action === "ask") {
+    if (action === "ask" || action === "chat") {
       await athenaAsk({ question: text, team: t, qloo, env, send, llm });
       return finish();
     }
 
     let goals: Goal[] = readGoals(raw.goals);
+    if (action === "plan") {
+      // The same goals resume the workflow they started; new goals, or none yet, get a new plan.
+      const same = team.workflow && team.workflow.goals.join("|") === goals.map((g) => g.id).join("|");
+      let workflow = same && team.workflow ? team.workflow : await planWorkflow(goals, t, llm);
+      // What a typed answer changed (§23.2 step 8.5h): a subagent skipped or added, a city to work on.
+      const change = raw.change && typeof raw.change === "object" ? (raw.change as Record<string, unknown>) : {};
+      const have = { fits: !!t.fits?.fits.length, home: !!t.brand.homeMetro };
+      for (const id of (Array.isArray(change.skip) ? change.skip : []).filter(isSpecialist)) workflow = dropStep(workflow, id, have);
+      for (const id of (Array.isArray(change.add) ? change.add : []).filter(isSpecialist)) workflow = addStep(workflow, id, goals, have);
+      const disagreements = strs(raw.disagreements, 6, 200);
+      const before = { crowds: t.crowds, fits: t.fits, probes: t.probes.join("|") };
+      let calls = 0;
+      await runWorkflow({ goals, team: t, state: team, graphRev, qloo, env, send: (e) => (e.type === "done" ? (calls = e.qlooCalls) : send(e)), llm, workflow, answered: [...answers, ...(team.answered ?? [])], disagreements });
+      if (t.crowds !== before.crowds || t.fits !== before.fits || t.probes.join("|") !== before.probes) {
+        const ranked = t.fits !== before.fits;
+        send({ type: "memory", crowds: t.crowds, seed: t.seed, ...(ranked ? { fits: t.fits, ...(t.ranked ?? {}) } : {}), probes: t.probes });
+      }
+      send({ type: "done", qlooCalls: calls, ms: Date.now() - started });
+      return;
+    }
     if (action === "analyst") {
       const name = str(asked?.name, 120);
       const id = str(asked?.id, 80);

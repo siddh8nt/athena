@@ -5,7 +5,7 @@ import { flushSync } from "react-dom";
 import type { AgentEvent } from "@/lib/blocks/types";
 import type { AgentStreamEvent } from "@/lib/agent/loop";
 import type { BrandBrief } from "@/lib/brief/types";
-import { isResolution, liveFacts, whereLabel, type Conflict, type Knowledge, type LiveFact, type Settled, type Settlement } from "@/lib/knowledge/types";
+import { isResolution, keptOptions, liveFacts, whereLabel, type Conflict, type Knowledge, type LiveFact, type Settled, type Settlement } from "@/lib/knowledge/types";
 import type { Upload } from "@/lib/knowledge/uploads";
 import { CONTEXT_PROMPT } from "@/lib/agent/context-prompt";
 import { checklistLine, type CheckItem } from "@/lib/agent/checklist";
@@ -285,7 +285,9 @@ export function Onboard({
         } else if (e.type === "sorted") {
           setWebsites(e.websites);
           setPasted(e.pasted ?? "");
-        } else if (e.type === "checklist") setItems(e.items);
+        } else if (e.type === "checklist")
+          // A run started by an answer sends the checklist again from the top: a step already done stays done.
+          setItems((was) => e.items.map((i) => (i.state !== "done" && was?.some((w) => w.step === i.step && w.state === "done") ? { ...i, state: "done" } : i)));
         else if (e.type === "knowledge") {
           setKb(e.knowledge);
           setInUse(e.settled);
@@ -344,10 +346,15 @@ export function Onboard({
   // The record for the chat after onboarding, kept current as the transcript grows.
   useEffect(() => {
     if (running || !onRecord) return;
-    const r = buildRecord(lines, { facts: kb?.facts.length ?? 0, conflicts: kb?.conflicts.length ?? 0 }, worked.current / 1000);
+    const settled = (kb?.conflicts ?? []).map((c) => {
+      const s = picked[c.id] ?? inUse[c.id];
+      const kept = isResolution(s) ? s.fact : keptOptions(c, s).map((i) => c.options[i]?.value).filter(Boolean).join(", ");
+      return { about: c.about, kept, by: s === undefined ? ("athena" as const) : ("you" as const) };
+    });
+    const r = buildRecord(lines, { facts: kb?.facts.length ?? 0, conflicts: kb?.conflicts.length ?? 0 }, worked.current / 1000, settled);
     if (r) onRecord(r);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lines, running, kb]);
+  }, [lines, running, kb, picked, inUse]);
 
   useEffect(() => {
     end.current?.scrollIntoView({ block: "end", behavior: "smooth" });
@@ -635,7 +642,8 @@ export function Onboard({
   // The workspace.
   const panel = had || !!kb;
   const waitingOnYou = !running && (asks.some((q) => !(q.id in answers)) || !!kb?.conflicts.some((c) => picked[c.id] === undefined));
-  const now = items?.find((i) => i.state === "now");
+  // After an answer the agent reads on before it marks a step: the plan's next open step is what it's on, never a step it already ticked.
+  const now = items?.find((i) => i.state === "now") ?? (running ? items?.find((i) => i.state === "todo") : undefined);
   const lastLive = [...lines].reverse().find((l) => l.ev.status === "running");
   // Between steps the next one on the plan is what it's on; once the plan is through, it's writing it all up.
   const between = items?.find((i) => i.state === "todo")?.step ?? (lines.some((l) => l.run === runs.current && l.ev.tool !== "you") ? "Putting it all together" : "Reading what you gave me");
@@ -651,14 +659,14 @@ export function Onboard({
   // The run's progress: the agent's own plan when it has written one, else the steps shown so far.
   const runLines = lines.filter((l) => l.run === runs.current && l.ev.tool !== "you");
   const progressSteps: ProgressStep[] = items?.length
-    ? items.map((i) => ({ label: i.step, state: i.state }))
+    ? items.map((i) => ({ label: i.step, state: i === now ? "now" : i.state }))
     : runLines.map((l) => ({ label: lineText(l.ev), state: l.ev.status === "running" ? "now" : "done" }));
   const pagesAll = lines.reduce((n, l) => n + l.pages.filter((p) => p.ev.tool === "read_page").length, 0);
-  const pagesRead = runLines.reduce((n, l) => n + l.pages.filter((p) => p.ev.tool === "read_page").length, 0);
   const qlooCalls = runLines.reduce((n, l) => n + l.ev.callIds.length + l.pages.reduce((m, p) => m + p.ev.callIds.length, 0), 0);
   const progressCounts = [
     compared,
-    pagesRead ? `${pagesRead} page${pagesRead === 1 ? "" : "s"} read` : "",
+    // Counted over the whole onboarding, so reading on after an answer never sets it back.
+    pagesAll ? `${fmt(pagesAll)} page${pagesAll === 1 ? "" : "s"} read` : "",
     kb?.facts.length ? `${fmt(kb.facts.length)} facts` : "",
     qlooCalls ? `${qlooCalls} Qloo call${qlooCalls === 1 ? "" : "s"}` : "",
   ];
@@ -706,7 +714,8 @@ export function Onboard({
             {lineText(ev)}
             {live && ev.summary && <small className="muted"> · {ev.summary}</small>}
             {live && <StepTimer />}
-            {!live && l.pages.length > 0 && !opened && <small className="muted"> · {l.pages.length} {sub}{l.pages.length === 1 ? "" : "s"}</small>}
+            {/* A finished site already says how many pages it read, so only the comparisons count theirs. */}
+            {!live && l.pages.length > 0 && !opened && ev.tool !== "read_website" && <small className="muted"> · {l.pages.length} {sub}{l.pages.length === 1 ? "" : "s"}</small>}
           </span>
           {more && !live && <span className="ob-caret" aria-hidden>{opened ? "▾" : "▸"}</span>}
         </button>
@@ -748,7 +757,7 @@ export function Onboard({
       </button>
       <ol className={`ob-plan-list ${planOpen ? "open" : ""}`}>
         {items.map((i) => (
-          <li key={i.id} className={`ob-plan-${i.state}`}>
+          <li key={i.id} className={`ob-plan-${i === now ? "now" : i.state}`}>
             <span className="ob-check" aria-hidden>{i.state === "done" ? "✓" : ""}</span>
             <span className="ob-plan-step">{i.step}</span>
             {i.result && i.state === "done" && <small className="muted">{i.result}</small>}
@@ -908,7 +917,7 @@ export function Onboard({
               <div className="ob-graph-reveal">{graph}</div>
             ) : (
               <GraphBuild
-                stages={buildStages({ kb, full, running, grouping, waiting: waitingOnYou, open: kb?.conflicts.filter((c) => picked[c.id] === undefined).length ?? 0, comparing: lines.some((l) => l.run === runs.current && l.ev.tool === "compare") })}
+                stages={buildStages({ kb, full, running, grouping, waiting: waitingOnYou, open: kb?.conflicts.filter((c) => picked[c.id] === undefined).length ?? 0, comparing: lines.some((l) => l.ev.tool === "compare") })}
                 counts={[
                   pagesAll ? `${fmt(pagesAll)} page${pagesAll === 1 ? "" : "s"} read` : "",
                   kept.length ? `${kept.length} file${kept.length === 1 ? "" : "s"}` : "",
@@ -949,6 +958,10 @@ export function Onboard({
 type Stage = { label: string; state: "done" | "now" | "todo" | "wait"; sub?: string };
 
 /** Where the Brand Graph's build is, from what the run has reached: read, cross-checked, written, grouped. */
+/**
+ * `comparing`: any run has compared the sources. An answer starts a new run that reads from the cache again, and the
+ * stages never step back for it: once the sources were compared, the brief is what's being written.
+ */
 function buildStages(s: { kb?: Knowledge; full: boolean; running: boolean; grouping?: string; waiting: boolean; open: number; comparing: boolean }): Stage[] {
   const at = !s.kb ? 0 : !(s.full || s.comparing) ? 1 : !s.full ? 2 : s.running || s.grouping ? 3 : 4;
   const state = (i: number): Stage["state"] => (i < at ? "done" : i > at ? "todo" : s.waiting ? "wait" : s.running || (i === 3 && !!s.grouping) ? "now" : "todo");

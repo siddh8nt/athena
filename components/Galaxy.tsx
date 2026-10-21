@@ -86,7 +86,7 @@ type Props = {
   decisions?: (CrowdDecision | undefined)[];
   /** What the agent is doing right now, while the galaxy forms. */
   step?: string;
-  /** Entities probed at the founder's question; "Ask the Analyst about this" puts a question about one in the steering box (§23.2 step 8i). */
+  /** Entities probed at the founder's question; "Ask Athena about this" puts a question about one in the steering box (§23.2 step 8i). */
   probes?: string[];
   onAsk?: (id: string, name: string) => void;
   /** The narrated line while the Analyst probes. */
@@ -393,13 +393,13 @@ function EntityCard({ g, i, at, crowdName, pinned, onClose, yours, onAsk }: { g:
         <div className="react">
           {onAsk && (
             <button type="button" className="linkish small probe-btn" onClick={onAsk}>
-              Ask the Analyst about this
+              Ask Athena about this
             </button>
           )}
           <button type="button" className="linkish small" aria-label="Close" onClick={onClose}>✕</button>
         </div>
       ) : (
-        onAsk && <span className="small muted">Click to ask the Analyst about it</span>
+        onAsk && <span className="small muted">Click to ask Athena about it</span>
       )}
     </div>
   );

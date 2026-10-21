@@ -176,7 +176,7 @@ function FitCard({ f, said, sources, slot, children }: { f: Fit; said: FitsAnswe
             </p>
           ))
         : f.reasons.map((r, i) => <p key={i} className="small">{r}</p>)}
-      {f.when && <p className="small"><strong>When</strong> {f.when}</p>}
+      {/* When to move is the Promoter's (§23.2 step 8.5l): its calendar, not the Analyst's fits. */}
       <details className="fit-params">
         <summary className="small">The six measures</summary>
         <dl>

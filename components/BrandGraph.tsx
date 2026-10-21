@@ -432,7 +432,9 @@ function ListView({ input, flash, onEdit }: { input: GraphInput; flash: Set<stri
             <h4 className="bg-label"><Swatch type={type} n={nodes[0]} /> {t.plural} <span className="bg-count">{nodes.length}</span></h4>
             <ul>
               {nodes.map((n) => {
-                const why = n.tier?.reason || (t.ring >= 2 || n.type === "city" ? reasonOf(n, edges) : undefined);
+                const reason = n.tier?.reason || (t.ring >= 2 || n.type === "city" ? reasonOf(n, edges) : undefined);
+                // A line's reason often repeats the item's own detail with who found it, which the source line below already says.
+                const why = reason && n.detail && reason.includes(n.detail) ? undefined : reason;
                 return (
                   <li key={n.id} className={flash.has(n.id) ? "flash" : ""}>
                     <div className="bg-row">

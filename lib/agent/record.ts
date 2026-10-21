@@ -11,16 +11,21 @@ export type WorkRecord = {
   pages: number;
   facts: number;
   conflicts: number;
+  /** What the sources disagreed on and what was kept: the founder's pick, or Athena's when they went with it. */
+  settled?: { about: string; kept: string; by: "you" | "athena" }[];
   secs: number;
 };
 
-export function buildRecord(lines: Line[], counts: { facts: number; conflicts: number }, secs: number): WorkRecord | undefined {
+export function buildRecord(lines: Line[], counts: { facts: number; conflicts: number }, secs: number, settled: WorkRecord["settled"] = []): WorkRecord | undefined {
   const you = lines.filter((l) => l.ev.tool === "you");
   const first = you[0];
   const steps = lines
     .filter((l) => l !== first)
     .map((l) => ({ text: l.ev.tool === "you" ? `You added: ${l.ev.why || (l.ev.found ?? []).join(", ")}` : lineText(l.ev), subs: l.pages.map((p) => lineText(p.ev)) }))
-    .filter((s) => s.text);
+    .filter((s) => s.text)
+    // An answer re-runs the intake from the cache, which says the same steps again: each is kept once, at its latest,
+    // with the fullest list of what it read (a cached re-run reads nothing new under it).
+    .flatMap((s, n, all) => (all.slice(n + 1).some((x) => x.text === s.text) ? [] : [{ ...s, subs: all.filter((x) => x.text === s.text).reduce((a, x) => (x.subs.length > a.length ? x.subs : a), s.subs) }]));
   if (!steps.length) return undefined;
   const seen = new Set<string>();
   const sources: WorkRecord["sources"] = [];
@@ -35,9 +40,11 @@ export function buildRecord(lines: Line[], counts: { facts: number; conflicts: n
     intake: { text: first?.ev.why ?? "", files: you.flatMap((l) => l.ev.found ?? []) },
     steps,
     sources,
-    pages: lines.reduce((n, l) => n + l.pages.filter((p) => p.ev.tool === "read_page").length, 0),
+    // Each page once, however many runs read it again.
+    pages: new Set(lines.flatMap((l) => l.pages.filter((p) => p.ev.tool === "read_page").map((p) => p.ev.source?.url ?? lineText(p.ev)))).size,
     facts: counts.facts,
     conflicts: counts.conflicts,
+    ...(settled?.length ? { settled } : {}),
     secs: Math.max(1, Math.round(secs)),
   };
 }

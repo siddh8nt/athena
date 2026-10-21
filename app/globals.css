@@ -837,7 +837,7 @@ a.button.big { padding: 11px 20px; font-size: 15px; font-weight: 600; }
 .bg-name { font-weight: 600; overflow-wrap: anywhere; min-width: 0; }
 .bg-tier, .bg-when { font-size: 11px; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--line); white-space: nowrap; }
 .bg-tier.watch { color: var(--muted); border-style: dashed; }
-.bg-when { color: var(--moment); border-color: currentColor; }
+.bg-when { color: var(--moment); border-color: currentColor; white-space: normal; max-width: 100%; }
 .bg-actions { margin-left: auto; display: inline-flex; gap: 12px; }
 .bg-actions button.linkish { font-size: 12px; color: var(--muted); }
 .bg-actions button.linkish:hover:not(:disabled) { color: var(--accent); }
@@ -1022,7 +1022,7 @@ span.ob-source { color: var(--muted); }
 .ob-kept-files { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding-top: 10px; border-top: 1px solid var(--line); }
 .ob-kept-files .ob-files { flex-basis: 100%; }
 
-@media (max-width: 1100px) and (min-width: 761px) {
+@media (max-width: 900px) and (min-width: 761px) {
   .ob-work { grid-template-columns: minmax(0, 1fr); grid-template-areas: "centre" "dock"; }
   .ob-work.ob-has-panel { grid-template-columns: minmax(0, 1fr) var(--panel-col, minmax(360px, 48%)); grid-template-areas: "centre panel" "dock panel"; }
   .ob-team { display: none; }
@@ -1138,7 +1138,7 @@ span.ob-source { color: var(--muted); }
 }
 @media (max-width: 900px) {
   .journey.ob-on, .journey:has(.agent-stage) { height: 100dvh; overflow: hidden; }
-  .journey-main.agent-stage { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr); }
+  .journey-main.agent-stage { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
   .agent-stage.with-panel .chat { padding-right: 0; }
   .agent-stage .chat, .journey-main.agent-stage .chat { max-height: none; min-height: 0; border-bottom: 0; }
   .agent-stage.with-panel .agent-panel-open { display: inline; }
@@ -1809,8 +1809,8 @@ input[type="checkbox"] { accent-color: var(--accent); }
 /* Every agent's chat window, Athena's onboarding one included, is clear glass (founder, 17 Oct): no milky fill and no
    maroon tint, only a faint light catch along the edges. The blur, the lens, the rim and the inner highlights above do the work. */
 .ob-work::before, .agent-stage .chat::before {
-  /* The pane itself is 20% white (founder, 17 Oct), with the light catch on top. */
-  background: linear-gradient(160deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.02) 40%, rgba(255, 255, 255, 0) 65%, rgba(255, 255, 255, 0.06) 100%), rgba(255, 255, 255, 0.2);
+  /* The pane itself is 35% white (founder: 20% on 17 Oct, 15 points more opaque on 21 Oct), with the light catch on top. */
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.02) 40%, rgba(255, 255, 255, 0) 65%, rgba(255, 255, 255, 0.06) 100%), rgba(255, 255, 255, 0.35);
   border-color: rgba(255, 255, 255, 0.5);
   /* A light softening only, with no colour boost: the character field behind stays readable through the pane, so it looks
      like glass and not like a lighter patch. The lens still bends it at the rim. */
@@ -2174,7 +2174,7 @@ button.nav-item:hover:not(:disabled) { background: rgba(255, 255, 255, 0.045); c
 @media (min-width: 901px) {
   .journey-main.agent-stage.sub-stage, .journey-main.agent-stage.sub-stage:has(.team-rail) { grid-template-columns: var(--nav-w, 232px) minmax(0, 1fr) var(--dock-w, minmax(360px, 34%)); }
 }
-.chat-dock { display: flex; flex-direction: column; min-height: 0; border-left: 1px solid var(--line-soft); background: color-mix(in srgb, var(--bg) 70%, transparent); }
+.chat-dock { display: flex; flex-direction: column; min-height: 0; border-left: 1px solid var(--line-soft); background: color-mix(in srgb, var(--bg) 85%, transparent); }
 .chat-dock > .chat { flex: 1; min-height: 0; border-right: 0; }
 .sub-stage .chat-dock .msgs { padding-left: 18px; padding-right: 18px; }
 .sub-stage .chat-dock .composer, .sub-stage .chat-dock .chat > .q-tray { width: calc(100% - 32px); }
@@ -2205,3 +2205,162 @@ button.nav-item:hover:not(:disabled) { background: rgba(255, 255, 255, 0.045); c
   .chat-dock-back { display: inline; align-self: flex-start; margin: 12px 16px 0; font-family: var(--font-caps); font-weight: 700; font-size: 12px; color: var(--muted); }
   .panel-tabs { padding-bottom: 6px; }
 }
+
+/* ── Step 8.5 b–m: the dashboard's plan, the workflow diagram, answers, Athena's plan, the chat drawer ─────── */
+.dash-sec-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.dash-sec-head h3 { margin: 0; }
+.dash-sec-head small { font-size: 12.5px; }
+
+/* The Start card: the one thing to do after onboarding. */
+.dash-start {
+  position: relative; overflow: hidden; display: flex; flex-direction: column; align-items: flex-start; gap: 10px;
+  padding: 28px 30px; border-radius: 18px; border: 1px solid color-mix(in srgb, var(--emph) 30%, var(--line));
+  background: radial-gradient(120% 140% at 100% 0%, var(--emph-soft) 0%, transparent 55%), var(--surface);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 18px 40px -28px rgba(20, 18, 15, 0.35); animation: rise 0.35s ease-out both;
+}
+.dash-start h2 { margin: 0; font-size: 36px; line-height: 1.08; max-width: 18ch; }
+.dash-start p { margin: 0; max-width: 62ch; font-size: 14.5px; line-height: 1.55; }
+.dash-start .primary { margin-top: 6px; min-width: 120px; }
+.dash-plan { gap: 12px; }
+
+/* The workflow: columns left to right, joined by a thin line; a node opens its page. */
+.wf { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(168px, 1fr); gap: 28px; overflow-x: auto; padding: 4px 2px 8px; scrollbar-width: thin; }
+.wf-col { position: relative; display: flex; flex-direction: column; justify-content: center; gap: 10px; }
+.wf-col + .wf-col::before { content: ""; position: absolute; left: -28px; top: 50%; width: 28px; height: 1px; background: var(--line); }
+.wf-col + .wf-col::after { content: ""; position: absolute; left: -5px; top: calc(50% - 3px); width: 6px; height: 6px; border-top: 1px solid var(--faint); border-right: 1px solid var(--faint); transform: rotate(45deg); }
+.wf-node {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 4px; width: 100%; min-height: 92px; text-align: left; font: inherit;
+  padding: 12px 14px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); cursor: pointer;
+  transition: border-color 140ms ease-out, box-shadow 160ms ease-out, transform 140ms var(--ease-slow, ease-out);
+}
+.wf-node:hover:not(:disabled) { background: var(--surface); border-color: color-mix(in srgb, var(--fg) 22%, var(--line)); box-shadow: 0 10px 24px -18px rgba(20, 18, 15, 0.45); }
+.wf-node:active { transform: scale(0.985); }
+.wf-node strong { font-family: var(--font-display); font-weight: 400; font-size: 19px; line-height: 1.15; letter-spacing: -0.01em; }
+.wf-node small { font-size: 12.5px; line-height: 1.4; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.wf-state { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-caps); font-weight: 800; font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--faint); }
+.wf-state .spin { width: 10px; height: 10px; margin: 0; }
+.wf-dot { width: 7px; height: 7px; border-radius: 50%; border: 1.5px solid currentColor; }
+.wf-todo, .wf-todo:hover:not(:disabled) { background: color-mix(in srgb, var(--surface) 55%, transparent); border-style: dashed; }
+.wf-running { border-color: color-mix(in srgb, var(--emph) 55%, var(--line)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--emph) 14%, transparent); }
+.wf-running .wf-state { color: var(--emph-ink); }
+.wf-paused, .wf-paused:hover:not(:disabled) { border-color: var(--accent); background: color-mix(in srgb, var(--accent-soft) 60%, var(--surface)); }
+.wf-paused .wf-state { color: var(--accent); }
+.wf-paused .wf-dot { background: var(--accent); border-color: var(--accent); animation: paused-pulse 1.6s ease-in-out infinite; }
+.wf-done .wf-state { color: var(--emph-ink); }
+.wf-done .wf-dot { background: var(--emph); border-color: var(--emph); }
+
+/* Athena's lead tile, above the six. */
+.dash-lead {
+  display: flex; align-items: flex-start; gap: 12px; width: 100%; text-align: left; font: inherit; padding: 16px 18px; border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--emph) 28%, var(--line)); background: linear-gradient(90deg, var(--emph-soft), var(--surface) 70%); color: var(--fg); cursor: pointer;
+  transition: border-color 140ms ease-out, box-shadow 160ms ease-out;
+}
+.dash-lead:hover:not(:disabled) { background: linear-gradient(90deg, var(--emph-soft), var(--surface) 70%); border-color: color-mix(in srgb, var(--emph) 50%, var(--line)); box-shadow: 0 10px 24px -18px rgba(20, 18, 15, 0.45); }
+.dash-lead .team-badge { background: var(--emph); color: #14120f; width: 26px; height: 26px; }
+.dash-lead-body { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.dash-lead-body strong { font-family: var(--font-display); font-weight: 400; font-size: 22px; line-height: 1.1; }
+.dash-lead-go { margin-top: 4px; font-family: var(--font-caps); font-weight: 700; font-size: 12px; color: var(--accent); }
+.dash-agent.dash-running { border-color: color-mix(in srgb, var(--emph) 55%, var(--line)); }
+.dash-agent.dash-running .team-badge { background: var(--emph); color: #14120f; }
+.dash-agent.dash-paused { border-color: var(--accent); }
+.dash-agent.dash-paused .team-badge { background: var(--accent); color: var(--on-accent); }
+.dash-agent.dash-done .team-badge { background: var(--emph-soft); color: var(--emph-ink); }
+.dash-agent.dash-out { background: transparent; border-style: dashed; }
+.dash-agent.dash-out .team-badge { background: var(--sunken); color: var(--faint); }
+.dash-wait { color: var(--accent); font-weight: 600; }
+
+/* The founder's answers, each editable in place. */
+.ans-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 8px; }
+.ans { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); }
+.ans-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.ans-for { font-family: var(--font-caps); font-weight: 800; font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--faint); }
+.ans-q { margin: 0; font-size: 13px; color: var(--muted); line-height: 1.4; }
+.ans-a { margin: 0; font-size: 14.5px; color: var(--fg); font-weight: 600; }
+.ans-edit { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+.ans-options { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* The Brand Knowledge Base and its file drop. */
+.dash-kb { gap: 12px; }
+.kb-drop {
+  display: flex; flex-direction: column; gap: 4px; padding: 16px 18px; border-radius: 14px; border: 1.5px dashed var(--line); background: color-mix(in srgb, var(--surface) 60%, transparent);
+  cursor: pointer; transition: border-color 140ms ease-out, background-color 140ms ease-out;
+}
+.kb-drop:hover, .kb-drop:focus-within { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); background: var(--surface); }
+.kb-drop strong { font-size: 14px; }
+
+/* Athena's plan: a section per crowd, each line cited to whose work it is. */
+.gplan { display: flex; flex-direction: column; gap: 14px; padding: 20px 22px; border-radius: 16px; border: 1px solid color-mix(in srgb, var(--emph) 28%, var(--line)); background: var(--surface); animation: rise 0.3s ease-out both; }
+.gplan-head { display: flex; flex-direction: column; gap: 6px; }
+.gplan-head h2 { margin: 0; font-size: 28px; line-height: 1.12; }
+.gplan-head p { margin: 0; }
+.gplan-pending { padding: 14px 18px; gap: 6px; border-style: dashed; background: transparent; }
+.gplan-pending p { margin: 0; }
+.gplan-stale { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.gplan-crowd { display: flex; flex-direction: column; gap: 8px; padding-top: 14px; border-top: 1px solid var(--line-soft, var(--line)); }
+.gplan-crowd h4 { margin: 0; display: flex; align-items: center; gap: 10px; font-family: var(--font-display); font-weight: 400; font-size: 21px; letter-spacing: -0.01em; text-transform: none; color: var(--fg); }
+.gplan-lines { margin: 0; display: flex; flex-direction: column; gap: 8px; }
+.gplan-lines > div { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 12px; align-items: baseline; }
+.gplan-lines dt { font-family: var(--font-caps); font-weight: 800; font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--faint); }
+.gplan-lines dd { margin: 0; font-size: 14.5px; line-height: 1.5; color: var(--fg); }
+.gplan-cite { cursor: pointer; border: 0; min-height: 0; font-family: var(--font-caps); font-weight: 700; vertical-align: 1px; white-space: nowrap; transition: background-color 140ms ease-out; }
+.gplan-cite:hover:not(:disabled) { background: color-mix(in srgb, var(--emph) 30%, var(--emph-soft)); color: var(--emph-ink); }
+.gplan-more { padding-top: 12px; border-top: 1px solid var(--line-soft, var(--line)); }
+.gplan-more h5 { margin: 0 0 6px; font-family: var(--font-caps); font-weight: 800; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.gplan-more ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
+
+/* The chat with Athena as a drawer over the dashboard; a full-screen sheet on a phone. */
+.chat-open-paused { background: var(--accent); }
+.chat-open-paused:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 85%, #000); }
+.chat-badge { display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px; border-radius: 999px; background: rgba(255, 255, 255, 0.16); font-size: 11.5px; font-weight: 700; }
+.chat-badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; animation: paused-pulse 1.6s ease-in-out infinite; }
+.chat-drawer {
+  position: fixed; top: 0; right: 0; bottom: 0; z-index: 40; width: min(460px, 100vw); display: flex; flex-direction: column; background: var(--bg);
+  border-left: 1px solid var(--line); box-shadow: -24px 0 60px -36px rgba(20, 18, 15, 0.5);
+  transform: translateX(100%); visibility: hidden; transition: transform 260ms cubic-bezier(0.2, 0.8, 0.2, 1), visibility 0s linear 260ms;
+}
+.drawer-on .chat-drawer { transform: none; visibility: visible; transition: transform 260ms cubic-bezier(0.2, 0.8, 0.2, 1), visibility 0s; }
+.chat-drawer > .chat { flex: 1; min-height: 0; border-right: 0; }
+.chat-drawer .msgs { padding-left: 18px; padding-right: 18px; }
+.chat-drawer .composer, .chat-drawer .chat > .q-tray { width: calc(100% - 32px); }
+.chat-drawer-close { align-self: flex-end; margin: 12px 16px 0; font-family: var(--font-caps); font-weight: 700; font-size: 12px; color: var(--muted); }
+.chat-scrim { position: fixed; inset: 0; z-index: 39; border: 0; padding: 0; border-radius: 0; background: rgba(20, 18, 15, 0.22); cursor: default; animation: fade-in 200ms ease-out both; }
+.chat-scrim:hover:not(:disabled) { background: rgba(20, 18, 15, 0.22); }
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+/* The panel's "Follow the run" chip, once the founder picked a tab themselves. */
+.follow-chip { flex: none; display: inline-flex; align-items: center; gap: 6px; min-height: 26px; padding: 0 12px; margin-bottom: 8px; border: 0; border-radius: 999px; background: var(--emph); color: #14120f; font-family: var(--font-caps); font-weight: 700; font-size: 11.5px; white-space: nowrap; }
+.follow-chip:hover:not(:disabled) { background: color-mix(in srgb, var(--emph) 85%, #fff); color: #14120f; }
+
+/* A question that pauses its step: highlighted, and named for the subagent it is for. */
+.question-for { margin: 0; font-family: var(--font-caps); font-weight: 800; font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); }
+.question-pauses { border-color: color-mix(in srgb, var(--emph) 60%, var(--line)); box-shadow: inset 3px 0 0 var(--emph), 0 1px 2px rgba(0, 0, 0, 0.04), 0 12px 30px -20px rgba(20, 18, 15, 0.4); }
+.q-tray .question-pauses { box-shadow: inset 3px 0 0 var(--emph), 0 1px 2px rgba(0, 0, 0, 0.04), 0 10px 28px -18px rgba(20, 18, 15, 0.3); }
+
+/* A subagent's step trail under Athena's handoff line. */
+.run-trail { list-style: none; display: flex; flex-direction: column; gap: 6px; margin: -2px 0 4px 36px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); animation: rise 0.25s ease-out both; }
+.run-trail-live { border-color: color-mix(in srgb, var(--emph) 45%, var(--line)); }
+.run-trail-head { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 13px; }
+.run-trail-head .team-badge { flex: none; width: 20px; height: 20px; font-size: 10.5px; background: var(--emph-soft); color: var(--emph-ink); }
+.run-trail-live .run-trail-head .team-badge { background: var(--emph); color: #14120f; }
+.run-trail-step { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.run-trail-acts { display: flex; gap: 14px; padding-left: 28px; }
+@media (prefers-reduced-motion: reduce) { .dash-start, .gplan, .run-trail, .chat-drawer, .chat-scrim, .wf-paused .wf-dot, .chat-badge::before { animation: none; transition: none; } }
+
+@media (max-width: 900px) {
+  .dash-start { padding: 22px 18px; }
+  .dash-start h2 { font-size: 28px; }
+  .wf { grid-auto-flow: row; grid-auto-columns: auto; gap: 18px; overflow: visible; }
+  .wf-col { gap: 8px; }
+  .wf-col + .wf-col::before { left: 22px; top: -18px; width: 1px; height: 18px; }
+  .wf-col + .wf-col::after { left: 19px; top: -6px; transform: rotate(135deg); }
+  .wf-node { min-height: 0; }
+  .chat-drawer { width: 100vw; border-left: 0; box-shadow: none; z-index: 50; }
+  .chat-scrim { display: none; }
+  .chat-badge { display: none; }
+  .gplan { padding: 16px; }
+  .gplan-head h2 { font-size: 24px; }
+  .gplan-lines > div { grid-template-columns: 1fr; gap: 2px; }
+  .run-trail { margin-left: 0; }
+  .ans-list { grid-template-columns: 1fr; }
+}
+.spec-draft { margin-top: 4px; font-size: 13px; }

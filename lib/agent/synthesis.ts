@@ -39,7 +39,9 @@ function linesFor(works: PlanInput["works"], aim: string, isWinFirst: boolean): 
     if (shops.length) push("through", "rep", `Shops: ${names(shops)}`);
     const partners = of(works.matchmaker, ["partner", "podcast"]);
     if (partners.length) push("through", "matchmaker", `Partners: ${names(partners)}`);
-    const online = of(works.promoter, ["audience", "creator"]);
+    const creators = of(works.matchmaker, ["creator"]);
+    if (creators.length) push("through", "matchmaker", `Creators: ${names(creators)}`);
+    const online = of(works.promoter, ["audience"]);
     if (online.length) push("through", "promoter", `Online: ${names(online)}`);
   }
   const scout = works.scout;

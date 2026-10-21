@@ -940,7 +940,7 @@ function SpecialistPanel({ id, j, team, live, alone, onMark, onHandoff, onHooks,
         <p className="small muted">{specialist(id).role}</p>
       </header>
       {id === "navigator" && crowds.some((c) => c.cities.length) && <CrowdGeography crowds={crowds} lit={lit} onLight={setLit} />}
-      {id === "promoter" && calendar && <When calendar={calendar} name={(cid) => crowds.find((c) => c.id === cid)?.name} />}
+      {id === "promoter" && calendar && !w?.page && <When calendar={calendar} name={(cid) => crowds.find((c) => c.id === cid)?.name} />}
       {step && (
         <RunProgress who={`The ${nameOf(id)}`} current={step} steps={[]} />
       )}

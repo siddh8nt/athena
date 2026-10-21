@@ -10,14 +10,15 @@ import type { MarketsEnrichers, Neighbourhood } from "@/lib/blocks/markets";
 import type { VenuePick } from "@/lib/blocks/places";
 import type { PartnerCard, PartnersData } from "@/lib/blocks/partners";
 import { message, positionAgainst, type MessageData, type PositionCard } from "@/lib/blocks/message";
-import { moments, type DateLookup, type Moment, type ShowLookup } from "@/lib/blocks/moments";
+import type { DateLookup, Moment, ShowLookup } from "@/lib/blocks/moments";
 import type { HookEvidence, Hooks } from "./hooks";
 import type { Look, LookEvidence } from "./looks";
 import { by, oneLineEvidence, readCrowd, scoutPage, writeCrowd, type CrowdInput } from "./scout";
 import { mergePage, type CrowdPage, type CrowdTier } from "@/lib/team/page";
-import { isStrong, readCities, roles, verdict, VERDICT_LABEL, type NavRead } from "./navigator";
-import { budgetOf, contactOf, entryRoute, FEW_IN_HOOD, FITS, offerFor, readShops, shopCities, wholesaleOf, type RepRead, type Shop, type ShopSite } from "./rep";
-import { onlineStop, type OnlineData } from "@/lib/stops/online";
+import { isStrong, readCities, roles, verdict, VERDICT_LABEL, type CityRead, type NavRead } from "./navigator";
+import { budgetOf, contactOf, crowdCities, entryRoute, FEW_IN_HOOD, FITS, offerFor, readShops, shopCities, wholesaleOf, type RepRead, type Shop, type ShopSite } from "./rep";
+import { FORMAT_LABEL, feeLine, launchOf, promoCrowds, readPromo, topEvent, type Audience, type Inquiry, type PromoCity, type PromoEvent, type PromoRead, type WebEvent, type WebMoment } from "./promoter";
+import type { OnlineData } from "@/lib/stops/online";
 import { contactLine, fitOf, matchCrowds, offerOf, ONE_WAY, readMatches, topMatch, type Creator, type FoundCreator, type MatchCrowd, type MatchRead, type Partner, type PartnerSite, type Rate, type YouTubeChannel, type BrandJudgement } from "./matchmaker";
 import { nameSim } from "@/lib/methods/names";
 import type { RetailCategory, RetailerPick } from "@/lib/stops/retailers";
@@ -87,6 +88,12 @@ export type TeamEnrich = {
     sites?: (brands: Partner[]) => Promise<Map<string, PartnerSite>>;
     rates?: (bands: { kind: Rate["kind"]; band: string }[]) => Promise<Rate[]>;
   };
+  /** The Promoter's grounded searches (§23.5 h): events per crowd and city, cultural moments, online audiences. */
+  promo?: {
+    findEvents?: (crowd: { name: string; loves: string[] }, city: string, brand: { name: string; product: string }) => Promise<WebEvent[]>;
+    culturalMoments?: (crowd: { name: string; loves: string[] }, brand: { name: string; product: string }) => Promise<WebMoment[]>;
+    onlineAudiences?: (crowd: { name: string; loves: string[] }, brand: { name: string; product: string }) => Promise<Omit<Audience, "id" | "crowds">[]>;
+  };
 };
 
 /**
@@ -148,6 +155,10 @@ export type TeamCtx = {
     match?: MatchRead;
     /** Asks written this session, by partner item id, shown in the partner's detail. */
     ask?: Record<string, { subject: string; body: string }>;
+    /** The Promoter's read (§23.5 h): events, moments and online audiences for every crowd. */
+    promo?: PromoRead;
+    /** Inquiries written this session, by event id, shown in the event's detail. */
+    inquiry?: Record<string, Inquiry>;
   };
   outcomes: Outcome[];
   /** Probes the Analyst ran this session, whether the last one changed the crowds, and whether one ran with fewer than three crowds (§23.5 c). */
@@ -790,71 +801,77 @@ export const PLAYS: Tool[] = [
 
   // ---- Promoter --------------------------------------------------------------------------------------------------
   {
-    name: "find_moments",
+    name: "read_events",
     for: ["promoter"],
     description:
-      "Dated events the crowd turns up for in the city: its artists' shows (Ticketmaster) and its festivals (dates from the web, each with the page that states it). An event under 30 days away is too close to prepare for: it moves to the same act's next date, else the next event. Never estimates a date. 2 Qloo calls. Needs a city.",
-    properties: { city: { type: "string", description: "A US city; the chosen one when empty." } },
-    qloo: () => 2,
-    maxMs: 60_000,
-    when: once("find_moments", (t) => {
-      const c = t.city ?? (t.brand.homeMetro ? { name: metroById(t.brand.homeMetro).name } : undefined);
-      return c ? { args: {}, why: `Finding the events your crowd turns up for in ${c.name}` } : skip("events need a city first", "a city");
-    }),
+      "Reads the events, moments and online audiences for all three crowds. Per crowd, in the cities the Navigator gave it: its Qloo artists' shows (Ticketmaster), the festivals Qloo places there (dated from the page that states the date), " +
+      "and markets, festivals, races, fairs and expos a web search reads from their own pages, each with its format (booth, pop-up, sampling, sponsorship) and its vendor fee only when the page publishes it. " +
+      "An event under 30 days away, or past its application deadline, moves to its next published date, else it's left out with the reason. Never estimates a date or a fee. " +
+      "Also: the US retail calendar, each crowd's cultural moments, the founder's own launch, and the subreddits, communities, newsletters and hashtags each crowd reads. About 3 + 3 per city Qloo calls. " +
+      "Events read earlier this session come back at once with no Qloo calls; fresh: true reads them again, only when the founder wants more or different events.",
+    properties: { fresh: { type: "boolean", description: "Read the events again instead of using the ones read earlier this session." } },
+    qloo: (a, s) => (s.team && keptPromo(s.team, a, s) ? 0 : 30),
+    maxMs: 150_000,
+    when: once("read_events", (t, s) =>
+      keptPromo(t, {}, s)
+        ? { args: {}, why: "Using the events found earlier this session" }
+        : scoutCrowds(t, s).length
+          ? { args: {}, why: `Finding the events each crowd turns up for${t.found.navigator ? ` in ${list(promoCities(t).map((c) => c.name))}` : ""}` }
+          : skip("events need the crowds first", "the crowds"),
+    ),
     async run(a, { qloo, state, status }) {
       const t = state.team;
-      if (!t) return none("needs the team's brand");
-      const typed = str(a.city, 80);
-      const r = typed ? await resolveTyped(typed).catch(() => undefined) : undefined;
-      const target = r?.status === "ok" ? r.id : (t.city?.id ?? t.brand.homeMetro);
-      if (!target) return none("events need a city first");
-      const m = await moments(blockCtx(t, qloo, status, { target }), { shows: t.enrich.shows, festivalDate: t.enrich.festivalDate });
-      const all = m.data.moments.filter((x) => x.date);
-      // The lead time has passed: the same act's later date, else the next event takes its place.
-      const moved: string[] = [];
-      const kept: Moment[] = [];
-      for (const x of all) {
-        if (!x.soon) {
-          if (!kept.includes(x)) kept.push(x);
-          continue;
-        }
-        const later = all.find((y) => y !== x && !y.soon && y.qlooId === x.qlooId);
-        moved.push(later ? `${x.name} is too close to prepare for; moved to its ${later.date} date` : `${x.name} is too close to prepare for; moved on to the next event`);
-        if (later && !kept.includes(later)) kept.push(later);
-      }
-      const events = applyOutcomes(kept.map((x) => ({ m: x, id: itemId("event", x.name), kind: "event", group: x.kind })), t.outcomes, "promoter").items.map((x) => x.m);
-      t.found.moments = events;
-      const city = metroById(target).name;
-      if (!events.length)
-        return { summary: `no dated events ahead in ${city} yet${moved.length ? `; ${moved.length} too close to prepare for` : ""}`, data: { city, artists: m.data.artists.slice(0, 5).map((x) => x.name), moved }, status: "empty" };
-      return {
-        summary: `${events.length} dated events in ${city}${moved.length ? `; ${moved[0]}` : ""}`,
-        data: { city, events: events.slice(0, 8).map((x) => ({ name: x.name, kind: x.kind, date: x.date, venue: x.venue, source: x.source, site: x.site, act: x.qlooName })), moved },
-        items: events.slice(0, 8).map((x) => item("event", x.name, `${x.kind === "show" ? `${x.qlooName}, an artist your crowd loves` : "A festival your crowd loves"}${x.date ? `, on ${dayOf(x.date)}` : ""}${x.site ? ` (${x.site})` : ""}`, { group: x.kind, detail: x.venue, ref: x.qlooId })),
+      const crowds = t ? scoutCrowds(t, state) : [];
+      if (!t || !crowds.length) return none("needs the crowds first");
+      const again = keptPromo(t, a, state);
+      const cities = promoCities(t);
+      if (!again && !cities.length) return none("events need a city first");
+      const fresh = () => {
+        const nav = t.found.navigator;
+        const worked = nav ? shopCities(nav) : [];
+        const metros = nav ? crowdCities(nav, worked) : new Map<string, string[]>();
+        return readPromo(qloo, promoCrowds(crowds, metros, cities.map((c) => c.metroId)), {
+          brand: { name: t.brand.name, product: t.brand.product },
+          budget: budgetOf(t.answers),
+          launch: launchOf(t.answers),
+          cities,
+          hosts: t.found.hosts ?? [],
+          status,
+          shows: t.enrich.shows,
+          festivalDate: t.enrich.festivalDate,
+          ...(t.enrich.promo ?? {}),
+          // Back with time to spare for the inquiry and the page: a lookup still running then is left out.
+          until: Date.now() + 95_000,
+        });
       };
-    },
-  },
-  {
-    name: "online_audiences",
-    for: ["promoter"],
-    description: "The online audiences and creators the crowd follows: creators (with their role) and the audience groups it over-indexes on. Needs no city. About 4 Qloo calls.",
-    properties: {},
-    qloo: () => 4,
-    when: once("online_audiences", () => ({ args: {}, why: "Finding the creators and online audiences your crowd follows" })),
-    async run(_a, { qloo, state }) {
-      const t = state.team;
-      const crowd = t && aimed(t, state);
-      if (!t || !crowd) return none("needs the crowds first");
-      const o = await onlineStop(qloo, crowd.signal.map((s) => s.id).slice(0, 10));
-      t.found.online = o;
-      const creators = applyOutcomes(o.creators.map((c) => ({ ...c, id: itemId("creator", c.name), kind: "creator", group: c.role })), t.outcomes, "promoter").items;
+      const read = again ?? (await fresh());
+      t.found.promo = read;
+      const events = promoEvents(t);
+      const name = (id: string) => read.crowds.find((c) => c.id === id)?.name ?? id;
+      const shared2 = events.filter((e) => e.crowds.length > 1);
+      const fee = events.filter((e) => e.fee).length;
+      const own = read.moments.find((m) => m.kind === "own");
+      if (!events.length && !read.audiences.length)
+        return { summary: `no dated event with time to prepare in ${list(read.cities.map((c) => c.name))} yet${read.moved.length ? `; ${plural(read.moved.length, "event")} too close to prepare for` : ""}`, data: { moved: read.moved, limits: read.limits }, status: "empty" };
       return {
-        summary: `${creators.slice(0, 3).map((c) => c.name).join(", ") || "no creators yet"}${o.interests.length ? `; audiences: ${o.interests.slice(0, 2).map((i) => i.name).join(", ")}` : ""}`,
-        data: { creators: creators.slice(0, 8).map((c) => ({ name: c.name, role: c.role })), audiences: o.interests.slice(0, 6).map((i) => i.name) },
-        status: creators.length || o.interests.length ? "ok" : "empty",
+        summary:
+          `${again ? "From the events found earlier this session: " : ""}${plural(events.length, "event")} in ${list(read.cities.map((c) => c.name))}${shared2.length ? `, ${shared2.length} for two or three crowds` : ""}` +
+          `${events.length ? `, ${fee} with a published fee` : ""}; ${plural(read.audiences.length, "online place")}${read.moved.length ? `; ${plural(read.moved.length, "event")} moved or left out for lead time` : ""}`,
+        data: {
+          budget: read.budget,
+          launch: own ? { date: own.date } : read.launch.window ? { window_days: read.launch.window } : "no date given",
+          crowds: read.crowds.map((c) => ({ crowd: c.name, tier: c.tier, cities: c.metros.map((m) => read.cities.find((x) => x.metroId === m)?.name ?? m), events: events.filter((e) => e.crowds.includes(c.id)).length })),
+          events: events.slice(0, 15).map((e) => ({ name: e.name, kind: e.kind, date: e.date, source: e.site, city: e.city, neighbourhood: e.hood?.name, crowds: e.crowds.map(name), formats: e.formats.map((f) => FORMAT_LABEL[f]), fee: feeLine(e), apply_by: e.applyBy, moved: e.moved?.reason })),
+          moments: read.moments.slice(0, 10).map((m) => ({ name: m.name, date: m.date, kind: m.kind })),
+          online: read.audiences.slice(0, 10).map((x) => ({ name: x.name, kind: x.kind, how: x.how, crowds: x.crowds.map(name) })),
+          hosts: read.hosts.slice(0, 6).map((h) => h.name),
+          moved: read.moved,
+          limits: read.limits,
+        },
+        status: "ok",
         items: [
-          ...creators.slice(0, 6).map((c) => item("creator", c.name, `A ${c.role} your crowd follows`, { group: c.role, ref: c.id })),
-          ...o.interests.slice(0, 4).map((i) => item("audience", i.name, "An online audience your crowd over-indexes on", { group: "audience", ref: i.id })),
+          ...events.slice(0, 10).map((e) => item("event", e.name, `${e.why}, on ${dayOf(e.date)} (${e.site})`, { group: e.kind, detail: [e.venue, e.city, feeLine(e)].filter(Boolean).join(" · "), ref: e.qlooId })),
+          ...read.audiences.slice(0, 5).map((x) => item("audience", x.name, x.why || x.how, { group: x.kind, detail: x.how })),
         ],
       };
     },
@@ -862,15 +879,29 @@ export const PLAYS: Tool[] = [
   {
     name: "draft_inquiry",
     for: ["promoter"],
-    description: "A short first inquiry to one event's organisers about a stand or a tasting, opening on what both crowds love; every name checked against the evidence. Nothing is sent. 0 Qloo calls.",
-    properties: { event: { type: "string", description: "The event's name; the top one when empty." } },
-    qloo: () => 0,
-    when: once("draft_inquiry", (t) => (t.found.moments?.length ? { args: {}, why: `Writing the inquiry to ${t.found.moments[0].name}` } : undefined)),
+    description: "A short first inquiry to one event's organisers about a booth, a sampling table or a sponsorship, opening on what both crowds love; every name checked against the evidence. Nothing is sent. 0–1 Qloo calls.",
+    properties: { event: { type: "string", description: "The event's name, from read_events; the top one when empty." } },
+    qloo: () => 1,
+    when: once("draft_inquiry", (t) => {
+      const e = t.found.promo && topEvent({ events: promoEvents(t) });
+      return e ? { args: {}, why: `Writing the inquiry to ${e.name}` } : undefined;
+    }),
     async run(a, { qloo, state }) {
       const t = state.team;
-      const e = t?.found.moments?.find((x) => x.name === str(a.event, 120)) ?? t?.found.moments?.[0];
+      const events = t?.found.promo ? promoEvents(t) : [];
+      const e = events.find((x) => x.name === str(a.event, 120)) ?? topEvent({ events });
       if (!t || !e) return none("needs an event first");
-      return drafted(t, qloo, { kind: "event", name: e.name, tags: [], reasons: [e.kind === "show" ? `${e.qlooName} is an artist your crowd loves` : "a festival your crowd loves"] });
+      const r = await drafted(t, qloo, {
+        kind: "event",
+        name: e.name,
+        neighbourhood: e.hood?.name,
+        tags: [],
+        reasons: [e.why, `on ${dayOf(e.date)}`],
+        offer: e.kind === "show" ? `a sampling table near ${e.venue ?? "the venue"}` : `a ${e.formats.map((f) => FORMAT_LABEL[f].toLowerCase()).join(" or ")}; ${feeLine(e)}`,
+      });
+      const d = r.data as { subject?: string; body?: string } | undefined;
+      if (d?.body) t.found.inquiry = { ...t.found.inquiry, [e.id]: { subject: d.subject ?? "", body: d.body } };
+      return r;
     },
   },
 
@@ -912,6 +943,29 @@ export const PLAYS: Tool[] = [
     },
   },
 ];
+
+/** The cities the Promoter works: the Navigator's worked cities, else home. */
+function promoCities(t: TeamCtx): (PromoCity & { read?: CityRead })[] {
+  const nav = t.found.navigator;
+  if (nav) return shopCities(nav).map((c) => ({ metroId: c.metroId, name: c.name, yours: c.yours, read: c }));
+  const home = t.brand.homeMetro ? metroById(t.brand.homeMetro) : undefined;
+  return home ? [{ metroId: home.id, name: home.name, yours: true }] : [];
+}
+
+/** The events read earlier this session, when they cover the same crowds and cities and no fresh read was asked for. */
+function keptPromo(t: TeamCtx, a: Record<string, unknown>, s?: AgentState): PromoRead | undefined {
+  const read = t.found.promo;
+  if (!read || a.fresh === true) return undefined;
+  const crowds = scoutCrowds(t, s).every(({ crowd }) => read.crowds.some((c) => c.id === crowd.id));
+  const cities = promoCities(t).every((c) => read.cities.some((x) => x.metroId === c.metroId));
+  return crowds && cities ? read : undefined;
+}
+
+/** The Promoter's events, skipped ones left out; the calendar on its page keeps every one. */
+function promoEvents(t: TeamCtx): PromoEvent[] {
+  const skipped = new Set(latest(t.outcomes).filter((o) => o.agent === "promoter" && o.mark === "no").map((o) => o.item));
+  return (t.found.promo?.events ?? []).filter((e) => !skipped.has(e.id));
+}
 
 /** The partners read earlier this session, when they cover the same crowds and no fresh read was asked for. */
 function keptMatch(t: TeamCtx, a: Record<string, unknown>, s?: AgentState): MatchRead | undefined {

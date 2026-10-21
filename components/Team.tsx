@@ -14,7 +14,7 @@ import { fromCity, fromWork, type Handoff } from "@/lib/agent/handoffs";
 import { resetFrom } from "@/lib/agent/workflow";
 import { latest, staleRuns, whatsWorking } from "@/lib/agent/outcomes";
 import { nodesAdded } from "@/lib/graph/types";
-import { MARKS, MARK_LABEL, type AgentStatus, type Answer, type Goal, type Mark, type Route, type TeamEvent, type TeamState, type Work, type WorkItem } from "@/lib/team/types";
+import { MARKS, MARK_LABEL, markLabel, marksFor, type AgentStatus, type Answer, type Goal, type Mark, type Route, type TeamEvent, type TeamState, type Work, type WorkItem } from "@/lib/team/types";
 import { pacer } from "@/lib/stream/pace";
 import { withHooks, type Line as PageLine } from "@/lib/team/page";
 import { CrowdTabs } from "./CrowdTabs";
@@ -762,9 +762,9 @@ function Result({ work, item, mark, team, alone, onMark, onHandoff }: { work: Wo
       <div className="spec-result-foot">
         {MARKABLE.has(item.kind) && (
           <span className="spec-marks" role="group" aria-label={`What happened with ${item.name}`}>
-            {MARKS.map((m) => (
+            {marksFor(work.agent).map((m) => (
               <button key={m} type="button" className={mark === m ? "on" : ""} aria-pressed={mark === m} onClick={() => onMark(m)}>
-                {MARK_LABEL[m]}
+                {markLabel(m, work.agent)}
               </button>
             ))}
           </span>
@@ -831,7 +831,7 @@ function HowWeKnow({ work, item, cited, calls, team, alone }: { work: Work; item
 export function WhatsWorking({ team, graphRev, busy, onRefresh }: { team: TeamState; graphRev: number; busy: boolean; onRefresh: () => void }) {
   const o = whatsWorking(team);
   const stale = staleRuns(team, graphRev);
-  const marked = o.counts.pitched + o.counts.yes + o.counts.no + o.counts.no_reply;
+  const marked = MARKS.reduce((n, m) => n + o.counts[m], 0);
   if (!marked && !stale.length) return null;
   return (
     <section className="card working">

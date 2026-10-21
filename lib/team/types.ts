@@ -10,6 +10,7 @@ import type { CrowdPage } from "./page";
 import type { SavedNav } from "@/lib/agent/navigator";
 import type { RepRead } from "@/lib/agent/rep";
 import type { MatchRead } from "@/lib/agent/matchmaker";
+import type { PromoRead } from "@/lib/agent/promoter";
 
 // The team as the client sees it (PRD §23.2 step 8): goals, each specialist's work, and the founder's outcome marks.
 // Pure types, client-safe.
@@ -65,16 +66,21 @@ export type Work = {
   /** What the team learnt that others can use: the city chosen, the crowd to aim at. */
   /** `nav`: the Navigator's read, so a later run's Rep and Promoter work the same cities (§23.5 i). */
   /** `match`: the Matchmaker's read, so an ask works from the partners already found (§23.5 g). */
-  shared?: { city?: { id: string; name: string }; crowd?: string; nav?: SavedNav; rep?: RepRead; pitch?: Record<string, { subject: string; body: string }>; match?: MatchRead; ask?: Record<string, { subject: string; body: string }> };
+  shared?: { city?: { id: string; name: string }; crowd?: string; nav?: SavedNav; rep?: RepRead; pitch?: Record<string, { subject: string; body: string }>; match?: MatchRead; ask?: Record<string, { subject: string; body: string }>; promo?: PromoRead; inquiry?: Record<string, { subject: string; body: string }> };
   /** Its page (§23.5 b): a tab per crowd and Across all three; saved with the work, so others reuse it. */
   page?: CrowdPage;
   /** How the run decided: the model, or code's evidence rules when the model wasn't there. */
   by: "agent" | "rules";
 };
 
-export const MARKS = ["pitched", "yes", "no", "no_reply"] as const;
+export const MARKS = ["pitched", "yes", "no", "no_reply", "went"] as const;
 export type Mark = (typeof MARKS)[number];
-export const MARK_LABEL: Record<Mark, string> = { pitched: "Pitched", yes: "Yes", no: "No", no_reply: "No reply" };
+export const MARK_LABEL: Record<Mark, string> = { pitched: "Pitched", yes: "Yes", no: "No", no_reply: "No reply", went: "Went" };
+/** The Promoter's events are applied for, booked, gone to or skipped (§23.5 h): the same marks, its own words. */
+export const PROMO_LABEL: Record<Mark, string> = { pitched: "Applied", yes: "Booked", went: "Went", no: "Skipped", no_reply: "No reply" };
+/** The marks a subagent's results take: "Went" is the Promoter's alone. */
+export const marksFor = (agent?: string): Mark[] => (agent === "promoter" ? ["pitched", "yes", "went", "no"] : MARKS.filter((m) => m !== "went"));
+export const markLabel = (m: Mark, agent?: string) => (agent === "promoter" ? PROMO_LABEL[m] : MARK_LABEL[m]);
 
 export type Outcome = { item: string; agent: SpecialistId; kind: string; name: string; group?: string; mark: Mark; at: number };
 

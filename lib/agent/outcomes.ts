@@ -10,7 +10,7 @@ export const itemId = (kind: string, name: string) => `${kind}:${name.toLowerCas
 const plural = (n: number, w: string) => (n === 1 ? w : /(s|sh|ch|x)$/.test(w) ? `${w}es` : /[^aeiou]y$/.test(w) ? `${w.slice(0, -1)}ies` : `${w}s`);
 const WORDS = ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"];
 const count = (n: number) => WORDS[n] ?? String(n);
-const SAID: Record<Mark, string> = { yes: "said yes", no: "said no", no_reply: "didn't reply", pitched: "pitched, no answer yet" };
+const SAID: Record<Mark, string> = { yes: "said yes", no: "said no", no_reply: "didn't reply", pitched: "pitched, no answer yet", went: "went" };
 
 /** The latest mark for each result: a later mark replaces an earlier one. */
 export function latest(outcomes: Outcome[]): Outcome[] {
@@ -19,13 +19,13 @@ export function latest(outcomes: Outcome[]): Outcome[] {
   return [...by.values()];
 }
 
-type Tally = { group: string; yes: number; no: number; no_reply: number; pitched: number };
+type Tally = { group: string; yes: number; no: number; no_reply: number; pitched: number; went: number };
 
 function tally(outcomes: Outcome[]): Tally[] {
   const by = new Map<string, Tally>();
   for (const o of latest(outcomes)) {
     const g = o.group ?? o.kind;
-    const t = by.get(g) ?? { group: g, yes: 0, no: 0, no_reply: 0, pitched: 0 };
+    const t = by.get(g) ?? { group: g, yes: 0, no: 0, no_reply: 0, pitched: 0, went: 0 };
     t[o.mark]++;
     by.set(g, t);
   }
@@ -36,7 +36,7 @@ function tally(outcomes: Outcome[]): Tally[] {
 export function outcomeLine(outcomes: Outcome[], agent?: SpecialistId): string {
   const mine = outcomes.filter((o) => !agent || o.agent === agent);
   const parts = tally(mine).flatMap((t) =>
-    (["no", "yes", "no_reply"] as Mark[]).filter((m) => t[m]).map((m) => ({ n: t[m], text: `${count(t[m])} ${plural(t[m], t.group)} ${SAID[m]}` })),
+    (["no", "yes", "went", "no_reply"] as Mark[]).filter((m) => t[m]).map((m) => ({ n: t[m], text: `${count(t[m])} ${plural(t[m], t.group)} ${SAID[m]}` })),
   );
   return parts
     .sort((a, b) => b.n - a.n)
@@ -47,7 +47,7 @@ export function outcomeLine(outcomes: Outcome[], agent?: SpecialistId): string {
 
 /** Each group's lean from the marks: positive when it says yes, negative when it says no or doesn't reply. */
 export function leanings(outcomes: Outcome[], agent?: SpecialistId): Map<string, number> {
-  return new Map(tally(outcomes.filter((o) => !agent || o.agent === agent)).map((t) => [t.group, t.yes - t.no - 0.5 * t.no_reply]));
+  return new Map(tally(outcomes.filter((o) => !agent || o.agent === agent)).map((t) => [t.group, t.yes + t.went - t.no - 0.5 * t.no_reply]));
 }
 
 /**
@@ -74,7 +74,7 @@ export function patterns(outcomes: Outcome[]): string[] {
     if (!ch || o.mark === "pitched") continue;
     const t = by.get(ch) ?? { yes: 0, heard: 0 };
     t.heard++;
-    if (o.mark === "yes") t.yes++;
+    if (o.mark === "yes" || o.mark === "went") t.yes++;
     by.set(ch, t);
   }
   const rows = [...by.entries()].map(([ch, t]) => ({ ch, ...t, rate: t.yes / t.heard }));
@@ -119,7 +119,7 @@ export type Overview = { lines: string[]; best: { name: string; agent: string }[
 /** The one "What's working" overview: the marks so far, what said yes, and the patterns. */
 export function whatsWorking(team: TeamState): Overview {
   const all = latest(team.outcomes);
-  const counts = { pitched: 0, yes: 0, no: 0, no_reply: 0 } as Record<Mark, number>;
+  const counts = { pitched: 0, yes: 0, no: 0, no_reply: 0, went: 0 } as Record<Mark, number>;
   for (const o of all) counts[o.mark]++;
   const lines = [
     ...patterns(all),
@@ -128,5 +128,5 @@ export function whatsWorking(team: TeamState): Overview {
       return l ? [`${s.name}: ${l}.`] : [];
     }),
   ];
-  return { lines, best: all.filter((o) => o.mark === "yes").slice(-5).map((o) => ({ name: o.name, agent: nameOf(o.agent) })), counts };
+  return { lines, best: all.filter((o) => o.mark === "yes" || o.mark === "went").slice(-5).map((o) => ({ name: o.name, agent: nameOf(o.agent) })), counts };
 }

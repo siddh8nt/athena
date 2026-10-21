@@ -15,6 +15,7 @@ import { PLAYS, aimed, yoursOf, type TeamCtx } from "./plays";
 import { navigatorPage, saveNav, type BackFill } from "./navigator";
 import { repPage } from "./rep";
 import { matchPage } from "./matchmaker";
+import { promoFill, promoterPage } from "./promoter";
 import type { CrowdPage } from "@/lib/team/page";
 import { SPECIALISTS, nameOf, specialist, waitingOn, type SpecialistId } from "./specialists";
 import { GOALS, checkCustom, checkGoals, customQuestion, proposeGoals, teamFor, teamLine, type GoalFacts } from "./goals";
@@ -348,12 +349,11 @@ function winFirst(s: AgentState): CrowdCard | undefined {
 /** The Navigator's page from its read, with the shops the Rep found and the moments the Promoter found filled in (§23.5 i). */
 function navigatorPageOf(t: TeamCtx): CrowdPage | undefined {
   if (!t.found.navigator) return undefined;
-  const city = t.city?.id;
   const shops = (t.found.rep?.shops ?? []).filter((s) => !s.stocked);
   const metros = [...new Set(shops.map((s) => s.metroId))];
   const fill: BackFill = {
     ...(metros.length ? { venues: metros.map((metroId) => ({ metroId, points: shops.filter((s) => s.metroId === metroId).map((s) => ({ name: s.name, lat: s.lat, lon: s.lon, neighbourhood: s.hood ?? s.neighbourhood })) })) } : {}),
-    ...(city && t.found.moments?.length ? { moments: { metroId: city, names: t.found.moments.slice(0, 8).map((m) => m.name) } } : {}),
+    ...(t.found.promo && promoFill(t.found.promo).length ? { moments: promoFill(t.found.promo) } : {}),
   };
   return navigatorPage(t.found.navigator, yoursOf(t), { channel: t.brand.channel, fill, outcomes: latest(t.outcomes) });
 }
@@ -484,7 +484,8 @@ export async function runSpecialist(r: SpecialistInput): Promise<Work | undefine
     ...(id === "navigator" && navigatorPageOf(t) ? { page: navigatorPageOf(t) } : {}),
     ...(id === "rep" && t.found.rep ? { page: repPage(t.found.rep, { outcomes: latest(t.outcomes), pitches: t.found.pitch, at: Date.now() }) } : {}),
     ...(id === "matchmaker" && t.found.match ? { page: matchPage(t.found.match, { outcomes: latest(t.outcomes), asks: t.found.ask, at: Date.now() }) } : {}),
-    shared: id === "navigator" && (t.city || t.found.navigator) ? { ...(t.city ? { city: t.city } : {}), ...(t.found.navigator ? { nav: saveNav(t.found.navigator) } : {}) } : id === "rep" && t.found.rep ? { rep: t.found.rep, ...(t.found.pitch ? { pitch: t.found.pitch } : {}) } : id === "matchmaker" && t.found.match ? { match: t.found.match, ...(t.found.ask ? { ask: t.found.ask } : {}) } : id === "scout" && t.next ? { crowd: t.next.name } : id === "analyst" && t.crowd ? { crowd: t.crowd.name } : undefined,
+    ...(id === "promoter" && t.found.promo ? { page: promoterPage(t.found.promo, { outcomes: latest(t.outcomes), inquiries: t.found.inquiry, at: Date.now() }) } : {}),
+    shared: id === "navigator" && (t.city || t.found.navigator) ? { ...(t.city ? { city: t.city } : {}), ...(t.found.navigator ? { nav: saveNav(t.found.navigator) } : {}) } : id === "rep" && t.found.rep ? { rep: t.found.rep, ...(t.found.pitch ? { pitch: t.found.pitch } : {}) } : id === "matchmaker" && t.found.match ? { match: t.found.match, ...(t.found.ask ? { ask: t.found.ask } : {}) } : id === "promoter" && t.found.promo ? { promo: t.found.promo, ...(t.found.inquiry ? { inquiry: t.found.inquiry } : {}) } : id === "scout" && t.next ? { crowd: t.next.name } : id === "analyst" && t.crowd ? { crowd: t.crowd.name } : undefined,
   };
   if (id === "analyst" && t.ranked) t.ranked = { ...t.ranked, answer: { headline: done.headline, reasons: done.claims.map((c) => ({ crowd: "", text: c.text, sources: c.sources })), assumptions: [] }, sources: done.sources };
   r.send({ type: "work", agent: id, work: done });

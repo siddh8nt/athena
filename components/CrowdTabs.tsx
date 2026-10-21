@@ -5,8 +5,8 @@ import { createPortal } from "react-dom";
 import { itemId, latest } from "@/lib/agent/outcomes";
 import type { Handoff } from "@/lib/agent/handoffs";
 import { NEAR_MISS_LABEL } from "@/lib/journey/types";
-import { TIER_LABEL, type Block, type CrowdPage, type Detail, type Line, type Named, type PageSource, type PageTab, type Section } from "@/lib/team/page";
-import { MARKS, MARK_LABEL, type Mark, type Outcome, type WorkItem } from "@/lib/team/types";
+import { TIER_LABEL, type Block, type CalItem, type CrowdPage, type Detail, type Line, type Named, type PageSource, type PageTab, type Section } from "@/lib/team/page";
+import { markLabel, marksFor, type Mark, type Outcome, type WorkItem } from "@/lib/team/types";
 import { Handoffs } from "./Team";
 import { HeatLayers } from "./HeatLayers";
 
@@ -17,7 +17,7 @@ import { HeatLayers } from "./HeatLayers";
 const ACROSS = "across";
 const TONES = ["More playful", "More premium", "Shorter"];
 /** Kinds a founder reaches out to or tries, and so can mark. */
-const MARKABLE = new Set(["message", "rival", "show", "podcast", "creator", "partner", "neighbourhood", "step", "venue", "retailer"]);
+const MARKABLE = new Set(["message", "rival", "show", "podcast", "creator", "partner", "neighbourhood", "step", "venue", "retailer", "event", "moment", "audience"]);
 
 type Picked = { named: Named; kind: string; src?: PageSource; crowd?: PageTab["crowd"]; detail?: Detail };
 
@@ -49,7 +49,7 @@ export function CrowdTabs({
   const marks = new Map(latest(outcomes).filter((o) => o.agent === agent).map((o) => [o.item, o.mark]));
   const mark = (id: string, kind: string, name: string, m: Mark, group?: string) => onMark({ id, kind, name, why: "", group: group ?? kind, sources: [], callIds: [] }, m);
   const go = (id: string) => (setOn(ACROSS), setFocus(id));
-  const ctx: Ctx = { tab, sources, marks, mark, pick: setPicked, go, onHooks, avoid: latest(outcomes).filter((o) => o.agent === agent && o.kind === "message" && o.mark === "no").map((o) => o.name) };
+  const ctx: Ctx = { agent, tab, sources, marks, mark, pick: setPicked, go, onHooks, avoid: latest(outcomes).filter((o) => o.agent === agent && o.kind === "message" && o.mark === "no").map((o) => o.name) };
 
   return (
     <div className="crowd-page">
@@ -71,12 +71,13 @@ export function CrowdTabs({
         <Folds key={cur} sections={sections} ctx={ctx} onHandoff={onHandoff} focus={cur === ACROSS ? focus : null} />
         <p className="small muted crowd-method">{tab?.method ?? page.across?.method}</p>
       </div>
-      {picked && <Sheet p={picked} marks={marks} mark={mark} onHandoff={onHandoff} onClose={() => setPicked(null)} />}
+      {picked && <Sheet p={picked} agent={agent} marks={marks} mark={mark} onHandoff={onHandoff} onClose={() => setPicked(null)} />}
     </div>
   );
 }
 
 type Ctx = {
+  agent: string;
   tab?: PageTab;
   sources: Map<string, PageSource>;
   marks: Map<string, Mark>;
@@ -217,6 +218,8 @@ function BlockView({ b, section, ctx }: { b: Block; section: string; ctx: Ctx })
   if (b.type === "table") return <Table b={b} ctx={ctx} />;
   if (b.type === "pipeline") return <Pipeline b={b} ctx={ctx} />;
   if (b.type === "working") return <Working b={b} ctx={ctx} />;
+  if (b.type === "calendar") return <Calendar b={b} ctx={ctx} />;
+  if (b.type === "months") return <Months b={b} />;
   if (b.type === "checks")
     return (
       <div className="crowd-lines">
@@ -228,7 +231,7 @@ function BlockView({ b, section, ctx }: { b: Block; section: string; ctx: Ctx })
                 <p>{c.text}</p>
                 {c.detail && <p className="small muted">{c.detail}</p>}
               </div>
-              <Marks name={c.text} mark={ctx.marks.get(c.item)} onMark={(m) => ctx.mark(c.item, "step", c.text, m, c.group)} />
+              <Marks step name={c.text} mark={ctx.marks.get(c.item)} onMark={(m) => ctx.mark(c.item, "step", c.text, m, c.group)} />
             </li>
           ))}
         </ul>
@@ -327,7 +330,7 @@ function Facets({ facets, rows, by, setBy }: { facets: string[]; rows: { facets?
 function Pipeline({ b, ctx }: { b: Extract<Block, { type: "pipeline" }>; ctx: Ctx }) {
   const [by, setBy] = useState<Record<string, string>>({});
   const items = b.items.filter((x) => Object.entries(by).every(([f, v]) => !v || x.facets?.[f]?.includes(v)));
-  const cols: { id: Mark | "todo"; label: string }[] = [{ id: "todo", label: "To pitch" }, ...MARKS.map((m) => ({ id: m, label: MARK_LABEL[m] }))];
+  const cols: { id: Mark | "todo"; label: string }[] = [{ id: "todo", label: ctx.agent === "promoter" ? "To apply" : "To pitch" }, ...marksFor(ctx.agent).map((m) => ({ id: m, label: markLabel(m, ctx.agent) }))];
   return (
     <div className="nav-pipeline">
       {b.label && <p className="crowd-label">{b.label}</p>}
@@ -344,7 +347,7 @@ function Pipeline({ b, ctx }: { b: Extract<Block, { type: "pipeline" }>; ctx: Ct
                 {here.slice(0, 40).map((x) => (
                   <li key={x.item} className="nav-pipe-card">
                     <span>{x.name}</span>
-                    <Marks name={x.name} mark={ctx.marks.get(x.item)} onMark={(m) => ctx.mark(x.item, x.kind, x.name, m, x.group)} />
+                    <Marks agent={ctx.agent} name={x.name} mark={ctx.marks.get(x.item)} onMark={(m) => ctx.mark(x.item, x.kind, x.name, m, x.group)} />
                   </li>
                 ))}
                 {here.length > 40 && <li className="small muted">and {here.length - 40} more</li>}
@@ -363,7 +366,7 @@ function Working({ b, ctx }: { b: Extract<Block, { type: "working" }>; ctx: Ctx 
     const m = ctx.marks.get(x.item);
     return m && m !== "pitched";
   });
-  if (!heard.length) return <p className="small muted">{b.label ? `${b.label}: ` : ""}as you mark shops Yes, No or No reply, the yes rate by shop type, tier and neighbourhood shows here.</p>;
+  if (!heard.length) return <p className="small muted">{b.label ? `${b.label}: ` : ""}{ctx.agent === "promoter" ? "as you mark events Booked, Went or Skipped, the rate by kind and city shows here." : "as you mark shops Yes, No or No reply, the yes rate by shop type, tier and neighbourhood shows here."}</p>;
   return (
     <div className="nav-working">
       {b.label && <p className="crowd-label">{b.label}</p>}
@@ -371,7 +374,7 @@ function Working({ b, ctx }: { b: Extract<Block, { type: "working" }>; ctx: Ctx 
         const groups = [...new Set(heard.map((x) => x.facets[f]).filter(Boolean))];
         const rate = (v: string) => {
           const g = heard.filter((x) => x.facets[f] === v);
-          return { yes: g.filter((x) => ctx.marks.get(x.item) === "yes").length, n: g.length };
+          return { yes: g.filter((x) => ["yes", "went"].includes(ctx.marks.get(x.item) ?? "")).length, n: g.length };
         };
         const ranked = groups.map((v) => ({ v, ...rate(v) })).sort((a, z) => z.yes / z.n - a.yes / a.n || z.n - a.n);
         return (
@@ -380,7 +383,7 @@ function Working({ b, ctx }: { b: Extract<Block, { type: "working" }>; ctx: Ctx 
             <ul className="small">
               {ranked.map((r) => (
                 <li key={r.v}>
-                  <strong>{r.v}</strong> · {r.yes} yes of {r.n} heard back
+                  <strong>{r.v}</strong> · {r.yes} {ctx.agent === "promoter" ? "booked or went" : "yes"} of {r.n} heard back
                 </li>
               ))}
             </ul>
@@ -542,7 +545,7 @@ function Lines({ b, kind, ctx }: { b: Extract<Block, { type: "lines" }>; kind: s
               {l.reason && <p className="small muted">{l.reason}</p>}
               {!!l.from?.length && <p className="small muted">Built on {l.from.slice(0, 4).join(", ")}</p>}
             </div>
-            {l.item && MARKABLE.has(kind) && <Marks name={l.text} mark={ctx.marks.get(l.item)} onMark={(m) => ctx.mark(l.item!, kind, l.text, m)} />}
+            {l.item && MARKABLE.has(kind) && <Marks agent={ctx.agent} name={l.text} mark={ctx.marks.get(l.item)} onMark={(m) => ctx.mark(l.item!, kind, l.text, m)} />}
           </li>
         ))}
       </ul>
@@ -550,12 +553,16 @@ function Lines({ b, kind, ctx }: { b: Extract<Block, { type: "lines" }>; kind: s
   );
 }
 
-function Marks({ name, mark, onMark }: { name: string; mark?: Mark; onMark: (m: Mark) => void }) {
+const STEP_MARKS: Mark[] = ["yes", "no"];
+const STEP_LABEL: Partial<Record<Mark, string>> = { yes: "Done", no: "Didn't work" };
+
+/** A result's marks; the Promoter's read Applied, Booked, Went and Skipped. A checklist step is Done or Didn't work. */
+function Marks({ agent, step, name, mark, onMark }: { agent?: string; step?: boolean; name: string; mark?: Mark; onMark: (m: Mark) => void }) {
   return (
     <span className="spec-marks" role="group" aria-label={`What happened with ${name}`}>
-      {MARKS.map((m) => (
+      {(step ? STEP_MARKS : marksFor(agent)).map((m) => (
         <button key={m} type="button" className={mark === m ? "on" : ""} aria-pressed={mark === m} onClick={() => onMark(m)}>
-          {MARK_LABEL[m]}
+          {step ? STEP_LABEL[m] : markLabel(m, agent)}
         </button>
       ))}
     </span>
@@ -606,7 +613,7 @@ function Paths({ b }: { b: Extract<Block, { type: "paths" }> }) {
 }
 
 /** A name's detail: what it is, where it came from, its marks and where it hands on. A full-screen sheet on a phone. */
-function Sheet({ p, marks, mark, onHandoff, onClose }: { p: Picked; marks: Map<string, Mark>; mark: Ctx["mark"]; onHandoff?: (h: Handoff) => void; onClose: () => void }) {
+function Sheet({ p, agent, marks, mark, onHandoff, onClose }: { p: Picked; agent: string; marks: Map<string, Mark>; mark: Ctx["mark"]; onHandoff?: (h: Handoff) => void; onClose: () => void }) {
   useEffect(() => {
     const k = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", k);
@@ -659,10 +666,160 @@ function Sheet({ p, marks, mark, onHandoff, onClose }: { p: Picked; marks: Map<s
             ))}
           </p>
         )}
-        {n.item && MARKABLE.has(kind) && <Marks name={n.name} mark={marks.get(n.item)} onMark={(m) => mark(n.item!, kind, n.name, m, detail?.group)} />}
+        {detail?.ics && <IcsLink ics={detail.ics} />}
+        {n.item && MARKABLE.has(kind) && <Marks agent={kind === "step" ? undefined : agent} name={n.name} mark={marks.get(n.item)} onMark={(m) => mark(n.item!, kind, n.name, m, detail?.group)} />}
         {next.length > 0 && <Handoffs list={next} onHandoff={(h) => (onClose(), onHandoff!(h))} />}
       </div>
     </div>,
     document.body,
+  );
+}
+
+const VIEWS = [
+  { id: "30", label: "Next 30 days", days: 30 },
+  { id: "90", label: "Next quarter", days: 91 },
+  { id: "season", label: "This season", days: 0 },
+  { id: "year", label: "12 months", days: 366 },
+  { id: "list", label: "List", days: 0 },
+] as const;
+const MARK_GLYPH: Record<CalItem["mark"], string> = { event: "●", own: "◆", moment: "◇", online: "○" };
+const DAY_MS = 86_400_000;
+const at = (d: string) => new Date(`${d}T12:00:00Z`).getTime();
+/** The last day of the current season (winter Dec–Feb, spring Mar–May, summer Jun–Aug, autumn Sep–Nov). */
+const seasonEnd = (today: string) => {
+  const t = at(today);
+  const y = new Date(t).getUTCFullYear();
+  return [Date.UTC(y, 2, 1), Date.UTC(y, 5, 1), Date.UTC(y, 8, 1), Date.UTC(y, 11, 1), Date.UTC(y + 1, 2, 1)].find((e) => e > t)! - DAY_MS / 2;
+};
+
+/** The Promoter's calendar: by city (All, each city, Online) and range, or as one list. ● event · ◆ your moment · ◇ moment · ○ online. */
+function Calendar({ b, ctx }: { b: Extract<Block, { type: "calendar" }>; ctx: Ctx }) {
+  const [city, setCity] = useState("All");
+  const [view, setView] = useState<(typeof VIEWS)[number]["id"]>("year");
+  const start = at(b.today);
+  const end = view === "season" ? seasonEnd(b.today) : view === "list" ? Infinity : start + VIEWS.find((v) => v.id === view)!.days * DAY_MS;
+  const here = b.items.filter((i) => city === "All" || i.city === city || ((i.mark === "own" || i.mark === "moment") && city !== "Online"));
+  const dated = here.filter((i) => i.date && at(i.date) >= start && at(i.date) <= end).sort((x, y) => x.date!.localeCompare(y.date!));
+  const undated = here.filter((i) => !i.date);
+  const months = [...new Set(dated.map((i) => i.date!.slice(0, 7)))];
+  const open = (i: CalItem) => i.detail && ctx.pick({ named: { name: i.name, item: i.item }, kind: i.kind ?? "event", detail: i.detail, crowd: ctx.tab?.crowd });
+  const row = (i: CalItem) => {
+    const m = i.item ? ctx.marks.get(i.item) : undefined;
+    return (
+      <li key={(i.item ?? i.name) + (i.date ?? "")} className={`promo-cal-item promo-${i.mark}${m ? ` crowd-chip-${m}` : ""}`}>
+        <span className="promo-glyph" aria-hidden>
+          {MARK_GLYPH[i.mark]}
+        </span>
+        {i.date && <span className="promo-day small">{new Date(`${i.date}T12:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" })}</span>}
+        <span className="promo-what">
+          <button type="button" className="linkish" onClick={() => open(i)}>
+            {i.name}
+          </button>
+          <small className="muted">
+            {" "}
+            · {i.city}
+            {i.crowds.length > 1 ? ` · ${i.crowds.length} crowds` : ""}
+          </small>
+          {i.note && <small className="muted promo-note">{i.note}</small>}
+        </span>
+        {m && <small className="promo-mark">{markLabel(m, ctx.agent)}</small>}
+      </li>
+    );
+  };
+  return (
+    <div className="promo-cal">
+      {b.label && <p className="crowd-label">{b.label}</p>}
+      <div className="promo-cal-bar">
+        <div className="promo-chips" role="group" aria-label="City">
+          {["All", ...b.cities, "Online"].map((c) => (
+            <button key={c} type="button" className={city === c ? "on" : ""} aria-pressed={city === c} onClick={() => setCity(c)}>
+              {c}
+            </button>
+          ))}
+        </div>
+        <div className="promo-chips" role="group" aria-label="Range">
+          {VIEWS.map((v) => (
+            <button key={v.id} type="button" className={view === v.id ? "on" : ""} aria-pressed={view === v.id} onClick={() => setView(v.id)}>
+              {v.label}
+            </button>
+          ))}
+        </div>
+        <p className="small muted promo-legend">● event · ◆ your moment · ◇ moment · ○ online</p>
+      </div>
+      {view === "list" ? (
+        <ul className="promo-cal-list">{dated.map(row)}</ul>
+      ) : (
+        months.map((mo) => (
+          <div key={mo} className="promo-month">
+            <p className="small muted crowd-group-label">{new Date(`${mo}-01T12:00:00Z`).toLocaleDateString("en-US", { month: "long", year: "numeric", timeZone: "UTC" })}</p>
+            <ul className="promo-cal-list">{dated.filter((i) => i.date!.startsWith(mo)).map(row)}</ul>
+          </div>
+        ))
+      )}
+      {!dated.length && <p className="small muted">Nothing dated in this range{city !== "All" ? ` for ${city}` : ""}; a longer range shows what&apos;s further out.</p>}
+      {!!undated.length && (city === "All" || city === "Online") && (
+        <div className="promo-month">
+          <p className="small muted crowd-group-label">Any time, online</p>
+          <ul className="promo-cal-list">{undated.map(row)}</ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** The year ahead as a strip: one cell per month, stronger where more is dated. */
+function Months({ b }: { b: Extract<Block, { type: "months" }> }) {
+  const max = Math.max(1, ...b.months.map((m) => m.n));
+  return (
+    <div className="promo-months">
+      {b.label && <p className="crowd-label">{b.label}</p>}
+      <ol>
+        {b.months.map((m) => (
+          <li key={m.month} title={m.names.join(", ") || "Nothing dated yet"}>
+            <span className="promo-month-cell" style={{ opacity: m.n ? 0.25 + (0.75 * m.n) / max : 0.08 }} aria-hidden />
+            <small>{m.label}</small>
+            <small className="muted">{m.n || " "}</small>
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
+const icsText = (s: string) => s.replace(/[\\;,]/g, (c) => `\\${c}`).replace(/\n/g, "\\n");
+
+/** An all-day calendar entry, made in the browser: nothing is sent anywhere. */
+function IcsLink({ ics }: { ics: NonNullable<Detail["ics"]> }) {
+  const download = () => {
+    const d = ics.date.replace(/-/g, "");
+    const next = new Date(at(ics.date) + DAY_MS).toISOString().slice(0, 10).replace(/-/g, "");
+    const body = [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "PRODID:-//Athena//Promoter//EN",
+      "BEGIN:VEVENT",
+      `UID:${d}-${ics.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}@athena`,
+      `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, "").slice(0, 15)}Z`,
+      `DTSTART;VALUE=DATE:${d}`,
+      `DTEND;VALUE=DATE:${next}`,
+      `SUMMARY:${icsText(ics.name)}`,
+      ...(ics.location ? [`LOCATION:${icsText(ics.location)}`] : []),
+      ...(ics.url ? [`URL:${ics.url}`] : []),
+      "END:VEVENT",
+      "END:VCALENDAR",
+    ].join("\r\n");
+    const url = URL.createObjectURL(new Blob([body], { type: "text/calendar" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${ics.name.replace(/[^\w ]+/g, "").trim() || "event"}.ics`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+  return (
+    <p className="small">
+      <button type="button" className="linkish" onClick={download}>
+        Add to your calendar (.ics)
+      </button>
+    </p>
   );
 }

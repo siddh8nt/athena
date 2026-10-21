@@ -231,7 +231,7 @@ export async function readCities(qloo: QlooClient, inputs: CrowdInput[], deps: N
 /** What the Rep and the Promoter found, filled in after they run: links on the page, never inputs to a verdict. */
 export type BackFill = {
   venues?: { metroId: string; points: { name: string; lat?: number; lon?: number; neighbourhood?: string }[] }[];
-  moments?: { metroId: string; names: string[] };
+  moments?: { metroId: string; names: string[] }[];
 };
 
 const money = (n?: number) => (n ? `$${Math.round(n / 1000)}k` : "—");
@@ -379,7 +379,7 @@ function cityPage(read: NavRead, city: CityRead, v: Verdict, opts: { channel?: "
           : v === "test"
             ? `A pop-up or an event first${start[0] ? `, in ${start[0]}` : ""}, to test demand`
             : "Online first, until a crowd here grows";
-  const moments = opts.fill?.moments?.metroId === city.metroId ? opts.fill.moments.names : [];
+  const moments = opts.fill?.moments?.find((m) => m.metroId === city.metroId)?.names ?? [];
   const blocks: Block[] = [
     {
       type: "facts",

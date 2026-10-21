@@ -3,6 +3,7 @@ import { readWorkflow } from "@/lib/agent/workflow";
 import type { Role, SavedNav } from "@/lib/agent/navigator";
 import type { RepRead, Shop } from "@/lib/agent/rep";
 import type { Band, Creator, LeftOut, MatchRead, Partner, Rate, Size } from "@/lib/agent/matchmaker";
+import type { PromoEvent, PromoRead } from "@/lib/agent/promoter";
 import type { Evidence, Source } from "@/lib/blocks/types";
 import type { AreaFigures } from "@/lib/enrich/census";
 import { MARKS, emptyTeam, type Answer, type Goal, type Mark, type Outcome, type TeamState, type Work, type WorkItem } from "./types";
@@ -370,6 +371,97 @@ export function readMatch(raw: unknown): MatchRead | undefined {
 }
 
 /** Pitches written this session, by shop id. */
+const EVENT_KINDS = ["show", "festival", "market", "race", "fair", "expo"];
+const FORMATS = ["booth", "popup", "sampling", "sponsorship", "nearby"];
+const MOMENT_KINDS = ["cultural", "retail", "own"];
+const AUDIENCE_KINDS = ["subreddit", "community", "newsletter", "hashtag"];
+const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
+const day = (v: unknown) => (DAY_RE.test(str(v, 10)) ? str(v, 10) : "");
+const sourced = (v: unknown) => {
+  const x = rec(v);
+  return str(x.text, 200) && str(x.src, 300) && str(x.url, 300) ? { text: str(x.text, 200), src: str(x.src, 300), url: str(x.url, 300) } : undefined;
+};
+
+function readPromoEvent(raw: unknown): PromoEvent | undefined {
+  const e = rec(raw);
+  const kind = str(e.kind, 20);
+  const date = day(e.date);
+  // Every date links to its source: an event without one is left out.
+  if (!str(e.id, 120) || !str(e.name, 200) || !EVENT_KINDS.includes(kind) || !date || !str(e.url, 400)) return undefined;
+  const fee = rec(e.fee);
+  const hood = rec(e.hood);
+  const moved = rec(e.moved);
+  return {
+    id: str(e.id, 120),
+    name: str(e.name, 200),
+    kind: kind as PromoEvent["kind"],
+    date,
+    url: str(e.url, 400),
+    site: str(e.site, 120),
+    metroId: str(e.metroId, 80),
+    city: str(e.city, 120),
+    ...opt("venue", str(e.venue, 200)),
+    ...(str(hood.name, 120) && ROLES.includes(str(hood.role, 20)) ? { hood: { name: str(hood.name, 120), role: str(hood.role, 20) as Role } } : {}),
+    crowds: strs(e.crowds, 3, 80),
+    why: str(e.why, 400),
+    formats: strs(e.formats, 5, 20).filter((f) => FORMATS.includes(f)) as PromoEvent["formats"],
+    ...(str(fee.text, 200) && str(fee.url, 400) ? { fee: { text: str(fee.text, 200), url: str(fee.url, 400), site: str(fee.site, 120) } } : {}),
+    ...opt("applyUrl", str(e.applyUrl, 400)),
+    ...opt("applyBy", day(e.applyBy)),
+    ...(src(e.email) ? { email: src(e.email)! } : {}),
+    ...opt("act", str(e.act, 200)),
+    ...opt("qlooId", str(e.qlooId, 80)),
+    ...(day(moved.from) ? { moved: { from: day(moved.from), reason: str(moved.reason, 300) } } : {}),
+  };
+}
+
+export function readPromo(raw: unknown): PromoRead | undefined {
+  const r = rec(raw);
+  const crowds = (Array.isArray(r.crowds) ? r.crowds : []).slice(0, 3).flatMap((x) => {
+    const c = rec(x);
+    const tier = str(c.tier, 20);
+    if (!str(c.id, 80) || !TIERS.includes(tier)) return [];
+    return [{ id: str(c.id, 80), name: str(c.name, 160), tier: tier as PromoRead["crowds"][number]["tier"], ...(c.nearMiss === true ? { nearMiss: true } : {}), signal: strs(c.signal, 50, 120), loves: strs(c.loves, 8, 160), metros: strs(c.metros, 4, 80) }];
+  });
+  if (!crowds.length) return undefined;
+  const cities = (Array.isArray(r.cities) ? r.cities : []).slice(0, 6).flatMap((x) => (str(rec(x).metroId, 80) ? [{ metroId: str(rec(x).metroId, 80), name: str(rec(x).name, 120), yours: rec(x).yours === true }] : []));
+  const moments = (Array.isArray(r.moments) ? r.moments : []).slice(0, 40).flatMap((x) => {
+    const m = rec(x);
+    const kind = str(m.kind, 20);
+    if (!str(m.id, 120) || !str(m.name, 200) || !day(m.date) || !MOMENT_KINDS.includes(kind)) return [];
+    return [{ id: str(m.id, 120), name: str(m.name, 200), date: day(m.date), kind: kind as PromoRead["moments"][number]["kind"], ...opt("url", str(m.url, 400)), site: str(m.site, 120), why: str(m.why, 400), crowds: strs(m.crowds, 3, 80) }];
+  });
+  const audiences = (Array.isArray(r.audiences) ? r.audiences : []).slice(0, 30).flatMap((x) => {
+    const a = rec(x);
+    const kind = str(a.kind, 20);
+    if (!str(a.id, 120) || !str(a.name, 200) || !AUDIENCE_KINDS.includes(kind)) return [];
+    const size = sourced(a.size);
+    const cost = sourced(a.cost);
+    return [{ id: str(a.id, 120), kind: kind as PromoRead["audiences"][number]["kind"], name: str(a.name, 200), ...opt("url", str(a.url, 400)), ...(size ? { size } : {}), how: str(a.how, 400), ...(cost ? { cost } : {}), why: str(a.why, 400), crowds: strs(a.crowds, 3, 80) }];
+  });
+  const hosts = (Array.isArray(r.hosts) ? r.hosts : []).slice(0, 20).flatMap((x) => (str(rec(x).name, 200) ? [{ name: str(rec(x).name, 200), city: str(rec(x).city, 120), ...opt("hood", str(rec(x).hood, 120)), crowds: strs(rec(x).crowds, 3, 80) }] : []));
+  const launch = rec(r.launch);
+  const win = nums(launch.window, 2);
+  const budget = str(r.budget, 10);
+  const brand = rec(r.brand);
+  return {
+    crowds,
+    cities,
+    events: (Array.isArray(r.events) ? r.events : []).slice(0, 120).map(readPromoEvent).filter((e): e is PromoEvent => !!e),
+    moments,
+    audiences,
+    hosts,
+    budget: budget === "mid" || budget === "high" ? budget : "low",
+    brand: { name: str(brand.name, 160), product: str(brand.product, 300) },
+    launch: { ...opt("date", day(launch.date)), ...(win ? { window: [win[0], win[1]] as [number, number] } : {}), ...opt("text", str(launch.text, 300)) },
+    moved: strs(r.moved, 40, 300),
+    calls: num(r.calls),
+    callIds: strs(r.callIds, 200, 120),
+    limits: strs(r.limits, 10, 300),
+    at: str(r.at, 40),
+  };
+}
+
 const readPitches = (raw: unknown) =>
   Object.fromEntries(Object.entries(rec(raw)).slice(0, 30).flatMap(([k, v]) => (str(rec(v).body, 4000) ? [[k.slice(0, 120), { subject: str(rec(v).subject, 300), body: str(rec(v).body, 4000) }]] : [])));
 
@@ -403,6 +495,8 @@ function readWork(raw: unknown, agent: SpecialistId): Work | undefined {
   const pitch = agent === "rep" ? readPitches(shared.pitch) : {};
   const match = agent === "matchmaker" ? readMatch(shared.match) : undefined;
   const ask = agent === "matchmaker" ? readPitches(shared.ask) : {};
+  const promo = agent === "promoter" ? readPromo(shared.promo) : undefined;
+  const inquiry = agent === "promoter" ? readPitches(shared.inquiry) : {};
   const kept = {
     ...(str(city.id, 80) && str(city.name, 120) ? { city: { id: str(city.id, 80), name: str(city.name, 120) } } : {}),
     ...(str(shared.crowd, 120) ? { crowd: str(shared.crowd, 120) } : {}),
@@ -411,6 +505,8 @@ function readWork(raw: unknown, agent: SpecialistId): Work | undefined {
     ...(Object.keys(pitch).length ? { pitch } : {}),
     ...(match ? { match } : {}),
     ...(Object.keys(ask).length ? { ask } : {}),
+    ...(promo ? { promo } : {}),
+    ...(Object.keys(inquiry).length ? { inquiry } : {}),
   };
   return {
     agent,

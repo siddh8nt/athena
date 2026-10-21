@@ -2585,3 +2585,27 @@ button.nav-item:hover:not(:disabled) { background: rgba(255, 255, 255, 0.045); c
 @media (max-width: 640px) {
   .nav-heat-map { height: 240px; }
 }
+/* The Promoter (§23.5 h): the calendar with its city and range chips, the year strip. */
+.promo-cal-bar { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+.promo-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.promo-chips button { min-height: 28px; padding: 0 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--muted); font-size: 12px; cursor: pointer; }
+.promo-chips button.on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.promo-legend { margin: 0; }
+.promo-month { margin-top: 10px; }
+.promo-cal-list { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.promo-cal-item { display: grid; grid-template-columns: 16px 56px 1fr auto; gap: 8px; align-items: baseline; padding: 6px 8px; border-radius: 8px; background: var(--sunken); }
+.promo-cal-item.promo-online { background: transparent; border: 1px dashed var(--line); }
+.promo-glyph { color: var(--accent); }
+.promo-own .promo-glyph { color: var(--fg); }
+.promo-what { min-width: 0; }
+.promo-what .linkish { font: inherit; font-weight: 600; text-align: left; padding: 0; }
+.promo-note { display: block; }
+.promo-mark { color: var(--accent); white-space: nowrap; }
+.promo-months ol { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(12, 1fr); gap: 4px; }
+.promo-months li { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.promo-month-cell { display: block; width: 100%; height: 28px; border-radius: 6px; background: var(--accent); }
+@media (max-width: 640px) {
+  .promo-cal-item { grid-template-columns: 14px 48px 1fr; }
+  .promo-mark { grid-column: 3; }
+  .promo-months ol { grid-template-columns: repeat(6, 1fr); }
+}

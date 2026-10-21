@@ -135,19 +135,21 @@ export const SPECIALISTS: Specialist[] = [
     id: "promoter",
     name: "Promoter",
     role: "Events, moments and online audiences",
-    prompt: 'Ask the Promoter: "what events are coming up?", "which creators should we reach?"',
-    mission: "Find the events and moments the crowd turns up for, with their lead times, the online audiences and creators it follows, and write the inquiry.",
-    doneWhen: "There are dated events with lead times still open, the online audiences and creators to reach, and an inquiry for the top event.",
+    prompt: 'Ask the Promoter: "what events are coming up?", "where do they hang out online?"',
+    mission: "Find the events and moments all three crowds turn up for, in the cities the Navigator gave each, with their lead times and published fees, the online places each crowd reads, and write the inquiry for the top event.",
+    doneWhen: "Every crowd has dated, sourced events with lead times still open (or the reason there are none), the moments around the launch, the online places to show up, and an inquiry for the top event.",
     rules: [
       "Every date comes from a source; never estimate one.",
       "When an event's lead time has passed, move to its next occurrence or the next event.",
+      "A fee is the one the event publishes; when none is, say so and ask.",
       "Online audiences need no city; events do.",
+      "Creators are the Matchmaker's work, not the Promoter's.",
     ],
     delivers: ["show up at events", "reach people online"],
     // Events need a city: the Navigator's when it's on the goal, else the home city; online audiences need none.
     needs: [CROWDS, { key: "city", from: "navigator", why: "needs a city for events first", home: true }],
-    budget: { qloo: 130, ms: 150_000, turns: 6 },
-    kinds: ["event", "audience", "creator", "draft"],
+    budget: { qloo: 80, ms: 150_000, turns: 6 },
+    kinds: ["event", "moment", "audience", "draft"],
   },
 ];
 

@@ -41,7 +41,14 @@ export type Block =
   | { type: "checks"; label?: string; checks: { text: string; item: string; detail?: string; group?: string }[] }
   /** A suggested split of the founder's budget, edited in place and kept per viewer. Shares sum to 100; never a schedule. */
   /** Shares of the partner budget, in percent, for the founder to change. */
-  | { type: "budget"; label?: string; rows: { label: string; share: number; note?: string }[]; note?: string };
+  | { type: "budget"; label?: string; rows: { label: string; share: number; note?: string }[]; note?: string }
+  /** Dated things on a calendar, filtered by city (All, each city, Online) and viewed by range or as a list. */
+  | { type: "calendar"; label?: string; items: CalItem[]; cities: string[]; today: string }
+  /** The year ahead as a strip: how many dated things fall in each month. */
+  | { type: "months"; label?: string; months: { month: string; label: string; n: number; names: string[] }[] };
+
+/** A calendar entry: ● an event in a city, ◆ the founder's own moment, ○ online. An undated one (an online place) lists only. */
+export type CalItem = { item?: string; name: string; date?: string; mark: "event" | "own" | "moment" | "online"; city: string; crowds: string[]; note?: string; kind?: string; group?: string; detail?: Detail };
 
 /** A table row's detail: what opens when the founder taps it. */
 export type Detail = {
@@ -56,6 +63,8 @@ export type Detail = {
    * `names`: the names the draft may use, so a tone rewrite can be checked against them. */
   draft?: { subject?: string; body: string; to?: string; toSrc?: string; names?: string[] };
   links?: { label: string; url: string }[];
+  /** A dated item the founder can add to their calendar (.ics, made in the browser). */
+  ics?: { name: string; date: string; url?: string; location?: string };
 };
 
 export type Row = { cells: string[]; goto?: string; detail?: Detail; facets?: Record<string, string[]> };

@@ -17,7 +17,7 @@ export const GOALS: (Omit<Goal, "why" | "recommended"> & { why: string })[] = [
   { id: "step_up", label: "Step up to bigger retailers", why: "Your shops prove the crowd; a retailer whose shoppers match is next.", team: ["rep"], conflicts: [] },
   { id: "partners", label: "Borrow a crowd through partners", why: "Brands and podcasts whose fans would love you, and who'd love you back.", team: ["matchmaker", "scout"], conflicts: [] },
   { id: "new_crowd", label: "Reach a new crowd", why: "The crowd to win next, the path to it and the words for it.", team: ["scout", "matchmaker"], conflicts: [] },
-  { id: "online", label: "Grow online", why: "The online audiences and creators your crowd follows, and what to say.", team: ["promoter", "scout"], conflicts: [] },
+  { id: "online", label: "Grow online", why: "The subreddits, communities and newsletters your crowd reads, and what to say.", team: ["promoter", "scout"], conflicts: [] },
   { id: "show_up", label: "Show up where your crowd gathers", why: "Events and moments ahead, with the lead time each needs.", team: ["promoter", "navigator"], conflicts: [] },
 ];
 

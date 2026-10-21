@@ -2466,6 +2466,7 @@ Written 14 Oct, after the founder's review of the v4 build. **§23.1 is `problem
 | 8.3 | 5 | **One owner per feature, handoffs between agents, goals asked in the chat** (founder, 16 Oct; after 8.2). Today the Analyst's section shows nearly everything (crowds, cities, a strategy per fit, the calendar), so the other specialists look redundant. (a) **One owner each:** Analyst: fingerprint, Taste Galaxy, crowds ranked as most valuable fits, rivals. Scout: the next crowd, the bridge to it, message hooks, mood board. Navigator: cities ranked by reach and income (the "where each crowd lives" view moves here from the Analyst) and neighbourhoods. Rep: venues and retailers not yet stocking the brand, the pitch, outcome marks. Matchmaker: two-way partners and podcasts, the ask. Promoter: events with lead times (the "when" calendar moves here), creators and online audiences, the inquiry. Athena: the goals, the plan stitched from the specialists' results (the strategy per fit moves under her), and what's working. (b) **Handoff buttons** on results start the next agent with that context and open its panel: on a crowd, "Find where they live" (Navigator) and "Win this crowd next" (Scout); on a city, "Find shops here" (Rep) and "Find events here" (Promoter); from the Scout, partners (Matchmaker) and where they gather (Promoter); from the Matchmaker, co-hosting an event (Promoter). They work with or without a goal. (c) **Minimal overlap, kept in sync:** a shared item has one owner and other agents link to it, never rebuild it; the chosen crowd and city feed downstream agents, and a change marks them stale with a re-run. (d) **Goals in the chat:** once the Analyst finishes, Athena asks "What do you want to work on?" as her next message in the main chat, never in a separate panel or an isolated button; when a specialist finishes, she suggests the next one in the chat. | Each result appears under exactly one agent; every handoff button starts the right agent and opens it; the goals question appears in the main chat after the Analyst on a live run of a brand outside the demo packs. |
 | 8.4 | 3, 5 | **One workspace per agent, over one playground; a first dashboard** (founder, 16 Oct; after 8.3). Today pressing Enter on the onboarding box drops into the old two-column page, and the right column grows longer with every agent. (a) **One playground throughout:** the onboarding workspace stays the base layer after the first message; the composer goes lean and sits at the bottom, still agentic (live step lines, question cards). (b) **The right panel is a floating overlay:** it slides in from the right, scrolls on its own, and shifts the chat left into a compact, still breathable column; on a phone it is a full-screen sheet with a way back to the chat. (c) **One workspace per agent:** Athena and each specialist have their own chat and their own panel, one interface per agent; the team rail switches between them. (d) **Separate chats, shared context:** each agent's chat shows only its own conversation, while every run still reads the Brand Graph, crowds, chosen city and outcome marks. (e) **Sequential panels:** each new step, decision or result is added below the last and the panel scrolls to it. (f) **Strict ownership:** a panel shows only its own agent's main output, never another's; where one is needed it is a one-line link to that agent's workspace. Athena: the Brand Graph, the goals and the plan. Analyst: Galaxy, fits, crowds. Navigator: where crowds live, cities, neighbourhoods. Scout: next crowd, bridges, words, mood board. Rep: venues, retailers, pitch. Matchmaker: partners, podcasts, ask. Promoter: calendar, events, creators, inquiry. Handoff buttons stay and open the next agent's workspace. (g) **Goals end the Analyst's workspace:** its last step, in its chat, is "What do you want to work on?" (Athena proposes and routes); a pick opens the first specialist's workspace. (h) **The dashboard (first version of §23.4 item 6), never "add a goal":** each run ends with "What next?" (concrete next actions from its results, plus "See your dashboard"). The dashboard shows the team (done with its headline and a link, running, or not started with what it would do now for this brand and a one-click Run), what Athena needs from the founder (budget, launch date, regions, existing stockists, asked one at a time through the question cards, each naming the agent it helps), and What's working. The new agent and goal-driven selection stay for later. | After the first message the playground stays; each agent opens its own chat and overlay panel with only its own outputs, appearing in order; the goals question is the Analyst's last step; every run ends with "What next?" and the dashboard runs any specialist and takes the founder's inputs, on desktop and at 375px. |
 | 8.5 | 3, 4, 5 | **Athena orchestrates: onboarding apart, a full-screen dashboard, one chat** (founder, 20 Oct; after 8.4; replaces 8.4 c, d, g and h where they differ). Only Athena is an agent; the six are **subagents** in every plan, label and reply. Today onboarding is "Athena", the Brand Graph lives in Athena's panel, each workspace has its own chat, the strategy runs early beside the fits, some questions sit silently on the dashboard, and "What next?" leaves the order to the founder. **Shape:** onboarding is its own workspace and ends on the dashboard; `/plan` is the dashboard, `/plan?agent=athena` the Athena tab, `/plan?agent=scout` (and so on) a subagent page; the sidebar reads Dashboard, Athena, then a "Subagents" section. (a) **Views:** Journey.tsx splits into Dashboard, AthenaRoom and SubagentPage (Onboard unchanged); the state stays in Journey. (b) **The Brand Knowledge Base on the dashboard:** the whole Brand Graph (graph and list, fact strip, themes and notes, edits, Undo, stale flags), the research sources, the Qloo match line, a file drop zone, the Conflicts record and the onboarding record; typed edits go through Athena's chat. (c) **"Build your growth plan with Athena":** a Start card before the plan; after it, a live workflow diagram (opening questions → Analyst → parallel lanes → Athena's synthesis) with node states todo, running, paused and done; a node opens its page; the goals sit above it. (d) **Tiles:** Athena's set apart as the lead, then six subagent tiles with live status, headline, Open and stale; a subagent outside the workflow says "Not needed for these goals" and can be added. What's working and "Your answers" sit on the dashboard too. (e) **A `plan` action:** the model builds the ordered steps {subagent, task, needs, why, inputs needed}; code checks them against the registry; without the model, the `teamFor` order is the fallback. (f) **runTeam runs the workflow** and streams `workflow` events; Athena narrates each handoff; "What next?" goes; handoff buttons still add steps. (g) **Every question is a highlighted chat card that pauses its step** (options plus a custom answer), with a pinned "Paused for you" bar and the node marked paused: the opening questions (what they sell, goals, city first, an ambiguous place), the subagents' `ask_founder`, the strategy questions, post-onboarding source conflicts, and the old dashboard inputs, now asked by Athena just before the step that needs them and only when not already known (regions for the Navigator; stockists and budget for the Rep; launch date and budget for the Promoter). The tray stays; answered cards stay as one-line records; no question lives only on the dashboard. "Your answers" is editable, and an edit re-runs only the step it affects. (h) **An `interpret` call** reads typed answers: it maps them to an option or keeps them as a fact, and may change the workflow ("skip events", "add Austin"). (i) **Parallel subagents, all visible:** in the right panel every working subagent is a live tab (spinner and current step); the panel follows the one started last, one click switches, the others keep streaming; a manual pick stops the following and shows a "Follow the run" chip; a question brings its tab forward. On the dashboard the lanes and tiles are live and clickable; subagent pages stream live during a run. (j) **One continuous chat:** one thread from the end of onboarding on, saved in full, with the onboarding record at its top; the same thread, draft and open questions on every page: docked beside the Athena tab and each subagent page, and on the dashboard a collapsed "Chat with Athena" button that opens it as a side drawer (full screen on a phone). While a question waits, the button shows a "Paused for you" badge naming the subagent, and one click opens the drawer at it. (k) **Only Athena speaks:** the subagents' questions come through her ("For the Navigator: …"); their activity shows as step trails under her messages; "Ask the Analyst about this" and "Ask the Scout" become "Ask Athena about this". (l) **One owner per output:** the calendar only in the Promoter (it leaves the Analyst's fits); the Analyst keeps the Galaxy, fits (tiers and reasons), crowd cards, meetings, skew, With / Without, rivals and fingerprint, with a short "Concentrates in" line (the map is the Navigator's); Athena owns the goals, the workflow and the final plan. (m) **The final plan:** `/api/strategy` becomes the last workflow step and reads every work. For each target crowd: who (Analyst), where (Navigator), through what (Rep, Matchmaker, Promoter), the words (Scout) and when (the Promoter's dates), each line cited to its subagent, plus the disagreements and open items; no new research. It shows in the Athena tab's "Athena's plan", on her tile and as its own page; a graph edit re-runs the affected steps and synthesises again. (n) **Conversation and self-awareness:** Athena's self-knowledge is built from the registry (each subagent's mission, tools and deliverables; the data sources Qloo, Census, Ticketmaster, Wikipedia and the web; what she can't do). Each turn carries the knowledge base, answers, goals, workflow state, works and open questions, the recent messages verbatim and a summary of older ones. One model router per message decides: reply, use tools, edit the graph, hand to a subagent behind the scenes, change the workflow, or ask a clarifying question (this replaces the graph / team split). Replies stream as natural prose that explains the reasoning and says which subagent found what. Subagents get the full context but don't speak. (o) **Five rough edges:** the doubled "pages read" count; onboarding going back a step after the location answer; "Synthesize findings" never ticked; internal numbers in step text (0.52, 0.9285…); the Rep's garbled pitch text. (p) **Nothing lost:** the knowledge base items move to the dashboard; every question to the chat; the goals bar to the plan section and the top of the Athena tab; each subagent's outputs to its tab and page; marks, "how we know", Bench lines, call counts and handoffs stay on every result; the inputs move to the chat plus "Your answers"; What's working and "Bring them up to date" to the dashboard; the strategy to the final plan; "What next?" is replaced by the workflow. **Out of scope:** several cities and all crowds at once (the workflow stays open to them), acting on the plan (the next rework), and per-subagent polish (the founder's second prompt). | tsc, lint and tests pass, with new tests for the workflow checker, `interpret` and the run order. A live Edge run on Brightland and on a brand not used before shows: onboarding ending on the dashboard with the full knowledge base; Start building a workflow that runs in order, with parallel lanes visible as live tabs and tiles; every question (opening, subagent, input, conflict) pausing its step as a chat card, none left only on the dashboard; one chat, the same on the dashboard drawer, the Athena tab and every subagent page, with only Athena speaking; each output in exactly one owner; the final plan citing every subagent; the five rough edges gone; and a live conversation check passing (her abilities, a follow-up that refers back, a subagent's work, a request outside what she does, an ambiguous request getting a clarifying question, a graph edit typed in the chat), on desktop and at 375px. |
+| 8.6 | 1, 3 G, 5 | **Every subagent works on all three crowds; Athena's plan stitches them; the Executive skeleton; a dashboard in tabs** (founder, 21 Oct; after 8.5's build, before its "done when" run). Supersedes in 8.5 the out-of-scope line "several cities and all crowds at once". It also supersedes creator ownership: 8.3 a, 8.4 f and the Promoter's mission move creators to the Matchmaker. Full spec in §23.5: (a) UI fixes and a tabbed dashboard; (b) one page shape for every subagent; (c) the Analyst always gives 3 crowds; (d) the Scout; (e) the Navigator; (f) the Rep; (g) the Matchmaker; (h) the Promoter; (i) ownership and run order; (j) data sources; (k) budgets; (l) outreach rules; (m) Athena's plan; (n) the Executive skeleton. | See §23.5 "Done when". |
 | 9 | 3 G | **The context test:** the same brand with only its website, then with the full knowledge base. The crowds, ranking and actions must change in ways that trace back to specific facts. A product check, separate from the Bench. | The diff is written up per brand; no change is treated as a bug. |
 | 10 | all | QA against the no-failure-state rules, the phone layout, the Cloud Run deploy, re-warming the demo packs, and the write-up and video. The write-up says plainly that Athena is now an agent (problem 0), for Stage 1 judging. | Rehearsed twice end to end, and the coverage table (§23.3) is all ticked. |
 
@@ -2550,6 +2551,327 @@ Written 14 Oct, after the founder's review of the v4 build. **§23.1 is `problem
 
    **Target:** a usable brief in about 20 s, and the full fact list within about a minute [VERIFY: measure live before claiming].
 6. **After the journey: a dashboard and the other specialists** (founder, 16 Oct; to be built later, remind them). Goals decide which specialists run, so sections no goal needs stay empty. Once the journey ends, a dashboard holds what the team found and lists the specialists that didn't run as available agents, each ready to take on a different goal. The founder also wants one more agent created; what it does is still to be decided with them.
+
+### 23.5 Step 8.6 in detail
+
+#### (a) UI fixes and a tabbed dashboard
+
+1. **The dashboard is tabs, not one long page:**
+   - **Overview:** the Start card, or the goals and the live workflow diagram, the tiles, and what's paused.
+   - **Brand Knowledge Base:** collapsible and expandable. It holds everything 8.5 b put on the dashboard.
+   - **Athena's plan.**
+   - **Your answers.**
+   - **What's working.**
+   - **The Executive.**
+
+   The tab is kept in the URL (`/plan?tab=knowledge`), so Back and Forward work. On a phone the tabs become a swipeable strip.
+2. **Goals in the Athena tab's panel stay compact while the workflow runs.** Today they stretch to fill the height. Their natural height is kept, and the rest scrolls.
+3. **Paused can't be missed, even by someone not looking.** While any step waits on the founder, all of these hold until it's answered:
+   - **Browser tab:** the title reads "Paused · Athena needs you", and the favicon gets a dot. This works even when the founder is on another tab.
+   - **On the page:** an amber banner across the top of every page. It names the subagent and the question, and has one Answer button that opens the chat at the question.
+   - **The paused node, the chat button and the subagent's sidebar row** pulse gently. They are amber, never red, because paused isn't a failure.
+   - **Phone:** the same banner, pinned.
+
+   No sound, and no browser notification unless the founder turns it on (it needs their permission) [your call].
+4. **The workflow appears in the Athena tab's right panel too:** a compact version of the dashboard's diagram, with the same live node states. A node opens its subagent tab.
+
+#### (b) One page shape for every subagent (Scout, Navigator, Rep, Matchmaker, Promoter)
+
+- **Tabs:** `[Win first: …] [Win next: …] [Watch: …] [Across all three]`, with the same section order inside each crowd tab.
+- **Chat with Athena** is docked beside the page. A request like "make Van-life's words punchier" or "only shops on Faire in Portland" updates or filters the page in place.
+- **Outcome marks** on every actionable item. The subagent reads them before it decides again.
+- **A quiet method line** at the foot of each tab, e.g. "Read from 48 Qloo signals · 3 crowds". No badges.
+- **Phone:** the tabs become a swipeable strip, sections fold into cards, and drafts and details open as full-screen sheets.
+- **Brand Graph:** every output is saved to it, so other subagents reuse it without asking again.
+- **Labels:** the Watch crowd from the near-miss rule (c) keeps its "Next to your crowds, not yours yet" label on every page.
+
+#### (c) The Analyst: always three crowds
+
+Fill the three slots in this order, stopping at three:
+1. **Measure as usual.** If 3 crowds hold, show them as measured.
+2. **Seed wider.** If only 2 hold, add 2–3 more lookalike brands and measure again. "Only two crowds" becomes one of the evidence triggers for probing (8 i). This costs about 20–40 Qloo calls within the 150 budget, and about 20–40 s. Brands already measured come from the cache.
+3. **The near-miss group** (founder, 21 Oct). If it's still 2, Watch is filled by one of these:
+   - the strongest group that failed the size rule;
+   - or the entities outside both crowds along a taste axis.
+
+   It's labelled **"Next to your crowds, not yours yet"**. Its numbers stay real, its bridges are worked out against both measured crowds, and the Win first / Win next ranking doesn't change.
+
+Nothing is labelled measured unless it was. The tiers stay **Win first / Win next / Watch**.
+
+#### (d) The Scout (all three crowds)
+
+**For each crowd:**
+1. **Who they are:** age and gender lean, top cities, and what they love across music, TV, film, podcasts, books and brands (Qloo insights and demographics). Each name links to its source.
+2. **Words:** themes, hooks (each showing the references it came from), the crowd's own phrases, and words to avoid. The buttons [More playful] [More premium] [Shorter] rewrite the hooks in place.
+3. **Mood board:** palette, textures and reference images, with "Drawn from: …".
+4. **Product angle (new):** lead with, then, and skip, each with its reason. Tied to the brand's own products from the Knowledge Base.
+5. **Where their attention goes:** shows, podcasts and creators the crowd over-indexes on. Each row hands off: shows and moments to the Promoter, podcasts and **creators to the Matchmaker**.
+6. **Rivals already there (new):** taken from the Analyst's rival map (linked, not rebuilt), with the gap and "Your opening".
+
+**Across all three:**
+
+7. **Paths between crowds:** a small graph with the shared loves on each edge, marked strong, thin, or "leap: nothing shared".
+8. **Order to win them:** a sequence, never a schedule ("once 1 holds"). It names the signal for moving on, e.g. repeat buyers or stockist reorders.
+9. **One message (new):** the line that works for all three crowds, beside the lines that only work for one.
+
+#### (e) The Navigator (all three crowds; three levels)
+
+**Level 1, across crowds:**
+- the city ranking per crowd, sized to the founder's regions answer;
+- **overlap cities**, where 2–3 crowds are strong, flagged as efficient first launches;
+- **"already yours"** cities, kept as home base and not counted as new.
+
+**Level 2, each city a crowd ranks:**
+- **Fit:** each crowd's over-indexing there, with the reason.
+- **Market:** residents and median income (Census, city level).
+- **Crowd size:** an estimate.
+- **Rivals:** where the Analyst's rivals are strong there.
+- **Verdict:** **Launch here / Test here / Later.**
+- **Actions:** how to enter (shops, pop-up, events or online-first), which crowd to lead with, which neighbourhoods to start in, and what the Rep and the Promoter pick up next.
+- **Moments there:** filled in from the Promoter once it has run (see i).
+
+**Level 3, every hot neighbourhood on the heatmap, not just the top 5:**
+- **Heat per crowd.**
+- **Character:** income and population from **Census tract or ZIP (ZCTA) data** (verified, j). The heatmap point is mapped to its tract with the Census geocoder.
+- **Venue count:** filled in from the Rep (see i).
+- **Role:** Anchor / Spillover / Pop-up or event spot / Online-target zip.
+- **Actions:** e.g. "Pitch the 4 matching shops on Valencia St", "Geo-target ads to these 3 zips".
+
+Where the heatmap returns no name, the row says "around [area]".
+
+**Page:**
+- a map with three crowd heat layers, each toggled;
+- an overview table: City · Crowds strong here · Residents · Income · Verdict;
+- each city opens its own page, and each neighbourhood opens a detail sheet;
+- next steps are checkboxes with outcome marks, so the Navigator re-ranks from what worked.
+
+#### (f) The Rep (founder's spec, 21 Oct): crowd → city → neighbourhood → shops
+
+- **Coverage:** for each crowd, its cities (from the Navigator), each city's neighbourhoods, and the shops in each.
+- **Overlap:** a shop that fits 2–3 crowds is found once, tagged with every crowd it serves, and ranked higher.
+- **National retailers** sit at the crowd level, showing which of the brand's cities have their stores.
+
+**Per crowd:**
+- **Shopper profile:** what the crowd buys and where, read from the brands it loves on Qloo.
+- **Retail types** that fit.
+- **National retailers** ranked by crowd overlap with that retailer's shoppers.
+
+**Per city:**
+- **Retail landscape:** the count of matching shops, which retailers are present, and dense vs thin neighbourhoods.
+- **Entry route:** **Indie first** (many fitting shops) / **Regional chain** (one buyer, many doors) / **Pop-up or consignment** (few shops: test demand first).
+- **What's already there:** existing stockists (never suggested again) and rival brands on shelves, a sign the shop fits.
+
+**Per neighbourhood:**
+- every matching shop the data supports, not a top 5;
+- the role from the Navigator: Anchor is pitched first, Spillover once the anchor holds;
+- with few shops, it widens to the adjacent neighbourhood and says so.
+
+**Per shop:**
+- **Taste fit:** which crowds it serves and how strongly (Qloo).
+- **Brands it carries:** read from its site. A rival on the shelf means fit; the same exact niche means a crowded shelf.
+- **Basics:** address, rating, hours, website, phone, price level and neighbourhood, **from Qloo's place entity** (checked live 21 Oct: these properties exist; how often they're filled is [VERIFY]). Google Places only fills gaps, if approved (see j). Shop *size* has no source yet; it's shown only when the shop's own site says.
+- **Wholesale signal:**
+  - a "sell with us" or wholesale page;
+  - **on Faire, found by web search** (labelled "found by search"; no public lookup API, see j);
+  - or none, so the approach is cold.
+- **Buyer contact:** public only, each shown with its source. With no public email, the draft is for a walk-in or the shop's contact form.
+- **Offer sized to budget:** under $1k, consignment or a small opening order; over $10k, samples, trade terms and a demo day.
+- **Draft pitch:** names the brands the shop carries, the crowd overlap with its customers, and the brand's terms. Never sent.
+
+**All crowds tab:**
+- multi-crowd shops first;
+- a map of every matching shop coloured by crowd, with current stockists in grey;
+- **pipeline board:** To pitch / Pitched / Yes / No / No reply, filterable by crowd, city and neighbourhood;
+- **What's working:** yes rates by shop type, tier and neighbourhood, which the Rep re-ranks from;
+- **Doors you can afford.**
+
+**Filters:** crowd, city, neighbourhood, tier, wholesale signal, has email.
+
+**Shared:**
+- shop counts per neighbourhood go back to the Navigator;
+- shops that host events go to the Promoter. Qloo's place entities carry `event_spaces`, so this can be read rather than guessed.
+
+#### (g) The Matchmaker (all three crowds; creators, brands, podcasts)
+
+**Header per crowd:**
+- the audience to match (age, gender, cities);
+- what the crowd loves;
+- budget fit per band.
+
+**Creators** (moved from the Promoter):
+- **Finding them:** Qloo's over-indexed people and content → Gemini with Google Search finds creators who make that content → **YouTube Data API** gives real subscriber counts and channel details.
+- **Qualifying:** a creator qualifies only if their audience looks like the crowd (age, gender, cities), not just their topic.
+- **Bands:** Micro 10k–100k / Mid 100k–1M / Large 1M+. Your cut-offs can override these.
+- **Budget fit:** fits, stretch, or "beyond budget, gifting only".
+- **Instagram and TikTok sizes:** read from public profile pages through Gemini search, labelled "approx.".
+
+**Brands (partners, never rivals):**
+- Qloo brands that over-index with each crowd, **fit both ways**.
+- **Excluded:** the Analyst's rivals, the brand's own category, and brands Gemini judges to conflict with the brand's values (a judgement with reasons, not a keyword rule).
+- **Bands:** Small (indie) / Mid (regional) / Large (national), from Qloo popularity and web signals.
+- **Formats:** co-branded drop, bundle, giveaway, shared pop-up.
+- **"Left out":** each excluded brand, with its reason.
+
+**Podcasts:**
+- Qloo podcasts per crowd, then **Podcast Index** for episode count, how often it publishes, owner name and the RSS feed.
+- **Bands:** Small / Mid / Large, from reviews and chart position (download numbers aren't public).
+- **Formats:** guest spot, host-read ad, sponsored episode.
+
+**Contacts and drafts:**
+- per (l), each contact shows its source;
+- **YouTube:** the API has no email field (checked 21 Oct). Each creator shows the channel link with the instruction "Open the channel's About tab and select View email address; if it isn't there, the creator hasn't published one". An email the creator wrote in their channel description counts as public.
+- **Drafts:** one per contact, opening with something real from their work, with the offer for their band and tone buttons [Warmer] [Shorter] [More premium]. [Copy] [Open in mail app]. Never sent.
+
+**Rates:** each per-band estimate cites a public source or is labelled "estimate".
+
+**Across all three:**
+- **shared partners** (reach 2–3 crowds) first;
+- **pipeline board:** To pitch / Pitched / Yes / No / No reply;
+- **budget plan:** an editable suggestion, never a schedule;
+- **What's working:** reply and yes rates by group and band.
+
+**Filters:** group, band, budget fit, has email.
+
+**Shared:** every contact and outcome goes to the Brand Graph, so the Rep and the Promoter see who has already been contacted.
+
+#### (h) The Promoter (all three crowds × the Navigator's cities, plus online)
+
+Creators move to the Matchmaker; the Promoter keeps events, moments and online audiences.
+
+**Events per crowd × city:**
+- **Sources:**
+  - **Ticketmaster** for the concerts, sports and shows the crowd over-indexes on (its artists and teams, from Qloo);
+  - **Gemini with Google Search** for markets, festivals, races, fairs and expos, read from each event's own page;
+  - **brand_calendar** for seasonal peaks.
+- **Per event:**
+  - **Fit:** the crowd it draws, and why.
+  - **Date:** only from a linked source.
+  - **Lead time:** if it has passed, the event moves to its next occurrence.
+  - **Format:** booth, pop-up, sampling, sponsorship or nearby presence.
+  - **Cost fit:** the fee from the event's page, checked against budget, or "fee not published, ask".
+  - **Neighbourhood:** linked to the Navigator's.
+- **Shops that host events** come from the Rep (f).
+
+**Moments:**
+- the crowds' cultural moments (album drops, season premieres, holidays, sport seasons), each dated from a source;
+- **your own moments:** the launch date and restocks.
+- **Pairings** appear only when the launch date is exact. With only a range, they read "within your launch window" (no invented dates).
+
+**Online audiences:** the communities, subreddits, newsletters and hashtags each crowd gathers in (Gemini search, grounded in Qloo loves). Each has a way to show up (post, AMA, sponsored issue), with its cost where published.
+
+**Plan per event:**
+- a checklist (apply, book, ship stock, tell the Matchmaker's partners, post), tied to the event's own deadline;
+- one draft per event (vendor application or sponsor pitch), never sent.
+
+**Page:**
+- **Tabs:** the crowd tabs plus All crowds.
+- **City filter:** All / each city / Online.
+- **Views:** Next 30 days / Next quarter / This season / 12 months / List.
+- **Legend:** ● event · ◆ your moment · ○ online moment.
+
+**All crowds tab:**
+- overlap events first;
+- a year-at-a-glance heat strip by month;
+- an editable budget plan;
+- outcome marks: Applied / Booked / Went / Skipped.
+
+**Calendar export:** an .ics file per event, saved to the founder's device; it sends nothing.
+
+#### (i) Ownership and run order
+
+- **Creators:** the Matchmaker. Shows and moments: the Promoter. The Analyst's rival map is linked from the Scout and the Navigator, never rebuilt.
+- **Run order:** Analyst → (Scout ∥ Navigator) → (Rep ∥ Matchmaker ∥ Promoter) → **back-fill** → Athena's plan → the Executive.
+  - **Back-fill:** the Rep's venue counts and the Promoter's events appear in the Navigator's city and neighbourhood views. They are links filled in after those steps, never inputs to the Navigator's verdict, so there's no loop.
+- The workflow still runs only what the goals need (8.5 e). A skipped subagent's slots say "Not needed for these goals" with an Add.
+
+#### (j) Data sources: verified 21 Oct
+
+| Source | Status | Use |
+|---|---|---|
+| **Census ACS 5-year** | **Verified live:** population (B01003) and median household income (B19013) per tract and per ZIP (ZCTA), e.g. Denver Tract 1.02 and ZCTA 80206 | Navigator Level 2 (place) and Level 3 (tract / ZCTA) |
+| **Ticketmaster Discovery** | Verified: 5,000 calls/day; rate 5/s (getting-started page) vs 2/s (FAQ). Live Denver test: "farmers market" and "marathon" 0 events. Covers ticketed shows only | Promoter: artists, teams and shows only |
+| **Eventbrite** | Public search retired Feb 2020 (third-party sources; no official page found) | Reached only through Gemini search |
+| **YouTube Data API** | 10,000 units/day by default; search = 1 unit; free not stated [VERIFY]. **No key yet: founder creates it in the GCP project** | Matchmaker creators |
+| **Podcast Index** | Free key (official API spec); no rate limit stated. **Founder registers for the key** | Matchmaker podcasts |
+| **Qloo place entities** | Verified live: address, business_rating, hours, website, phone, price_level, neighborhood, event_spaces | Rep shop basics |
+| **Faire** | The external API needs an approved account token and covers that account's own data (third-party summaries; the official docs page didn't load). No public lookup | "On Faire" found by web search only, labelled |
+| **Google Places (New)** | Paid beyond free monthly caps: e.g. Text Search Pro 5,000 free then $32/1k; Place Details Essentials 10,000 free. Billed against the $300 credit; whether the old $200 monthly credit remains is [VERIFY] | Left out unless you approve; Qloo covers the basics |
+| **Paid or locked, out until you approve** | PredictHQ, Hunter.io, Listen Notes, Instagram and TikTok follower APIs, creator rate databases | none |
+
+#### (k) Budgets (rough estimates; measured on the live run, then fixed in `lib/agent/specialists.ts`)
+
+| Subagent | Qloo calls now | After 8.6 |
+|---|---|---|
+| Analyst | 150 | 150 (seeding wider fits inside it) |
+| Scout | 40 | 60–80 |
+| Navigator | 40 | 65–100 (the earlier "about 100" doesn't follow from "+15–25"; the live count decides) |
+| Rep | 40 | 100–150 |
+| Matchmaker | 60 | 120–150 |
+| Promoter | 40 | ~80 |
+| **Total for a new brand, all goals** | ~370 | **~575–710** |
+
+The 2 keys allow 20k calls a month, about 28–35 full new-brand runs before warm-ups. Cached brands cost far less. Each subagent's time budget rises with its calls [to be set from the live run]. Gemini, YouTube and Census calls all stay within the $300 credit.
+
+#### (l) Outreach rules (all subagents)
+
+- Contacts come only from public sources, each shown with its source:
+  - a site's contact, press, partnerships or wholesale page;
+  - a podcast's RSS feed;
+  - links on social profiles;
+  - an email in a channel description.
+- Never a guessed email or a personal address. With no public email: profile links plus a DM, walk-in or contact-form draft.
+- Drafts are Copy or Open in mail app only. Athena never sends anything.
+
+#### (m) Athena's plan: a step-by-step synthesis (built after d–h)
+
+- The last workflow step (replaces 8.5 m where they differ). It reads every reworked subagent's output and does no new research.
+- **Shape:** numbered steps in order. **Shared moves come first:** overlap cities, multi-crowd shops, shared partners, overlap events. Then **Win first → Win next → Watch**, each with "move on when" (from the Scout).
+- **Each step says:**
+  - **what** to do;
+  - **for which crowd**;
+  - **where:** city and neighbourhood (Navigator);
+  - **through what:** shop, partner, creator, podcast or event (Rep, Matchmaker, Promoter);
+  - **the words** (Scout);
+  - **when:** a sourced date or "once step N holds", never an invented date;
+  - **cost against budget**;
+  - **depends on:** which earlier steps;
+  - **citations:** each line cites its subagent's result.
+- **Also:** disagreements between subagents and open items (what Athena still needs from the founder).
+- **Shown in:** the dashboard's Athena's plan tab, the Athena tab's right panel, and its own page. A graph edit or outcome mark re-runs the affected steps and synthesises again.
+
+#### (n) The Executive: a subagent skeleton (founder, 21 Oct)
+
+- **The Executive is a subagent**, so only Athena is an agent. It's registered in the subagent registry with its own page, tile and sidebar row.
+- **Now (skeleton only):**
+  - turns each step of Athena's plan into tracked tasks: from which subagent, action, needs, status (To do / Doing / Done / Skipped), and outcome mark;
+  - outcome marks flow back to the subagent that owns the item;
+  - the page is a task board.
+  - It **never sends, books or applies**: `canAct: false` in the registry.
+- **Later phase, on your approval:** acting on tasks (sending, booking, applying) and monitoring progress. Each action type will need its own approval rule.
+- **On the dashboard,** the tile reads "Turns Athena's plan into tasks you can track" and is runnable once a plan exists. No "coming soon" or failure state.
+
+#### Done when
+
+- **Checks pass:** tsc, lint and tests, with new tests for:
+  - the three-crowd fill order (measured, seeded, near-miss, with labels);
+  - the run order with back-fill (no loop);
+  - outreach-source rules (no contact without a source);
+  - the Executive's task mapping and `canAct: false`.
+- **A live Edge run on a brand not used before**, together with 8.5's "done when", shows:
+  - **Analyst:** 3 crowds, and Watch carries its label when it came from the near-miss rule.
+  - **Scout, Navigator, Rep, Matchmaker, Promoter:** each has three crowd tabs plus Across all three, with real values for all three crowds.
+  - **Navigator:** a neighbourhood shows tract or ZIP Census figures.
+  - **Matchmaker:** creators are under the Matchmaker (none under the Promoter), each contact shows its source, and YouTube creators show the reveal instruction.
+  - **Promoter:** every event date links to a source; fees are sourced or "not published".
+  - **Rep:** never lists an existing stockist.
+  - **Athena's plan:** numbered steps citing every subagent that ran.
+  - **The Executive:** turns them into tasks and sends nothing.
+  - **Dashboard:** tabbed, with the Knowledge Base collapsing and expanding.
+  - **Paused:** shows in the browser tab title, the banner and the pulsing node.
+  - **Athena tab:** shows the workflow in its right panel, and the goals don't stretch.
+
+  All checked on desktop and at 375px.
+- **Qloo calls:** each subagent's count is recorded and its budget fixed from it.
 
 ---
 

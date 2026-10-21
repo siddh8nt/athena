@@ -302,6 +302,16 @@ export function Journey() {
     void tm.propose();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [j.stop, !!j.crowds, tm.live.running]);
+  // A workflow saved with a step paused for the founder picks up the same way (founder, 21 Oct): its questions aren't
+  // saved, so on a reload the workflow resumes and asks again only what is still unknown, finished steps kept.
+  const reasked = useRef(false);
+  useEffect(() => {
+    const open = Object.keys(tm.live.blocking).some((id) => !(id in tm.live.answers));
+    if (reasked.current || !team.workflow?.steps.some((s) => s.state === "paused") || tm.live.running || open) return;
+    reasked.current = true;
+    tm.refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [!!team.workflow, tm.live.running]);
   // The team's focus is a tab in the Athena tab's panel (§23.2 step 8.5): when the flow hands the work on, Athena
   // brings that subagent's tab forward; it never moves the founder off the page they're on. "See your dashboard" does.
   const tab: AgentId = tm.active === "dashboard" ? "athena" : tm.active;

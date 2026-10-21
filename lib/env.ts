@@ -9,6 +9,11 @@ export type Env = {
   fixtures: boolean;
   ticketmasterKey: string | undefined;
   censusKey: string | undefined;
+  /** Optional (§23.5 g): real subscriber counts for YouTube creators. Off when absent. */
+  youtubeKey: string | undefined;
+  /** Optional (§23.5 g): a podcast's owner, feed and episode count from Podcast Index. Off unless both are set. */
+  podcastIndexKey: string | undefined;
+  podcastIndexSecret: string | undefined;
 };
 
 export function readEnv(source: Record<string, string | undefined> = process.env): Env {
@@ -19,5 +24,8 @@ export function readEnv(source: Record<string, string | undefined> = process.env
     fixtures: source.ATHENA_FIXTURES === "1" || !source.QLOO_API_KEY,
     ticketmasterKey: source.TICKETMASTER_API_KEY || undefined,
     censusKey: source.CENSUS_API_KEY || undefined,
+    youtubeKey: source.YOUTUBE_API_KEY || undefined,
+    podcastIndexKey: source.PODCASTINDEX_API_KEY || undefined,
+    podcastIndexSecret: source.PODCASTINDEX_API_SECRET || undefined,
   };
 }

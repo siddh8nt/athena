@@ -2,7 +2,7 @@ import type { QlooClient } from "@/lib/qloo/client";
 import { results } from "@/lib/qloo/client";
 import { bridges as bridgeMath, percentiles } from "@/lib/methods/rank";
 import { generate, llmConfigured, parseJson } from "@/lib/llm/vertex";
-import { validate, type Sentence } from "@/lib/methods/validator";
+import { properNouns, validate, type Sentence } from "@/lib/methods/validator";
 
 // A first-contact draft (§9.8, §9.10): shared loves from one Qloo call (the recipient's crowd scored over the brand's
 // partner brands), then a Gemini draft whose every name is checked against this evidence. Nothing is ever sent.
@@ -18,7 +18,18 @@ export type DraftResponse = {
 };
 
 /** Who it's to. venue: the pitch to a shop (the original prompt, unchanged); partner and event change only the ask. */
-export type DraftTo = { kind: "venue" | "partner" | "event"; id?: string; name: string; neighbourhood?: string; tags: string[]; reasons: string[] };
+export type DraftTo = {
+  kind: "venue" | "partner" | "event" | "creator" | "podcast";
+  id?: string;
+  name: string;
+  neighbourhood?: string;
+  tags: string[];
+  reasons: string[];
+  /** Something real from their work (a creator's latest video, a show's latest episode), to open on. */
+  work?: string;
+  /** What to offer, sized to the founder's budget ("Gifting first, then a paid post"). */
+  offer?: string;
+};
 
 // [VERIFY] live: the partner and event asks are new wording; the venue ask is the route's, as it was.
 const ASK: Record<DraftTo["kind"], { system: string; ask: string; fallback: string; fits: string }> = {
@@ -33,6 +44,18 @@ const ASK: Record<DraftTo["kind"], { system: string; ask: string; fallback: stri
     ask: "a low-pressure ask (a short call about a small collaboration)",
     fallback: "Would you be open to a short call about a small collaboration?",
     fits: "would fit alongside you",
+  },
+  creator: {
+    system: "an independent creator whose audience it would like to reach",
+    ask: "a low-pressure ask (whether they'd be open to it)",
+    fallback: "Would you be open to it?",
+    fits: "would fit what your audience already loves",
+  },
+  podcast: {
+    system: "the host of a podcast it would like to work with",
+    ask: "a low-pressure ask (a short call about it)",
+    fallback: "Would you be open to a short call about it?",
+    fits: "would fit what your listeners already love",
   },
   event: {
     system: "the organisers of an event",
@@ -66,7 +89,7 @@ export async function writeDraft(input: { qloo?: QlooClient; brand: string; prod
     console.error("bridges failed", err);
   }
 
-  const allowed = { brand: [brand], theme: [], tag: [...tags, ...(neighbourhood ? [neighbourhood] : [])], reference: [], interest: [], venue: [venueName], partner: found.map((x) => x.name) };
+  const allowed = { brand: [brand], theme: [], tag: [...tags, ...(neighbourhood ? [neighbourhood] : [])], reference: to.work ? [to.work] : [], interest: [], venue: [venueName], partner: found.map((x) => x.name) };
   const fallback = (): DraftResponse => ({
     subject: `${brand} for ${venueName}`,
     sentences: [
@@ -74,6 +97,8 @@ export async function writeDraft(input: { qloo?: QlooClient; brand: string; prod
       found.length
         ? { text: `Crowds like yours and ours both over-index on ${found.map((x) => x.name).join(" and ")}, so we think ${brand} ${words.fits}.` }
         : { text: `We think ${brand} would fit what your ${to.kind === "venue" ? "regulars" : "crowd"} already love${tags.length ? `: ${tags.slice(0, 2).join(" and ").toLowerCase()}` : ""}.` },
+      ...(to.work ? [{ text: `We enjoyed "${to.work}".` }] : []),
+      ...(to.offer ? [{ text: `We'd love to explore ${to.offer.toLowerCase().replace(/^gifting only: /, "")}.` }] : []),
       { text: words.fallback },
     ],
     bridges: found,
@@ -98,16 +123,16 @@ export async function writeDraft(input: { qloo?: QlooClient; brand: string; prod
           "Use only names from the evidence. Never claim facts about the venue or its customers beyond the evidence; no numbers; no superlatives. Reply with JSON only.",
         prompt:
           `From: ${brand} (${product || "a consumer brand"})\nTo: ${venueName}${neighbourhood ? ` in ${neighbourhood}` : ""}\n` +
-          `Evidence: ${found.length ? `both crowds over-index on ${found.map((x) => x.name).join(" and ")} (shared loves)` : "no shared loves found"}; venue tags: ${tags.join(", ") || "none"}; why this venue: ${reasons.join("; ") || "taste match"}.\n` +
-          `Write a subject (≤ 8 words) and 4 sentences: a greeting; ${found.length ? 'open with the shared loves, as "Crowds like yours and ours both over-index on X and Y"' : "why the brand fits the venue, from the tags"}; what the brand makes; ${words.ask}.\n` +
-          `Each sentence lists claims: {"kind": "brand"|"venue"|"partner"|"tag", "ref": exact name}.\n` +
+          `Evidence: ${found.length ? `both crowds over-index on ${found.map((x) => x.name).join(" and ")} (shared loves)` : "no shared loves found"}; venue tags: ${tags.join(", ") || "none"}; why this venue: ${reasons.join("; ") || "taste match"}${to.work ? `; their recent work: "${to.work}"` : ""}${to.offer ? `; what to offer: ${to.offer}` : ""}.\n` +
+          `Write a subject (≤ 8 words) and 4 sentences: a greeting; ${found.length ? 'open with the shared loves, as "Crowds like yours and ours both over-index on X and Y"' : "why the brand fits the venue, from the tags"}; what the brand makes; ${to.offer ? "the offer; " : ""}${words.ask}.${to.work ? ` Mention their recent work by its exact title (a "reference" claim).` : ""}\n` +
+          `Each sentence lists claims: {"kind": "brand"|"venue"|"partner"|"tag"${to.work ? '|"reference"' : ""}, "ref": exact name}.\n` +
           `Return {"subject": "...", "sentences": [{"text","claims"}]}` +
           feedback,
       }), late]).finally(() => clearTimeout(timer));
       if (!res) break;
       const j = parseJson<{ subject?: string; sentences?: Sentence[] }>(res.text);
       if (!j?.sentences?.length) continue;
-      const v = validate(j.sentences, allowed as never, [brand, venueName, ...found.map((x) => x.name)]);
+      const v = validate(j.sentences, allowed as never, [brand, venueName, ...(to.work ? [to.work] : []), ...found.map((x) => x.name)]);
       if (v.violations.length && attempt < 2 && v.ok.length < j.sentences.length - 1) {
         feedback = `\n\nFix these unsupported sentences:\n${v.violations.map((x) => `- "${x.text}": ${x.reason}`).join("\n")}`;
         continue;
@@ -119,4 +144,38 @@ export async function writeDraft(input: { qloo?: QlooClient; brand: string; prod
     }
   }
   return fallback();
+}
+
+export const DRAFT_TONES = ["Warmer", "Shorter", "More premium"] as const;
+export type DraftTone = (typeof DRAFT_TONES)[number];
+
+/**
+ * A draft rewritten in place by a tone button (§23.5 g). The rewrite may only use the names already in the draft or
+ * in its evidence, and no new numbers; when it strays, the draft stays as it was.
+ */
+export async function retoneDraft(input: { subject?: string; body: string; tone: DraftTone; names: string[]; generate?: typeof generate }): Promise<{ subject?: string; body: string; changed: boolean }> {
+  const same = { subject: input.subject, body: input.body, changed: false };
+  const gen = input.generate ?? generate;
+  const res = await gen({
+    model: "flash",
+    json: true,
+    thinking: "LOW",
+    temperature: 0.6,
+    maxOutputTokens: 1024,
+    budgetMs: 20_000,
+    system: "You rewrite a short first-contact email from a small consumer brand in a new tone. Keep every fact; add no names, numbers or claims. Keep the greeting and sign-off lines. Reply with JSON only.",
+    prompt: `Tone: ${input.tone}${input.tone === "Shorter" ? " (at most 3 sentences)" : ""}\nSubject: ${input.subject ?? ""}\nBody:\n${input.body}\n\nReturn {"subject": "...", "body": "..."}`,
+  }).catch(() => undefined);
+  const j = res && parseJson<{ subject?: string; body?: string }>(res.text);
+  const body = typeof j?.body === "string" ? j.body.trim().slice(0, 4000) : "";
+  if (!body) return same;
+  const subject = input.subject ? (typeof j?.subject === "string" && j.subject.trim() ? j.subject.trim().slice(0, 120) : input.subject) : undefined;
+  const lc = (s: string) => s.toLowerCase();
+  const known = [...input.names, ...properNouns(`${input.subject ?? ""}. ${input.body}`)].map(lc);
+  const text = `${subject ?? ""}. ${body}`;
+  const stray = properNouns(text).find((n) => !known.some((k) => k === lc(n) || k.includes(lc(n)) || lc(n).includes(k)));
+  const digits = (s: string) => new Set(s.match(/\d+/g) ?? []);
+  const was = digits(`${input.subject ?? ""} ${input.body}`);
+  if (stray || [...digits(text)].some((d) => !was.has(d))) return same;
+  return { subject, body, changed: true };
 }

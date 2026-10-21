@@ -17,7 +17,7 @@ import { HeatLayers } from "./HeatLayers";
 const ACROSS = "across";
 const TONES = ["More playful", "More premium", "Shorter"];
 /** Kinds a founder reaches out to or tries, and so can mark. */
-const MARKABLE = new Set(["message", "rival", "show", "podcast", "creator", "neighbourhood", "step", "venue", "retailer"]);
+const MARKABLE = new Set(["message", "rival", "show", "podcast", "creator", "partner", "neighbourhood", "step", "venue", "retailer"]);
 
 type Picked = { named: Named; kind: string; src?: PageSource; crowd?: PageTab["crowd"]; detail?: Detail };
 
@@ -211,6 +211,7 @@ function BlockView({ b, section, ctx }: { b: Block; section: string; ctx: Ctx })
         </ul>
       </div>
     );
+  if (b.type === "budget") return <Budget b={b} />;
   if (b.type === "paths") return <Paths b={b} />;
   if (b.type === "heat") return <HeatLayers b={b} />;
   if (b.type === "table") return <Table b={b} ctx={ctx} />;
@@ -390,9 +391,61 @@ function Working({ b, ctx }: { b: Extract<Block, { type: "working" }>; ctx: Ctx 
   );
 }
 
+/** The budget split across partner kinds, as shares the founder can change; never a schedule (§23.5 g). */
+function Budget({ b }: { b: Extract<Block, { type: "budget" }> }) {
+  const [shares, setShares] = useState(() => b.rows.map((r) => Math.round(r.share)));
+  const total = shares.reduce((a, x) => a + x, 0);
+  return (
+    <div className="crowd-budget">
+      {b.label && <p className="crowd-label">{b.label}</p>}
+      <ul>
+        {b.rows.map((r, i) => (
+          <li key={r.label}>
+            <label>
+              <span>{r.label}</span>
+              <input
+                type="number"
+                min={0}
+                max={100}
+                step={5}
+                value={shares[i]}
+                onChange={(e) => setShares(shares.map((x, k) => (k === i ? Math.max(0, Math.min(100, Number(e.target.value) || 0)) : x)))}
+                aria-label={`${r.label} share of the budget, percent`}
+              />
+              <span className="muted">%</span>
+            </label>
+            <span className="crowd-budget-bar" style={{ width: `${total ? (shares[i] / total) * 100 : 0}%` }} aria-hidden />
+            {r.note && <p className="small muted">{r.note}</p>}
+          </li>
+        ))}
+      </ul>
+      <p className="small muted">{total === 100 ? "Adds up to 100%." : `Adds up to ${total}%; the bars show each share of that.`}</p>
+      {b.note && <p className="small muted">{b.note}</p>}
+    </div>
+  );
+}
+
+/** The tone buttons on an ask; the rewrite keeps every name and number it had (§23.5 g). */
+const DRAFT_TONES = ["Warmer", "Shorter", "More premium"];
+
 /** A draft to copy, or open in the mail app when a public email was found. Athena never sends it. */
-function Draft({ d }: { d: NonNullable<Detail["draft"]> }) {
+function Draft({ d: given }: { d: NonNullable<Detail["draft"]> }) {
   const [copied, setCopied] = useState(false);
+  const [d, setD] = useState(given);
+  const [busy, setBusy] = useState<string>();
+  useEffect(() => setD(given), [given]);
+  const retone = async (tone: string) => {
+    setBusy(tone);
+    try {
+      const r = await fetch("/api/draft/tone", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ subject: d.subject, body: d.body, tone, names: given.names ?? [] }) });
+      const j = (await r.json().catch(() => ({}))) as { subject?: string; body?: string };
+      if (r.ok && j.body) setD({ ...d, ...(j.subject ? { subject: j.subject } : {}), body: j.body });
+    } catch {
+      // The draft stays as it was.
+    } finally {
+      setBusy(undefined);
+    }
+  };
   const text = d.subject ? `Subject: ${d.subject}\n\n${d.body}` : d.body;
   const copy = async () => {
     try {
@@ -410,6 +463,20 @@ function Draft({ d }: { d: NonNullable<Detail["draft"]> }) {
       {d.toSrc && <p className="small muted">Email found on {d.toSrc}</p>}
       {d.subject && <p className="small"><strong>{d.subject}</strong></p>}
       <pre className="nav-draft-body">{d.body}</pre>
+      {given.names && (
+        <div className="nav-draft-acts nav-draft-tones">
+          {DRAFT_TONES.map((t) => (
+            <button key={t} type="button" disabled={!!busy} onClick={() => retone(t)}>
+              {busy === t ? "Rewriting…" : t}
+            </button>
+          ))}
+          {d.body !== given.body && (
+            <button type="button" disabled={!!busy} onClick={() => setD(given)}>
+              As first written
+            </button>
+          )}
+        </div>
+      )}
       <div className="nav-draft-acts">
         <button type="button" onClick={copy}>{copied ? "Copied" : "Copy"}</button>
         {mail && (

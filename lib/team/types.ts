@@ -9,6 +9,7 @@ import type { AgentId, SpecialistId } from "@/lib/agent/specialists";
 import type { CrowdPage } from "./page";
 import type { SavedNav } from "@/lib/agent/navigator";
 import type { RepRead } from "@/lib/agent/rep";
+import type { MatchRead } from "@/lib/agent/matchmaker";
 
 // The team as the client sees it (PRD §23.2 step 8): goals, each specialist's work, and the founder's outcome marks.
 // Pure types, client-safe.
@@ -63,7 +64,8 @@ export type Work = {
   changed?: string;
   /** What the team learnt that others can use: the city chosen, the crowd to aim at. */
   /** `nav`: the Navigator's read, so a later run's Rep and Promoter work the same cities (§23.5 i). */
-  shared?: { city?: { id: string; name: string }; crowd?: string; nav?: SavedNav; rep?: RepRead; pitch?: Record<string, { subject: string; body: string }> };
+  /** `match`: the Matchmaker's read, so an ask works from the partners already found (§23.5 g). */
+  shared?: { city?: { id: string; name: string }; crowd?: string; nav?: SavedNav; rep?: RepRead; pitch?: Record<string, { subject: string; body: string }>; match?: MatchRead; ask?: Record<string, { subject: string; body: string }> };
   /** Its page (§23.5 b): a tab per crowd and Across all three; saved with the work, so others reuse it. */
   page?: CrowdPage;
   /** How the run decided: the model, or code's evidence rules when the model wasn't there. */

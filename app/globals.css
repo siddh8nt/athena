@@ -2562,7 +2562,14 @@ button.nav-item:hover:not(:disabled) { background: rgba(255, 255, 255, 0.045); c
 .nav-working ul { list-style: none; margin: 4px 0 10px; padding: 0; }
 .nav-draft { margin-top: 12px; border-top: 1px solid var(--line-soft); padding-top: 10px; }
 .nav-draft-body { white-space: pre-wrap; font: inherit; font-size: 13px; background: var(--sunken); border-radius: 10px; padding: 10px; margin: 6px 0; max-height: 40vh; overflow: auto; }
-.nav-draft-acts { display: flex; gap: 8px; }
+.nav-draft-acts { display: flex; flex-wrap: wrap; gap: 8px; }
+.nav-draft-tones { margin-bottom: 8px; }
+.nav-draft-acts button:disabled { opacity: 0.55; cursor: default; }
+.crowd-budget ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.crowd-budget label { display: flex; align-items: center; gap: 8px; }
+.crowd-budget label span:first-child { flex: 1; }
+.crowd-budget input { width: 64px; font: inherit; font-size: 13px; padding: 4px 8px; border: 1px solid var(--line); border-radius: 8px; background: transparent; color: inherit; text-align: right; }
+.crowd-budget-bar { display: block; height: 4px; margin-top: 4px; border-radius: 2px; background: var(--accent, currentColor); opacity: 0.6; transition: width 0.2s; }
 .nav-draft-acts button, .nav-draft-acts a { font: inherit; font-size: 13px; padding: 5px 12px; border: 1px solid var(--line); border-radius: 999px; background: transparent; color: inherit; text-decoration: none; cursor: pointer; }
 .nav-sheet-links { display: flex; flex-wrap: wrap; gap: 10px; }
 @media (max-width: 640px) { .nav-pipe-cols { grid-template-columns: repeat(5, 72%); } }

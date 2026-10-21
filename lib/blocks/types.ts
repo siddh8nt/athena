@@ -3,7 +3,7 @@ import type { QlooClient } from "@/lib/qloo/client";
 import type { Block, PlaybookConfig } from "@/lib/playbook/config";
 
 /** Source label carried by every value on screen (PRD "How to read"). */
-export type Source = "Qloo" | "Census" | "Overture" | "Ticketmaster" | "Apple Podcasts" | "Wikidata" | "Web" | "Agent";
+export type Source = "Qloo" | "Census" | "Overture" | "Ticketmaster" | "Apple Podcasts" | "the show's RSS feed" | "Podcast Index" | "Wikidata" | "Web" | "Agent";
 
 /** One evidence chip. `callId` opens the call in the trace (F14). */
 export type Evidence = {

@@ -170,6 +170,14 @@ export function shopCities(nav: NavRead): CityRead[] {
   return worked.filter((c) => c.yours || given.has(c.metroId));
 }
 
+/** The founder's line in an ask: "I'm the founder of X." plus what it makes, whether the Brand Graph holds a phrase
+ * ("olive oil") or a whole sentence that already names the brand ("Brightland sells premium olive oils…"). */
+export function founderLine(brand: string, product: string): string {
+  const p = product.trim().replace(/[.\s]+$/, "");
+  const made = !p || p.toLowerCase() === brand.toLowerCase() ? "" : p.toLowerCase().startsWith(`${brand.toLowerCase()} `) ? ` ${p}.` : ` We make ${p}.`;
+  return `I'm the founder of ${brand}.${made}`;
+}
+
 /** Shops ranked: those fitting more crowds first, then by summed strength. */
 export function rankShops(shops: Shop[]): Shop[] {
   const n = (s: Shop) => Object.values(s.crowds).filter((x) => x >= FITS).length;
@@ -178,11 +186,12 @@ export function rankShops(shops: Shop[]): Shop[] {
   // A chain's branches keep their own rows: a repeat name carries where it is, so each branch has its own pitch and mark.
   const seen = new Set<string>();
   return sorted.map((s) => {
-    const key = s.name.toLowerCase();
+    // Names compare as their item ids do, so two that differ only by a mark still get their own rows.
+    const key = itemId("venue", s.name);
     if (!seen.has(key)) return seen.add(key), s;
     const named = `${s.name} (${s.hood ?? s.neighbourhood ?? s.city})`;
-    const name = seen.has(named.toLowerCase()) ? `${named} ${s.id.slice(0, 4)}` : named;
-    seen.add(name.toLowerCase());
+    const name = seen.has(itemId("venue", named)) ? `${named} ${s.id.slice(0, 4)}` : named;
+    seen.add(itemId("venue", name));
     return { ...s, name };
   });
 }
@@ -409,7 +418,7 @@ export function draftFor(read: RepRead, s: Shop, pitch?: { subject: string; body
   const offer = read.budget === "high" ? "We can send samples, share trade terms and run a demo day in the shop." : read.budget === "mid" ? "We can send samples and start with a small opening order, with a sampling day in the shop." : "We'd be glad to start on consignment or with a small opening order, whichever suits you.";
   const ask = email ? "Could I send you samples?" : s.site?.form ? "Could I send you samples?" : "I'd love to drop by with samples; when is a good time?";
   const subject = `${read.brand.name} for ${s.name}`;
-  return { subject, body: `Hi ${s.name} team,\n\nI'm the founder of ${read.brand.name}; we make ${read.brand.product}. ${fit} ${offer} ${ask}\n\nThanks,\n${read.brand.name}`, ...to };
+  return { subject, body: `Hi ${s.name} team,\n\n${founderLine(read.brand.name, read.brand.product)} ${fit} ${offer} ${ask}\n\nThanks,\n${read.brand.name}`, ...to };
 }
 
 /** How to reach the shop's buyer: a public email with its source, else its contact form, else a walk-in. */

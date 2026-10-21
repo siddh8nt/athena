@@ -18,6 +18,9 @@ const su = (u?: string | null) => (u ? safeUrl(u) : undefined);
 const ROLE = /^(info|hello|hi|wholesale|buyer|buyers|buying|orders|order|contact|sales|press|shop|store|team|retail|inquiries|enquiries|partnerships|stockists)([._+-].*)?@/i;
 const FREE_MAIL = /@(gmail|yahoo|hotmail|outlook|aol|icloud|me|proton|protonmail|live|msn)\./i;
 
+/** A free-mail address is a person's own, not a contact a business publishes. */
+export const personalMail = (email: string) => FREE_MAIL.test(email.trim());
+
 export function keepEmail(email: string, siteDomain?: string): boolean {
   const e = email.trim().toLowerCase();
   if (!/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/.test(e) || FREE_MAIL.test(e) || !ROLE.test(e)) return false;

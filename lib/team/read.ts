@@ -2,6 +2,7 @@ import { SPECIALIST_IDS, type SpecialistId } from "@/lib/agent/specialists";
 import { readWorkflow } from "@/lib/agent/workflow";
 import type { Role, SavedNav } from "@/lib/agent/navigator";
 import type { RepRead, Shop } from "@/lib/agent/rep";
+import type { Band, Creator, LeftOut, MatchRead, Partner, Rate, Size } from "@/lib/agent/matchmaker";
 import type { Evidence, Source } from "@/lib/blocks/types";
 import type { AreaFigures } from "@/lib/enrich/census";
 import { MARKS, emptyTeam, type Answer, type Goal, type Mark, type Outcome, type TeamState, type Work, type WorkItem } from "./types";
@@ -221,6 +222,153 @@ export function readRep(raw: unknown): RepRead | undefined {
   };
 }
 
+const BANDS = ["micro", "mid", "large"];
+const SIZES = ["small", "mid", "large"];
+const PLATFORMS = ["youtube", "instagram", "tiktok", "other"];
+const AUDIENCES = ["matches", "broad", "differs", "unchecked"];
+const src = (v: unknown) => (str(rec(v).value, 300) && str(rec(v).src, 300) ? { value: str(rec(v).value, 300), src: str(rec(v).src, 300) } : undefined);
+const strengths = (v: unknown) => Object.fromEntries(Object.entries(rec(v)).slice(0, 3).filter(([, x]) => typeof x === "number" && Number.isFinite(x)).map(([k, x]) => [k.slice(0, 80), x as number]));
+const links = (v: unknown) => (Array.isArray(v) ? v : []).slice(0, 6).flatMap((x) => (str(rec(x).label, 80) && str(rec(x).url, 300) ? [{ label: str(rec(x).label, 80), url: str(rec(x).url, 300) }] : []));
+const evidence = (v: unknown) =>
+  (Array.isArray(v) ? v : []).slice(0, 6).flatMap((x): Evidence[] => {
+    const e = rec(x);
+    const kind = str(e.kind, 20);
+    return EVIDENCE.includes(kind) && str(e.label, 300) ? [{ kind: kind as Evidence["kind"], label: str(e.label, 300), ...optNum("value", e.value), callId: str(e.callId, 80) }] : [];
+  });
+
+function readCreator(raw: unknown): Creator | undefined {
+  const c = rec(raw);
+  const id = str(c.id, 200);
+  const name = str(c.name, 160);
+  const platform = str(c.platform, 20);
+  const audience = str(c.audience, 20);
+  if (!id || !name || !PLATFORMS.includes(platform) || !AUDIENCES.includes(audience)) return undefined;
+  const f = rec(c.followers);
+  const band = str(c.band, 10);
+  const email = src(c.email);
+  return {
+    id,
+    name,
+    ...opt("qlooId", str(c.qlooId, 120)),
+    ...opt("role", str(c.role, 120)),
+    platform: platform as Creator["platform"],
+    ...opt("handle", str(c.handle, 120)),
+    ...opt("url", str(c.url, 300)),
+    found: c.found === "Qloo" ? "Qloo" : "web search",
+    ...opt("callId", str(c.callId, 80)),
+    ...(typeof f.value === "number" && Number.isFinite(f.value) && str(f.src, 300) ? { followers: { value: f.value, src: str(f.src, 300), approx: f.approx === true } } : {}),
+    ...(BANDS.includes(band) ? { band: band as Band } : {}),
+    crowds: strengths(c.crowds),
+    audience: audience as Creator["audience"],
+    audienceWhy: str(c.audienceWhy, 300),
+    ...opt("work", str(c.work, 300)),
+    ...opt("workSrc", str(c.workSrc, 300)),
+    ...(email ? { email } : {}),
+    links: links(c.links),
+  };
+}
+
+function readPartner(raw: unknown): Partner | undefined {
+  const p = rec(raw);
+  const id = str(p.id, 120);
+  const name = str(p.name, 160);
+  const kind = str(p.kind, 10);
+  if (!id || !name || (kind !== "brand" && kind !== "podcast")) return undefined;
+  const contact = Object.fromEntries(
+    ["website", "site", "email", "instagram", "x", "lastEpisode"].flatMap((k) => {
+      const e = enriched(rec(p.contact)[k]);
+      return e ? [[k, e]] : [];
+    }),
+  );
+  const eps = rec(rec(p.contact).episodes);
+  const site = rec(p.site);
+  const size = str(p.size, 10);
+  const rr = rec(p.reverseRank);
+  const emails = (Array.isArray(site.emails) ? site.emails : []).slice(0, 3).map(src).filter((x): x is { value: string; src: string } => !!x);
+  const extra = Object.fromEntries((["owner", "rss", "frequency", "latestTitle"] as const).flatMap((k) => (src(p[k]) ? [[k, src(p[k])]] : [])));
+  return {
+    rank: num(p.rank),
+    id,
+    name,
+    kind,
+    ...optNum("priceTier", p.priceTier),
+    ...optNum("popularity", p.popularity),
+    pForward: num(p.pForward),
+    ...optNum("pReverse", p.pReverse),
+    ...optNum("mutual", p.mutual),
+    ...(typeof rr.rank === "number" && typeof rr.of === "number" ? { reverseRank: { rank: rr.rank, of: rr.of, callId: str(rr.callId, 80) } } : {}),
+    reasons: evidence(p.reasons),
+    ...opt("wikidataId", str(p.wikidataId, 40)),
+    ...opt("itunesId", str(p.itunesId, 40)),
+    contact: { ...contact, ...(typeof eps.value === "number" && str(eps.source, 40) ? { episodes: { value: eps.value, source: str(eps.source, 40) as Source } } : {}) },
+    ...(p.inactive === true ? { inactive: true } : {}),
+    ...opt("genre", str(p.genre, 120)),
+    crowds: strengths(p.crowds),
+    ...(SIZES.includes(size) ? { size: size as Size } : {}),
+    sizeWhy: str(p.sizeWhy, 300),
+    ...optNum("chart", p.chart),
+    ...extra,
+    ...(str(site.src, 300) ? { site: { emails, ...opt("form", str(site.form, 300)), ...opt("partnerships", str(site.partnerships, 300)), src: str(site.src, 300) } } : {}),
+  };
+}
+
+/** The Matchmaker's read as a journey kept it (§23.5 g): an ask or a question about the partners works from it, not a new read. */
+export function readMatch(raw: unknown): MatchRead | undefined {
+  const r = rec(raw);
+  const crowds = (Array.isArray(r.crowds) ? r.crowds : []).slice(0, 3).flatMap((x) => {
+    const c = rec(x);
+    const id = str(c.id, 80);
+    const tier = str(c.tier, 20);
+    if (!id || !TIERS.includes(tier)) return [];
+    const k = rec(c.skew);
+    const nums = (v: unknown) => Object.fromEntries(Object.entries(rec(v)).slice(0, 8).filter(([, x]) => typeof x === "number" && Number.isFinite(x)).map(([key, x]) => [key.slice(0, 40), x as number]));
+    return [
+      {
+        id,
+        name: str(c.name, 160),
+        tier: tier as MatchRead["crowds"][number]["tier"],
+        ...(c.nearMiss === true ? { nearMiss: true } : {}),
+        signal: strs(c.signal, 50, 120),
+        brands: named(c.brands, 8),
+        ...(Object.keys(rec(k.age)).length ? { skew: { age: nums(k.age), gender: nums(k.gender), clear: k.clear === true } } : {}),
+        cities: strs(c.cities, 4, 120),
+        loves: strs(c.loves, 8, 160),
+      },
+    ];
+  });
+  if (!crowds.length) return undefined;
+  const left = (Array.isArray(r.left) ? r.left : []).slice(0, 120).flatMap((x) => {
+    const l = rec(x);
+    const kind = str(l.kind, 10);
+    return str(l.name, 160) && ["brand", "podcast", "creator"].includes(kind) ? [{ name: str(l.name, 160), kind: kind as LeftOut["kind"], reason: str(l.reason, 300) }] : [];
+  });
+  const rates = (Array.isArray(r.rates) ? r.rates : []).slice(0, 12).flatMap((x) => {
+    const t = rec(x);
+    const kind = str(t.kind, 10);
+    const s = rec(t.src);
+    return ["creator", "brand", "podcast"].includes(kind) && str(t.text, 300)
+      ? [{ kind: kind as Rate["kind"], band: str(t.band, 20), text: str(t.text, 300), ...(str(s.url, 300) ? { src: { title: str(s.title, 200), url: str(s.url, 300) } } : {}), estimate: t.estimate !== false }]
+      : [];
+  });
+  const brand = rec(r.brand);
+  const budget = str(r.budget, 10);
+  return {
+    crowds,
+    creators: (Array.isArray(r.creators) ? r.creators : []).slice(0, 120).map(readCreator).filter((x): x is Creator => !!x),
+    brands: (Array.isArray(r.brands) ? r.brands : []).slice(0, 120).map(readPartner).filter((x): x is Partner => !!x && x.kind === "brand"),
+    podcasts: (Array.isArray(r.podcasts) ? r.podcasts : []).slice(0, 80).map(readPartner).filter((x): x is Partner => !!x && x.kind === "podcast"),
+    left,
+    rates,
+    budget: budget === "mid" || budget === "high" ? budget : "low",
+    brand: { name: str(brand.name, 160), product: str(brand.product, 200) },
+    ownInQloo: r.ownInQloo === true,
+    checked: r.checked === true,
+    calls: num(r.calls),
+    callIds: strs(r.callIds, 300, 80),
+    limits: strs(r.limits, 12, 300),
+  };
+}
+
 /** Pitches written this session, by shop id. */
 const readPitches = (raw: unknown) =>
   Object.fromEntries(Object.entries(rec(raw)).slice(0, 30).flatMap(([k, v]) => (str(rec(v).body, 4000) ? [[k.slice(0, 120), { subject: str(rec(v).subject, 300), body: str(rec(v).body, 4000) }]] : [])));
@@ -253,12 +401,16 @@ function readWork(raw: unknown, agent: SpecialistId): Work | undefined {
   const nav = agent === "navigator" ? readNav(shared.nav) : undefined;
   const rep = agent === "rep" ? readRep(shared.rep) : undefined;
   const pitch = agent === "rep" ? readPitches(shared.pitch) : {};
+  const match = agent === "matchmaker" ? readMatch(shared.match) : undefined;
+  const ask = agent === "matchmaker" ? readPitches(shared.ask) : {};
   const kept = {
     ...(str(city.id, 80) && str(city.name, 120) ? { city: { id: str(city.id, 80), name: str(city.name, 120) } } : {}),
     ...(str(shared.crowd, 120) ? { crowd: str(shared.crowd, 120) } : {}),
     ...(nav ? { nav } : {}),
     ...(rep ? { rep } : {}),
     ...(Object.keys(pitch).length ? { pitch } : {}),
+    ...(match ? { match } : {}),
+    ...(Object.keys(ask).length ? { ask } : {}),
   };
   return {
     agent,

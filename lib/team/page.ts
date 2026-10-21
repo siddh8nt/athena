@@ -38,7 +38,10 @@ export type Block =
   /** Yes rates from the founder's marks, by each of `by` (shop type, tier, neighbourhood), computed live. */
   | { type: "working"; label?: string; items: { item: string; facets: Record<string, string> }[]; by: string[] }
   /** Next steps: ticked when done, then marked for whether they worked, so the subagent re-ranks from them. */
-  | { type: "checks"; label?: string; checks: { text: string; item: string; detail?: string; group?: string }[] };
+  | { type: "checks"; label?: string; checks: { text: string; item: string; detail?: string; group?: string }[] }
+  /** A suggested split of the founder's budget, edited in place and kept per viewer. Shares sum to 100; never a schedule. */
+  /** Shares of the partner budget, in percent, for the founder to change. */
+  | { type: "budget"; label?: string; rows: { label: string; share: number; note?: string }[]; note?: string };
 
 /** A table row's detail: what opens when the founder taps it. */
 export type Detail = {
@@ -49,8 +52,9 @@ export type Detail = {
   kind?: string;
   /** The outcome group its mark files under (the shop type, so "what's working" can read it). */
   group?: string;
-  /** A draft to copy or open in the mail app; never sent. `to` only when a public email was found, with its source. */
-  draft?: { subject?: string; body: string; to?: string; toSrc?: string };
+  /** A draft to copy or open in the mail app; never sent. `to` only when a public email was found, with its source.
+   * `names`: the names the draft may use, so a tone rewrite can be checked against them. */
+  draft?: { subject?: string; body: string; to?: string; toSrc?: string; names?: string[] };
   links?: { label: string; url: string }[];
 };
 

@@ -8,7 +8,7 @@ import type { BlockContext, TagChip } from "@/lib/blocks/types";
 import { fingerprint } from "@/lib/blocks/fingerprint";
 import type { MarketsEnrichers, Neighbourhood } from "@/lib/blocks/markets";
 import type { VenuePick } from "@/lib/blocks/places";
-import { partners, type PartnerCard, type PartnersData } from "@/lib/blocks/partners";
+import type { PartnerCard, PartnersData } from "@/lib/blocks/partners";
 import { message, positionAgainst, type MessageData, type PositionCard } from "@/lib/blocks/message";
 import { moments, type DateLookup, type Moment, type ShowLookup } from "@/lib/blocks/moments";
 import type { HookEvidence, Hooks } from "./hooks";
@@ -18,6 +18,8 @@ import { mergePage, type CrowdPage, type CrowdTier } from "@/lib/team/page";
 import { isStrong, readCities, roles, verdict, VERDICT_LABEL, type NavRead } from "./navigator";
 import { budgetOf, contactOf, entryRoute, FEW_IN_HOOD, FITS, offerFor, readShops, shopCities, wholesaleOf, type RepRead, type Shop, type ShopSite } from "./rep";
 import { onlineStop, type OnlineData } from "@/lib/stops/online";
+import { contactLine, fitOf, matchCrowds, offerOf, ONE_WAY, readMatches, topMatch, type Creator, type FoundCreator, type MatchCrowd, type MatchRead, type Partner, type PartnerSite, type Rate, type YouTubeChannel, type BrandJudgement } from "./matchmaker";
+import { nameSim } from "@/lib/methods/names";
 import type { RetailCategory, RetailerPick } from "@/lib/stops/retailers";
 import { buildPlaybook, VENUE_TAGS, type CategoryId, type Motion, type Tier } from "@/lib/playbook/config";
 import { METROS, metroById } from "@/lib/playbook/metros";
@@ -76,6 +78,15 @@ export type TeamEnrich = {
   shopSites?: (shops: Shop[], brand: { name: string; product: string }) => Promise<Map<string, ShopSite>>;
   /** The shop names a web search finds on Faire, labelled as found by search. */
   faire?: (city: string, names: string[]) => Promise<Set<string>>;
+  /** The Matchmaker's web reads (§23.5 g): creators and their sizes, values, podcast details, partner sites, public rates. */
+  match?: {
+    youtube?: (creators: { name: string; handle?: string; url?: string }[]) => Promise<Map<string, YouTubeChannel>>;
+    findCreators?: (crowd: MatchCrowd, brand: { name: string; product: string }, known: string[]) => Promise<FoundCreator[]>;
+    judgeValues?: (brand: { name: string; product: string; traits: string[] }, names: string[]) => Promise<BrandJudgement>;
+    podcasts?: (pods: Partner[]) => Promise<void>;
+    sites?: (brands: Partner[]) => Promise<Map<string, PartnerSite>>;
+    rates?: (bands: { kind: Rate["kind"]; band: string }[]) => Promise<Rate[]>;
+  };
 };
 
 /**
@@ -133,6 +144,10 @@ export type TeamCtx = {
     pitch?: Record<string, { subject: string; body: string }>;
     /** Shops that host events, for the Promoter. */
     hosts?: Shop[];
+    /** The Matchmaker's read (§23.5 g): creators, brands and podcasts for every crowd. */
+    match?: MatchRead;
+    /** Asks written this session, by partner item id, shown in the partner's detail. */
+    ask?: Record<string, { subject: string; body: string }>;
   };
   outcomes: Outcome[];
   /** Probes the Analyst ran this session, whether the last one changed the crowds, and whether one ran with fewer than three crowds (§23.5 c). */
@@ -142,13 +157,13 @@ export type TeamCtx = {
 const ALL: SpecialistId[] = [...SPECIALIST_IDS];
 /** Fewer venues than this after stockists and heard-back ones leave, and the Rep widens. */
 export const FEW_VENUES = 8;
-/** A partner whose crowd ranks the brand below this percentile is one-way. */
-export const ONE_WAY = 0.5;
+export { ONE_WAY };
 
 const str = (v: unknown, n = 200) => (typeof v === "string" ? v.trim().slice(0, n) : "");
 const list = (xs: string[]) => (xs.length <= 1 ? xs.join("") : `${xs.slice(0, -1).join(", ")} and ${xs.at(-1)}`);
 const item = (kind: string, name: string, why: string, extra: Partial<Omit<WorkItem, "id" | "kind" | "name" | "why" | "sources" | "callIds">> = {}) => ({ id: itemId(kind, name), kind, name, why, ...extra });
 const none = (summary: string): ToolResult => ({ summary, data: {}, status: "empty" });
+const plural = (k: number, one: string) => `${k} ${one}${k === 1 ? "" : "s"}`;
 
 /** Runs once per specialist run: undefined once it has run (the step is done), else the rule. */
 /** The Rep's lists from its read: shops that fit a crowd (stockists left out) re-ordered on what the founder heard
@@ -638,85 +653,138 @@ export const PLAYS: Tool[] = [
 
   // ---- Matchmaker ------------------------------------------------------------------------------------------------
   {
-    name: "partner_brands",
+    name: "read_partners",
     for: ["matchmaker"],
     description:
-      "Brands whose fans over-index on the crowd, each checked from the other side: how much the partner's own crowd ranks the brand among brands like it. Drops one-way partners (the other side ranks the brand in its bottom half). " +
-      "Needs the brand in Qloo for the other side; without it, says so. About 25 Qloo calls with partner_podcasts (one shared run).",
-    properties: {},
-    qloo: (_a, s) => (s.team?.found.partners ? 0 : 25),
-    maxMs: 60_000,
-    when: once("partner_brands", () => ({ args: {}, why: "Finding brands whose fans would love you, and checking they'd love you back" })),
-    async run(_a, { qloo, state, status }) {
+      "Reads the partners for all three crowds: creators (the people Qloo says the crowd over-indexes on, then a web search for more and for their sizes, YouTube's real subscriber counts when its key is set), " +
+      "and the brands and podcasts the crowd over-indexes on. Each brand and podcast is checked from the other side: how its own crowd ranks the brand among brands like it; one-way partners leave, with the reason. " +
+      "Leaves out rivals, brands in the founder's own category, brands priced far away and brands whose values clash. A creator counts as a match only when Qloo's read of who follows them looks like the crowd. " +
+      "Every partner gets a band (creators Micro 10k–100k, Mid 100k–1M, Large 1M+; brands and podcasts Small, Mid, Large), a fit against the founder's budget, and public contacts only, each with its source. About 80–150 Qloo calls. " +
+      "Partners read earlier this session come back at once with no Qloo calls, re-ordered on any new outcomes; fresh: true reads them again, only when the founder wants more or different partners.",
+    properties: { fresh: { type: "boolean", description: "Read the partners again instead of using the ones read earlier this session." } },
+    qloo: (a, s) => (s.team && keptMatch(s.team, a, s) ? 0 : 150),
+    maxMs: 170_000,
+    when: once("read_partners", (t, s) =>
+      keptMatch(t, {}, s)
+        ? { args: {}, why: "Using the partners found earlier this session" }
+        : scoutCrowds(t, s).length
+          ? { args: {}, why: "Finding creators, brands and podcasts whose fans would love you, and checking they'd love you back" }
+          : skip("partners need the crowds first", "the crowds"),
+    ),
+    async run(a, { qloo, state, status }) {
       const t = state.team;
-      if (!t || !aimed(t, state)) return none("needs the crowds first");
-      const d = await partnersOf(t, qloo, status);
-      const oneWay = d.brands.filter((b) => b.pReverse !== undefined && b.pReverse < ONE_WAY);
-      const kept = applyOutcomes(
-        d.brands.filter((b) => !oneWay.includes(b)).map((b) => ({ ...b, qid: b.id, id: itemId("partner", b.name), kind: "partner", group: "brand" })),
-        t.outcomes,
-        "matchmaker",
-      ).items;
-      const checked = d.brands.some((b) => b.pReverse !== undefined);
-      return {
-        summary: `${kept.slice(0, 4).map((b) => b.name).join(", ") || "no two-way partner yet"}${oneWay.length ? `; dropped ${list(oneWay.map((b) => b.name))}: their fans wouldn't love you back` : ""}${checked ? "" : t.brand.ownId ? `; the other side can't be checked yet: Qloo lists no brands like ${t.brand.name} to rank it against` : `; the other side can't be checked while ${t.brand.name} isn't in Qloo`}`,
-        data: {
-          partners: kept.slice(0, 10).map((b) => ({ name: b.name, your_crowd_percentile: b.pForward, their_crowd_percentile: b.pReverse, fits_both_ways: b.mutual !== undefined ? b.mutual >= 0.7 : undefined })),
-          dropped_one_way: oneWay.map((b) => ({ name: b.name, their_crowd_percentile: b.pReverse })),
-          other_side_checked: checked,
-        },
-        status: kept.length ? "ok" : "empty",
-        items: kept.slice(0, 10).map((b) =>
-          item("partner", b.name, b.mutual !== undefined && b.mutual >= 0.7 ? "Fits both ways: your crowd loves them and theirs ranks you high" : b.pReverse !== undefined ? "Your crowd loves them, and theirs ranks you in its top half" : "Your crowd loves them", { group: "brand", ref: b.qid }),
-        ),
+      const crowds = t ? scoutCrowds(t, state) : [];
+      if (!t || !crowds.length) return none("needs the crowds first");
+      const again = keptMatch(t, a, state);
+      const fresh = async () => {
+        const ctx = blockCtx(t, qloo, status);
+        const chips = await fp(t, qloo, status);
+        const names = new Map([...crowds.flatMap(({ crowd }) => [...crowd.signal, ...(crowd.brands ?? [])]), ...t.brand.comparables].map((r) => [r.id, r.name]));
+        const b = t.brand;
+        return readMatches(qloo, matchCrowds(crowds), {
+          brand: { name: b.name, product: b.product, ownId: b.ownId, competitors: b.competitors, traits: b.traits },
+          exclude: ctx.pb.exclude,
+          partnerParams: ctx.pb.partnerParams,
+          names,
+          fingerprint: chips,
+          budget: budgetOf(t.answers),
+          status,
+          websites: t.enrich.websites,
+          ...(t.enrich.match ?? {}),
+        });
       };
-    },
-  },
-  {
-    name: "partner_podcasts",
-    for: ["matchmaker"],
-    description: "Podcasts the crowd over-indexes on, with who listens; drops shows whose listeners rank the brand in their bottom half among brands like it. Shares partner_brands' run (0 Qloo calls after it).",
-    properties: {},
-    qloo: (_a, s) => (s.team?.found.partners ? 0 : 25),
-    maxMs: 60_000,
-    when: once("partner_podcasts", () => ({ args: {}, why: "Finding podcasts your crowd listens to whose listeners would like you back" })),
-    async run(_a, { qloo, state, status }) {
-      const t = state.team;
-      if (!t || !aimed(t, state)) return none("needs the crowds first");
-      const d = await partnersOf(t, qloo, status);
-      const oneWay = d.podcasts.filter((p) => p.listeners?.likesYou && p.listeners.likesYou.rank / p.listeners.likesYou.of > ONE_WAY);
-      const kept = applyOutcomes(
-        d.podcasts.filter((p) => !oneWay.includes(p)).map((p) => ({ ...p, id: itemId("podcast", p.name), kind: "podcast", group: "podcast" })),
-        t.outcomes,
-        "matchmaker",
-      ).items;
+      const read = again ?? (await fresh());
+      t.found.match = read;
+      const { creators, brands, podcasts, dropped } = matchLists(t);
+      const crowdName = (id: string) => read.crowds.find((c) => c.id === id)?.name ?? id;
+      const fitsIn = (x: { crowds: Record<string, number> }) => Object.keys(x.crowds).filter((k) => x.crowds[k] >= FITS).map(crowdName);
+      const oneWay = read.left.filter((l) => l.kind === "brand" && /^Their fans wouldn't love you back/.test(l.reason)).map((l) => l.name);
+      const shared2 = [...creators, ...brands, ...podcasts].filter((x) => fitsIn(x).length > 1);
+      const total = creators.length + brands.length + podcasts.length;
+      const unchecked = read.checked ? "" : t.brand.ownId ? `; the other side can't be checked yet: Qloo lists no brands like ${t.brand.name} to rank it against` : `; the other side can't be checked while ${t.brand.name} isn't in Qloo`;
+      const matched = creators.filter((c) => c.audience === "matches").length;
+      const counts = [`${plural(creators.length, "creator")}${creators.length ? ` (${matched ? `${matched} whose own followers look like your crowd` : "none yet whose own followers are shown to look like your crowd"})` : ""}`, plural(brands.length, "brand"), plural(podcasts.length, "podcast")].filter((x) => !x.startsWith("0 "));
       return {
-        summary: `${kept.slice(0, 4).map((p) => p.name).join(", ") || "no podcast matched yet"}${oneWay.length ? `; dropped ${list(oneWay.map((p) => p.name))}: their listeners rank you low` : ""}`,
+        summary:
+          `${again ? "From the partners found earlier this session: " : ""}` +
+          `${total ? `${list(counts)}${shared2.length ? `, ${shared2.length} for two or three crowds` : ""}` : "no two-way partner yet"}` +
+          `${oneWay.length ? `; dropped ${list(oneWay.slice(0, 4))}: their fans wouldn't love you back` : ""}${unchecked}${dropped ? "; re-ordered on your outcomes" : ""}`,
         data: {
-          podcasts: kept.slice(0, 8).map((p) => ({ name: p.name, your_crowd_percentile: p.pForward, listeners_rank_you: p.listeners?.likesYou, listeners_love: p.listeners?.brands.slice(0, 3) })),
-          dropped_one_way: oneWay.map((p) => ({ name: p.name, listeners_rank_you: p.listeners?.likesYou })),
+          budget: read.budget,
+          other_side_checked: read.checked,
+          crowds: read.crowds.map((c) => ({
+            crowd: c.name,
+            tier: c.tier,
+            creators: creators.filter((x) => (x.crowds[c.id] ?? 0) >= FITS).length,
+            brands: brands.filter((x) => (x.crowds[c.id] ?? 0) >= FITS).length,
+            podcasts: podcasts.filter((x) => (x.crowds[c.id] ?? 0) >= FITS).length,
+          })),
+          audience_means:
+            "A creator's audience is a read of their own followers, not of your crowd: matches = their followers' age and gender lean like your crowd's; broad = your crowd follows them but their following is general; unchecked = no read of their followers yet. Only matches is evidence their audience fits.",
+          creators: creators.slice(0, 10).map((c) => ({
+            name: c.name,
+            platform: c.platform,
+            followers: c.followers ? `${c.followers.value}${c.followers.approx ? " approx." : ""}` : undefined,
+            band: c.band,
+            budget_fit: fitOf(c.band, read.budget),
+            audience: c.audience,
+            crowds: fitsIn(c),
+            contact: contactLine(c),
+          })),
+          brands: brands.slice(0, 10).map((p) => ({ name: p.name, size: p.size, crowds: fitsIn(p), their_crowd_percentile: p.pReverse, fits_both_ways: p.mutual !== undefined ? p.mutual >= 0.7 : undefined, contact: contactLine(p) })),
+          podcasts: podcasts.slice(0, 8).map((p) => ({ name: p.name, size: p.size, apple_chart: p.chart, crowds: fitsIn(p), their_listeners_percentile: p.pReverse, posts: p.frequency?.value, contact: contactLine(p) })),
+          left_out: read.left.slice(0, 15),
+          not_read: read.limits,
         },
-        status: kept.length ? "ok" : "empty",
-        items: kept.slice(0, 8).map((p) => item("podcast", p.name, p.listeners?.shared.length ? `Its listeners and your crowd both love ${list(p.listeners.shared.slice(0, 2).map((x) => x.name))}` : "Your crowd over-indexes on it", { group: "podcast", ref: p.id })),
+        status: total ? "ok" : "empty",
+        items: [
+          ...brands.slice(0, 10).map((p) =>
+            item("partner", p.name, p.mutual !== undefined && p.mutual >= 0.7 ? "Fits both ways: your crowd loves them and theirs ranks you high" : p.pReverse !== undefined ? "Your crowd loves them, and theirs ranks you in its top half" : "Your crowd loves them", { group: "brand", ref: p.id }),
+          ),
+          ...creators.slice(0, 8).map((c) => item("creator", c.name, c.audience === "matches" ? c.audienceWhy : `Your crowd follows them${c.role ? ` (${c.role})` : ""}`, { group: "creator", ...(c.qlooId ? { ref: c.qlooId } : {}) })),
+          ...podcasts.slice(0, 8).map((p) => item("podcast", p.name, p.reasons[0]?.label ?? "Your crowd over-indexes on it", { group: "podcast", ref: p.id })),
+        ],
       };
     },
   },
   {
     name: "draft_ask",
     for: ["matchmaker"],
-    description: "A short first-contact ask to one partner brand or podcast, opening on what both crowds love; every name checked against the evidence. Nothing is sent. 1 Qloo call.",
-    properties: { partner: { type: "string", description: "The partner's name; the top two-way partner when empty." } },
+    description:
+      "A short first-contact note to one creator, brand or podcast from read_partners, opening on something real from their work, with the offer sized to their band and the founder's budget; every name is checked against the evidence. " +
+      "Nothing is sent: the founder copies it or opens it in their mail app. 1 Qloo call.",
+    properties: { partner: { type: "string", description: "The partner's name, from read_partners; the top one when empty." } },
     qloo: () => 1,
     when: once("draft_ask", (t) => {
-      const top = topPartner(t);
+      if (!t.found.match) return undefined;
+      const top = topMatch({ ...matchLists(t), budget: t.found.match.budget });
       return top ? { args: {}, why: `Writing the ask to ${top.name}` } : undefined;
     }),
     async run(a, { qloo, state }) {
       const t = state.team;
-      const all = [...(t?.found.partners?.brands ?? []), ...(t?.found.partners?.podcasts ?? [])];
-      const p = all.find((x) => x.name === str(a.partner, 120)) ?? (t && topPartner(t));
-      if (!t || !p) return none("needs a partner first");
-      return drafted(t, qloo, { kind: "partner", id: p.id, name: p.name, tags: [], reasons: p.reasons.map((x) => x.label) });
+      const read = t?.found.match;
+      if (!t || !read) return none("needs the partners first");
+      const lists = matchLists(t);
+      const all: (Creator | Partner)[] = [...lists.brands, ...lists.creators, ...lists.podcasts];
+      const want = str(a.partner, 120).toLowerCase();
+      const named = want ? all.find((x) => x.name.toLowerCase() === want) ?? all.find((x) => nameSim(x.name, want) >= 0.85) : undefined;
+      const p = named ?? topMatch({ ...lists, budget: read.budget });
+      if (!p) return none("needs a partner first");
+      const isCreator = "platform" in p;
+      const kind = isCreator ? "creator" : p.kind === "brand" ? "partner" : "podcast";
+      const work = isCreator ? p.work : p.latestTitle?.value;
+      const r = await drafted(t, qloo, {
+        kind,
+        id: isCreator ? p.qlooId : p.id,
+        name: p.name,
+        tags: [],
+        reasons: isCreator ? [p.audienceWhy, ...(p.role ? [p.role] : [])].filter(Boolean) : p.reasons.map((x) => x.label),
+        ...(work ? { work } : {}),
+        offer: offerOf(isCreator ? "creator" : p.kind, isCreator ? p.band : p.size, read.budget),
+      });
+      const d = r.data as { subject?: string; body?: string } | undefined;
+      if (d?.body) t.found.ask = { ...t.found.ask, [isCreator ? p.id : itemId(kind, p.name)]: { subject: d.subject ?? "", body: d.body } };
+      return { ...r, data: { ...(r.data as object), contact: contactLine(p) } };
     },
   },
 
@@ -845,29 +913,34 @@ export const PLAYS: Tool[] = [
   },
 ];
 
-function partnersOf(t: TeamCtx, qloo: QlooClient, status: (s: string) => void): Promise<PartnersData> {
-  return shared(t, "partners", async () => {
-    const r = await partners(blockCtx(t, qloo, status), { fingerprint: await fp(t, qloo, status), websites: t.enrich.websites, podcastDetails: t.enrich.podcastDetails });
-    t.found.partners = r.data;
-    return r.data;
-  });
+/** The partners read earlier this session, when they cover the same crowds and no fresh read was asked for. */
+function keptMatch(t: TeamCtx, a: Record<string, unknown>, s?: AgentState): MatchRead | undefined {
+  const read = t.found.match;
+  if (!read || a.fresh === true) return undefined;
+  return scoutCrowds(t, s).every(({ crowd }) => read.crowds.some((c) => c.id === crowd.id)) ? read : undefined;
 }
 
-/** The partner to ask first: a two-way brand, else the top kept podcast. */
-function topPartner(t: TeamCtx): PartnerCard | undefined {
-  const d = t.found.partners;
-  if (!d) return undefined;
-  const two = d.brands.filter((b) => b.pReverse === undefined || b.pReverse >= ONE_WAY);
-  return two.find((b) => (b.mutual ?? 0) >= 0.7) ?? two[0] ?? d.podcasts[0];
+/** The Matchmaker's lists from its read, re-ordered on what the founder heard back; heard-back partners leave. */
+export function matchLists(t: TeamCtx): { creators: Creator[]; brands: Partner[]; podcasts: Partner[]; dropped: number } {
+  const read = t.found.match!;
+  const c = applyOutcomes(read.creators.map((x) => ({ x, id: x.id, kind: "creator", group: "creator" })), t.outcomes, "matchmaker");
+  const b = applyOutcomes(read.brands.map((x) => ({ x, id: itemId("partner", x.name), kind: "partner", group: "brand" })), t.outcomes, "matchmaker");
+  const p = applyOutcomes(read.podcasts.map((x) => ({ x, id: itemId("podcast", x.name), kind: "podcast", group: "podcast" })), t.outcomes, "matchmaker");
+  return {
+    creators: c.items.map((i) => i.x),
+    brands: b.items.map((i) => i.x),
+    podcasts: p.items.map((i) => i.x),
+    dropped: c.dropped + b.dropped + p.dropped + Number(c.moved || b.moved || p.moved),
+  };
 }
 
 async function drafted(t: TeamCtx, qloo: QlooClient, to: DraftTo): Promise<ToolResult> {
-  const partnerList = (t.found.partners?.brands ?? []).map((b) => ({ id: b.id, name: b.name, pForward: b.pForward }));
+  const partnerList = (t.found.match?.brands ?? t.found.partners?.brands ?? []).map((b) => ({ id: b.id, name: b.name, pForward: b.pForward }));
   const d = await writeDraft({ qloo, brand: t.brand.name, product: t.brand.product, to, partners: partnerList, llm: t.llm });
   // The greeting on its own line, then the body as one paragraph: the detail reads as an email, subject first.
   const [first, ...rest] = d.sentences.map((s) => s.text.trim()).filter(Boolean);
   const text = first && /,$/.test(first) && rest.length ? `${first}\n\n${rest.join(" ")}` : [first, ...rest].filter(Boolean).join(" ");
-  const what = to.kind === "venue" ? "Pitch" : to.kind === "partner" ? "Ask" : "Inquiry";
+  const what = to.kind === "venue" ? "Pitch" : to.kind === "event" ? "Inquiry" : "Ask";
   return {
     summary: `${what} to ${to.name}: "${d.subject}"`,
     data: { to: to.name, subject: d.subject, body: text, shared_loves: d.bridges.map((b) => b.name) },

@@ -112,18 +112,24 @@ export const SPECIALISTS: Specialist[] = [
   {
     id: "matchmaker",
     name: "Matchmaker",
-    role: "Brands and podcasts, both ways, and the ask",
-    prompt: 'Ask the Matchmaker: "any podcasts for this crowd?", "partners outside our category"',
-    mission: "Find brands and podcasts to partner with whose audience loves the brand's crowd and whose own crowd would love the brand back, and write the ask.",
-    doneWhen: "There is a list of two-way partners and podcasts, with an ask for the top one.",
+    role: "Creators, brands and podcasts, both ways, and the ask",
+    prompt: 'Ask the Matchmaker: "creators this crowd follows", "partners outside our category", "any podcasts for this crowd?"',
+    mission:
+      "For each of the three crowds, find the creators, brands and podcasts it loves whose own audience would love the brand back, each sized into a band and against the founder's budget, with public contacts only, and write the ask for the top one.",
+    doneWhen:
+      "Each crowd has its creators, two-way brands and podcasts, each with its band, its fit with the budget and a public contact when there is one; what was left out says why; and there is an ask for the top partner.",
     rules: [
-      "A partner must fit both ways: drop one-way partners whose crowd wouldn't love the brand back.",
-      "Read the outcomes first: partners like ones that said no are tried less.",
+      "A partner must fit both ways: drop one-way partners whose crowd wouldn't love the brand back, and say why.",
+      "Never suggest a rival, a brand in the founder's own category or one whose values clash; list them as left out with the reason.",
+      "A creator counts as a match only when Qloo's read of who follows them looks like the crowd; when there is no read, say so and tell the founder to check their audience before paying.",
+      "A follower count is labelled approx. unless it comes from the platform itself; a rate is an estimate with its source, else ask for their rate card.",
+      "Read the outcomes first: partners like ones that said no are tried less, ones like those that said yes more.",
+      "Contacts come only from public pages, each with its source; never guess an email or use a personal address. Asks are for the founder to copy or open in mail, never sent.",
     ],
-    delivers: ["find partners", "get on podcasts"],
+    delivers: ["find partners", "get on podcasts", "work with creators"],
     needs: [CROWDS],
-    budget: { qloo: 60, ms: 110_000, turns: 6 },
-    kinds: ["partner", "podcast", "draft"],
+    budget: { qloo: 150, ms: 180_000, turns: 6 },
+    kinds: ["creator", "partner", "podcast", "draft"],
   },
   {
     id: "promoter",

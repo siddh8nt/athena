@@ -9,6 +9,7 @@ import { overtureNeighbourhoods } from "@/lib/enrich/neighbourhoods";
 import { groundedFestivalDates } from "@/lib/enrich/festival-dates";
 import { addWikidataWebsites } from "@/lib/enrich/wikidata";
 import { faireShops, shopSites } from "@/lib/enrich/shop-sites";
+import { findCreators, judgeValues, matchPodcasts, partnerSites, publicRates, youtubeChannels } from "@/lib/enrich/match-web";
 import { llmConfigured } from "@/lib/llm/vertex";
 import { lastRun } from "./last-run";
 import { chooseComparables, classifyBusiness, parseAccounts, readWebsite } from "./intake";
@@ -66,6 +67,11 @@ export function teamEnrich(): TeamEnrich {
     websites: addWikidataWebsites,
     podcastDetails: addApplePodcastDetails,
     ...(llm ? { writeHooks: cachedHooks, writeLooks: cachedLooks, shopSites, faire: faireShops } : {}),
+    match: {
+      youtube: youtubeChannels(env.youtubeKey),
+      podcasts: matchPodcasts(env),
+      ...(llm ? { findCreators, judgeValues, sites: partnerSites, rates: publicRates } : {}),
+    },
   };
 }
 

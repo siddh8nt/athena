@@ -58,6 +58,8 @@ describe("the Rep's page", () => {
   it("gives each branch of a chain its own row", () => {
     const ranked = rankShops([shop("Sightglass", { a: 0.9 }), shop("Sightglass", { a: 0.8 }, { id: "id-2", hood: "Mission" })]);
     expect(ranked.map((s) => s.name)).toEqual(["Sightglass", "Sightglass (Mission)"]);
+    const marked = rankShops([shop("Sightglass Coffee", { a: 0.9 }), shop("Sightglass Coffee.", { a: 0.8 }, { id: "id-2", hood: "SoMa" })]);
+    expect(marked.map((s) => s.name)).toEqual(["Sightglass Coffee", "Sightglass Coffee. (SoMa)"]);
   });
 
   it("never pitches a stockist again and shows it grey on the map", () => {

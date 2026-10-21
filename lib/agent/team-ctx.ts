@@ -101,6 +101,8 @@ export async function buildCtx(r: CtxInput): Promise<TeamCtx> {
       ...(nav ? { navigator: nav } : {}),
       ...(works.rep?.shared?.rep ? { rep: works.rep.shared.rep } : {}),
       ...(works.rep?.shared?.pitch ? { pitch: works.rep.shared.pitch } : {}),
+      ...(works.matchmaker?.shared?.match ? { match: works.matchmaker.shared.match } : {}),
+      ...(works.matchmaker?.shared?.ask ? { ask: works.matchmaker.shared.ask } : {}),
     },
     outcomes: r.team.outcomes,
     // Probed and still under three crowds: the graph was seeded wider already (§23.5 c).

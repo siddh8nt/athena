@@ -115,7 +115,7 @@ describe("the true-agent test (§23.2 step 8h)", () => {
     expect(plain.step("matchmaker", "draft_ask")?.why).toContain(top.name);
 
     const planted = await run({ inQloo: true, goals: ["partners"], oneWay: top.ref });
-    expect(planted.step("matchmaker", "partner_brands")?.summary).toContain(`dropped ${top.name}: their fans wouldn't love you back`);
+    expect(planted.step("matchmaker", "read_partners")?.summary).toContain(`dropped ${top.name}: their fans wouldn't love you back`);
     const m = planted.work("matchmaker")!;
     expect(m.results.some((x) => x.name === top.name)).toBe(false);
     const ask = planted.step("matchmaker", "draft_ask");
@@ -139,7 +139,7 @@ describe("the true-agent test (§23.2 step 8h)", () => {
 
   it("says plainly why the other side can't be checked, by whether the brand is in Qloo", async () => {
     const r = await run({ goals: ["partners"] });
-    expect(r.step("matchmaker", "partner_brands")?.summary).toMatch(/can't be checked while Tidewell Tins isn't in Qloo/);
+    expect(r.step("matchmaker", "read_partners")?.summary).toMatch(/can't be checked while Tidewell Tins isn't in Qloo/);
   }, 60_000);
 });
 

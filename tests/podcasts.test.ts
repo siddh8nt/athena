@@ -14,6 +14,9 @@ describe("parseFeedHead", () => {
     const xml = `<channel><link>https://a.example.com</link><itunes:email>info+07ce3a4e-2327-4692-be49-74ad7628c0a0@mg-eu.acast.com</itunes:email></channel>`;
     expect(parseFeedHead(xml).email).toBeUndefined();
   });
+  it("drops a host's personal free-mail address", () => {
+    expect(parseFeedHead(`<channel><itunes:email>someone@gmail.com</itunes:email></channel>`).email).toBeUndefined();
+  });
   it("returns nothing for a feed without them", () => {
     expect(parseFeedHead("<rss><channel><title>x</title></channel></rss>")).toEqual({ website: undefined, email: undefined });
   });

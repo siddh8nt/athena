@@ -2,6 +2,7 @@ import "server-only";
 import { getStore } from "@/lib/store";
 import type { PartnerCard } from "@/lib/blocks/partners";
 import { safeFetch } from "./safe-fetch";
+import { personalMail } from "./shop-sites";
 
 // Podcast details from Apple (§9.19), keyed by the iTunes ID that Qloo returns for each podcast.
 // Replaces Podcast Index (8 Oct): Apple's public lookup needs no key and returned the real episode count and the
@@ -10,12 +11,14 @@ import { safeFetch } from "./safe-fetch";
 // Apple asks for roughly 20 lookups a minute at most: calls run one at a time, spaced, and cached for a day.
 // Enrichment only: it never changes an order.
 
-const NS = "apple-podcasts";
+const NS = "apple-podcasts:v3";
 const DAY = 24 * 60 * 60 * 1000;
 const GAP_MS = 400;
 const QUIET_AFTER_DAYS = 60;
 
-export type ApplePodcast = { episodes?: number; lastEpisode?: string; genre?: string; website?: string; email?: string; appleUrl?: string };
+export type ApplePodcast = { episodes?: number; lastEpisode?: string; genre?: string; website?: string; email?: string; appleUrl?: string; feedUrl?: string; owner?: string; latestTitle?: string; frequency?: string };
+
+const FEED_ITEMS = 5;
 
 /** Website and contact email from the top of an RSS feed (the channel block comes before the first item). */
 export function parseFeedHead(xml: string): { website?: string; email?: string } {
@@ -24,10 +27,26 @@ export function parseFeedHead(xml: string): { website?: string; email?: string }
   const email = /<itunes:email>\s*(?:<!\[CDATA\[)?\s*([^<\s\]]+@[^<\s\]]+)/i.exec(head)?.[1]?.toLowerCase();
   // Hosting platforms put relay addresses here (8 Oct: "info+<uuid>@mg-eu.acast.com"); those aren't a contact.
   const relay = !!email && /\+[0-9a-f-]{16,}@|@mg[\w-]*\./.test(email);
-  return { website: link, email: relay ? undefined : email };
+  // A host's own free-mail address in the feed is personal, not the show's contact (§23.5 g).
+  return { website: link, email: relay || (email && personalMail(email)) ? undefined : email };
 }
 
-async function fetchText(url: string, maxBytes: number): Promise<string> {
+const text = (x?: string) => x?.replace(/<!\[CDATA\[|\]\]>/g, "").replace(/&amp;/g, "&").replace(/&#39;|&apos;/g, "'").replace(/&quot;/g, '"').trim() || undefined;
+
+/** The feed's owner, its latest episode's title, and how often it posts (the median gap between the last few episodes). */
+export function parseFeedItems(xml: string): { owner?: string; latestTitle?: string; frequency?: string } {
+  const head = xml.split(/<item[\s>]/i)[0] ?? xml;
+  const owner = text(/<itunes:owner>[\s\S]*?<itunes:name>([\s\S]*?)<\/itunes:name>/i.exec(head)?.[1]);
+  const items = xml.split(/<item[\s>]/i).slice(1);
+  const latestTitle = text(/<title>([\s\S]*?)<\/title>/i.exec(items[0] ?? "")?.[1]);
+  const dates = items.map((i) => Date.parse(text(/<pubDate>([\s\S]*?)<\/pubDate>/i.exec(i)?.[1]) ?? "")).filter((d) => !Number.isNaN(d)).sort((a, b) => b - a);
+  const gaps = dates.slice(1).map((d, i) => (dates[i] - d) / DAY).sort((a, b) => a - b);
+  const mid = gaps.length ? gaps[Math.floor(gaps.length / 2)] : undefined;
+  const frequency = mid === undefined ? undefined : mid <= 2 ? "Daily" : mid <= 8 ? "Weekly" : mid <= 16 ? "Every two weeks" : mid <= 35 ? "Monthly" : "Now and then";
+  return { owner, latestTitle: latestTitle?.slice(0, 160), frequency };
+}
+
+async function fetchText(url: string, maxBytes: number, items = 0): Promise<string> {
   const res = await safeFetch(url, { headers: { "User-Agent": "Athena/0.1 (growth planning tool)" } });
   if (!res?.ok || !res.body) return "";
   const reader = res.body.getReader();
@@ -37,7 +56,7 @@ async function fetchText(url: string, maxBytes: number): Promise<string> {
     const { done, value } = await reader.read();
     if (done) break;
     out += dec.decode(value, { stream: true });
-    if (/<item[\s>]/i.test(out)) break; // the channel block is all we need
+    if ((out.match(/<\/item>/gi)?.length ?? 0) >= items && /<item[\s>]/i.test(out)) break; // the channel block and the first few episodes
   }
   await reader.cancel().catch(() => undefined);
   return out;
@@ -59,12 +78,14 @@ export async function lookupApplePodcast(itunesId: string): Promise<ApplePodcast
   if (!show) return undefined;
   const str = (k: string) => (typeof show[k] === "string" ? (show[k] as string) : undefined);
   const feedUrl = str("feedUrl");
-  const feed = feedUrl ? parseFeedHead(await fetchText(feedUrl, 200_000).catch(() => "")) : {};
+  const xml = feedUrl ? await fetchText(feedUrl, 400_000, FEED_ITEMS).catch(() => "") : "";
+  const feed = xml ? { ...parseFeedHead(xml), ...parseFeedItems(xml) } : {};
   const value: ApplePodcast = {
     episodes: typeof show.trackCount === "number" ? show.trackCount : undefined,
     lastEpisode: str("releaseDate"),
     genre: str("primaryGenreName"),
     appleUrl: str("collectionViewUrl")?.split("?")[0],
+    feedUrl,
     ...feed,
   };
   await getStore().set(NS, itunesId, value, DAY);

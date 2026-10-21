@@ -43,7 +43,7 @@ export type Listeners = {
   callIds: string[];
 };
 
-const AGE_LABELS: Record<string, string> = { "24_and_younger": "24 and under", "25_to_29": "25–29", "30_to_34": "30–34", "35_to_44": "35–44", "45_to_54": "45–54", "55_and_older": "55+" };
+export const AGE_LABELS: Record<string, string> = { "24_and_younger": "24 and under", "25_to_29": "25–29", "30_to_34": "30–34", "35_to_44": "35–44", "45_to_54": "45–54", "55_and_older": "55+" };
 const LEAN = 0.3;
 // 8 Oct: Fat Mascara scored 0.86 for "24 and under" and 0.78 for "55+". Naming one bucket would mislead, so an
 // age is named only when it clearly leads the next one.
@@ -112,19 +112,19 @@ export function narrowestGenre(tags: QlooTag[] | undefined): string | undefined 
     .sort((a, b) => b.split(":").length - a.split(":").length)[0];
 }
 
-function externalId(e: QlooEntity, key: string): string | undefined {
+export function externalId(e: QlooEntity, key: string): string | undefined {
   const w = e.external?.[key] as { id?: string }[] | { id?: string } | undefined;
   const id = Array.isArray(w) ? w[0]?.id : w?.id;
   return typeof id === "string" && id ? id : undefined;
 }
 
-function wikidataId(e: QlooEntity): string | undefined {
+export function wikidataId(e: QlooEntity): string | undefined {
   const id = externalId(e, "wikidata");
   return id && /^Q\d+$/.test(id) ? id : undefined;
 }
 
 /** Socials straight from Qloo's `external` (8 Oct: Instagram on 97% of brands, X on 66%). Wikidata fills websites. */
-function qlooContact(e: QlooEntity, callId: string): PartnerCard["contact"] {
+export function qlooContact(e: QlooEntity, callId: string): PartnerCard["contact"] {
   const ig = externalId(e, "instagram");
   const x = externalId(e, "twitter");
   const itunes = externalId(e, "itunes");
@@ -135,7 +135,7 @@ function qlooContact(e: QlooEntity, callId: string): PartnerCard["contact"] {
   };
 }
 
-function reasonChips(e: QlooEntity, callId: string, names: Map<string, string>, fingerprint: TagChip[]): Evidence[] {
+export function reasonChips(e: QlooEntity, callId: string, names: Map<string, string>, fingerprint: TagChip[]): Evidence[] {
   const out: Evidence[] = [];
   const contrib = (e.query?.explainability?.["signal.interests.entities"] ?? []).filter((c) => names.has(c.entity_id)).slice(0, 2);
   if (contrib.length) out.push({ kind: "contribution", label: `Loved by fans of ${contrib.map((c) => names.get(c.entity_id)).join(" and ")}`, callId });

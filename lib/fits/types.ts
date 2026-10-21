@@ -59,6 +59,8 @@ export type Fit = {
   when?: string;
   /** Parameters with nothing measured, left out of its score. */
   missing: Param[];
+  /** The group next to the measured crowds, not one of them (§23.5 c): always Watch. */
+  nearMiss?: boolean;
 };
 
 export type FitsResult = {

@@ -1,6 +1,7 @@
 import type { CrowdsResult } from "@/lib/journey/types";
 import { MAX_EXTRA } from "@/lib/taste/graph";
 import { metroById } from "@/lib/playbook/metros";
+import { isChainName } from "@/lib/methods/names";
 import type { AgentState, Decision } from "./tools";
 
 // The Analyst's evidence rules (PRD §23.2 step 8b, 8i) for the tools it shares with step 2's agent: when to measure,
@@ -15,6 +16,11 @@ export const CLOSE_CALL = 0.05;
 const UNCLEAR = 0.6;
 /** Probes per session before the Analyst stops on its own. */
 export const PROBE_CAP = 2;
+/** Seeding wider (§23.5 c): with fewer than three crowds, a probe holds this many entities, topped up with brands like yours. */
+export const WIDER = 3;
+
+/** The crowds that held as measured, leaving out the near-miss group (§23.5 c). */
+export const heldCrowds = (r?: CrowdsResult) => (r?.crowds ?? []).filter((c) => !c.nearMiss).length;
 
 /** build_taste_graph: measure when there are no crowds; seed from similar brands when the brand isn't in Qloo. */
 export function graphWhen(s: AgentState): Decision | undefined {
@@ -35,8 +41,9 @@ export const crowdSignature = (r?: CrowdsResult) => (r?.crowds ?? []).map((c) =>
 
 /**
  * probe_entity, on evidence only (§23.2 step 8i): the entity the founder asked about when it's unclear; founder facts
- * (comparables, rivals) not on the map; a soft crowd; Win first and Win next too close to call. Never when the crowds
- * are stable and the ranking is clear; stops at the cap, at the graph's limit, or when the last probe changed nothing.
+ * (comparables, rivals) not on the map; fewer than three crowds (§23.5 c: seed wider once, with the brands on the map
+ * most like yours, joining any other probe); a soft crowd; Win first and Win next too close to call. Never when the
+ * crowds are stable and the ranking is clear; stops at the cap, at the graph's limit, or when the last probe changed nothing.
  */
 export function probeWhen(s: AgentState): Decision | undefined {
   const t = s.team;
@@ -49,14 +56,30 @@ export function probeWhen(s: AgentState): Decision | undefined {
   const onMap = (id: string) => nodes.some((n) => n.id === id && n.crowd >= 0) || s.probes.includes(id);
   const node = (id: string) => nodes.find((n) => n.id === id);
 
+  // Fewer than three crowds held and the graph hasn't been seeded wider: brands on the map most like yours (not chains,
+  // not the seed, not landmarks) join the probe, to see whether a third crowd appears (§23.5 c).
+  const held = heldCrowds(r);
+  const seeded = new Set([r.seed.brand?.id, ...r.seed.lookalikes.map((x) => x.id)]);
+  const likeYours = held < 3 && !t.probe.wider
+    ? nodes.filter((n) => n.domain === "brand" && n.crowd >= 0 && !n.landmark && !seeded.has(n.id) && !s.probes.includes(n.id) && !isChainName(n.name)).sort((a, b) => b.affinity - a.affinity)
+    : [];
+  const heldLine = `only ${held === 1 ? "one crowd" : `${held} crowds`} held`;
+  const probe = (ids: string[], why: string): Decision => {
+    const add = likeYours.filter((n) => !ids.includes(n.id)).slice(0, Math.max(0, Math.min(WIDER, MAX_EXTRA - s.probes.length) - ids.length));
+    if (!add.length) return { args: { entity_ids: ids }, why };
+    const names = add.map((n) => n.name).join(", ");
+    return { args: { entity_ids: [...ids, ...add.map((n) => n.id)] }, why: ids.length ? `${why}; ${heldLine}, so ${names}, brands like yours, join the probe to see whether a third appears` : `${heldLine[0].toUpperCase()}${heldLine.slice(1)}; probing ${names}, brands on the map most like yours, to see whether a third appears` };
+  };
+
   const asked = t.asked;
   if (asked?.id) {
     const n = node(asked.id);
     if (!n || n.crowd < 0 || n.certainty < UNCLEAR)
-      return { args: { entity_ids: [asked.id] }, why: n ? `You asked about ${asked.name}, and where it sits is unclear; probing it settles that` : `You asked about ${asked.name}, which isn't on the map yet; probing it places it` };
+      return probe([asked.id], n ? `You asked about ${asked.name}, and where it sits is unclear; probing it settles that` : `You asked about ${asked.name}, which isn't on the map yet; probing it places it`);
   }
   const facts = [...t.brand.comparables, ...t.brand.competitors].filter((x) => x.id && !onMap(x.id)).slice(0, 2);
-  if (facts.length) return { args: { entity_ids: facts.map((x) => x.id) }, why: `You named ${facts.map((x) => x.name).join(" and ")}, which aren't on the map yet; probing places them` };
+  if (facts.length) return probe(facts.map((x) => x.id), `You named ${facts.map((x) => x.name).join(" and ")}, which aren't on the map yet; probing places them`);
+  if (likeYours.length) return probe([], "");
 
   const soft = r.crowds.map((c, i) => ({ c, i })).find(({ c }) => c.stability !== undefined && c.stability < SOFT);
   if (soft) {

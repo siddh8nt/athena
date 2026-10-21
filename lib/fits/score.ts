@@ -26,6 +26,8 @@ export type CrowdEvidence = {
   season?: { index: number[]; years: number; titles: string[] };
   /** Dated events for its artists. */
   events?: { name: string; date: string; days: number; artist: string; metro: string; url?: string }[];
+  /** The group next to the measured crowds (§23.5 c): scored like them, always Watch, ranked after them. */
+  nearMiss?: boolean;
 };
 
 const clamp = (x: number) => Math.max(0, Math.min(1, x));
@@ -160,9 +162,10 @@ export function rankFits(crowds: CrowdEvidence[], opts: { date: string; changes?
     const score = total ? present.reduce((s, p) => s + weights[p] * params[p].score!, 0) / total : 0;
     return { c, params, present, score, missing: PARAMS.filter((p) => !present.includes(p)) };
   });
-  // Ties break toward the stronger signal, then the name, so the order never depends on input order.
-  scored.sort((a, b) => b.score - a.score || (b.params.signal.score ?? 0) - (a.params.signal.score ?? 0) || a.c.name.localeCompare(b.c.name));
-  const best = scored[0]?.score ?? 0;
+  // Measured crowds first: the near-miss group never moves Win first or Win next (§23.5 c). Ties break toward the
+  // stronger signal, then the name, so the order never depends on input order.
+  scored.sort((a, b) => Number(!!a.c.nearMiss) - Number(!!b.c.nearMiss) || b.score - a.score || (b.params.signal.score ?? 0) - (a.params.signal.score ?? 0) || a.c.name.localeCompare(b.c.name));
+  const best = scored.find((s) => !s.c.nearMiss)?.score ?? 0;
   const mean = (p: Param) => {
     const xs = scored.map((s) => s.params[p].score).filter((x): x is number => x !== undefined);
     return xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0;
@@ -170,7 +173,7 @@ export function rankFits(crowds: CrowdEvidence[], opts: { date: string; changes?
 
   const fits: Fit[] = scored.map((s, rank) => {
     const weak = (s.params.signal.score ?? 1) < WEAK;
-    const tier: Tier = rank === 0 || (rank === 1 && best - s.score <= TIE && !weak) ? "win_first" : weak || best - s.score > BEHIND ? "watch" : "win_next";
+    const tier: Tier = s.c.nearMiss ? "watch" : rank === 0 || (rank === 1 && best - s.score <= TIE && !weak) ? "win_first" : weak || best - s.score > BEHIND ? "watch" : "win_next";
     // Reasons: where it beats the other crowds most, then (below the top) what holds it back.
     const vs = s.present.map((p) => ({ p, d: (s.params[p].score! - mean(p)) * weights[p] })).sort((a, b) => b.d - a.d);
     const up = (scored.length > 1 ? vs.filter((x) => x.d > 0.02) : vs.filter((x) => s.params[x.p].score! >= 0.6)).slice(0, 2);
@@ -186,7 +189,7 @@ export function rankFits(crowds: CrowdEvidence[], opts: { date: string; changes?
       peak ? `Attention peaks in ${MONTHS[peak.month]} ${peak.date.slice(0, 4)} (${peak.days ? `in ${peak.days} days` : "now"})${peak.rampDays ? `, climbing from ${MONTHS[(peak.month + 12 - peak.rampDays / 30) % 12]}` : ""}` : "",
       event ? `${event.artist} plays ${event.metro} on ${event.date}` : "",
     ].filter(Boolean);
-    return { crowd: s.c.id, name: s.c.name, rank: rank + 1, tier, score: r2(s.score), params: s.params, reasons, when: when.join("; ") || undefined, missing: s.missing };
+    return { crowd: s.c.id, name: s.c.name, rank: rank + 1, tier, score: r2(s.score), params: s.params, reasons, when: when.join("; ") || undefined, missing: s.missing, ...(s.c.nearMiss ? { nearMiss: true } : {}) };
   });
   return { fits, weights, changes: kept, excluded: opts.excluded ?? [], date: opts.date };
 }

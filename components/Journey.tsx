@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ACCEPT, RecordView, TrailView, useBriefChat, type FileChip, type Msg } from "./chat";
 import type { WorkRecord } from "@/lib/agent/record";
 import { BrandGraph, StaleFlag } from "./BrandGraph";
+import { ordinal } from "./Blocks";
 import { Question, QuestionTray, type TrayItem } from "./Question";
 import { Galaxy } from "./Galaxy";
 import { CrowdGeography } from "./CrowdGeography";
@@ -31,7 +32,7 @@ import { bySource, mergeNotes, themesOf, type Synth } from "@/lib/knowledge/note
 import { RunProgress, StepTimer } from "./Progress";
 import { AthenaRoom, DashboardPage, PausedBanner, SubagentPage, focusTray, usePausedTab, type Page } from "./Views";
 import type { Channel } from "@/lib/journey/growth";
-import { crowdAfterFits, emptyJourney, loadedJourney, type CrowdCard, type Journey as JourneyState } from "@/lib/journey/types";
+import { NEAR_MISS_LABEL, crowdAfterFits, emptyJourney, loadedJourney, type CrowdCard, type CrowdMeeting, type Journey as JourneyState } from "@/lib/journey/types";
 import type { Galaxy as GalaxyData } from "@/lib/taste/galaxy";
 import { packBySlug } from "@/lib/journey/packs";
 import { emptyTeam, type Mark, type TeamEvent, type TeamState, type WorkItem } from "@/lib/team/types";
@@ -1019,7 +1020,7 @@ function AnalystResults({ j, step, measured, forming, fits, onAsk, probing, alon
           const d = decisions[ci];
           return (
             <article key={c.id} className={`crowd ${chosen ? "chosen" : ""} ${d?.watch ? "dimmed" : ""}${lit === ci ? " lit" : ""}`} onMouseEnter={() => setLit(ci)} onMouseLeave={() => setLit(null)}>
-              <p className="crowd-tag">{d ? `${d.tier} · ` : ""}{c.main ? "Closest to your product" : "Next door"}</p>
+              <p className="crowd-tag">{d ? `${d.tier} · ` : ""}{c.nearMiss ? NEAR_MISS_LABEL : c.main ? "Closest to your product" : "Next door"}</p>
               <h4>
                 <span className="swatch" style={{ background: `var(--crowd-${ci % 4})` }} aria-hidden />
                 {c.name}
@@ -1044,16 +1045,26 @@ function AnalystResults({ j, step, measured, forming, fits, onAsk, probing, alon
   );
 }
 
-/** Where a next-door crowd meets the main one (§9.28): what both love, each side's percentile on hover. */
+/** Where a next-door crowd meets the main one (§9.28), or the near-miss group each measured crowd (§23.5 c): what both love, each side's percentile on hover. */
 function Meeting({ r, crowd }: { r: NonNullable<JourneyState["crowds"]>; crowd: CrowdCard }) {
-  const m = r.meetings?.find((x) => x.b === crowd.id);
-  const main = r.crowds.find((c) => c.id === m?.a);
-  if (!m || !main) return null;
+  return (
+    <>
+      {(r.meetings ?? [])
+        .filter((x) => x.b === crowd.id)
+        .map((m) => {
+          const main = r.crowds.find((c) => c.id === m.a);
+          return main ? <MeetingLine key={m.a} m={m} main={main} crowd={crowd} /> : null;
+        })}
+    </>
+  );
+}
+
+function MeetingLine({ m, main, crowd }: { m: CrowdMeeting; main: CrowdCard; crowd: CrowdCard }) {
   return (
     <p className="small meeting">
       <strong>Meets {main.name} at</strong>{" "}
       {m.items.slice(0, 4).map((x, i) => (
-        <span key={x.id} title={`${main.name}: ${Math.round(x.a * 100)}th percentile · ${crowd.name}: ${Math.round(x.b * 100)}th`}>
+        <span key={x.id} title={`${main.name}: ${ordinal(Math.round(x.a * 100))} percentile · ${crowd.name}: ${ordinal(Math.round(x.b * 100))}`}>
           {i ? ", " : ""}
           {x.name}
         </span>

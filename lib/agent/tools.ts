@@ -10,7 +10,7 @@ import { axesOf, baseKey, cachedCrowds, measure, probeCrowds, savedGraph } from 
 import { readSkew } from "@/lib/taste/crowds";
 import { crowdGeography } from "@/lib/geo/geography";
 import type { Geography } from "@/lib/geo/types";
-import type { CrowdsResult } from "@/lib/journey/types";
+import { NEAR_MISS_LABEL, type CrowdsResult } from "@/lib/journey/types";
 import { metroById, metroFor, metroIdFor, US_CENTER, type Metro } from "@/lib/playbook/metros";
 import { locationParams, resolveTyped } from "@/lib/places/location";
 import { wikipediaMomentum } from "@/lib/enrich/wikipedia";
@@ -31,7 +31,7 @@ import { BUDGET_BANDS, type StrategyResult } from "@/lib/strategy/types";
 import type { WorkItem } from "@/lib/team/types";
 import type { SpecialistId } from "./specialists";
 import type { TeamCtx } from "./plays";
-import { crowdSignature, graphWhen, probeWhen, rankWhen } from "./evidence";
+import { crowdSignature, graphWhen, heldCrowds, probeWhen, rankWhen } from "./evidence";
 import { itemId } from "./outcomes";
 
 // The agent's tools (PRD §23.2 step 2a): the code Athena already had, as one registry the agent chooses from.
@@ -165,7 +165,8 @@ const entityOut = (e: QlooEntity) => ({
 const CROWD_KEY =
   "Crowds are groups of entities (brands, artists, places, shows) that the same people love, measured from Qloo. members: entities in the crowd, not people. " +
   "stability: 0–1, how often resampling Qloo's data gives back the same crowd (Hennig); under ~0.6 is soft, worth a probe. core_members: members certain above shuffled-data chance. " +
-  "skew: the audience's age and gender lean from Qloo; each value is a relative lean (0 = average), not a share of the audience. cities.venues: venues in that city that score for the crowd.";
+  "skew: the audience's age and gender lean from Qloo; each value is a relative lean (0 = average), not a share of the audience. cities.venues: venues in that city that score for the crowd. " +
+  "near_miss: not a measured crowd. Fewer than three crowds held, so this is the group next to them (the strongest group too small to count, or the fringe along one taste axis); its numbers are real, it always sits in Watch, and it is called \"next to your crowds, not yours yet\".";
 
 export function crowdsOut(r: CrowdsResult) {
   return {
@@ -175,6 +176,7 @@ export function crowdsOut(r: CrowdsResult) {
       id: c.id,
       name: c.name,
       main: c.main,
+      ...(c.nearMiss ? { near_miss: true } : {}),
       members: c.size,
       stability: r3(c.stability),
       core_members: c.core,
@@ -192,10 +194,14 @@ export function crowdsOut(r: CrowdsResult) {
 
 /** The crowds as results a specialist can return (§23.2 step 8b). */
 const crowdItems = (r: CrowdsResult) =>
-  r.crowds.map((c) => ({ id: itemId("crowd", c.name), kind: "crowd", name: c.name, why: `${c.main ? "Your main crowd" : "A crowd"} of ${c.size}, loving ${c.loves.slice(0, 3).map((l) => l.name).join(", ")}`, group: "crowd", ref: c.id }));
+  r.crowds.map((c) => ({ id: itemId("crowd", c.name), kind: "crowd", name: c.name, why: `${c.nearMiss ? `${NEAR_MISS_LABEL}: a group` : c.main ? "Your main crowd" : "A crowd"} of ${c.size}, loving ${c.loves.slice(0, 3).map((l) => l.name).join(", ")}`, group: "crowd", ref: c.id }));
 
-const crowdLine = (r: CrowdsResult) =>
-  r.crowds.length ? `${r.crowds.length} crowd${r.crowds.length > 1 ? "s" : ""}: ${r.crowds.map((c) => `${c.name}${c.stability !== undefined ? (c.stability < 0.6 ? " (still soft)" : " (firm)") : ""}`).join("; ")}` : "no crowds: the seed had too little Qloo knows";
+const crowdLine = (r: CrowdsResult) => {
+  const held = heldCrowds(r);
+  return r.crowds.length
+    ? `${held} crowd${held > 1 ? "s" : ""}${held < r.crowds.length ? " and a group next to them" : ""}: ${r.crowds.map((c) => `${c.name}${c.nearMiss ? ` (${NEAR_MISS_LABEL.toLowerCase()})` : c.stability !== undefined ? (c.stability < 0.6 ? " (still soft)" : " (firm)") : ""}`).join("; ")}`
+    : "no crowds: the seed had too little Qloo knows";
+};
 
 // ---- The registry ----------------------------------------------------------------------------------------------
 
@@ -314,7 +320,8 @@ export const TOOLS: Tool[] = [
       // Probe results are cached by brand and probe set (cachedCrowds), so asking again costs nothing.
       const r = (await cachedCrowds(state.seed, probes)) ?? (await probeCrowds(qloo, state.seed, probes, status));
       const unchanged = !r?.crowds.length || crowdSignature(r) === crowdSignature(state.crowds);
-      if (state.team) state.team.probe = { ran: state.team.probe.ran + 1, unchanged };
+      // A probe with fewer than three crowds measures again wider (§23.5 c); if a third still doesn't hold, the near-miss stands.
+      if (state.team) state.team.probe = { ran: state.team.probe.ran + 1, unchanged, wider: state.team.probe.wider || heldCrowds(state.crowds) < 3 };
       if (!r?.crowds.length) return { summary: "the probe didn't change the crowds", data: crowdsOut(state.crowds), status: "thin" };
       state.crowds = r;
       state.probes = probes;
@@ -574,7 +581,7 @@ export const TOOLS: Tool[] = [
         // The summary is the founder's step line: ranks and tiers in words; the scores stay in the data the model reads.
         summary: r.fits.map((f) => `${f.rank}. ${f.name} (${f.tier.replace("_", " ")})`).join("; "),
         data: { key, fits: out, weights: r.weights, weight_changes: r.changes, left_out_as_already_sold: r.excluded, ignored },
-        items: r.fits.map((f) => ({ id: itemId("crowd", f.name), kind: "crowd", name: f.name, why: `${TIER_LABEL[f.tier]}${f.reasons[0] ? `: ${f.reasons[0]}` : ""}`, group: TIER_LABEL[f.tier], ref: f.crowd })),
+        items: r.fits.map((f) => ({ id: itemId("crowd", f.name), kind: "crowd", name: f.name, why: `${TIER_LABEL[f.tier]}${f.nearMiss ? `, ${NEAR_MISS_LABEL.toLowerCase()}` : ""}${f.reasons[0] ? `: ${f.reasons[0]}` : ""}`, group: TIER_LABEL[f.tier], ref: f.crowd })),
       };
     },
   },

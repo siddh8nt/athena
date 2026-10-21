@@ -1,6 +1,6 @@
 import { itemKey, type BrandBrief, type Source } from "@/lib/brief/types";
 import type { LiveFact } from "@/lib/knowledge/types";
-import type { CrowdsResult, FitsRun } from "@/lib/journey/types";
+import { NEAR_MISS_LABEL, type CrowdsResult, type FitsRun } from "@/lib/journey/types";
 import type { StrategyRun } from "@/lib/strategy/types";
 import { TIER_LABEL, type Moment } from "@/lib/fits/types";
 import type { ShapeName } from "./shapes";
@@ -326,9 +326,9 @@ export const NODE_TYPES: Record<string, NodeType> = {
           detail: c.loves.slice(0, 3).map((l) => l.name).join(", ") || undefined,
           source: QLOO,
           crowd: slot,
-          ...(fit ? { tier: { label: TIER_LABEL[fit.tier], reason: fit.reasons[0] ?? "", watch: fit.tier === "watch" }, ...(fit.when ? { when: fit.when } : {}) } : {}),
+          ...(fit ? { tier: { label: TIER_LABEL[fit.tier], reason: fit.nearMiss ? NEAR_MISS_LABEL : (fit.reasons[0] ?? ""), watch: fit.tier === "watch" }, ...(fit.when ? { when: fit.when } : {}) } : {}),
         });
-        out.edges.push(edge("crowd_of", id, BRAND, fit ? `${TIER_LABEL[fit.tier]} for ${brandName(input.brief)}${fit.reasons[0] ? `: ${fit.reasons[0]}` : ""}` : `A crowd that loves what ${brandName(input.brief)}'s customers love`, QLOO));
+        out.edges.push(edge("crowd_of", id, BRAND, fit ? `${TIER_LABEL[fit.tier]} for ${brandName(input.brief)}${fit.nearMiss ? `: ${NEAR_MISS_LABEL.toLowerCase()}` : fit.reasons[0] ? `: ${fit.reasons[0]}` : ""}` : `A crowd that loves what ${brandName(input.brief)}'s customers love`, QLOO));
       }
       const ids = new Map(all.map((x) => [x.c.id, x.id]));
       for (const m of input.crowds?.meetings ?? []) {

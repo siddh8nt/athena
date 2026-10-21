@@ -63,7 +63,8 @@ export async function gatherEvidence(g: GatherIn): Promise<Gathered> {
   const seasons: Record<string, SeasonIn | undefined> = {};
   const evidence = await Promise.all(
     crowds.map(async (c, i): Promise<CrowdEvidence> => {
-      const members = nodes.filter((n) => n.crowd === i);
+      // The near-miss group isn't a crowd of the Galaxy (§23.5 c): its card names its members.
+      const members = c.members?.length ? nodes.filter((n) => c.members!.includes(n.id)) : nodes.filter((n) => n.crowd === i);
       const core = members.filter((n) => n.core);
       const mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : undefined);
 
@@ -112,6 +113,7 @@ export async function gatherEvidence(g: GatherIn): Promise<Gathered> {
         momentum,
         season,
         events,
+        ...(c.nearMiss ? { nearMiss: true } : {}),
       };
     }),
   );

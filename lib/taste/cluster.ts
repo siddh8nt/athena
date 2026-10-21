@@ -96,7 +96,16 @@ export type Member = { domain: string };
  * whose centroid is most similar; then the smallest crowds merge until at most maxCrowds remain.
  */
 export function crowdRules(groups: number[], vectors: number[][], members: Member[], minSize = 8, maxCrowds = 3): number[] {
+  return crowdRulesOf(groups, vectors, members, minSize, maxCrowds).groups;
+}
+
+/**
+ * The crowd rules, and the strongest group that failed them (§23.5 c): the largest set of entities merged away for
+ * being too small or in one domain, by row index. Empty when every group held.
+ */
+export function crowdRulesOf(groups: number[], vectors: number[][], members: Member[], minSize = 8, maxCrowds = 3): { groups: number[]; missed: number[] } {
   let g = [...groups];
+  let missed: number[] = [];
   const ids = () => [...new Set(g)];
   const centroid = (c: number) => {
     const rows = vectors.filter((_, i) => g[i] === c);
@@ -115,9 +124,12 @@ export function crowdRules(groups: number[], vectors: number[][], members: Membe
   for (let guard = 0; guard < 100; guard++) {
     const weak = ids().filter((c) => !valid(c)).sort((a, b) => size(a) - size(b))[0];
     if (weak === undefined || ids().length === 1) break;
+    // A weak group may first absorb a weaker one, so the last time it merges away it holds both.
+    const rows = g.flatMap((x, i) => (x === weak ? [i] : []));
+    if (rows.length >= missed.length) missed = rows;
     mergeInto(weak);
   }
   while (ids().length > maxCrowds) mergeInto(ids().sort((a, b) => size(a) - size(b))[0]);
   const dense = new Map(ids().map((c, i) => [c, i]));
-  return g.map((c) => dense.get(c)!);
+  return { groups: g.map((c) => dense.get(c)!), missed };
 }

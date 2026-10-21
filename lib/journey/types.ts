@@ -31,7 +31,14 @@ export type CrowdCard = {
   stability?: number;
   /** Members at the crowd's core: placed more surely than shuffled data allows (v4.0). */
   core?: number;
+  /** Not a measured crowd: the group next to them that fills Watch when fewer than three held (§23.5 c). */
+  nearMiss?: boolean;
+  /** A near-miss group's members by Qloo id: they aren't a crowd of the Galaxy, so its nodes don't name them. */
+  members?: string[];
 };
+
+/** The near-miss group's label, wherever it appears (§23.5 c). */
+export const NEAR_MISS_LABEL = "Next to your crowds, not yours yet";
 
 /**
  * One taste axis (§9.27, v4.0): a direction the measured graph's landmarks pull along, from a non-negative

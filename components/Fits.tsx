@@ -2,7 +2,7 @@
 
 import { Fragment, type ReactNode } from "react";
 import type { AgentEvent } from "@/lib/blocks/types";
-import type { CrowdCard, FitsRun } from "@/lib/journey/types";
+import { NEAR_MISS_LABEL, type CrowdCard, type FitsRun } from "@/lib/journey/types";
 import { HORIZON_LABEL, PARAMS, PARAM_LABEL, TIER_LABEL, type Calendar, type Fit, type FitsAnswer, type Horizon, type Moment, type SourceRef, type Tier } from "@/lib/fits/types";
 import { MONTHS } from "@/lib/fits/score";
 import { Question, type Asked } from "./Question";
@@ -169,6 +169,7 @@ function FitCard({ f, said, sources, slot, children }: { f: Fit; said: FitsAnswe
         </h5>
         <span className="fit-score" title="The weighted mean of the measures below, 0 to 1">{f.score.toFixed(2)}</span>
       </div>
+      {f.nearMiss && <p className="crowd-tag fit-near">{NEAR_MISS_LABEL}</p>}
       {said.length
         ? said.map((r, i) => (
             <p key={i} className="small">

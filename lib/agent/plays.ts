@@ -115,8 +115,8 @@ export type TeamCtx = {
     rivals?: PositionCard[];
   };
   outcomes: Outcome[];
-  /** Probes the Analyst ran this session, and whether the last one changed the crowds. */
-  probe: { ran: number; unchanged?: boolean };
+  /** Probes the Analyst ran this session, whether the last one changed the crowds, and whether one ran with fewer than three crowds (§23.5 c). */
+  probe: { ran: number; unchanged?: boolean; wider?: boolean };
 };
 
 const ALL: SpecialistId[] = [...SPECIALIST_IDS];

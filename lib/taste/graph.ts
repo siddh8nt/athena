@@ -1,7 +1,8 @@
 import type { Priority, QlooClient } from "@/lib/qloo/client";
 import type { QlooEntity } from "@/lib/qloo/types";
 import { isChainName } from "@/lib/methods/names";
-import { centerColumns, crowdRules } from "./cluster";
+import { centerColumns, crowdRulesOf } from "./cluster";
+import { tasteAxes } from "./axes";
 import { MISSING, farthestPoints, percentiles, rowCorrelation } from "./embed";
 import { DOMAINS, shortName, type Domain, type Galaxy, type Ref } from "./galaxy";
 import { rng, type Rng } from "./linalg";
@@ -56,6 +57,12 @@ export type Crowd = {
   stability?: number;
   /** How many members are at its core. */
   core?: number;
+  /**
+   * Next to the measured crowds, not one of them (§23.5 c): fewer than three crowds held, so Watch is filled by the
+   * strongest group that failed the crowd rules, or the fringe along one taste axis. Its members also sit in the
+   * measured crowds; it is never ranked above them.
+   */
+  nearMiss?: boolean;
 };
 
 export type TasteGraph = {
@@ -101,6 +108,8 @@ export const GRAPH_BUDGET = 110;
 export const QUOTA_LOW = 2000;
 /** Click to probe: at most this many founder probes per graph (about 6 calls each). */
 export const MAX_EXTRA = 4;
+/** The fewest members a near-miss group needs to be shown at all. */
+export const NEAR_MIN = 4;
 
 /**
  * The seed as a Qloo signal. Tags join only when there are fewer than 2 entities: brands carry taste better than
@@ -284,7 +293,7 @@ function finish(st: GraphState, main: Spectral, S: number[][], rand: Rng, opts: 
   // on shuffled probes set the bar for the core (measured 12 Oct: the crowds are real but soft, so only cores are claimed).
   opts.onStep?.(`Checking which crowds hold up across ${BOOTSTRAP} resamples of ${landmarks.length + 1} probes, and against shuffled data`);
   const runs = resample(U, main.k, { B: BOOTSTRAP, start: main.vectors, rand });
-  const groups = crowdRules(consensusLabels(coassociationOf(runs), main.k, rand), centerColumns(U), nodes);
+  const { groups, missed } = crowdRulesOf(consensusLabels(coassociationOf(runs), main.k, rand), centerColumns(U), nodes);
   const m = membership(runs, groups);
   const single = new Set(groups).size < 2;
   const coreAt = single ? 0 : nullCertainty(U, nodes.map((n) => n.domain), main.k, { B: NULL_RESAMPLES, rand });
@@ -298,10 +307,13 @@ function finish(st: GraphState, main: Spectral, S: number[][], rand: Rng, opts: 
     return members.reduce((s, n) => s + n.affinity, 0) / members.length;
   };
   const order = [...ids].sort((a, b) => closeness(b) - closeness(a));
-  const crowds = order.map((g, ci) => {
+  const crowds: Crowd[] = order.map((g, ci) => {
     const members = nodes.filter((_, i) => groups[i] === g);
     return { ...crowdOf(`c${ci}`, ci === 0, members), stability: round2(m.stability[ids.indexOf(g)]), core: members.filter((n) => n.core).length };
   });
+  // Fewer than three crowds held: the slot left over goes to the group next to them (§23.5 c), outside the Galaxy's crowds.
+  const near = crowds.length && crowds.length < 3 ? nearMissOf(st, missed) : undefined;
+  if (near) crowds.push({ ...crowdOf(`c${crowds.length}`, false, near), nearMiss: true });
   const crowdIndex = groups.map((g) => order.indexOf(g));
   const galaxy = snapshot(nodes, U, S, crowdIndex, main, landmarks, seedName, round, true, callIds.length);
   galaxy.nodes.forEach((g, i) => ((g.certainty = nodes[i].certainty ?? 1), (g.core = nodes[i].core ?? true)));
@@ -320,6 +332,23 @@ function finish(st: GraphState, main: Spectral, S: number[][], rand: Rng, opts: 
 }
 
 const round2 = (x: number) => Math.round(x * 100) / 100;
+
+/**
+ * The group next to the measured crowds (§23.5 c, founder 21 Oct): the strongest group the crowd rules merged away, or
+ * else the entities outside every crowd's core that load mostly on one taste axis, the axis holding the most of them.
+ * Either needs NEAR_MIN members; a fringe group also needs two domains.
+ */
+export function nearMissOf(st: Pick<GraphState, "nodes" | "U">, missed: number[]): Node[] | undefined {
+  if (missed.length >= NEAR_MIN) return missed.map((i) => st.nodes[i]);
+  const fringe = st.nodes.filter((n) => n.core === false);
+  if (fringe.length < NEAR_MIN) return undefined;
+  const axes = tasteAxes(st.U, st.nodes)?.axes;
+  if (!axes) return undefined;
+  const lean = (n: Node) => axes.reduce((best, a, k) => ((a.load.get(n.id) ?? 0) > (axes[best].load.get(n.id) ?? 0) ? k : best), 0);
+  const by = axes.map((_, k) => fringe.filter((n) => lean(n) === k));
+  const group = by.filter((g) => g.length >= NEAR_MIN && new Set(g.map((n) => n.domain)).size >= 2).sort((a, b) => b.length - a.length)[0];
+  return group;
+}
 
 function snapshot(nodes: Node[], U: number[][], S: number[][], crowd: number[], main: { k: number; values: number[]; vectors: number[][] }, landmarks: number[], seedName: string, round: number, done: boolean, calls: number): Galaxy {
   const ax = main.vectors[1] ?? [];

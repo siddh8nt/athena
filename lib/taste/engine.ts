@@ -7,7 +7,7 @@ import type { QlooClient } from "@/lib/qloo/client";
 import { crowdDetails } from "@/lib/taste/crowds";
 import { nameAxes, nameCrowds } from "@/lib/taste/name";
 import { tasteAxes } from "@/lib/taste/axes";
-import { crowdBridges } from "@/lib/taste/bridges";
+import { STAND_IN, crowdBridges } from "@/lib/taste/bridges";
 import type { CrowdCard, CrowdMeeting, CrowdsResult, Love, TasteAxisCard } from "@/lib/journey/types";
 import type { Galaxy } from "@/lib/taste/graph";
 
@@ -58,7 +58,9 @@ export async function measure(qloo: QlooClient, input: SeedInput, base: string, 
 /** Each crowd's card: its skew and cities (2 calls each) and its name (the agent, under the validator). */
 export async function resultOf(qloo: QlooClient, graph: TasteGraph, seed: CrowdsResult["seed"], seedCallIds: string[], status: (t: string) => void): Promise<CrowdsResult> {
   if (!graph.crowds.length) return { seed, crowds: [], calls: seedCallIds.length + graph.calls, callIds: [...seedCallIds, ...graph.callIds], empty: true };
-  status(graph.crowds.length > 1 ? `Found ${graph.crowds.length} distinct crowds; checking where each one lives` : "Checking where this crowd lives");
+  const held = graph.crowds.filter((c) => !c.nearMiss).length;
+  const near = held < graph.crowds.length ? " and a group next to them" : "";
+  status(held > 1 ? `Found ${held} distinct crowds${near}; checking where each one lives` : `Checking where this crowd${near} lives`);
   const [details, names, axes] = await Promise.all([Promise.all(graph.crowds.map((c) => crowdDetails(qloo, c, { priority: c.main ? "now" : "next" }))), nameCrowds(graph.crowds), graph.state ? axesOf(graph.state) : undefined]);
   const crowds: CrowdCard[] = graph.crowds.map((c, i) => ({
     id: c.id,
@@ -72,15 +74,17 @@ export async function resultOf(qloo: QlooClient, graph: TasteGraph, seed: Crowds
     size: c.entities.length,
     stability: c.stability,
     core: c.core,
+    ...(c.nearMiss ? { nearMiss: true, members: c.entities.map((e) => e.id) } : {}),
   }));
   const callIds = [...seedCallIds, ...graph.callIds, ...details.flatMap((d) => d.callIds)];
-  const meetings = graph.state ? meetingsOf(graph.state, graph.crowds.map((c) => ({ id: c.id, main: c.main, members: new Set(c.entities.map((e) => e.id)) }))) : undefined;
+  const meetings = graph.state ? meetingsOf(graph.state, graph.crowds.map((c) => ({ id: c.id, main: c.main, nearMiss: c.nearMiss, members: new Set(c.entities.map((e) => e.id)) }))) : undefined;
   return { seed, crowds, calls: callIds.length, callIds, galaxy: graph.galaxy, probes: graph.state?.extra.length ? graph.state.extra : undefined, ...(axes ? { axes } : {}), ...(meetings ? { meetings } : {}) };
 }
 
 // "v4.2": results from the probe-based graph (§9.23, v4.0) carry the Galaxy with null-calibrated cores and each
-// crowd's brand members (for Markets); older ones don't.
-export const baseKey = (input: SeedInput) => `v4.2|${JSON.stringify([input.brand?.id ?? "", [...input.comparables].sort(), [...input.lookalikes].sort(), [...input.traits].sort()]).toLowerCase()}`;
+// crowd's brand members (for Markets); older ones don't. "v4.3": with fewer than three crowds, Watch holds the
+// near-miss group (§23.5 c).
+export const baseKey = (input: SeedInput) => `v4.3|${JSON.stringify([input.brand?.id ?? "", [...input.comparables].sort(), [...input.lookalikes].sort(), [...input.traits].sort()]).toLowerCase()}`;
 
 type Extras = { axes?: TasteAxisCard[]; meetings?: CrowdMeeting[] };
 
@@ -100,7 +104,7 @@ export async function storedExtras(base: string, probes: string[] = []): Promise
   const saved = (await store.get<SavedGraph>("graph", key).catch(() => undefined))?.value ?? (probes.length && hit?.crowds?.length ? await reprobed(base, key, probes) : undefined);
   if (!saved) return undefined;
   const axes = hit?.axes ?? (await axesOf(saved.state));
-  const meetings = hit?.crowds?.length ? meetingsOf(saved.state, hit.crowds.map((c, i) => ({ id: c.id, main: c.main, members: membersOf(hit, c, i) }))) : undefined;
+  const meetings = hit?.crowds?.length ? meetingsOf(saved.state, hit.crowds.map((c, i) => ({ id: c.id, main: c.main, nearMiss: c.nearMiss, members: membersOf(hit, c, i) }))) : undefined;
   // An empty list marks meetings as read, so a seed whose crowds don't meet isn't read again.
   const extras: Extras = { ...(axes ? { axes } : {}), meetings: meetings ?? [] };
   if (axes && hit?.crowds?.length) await store.set("crowds", key, { ...hit, ...extras }, TTL).catch(() => undefined);
@@ -121,17 +125,26 @@ async function reprobed(base: string, key: string, probes: string[]): Promise<Sa
 
 /** A cached crowd's members: its Galaxy nodes (crowd index i is card i), else the signal and brands its card holds. */
 function membersOf(hit: CrowdsResult, c: CrowdCard, i: number): Set<string> {
+  if (c.members?.length) return new Set(c.members);
   const nodes = hit.galaxy?.nodes.filter((n) => n.crowd === i).map((n) => n.id);
   return new Set(nodes?.length ? nodes : [...c.signal, ...(c.brands ?? [])].map((r) => r.id));
 }
 
-/** Where the main crowd meets each other crowd (§9.28): the entities both love, from U (no Qloo calls). */
-export function meetingsOf(state: GraphState, crowds: { id: string; main: boolean; members: Set<string> }[]): CrowdMeeting[] {
+/**
+ * Where the main crowd meets each other crowd (§9.28): the entities both love, from U (no Qloo calls). The near-miss
+ * group (§23.5 c) is met from every measured crowd, each read without the near-miss members it also holds.
+ */
+export function meetingsOf(state: GraphState, crowds: { id: string; main: boolean; nearMiss?: boolean; members: Set<string> }[]): CrowdMeeting[] {
   const main = crowds.find((c) => c.main);
   if (!main) return [];
+  const measured = crowds.filter((c) => !c.nearMiss);
   return crowds.filter((c) => c !== main).flatMap((c) => {
-    const items = crowdBridges(state, main.members, c.members);
-    return items.length ? [{ a: main.id, b: c.id, items }] : [];
+    const from = c.nearMiss ? measured : [main];
+    return from.flatMap((m) => {
+      const own = c.nearMiss ? new Set([...m.members].filter((id) => !c.members.has(id))) : m.members;
+      const items = crowdBridges(state, own, c.members, c.nearMiss ? { stand: STAND_IN } : {});
+      return items.length ? [{ a: m.id, b: c.id, items }] : [];
+    });
   });
 }
 

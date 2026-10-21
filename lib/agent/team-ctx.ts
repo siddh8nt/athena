@@ -10,6 +10,7 @@ import type { TeamState } from "@/lib/team/types";
 import type { LiveFact } from "@/lib/knowledge/types";
 import { resolveBrand } from "@/lib/methods/resolve";
 import { metroOf } from "./tools";
+import { heldCrowds } from "./evidence";
 import type { TeamCtx, TeamEnrich } from "./plays";
 
 // The team's shared memory built from the Brand Graph the client sends (PRD §23.2 step 8b): the brand as the
@@ -94,6 +95,7 @@ export async function buildCtx(r: CtxInput): Promise<TeamCtx> {
     ...(r.notes?.length ? { notes: r.notes } : {}),
     found: {},
     outcomes: r.team.outcomes,
-    probe: { ran: r.probes.length },
+    // Probed and still under three crowds: the graph was seeded wider already (§23.5 c).
+    probe: { ran: r.probes.length, wider: r.probes.length > 0 && heldCrowds(r.crowds) < 3 },
   };
 }

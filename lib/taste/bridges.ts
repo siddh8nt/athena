@@ -11,9 +11,24 @@ export const BRIDGE_TAKE = 5;
 
 export type CrowdBridge = { id: string; name: string; a: number; b: number; score: number };
 
-/** Each crowd's percentile for every entity, from the landmarks it holds; undefined for a crowd with no landmark. */
-export function crowdProfile(state: GraphState, members: Set<string>): Map<string, number> | undefined {
-  const cols = state.landmarks.flatMap((row, j) => (members.has(state.nodes[row]?.id) ? [j + 1] : []));
+/** Landmarks that stand in for a near-miss group holding none of its own (§23.5 c). */
+export const STAND_IN = 2;
+
+/**
+ * Each crowd's percentile for every entity, from the landmarks it holds; undefined for a crowd with no landmark. With
+ * `stand`, a group holding no landmark (the near-miss, §23.5 c) is read through the `stand` landmarks whose fans rank
+ * its members highest: still measured columns of U, no new calls.
+ */
+export function crowdProfile(state: GraphState, members: Set<string>, opts: { stand?: number } = {}): Map<string, number> | undefined {
+  let cols = state.landmarks.flatMap((row, j) => (members.has(state.nodes[row]?.id) ? [j + 1] : []));
+  if (!cols.length && opts.stand) {
+    const rows = state.nodes.flatMap((n, i) => (members.has(n.id) ? [i] : []));
+    cols = state.landmarks
+      .map((_, j) => ({ c: j + 1, v: rows.reduce((s, i) => s + (state.U[i]?.[j + 1] ?? 0.5), 0) / (rows.length || 1) }))
+      .sort((x, y) => y.v - x.v || x.c - y.c)
+      .slice(0, opts.stand)
+      .map((x) => x.c);
+  }
   if (!cols.length) return undefined;
   const mean = state.nodes.map((n, i) => ({ id: n.id, v: cols.reduce((s, c) => s + (state.U[i]?.[c] ?? 0.5), 0) / cols.length }));
   const sorted = [...mean].sort((x, y) => y.v - x.v);
@@ -32,9 +47,9 @@ export function crowdProfile(state: GraphState, members: Set<string>): Map<strin
 }
 
 /** The entities two crowds both love, strongest bridge first. */
-export function crowdBridges(state: GraphState, a: Set<string>, b: Set<string>, opts: { min?: number; take?: number } = {}): CrowdBridge[] {
+export function crowdBridges(state: GraphState, a: Set<string>, b: Set<string>, opts: { min?: number; take?: number; stand?: number } = {}): CrowdBridge[] {
   const pa = crowdProfile(state, a);
-  const pb = crowdProfile(state, b);
+  const pb = crowdProfile(state, b, { stand: opts.stand });
   if (!pa || !pb) return [];
   const landmarks = new Set(state.landmarks.map((r) => state.nodes[r]?.id));
   const min = opts.min ?? BRIDGE_MIN;

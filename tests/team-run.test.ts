@@ -121,13 +121,12 @@ describe("the true-agent test (§23.2 step 8h)", () => {
 
   it("goes deeper at home instead of choosing a new city, and steps up only when asked to", async () => {
     const home = await run({ goals: ["deepen_home"], home: "Portland, OR" });
-    expect(home.step("navigator", "city_markets")?.why).toMatch(/going deeper in Portland, OR, so there's no new city to rank/);
-    expect(home.step("navigator", "neighbourhoods")?.why).toMatch(/in Portland, OR, where you already sell/);
+    expect(home.step("navigator", "read_cities")?.why).toMatch(/Mapping your crowds in Portland, OR/);
     expect(home.step("rep", "find_places")?.why).toMatch(/Portland/);
     expect(home.step("rep", "next_retailers")?.why).toMatch(/^Not stepping up yet/);
 
     const launch = await run({ goals: ["launch_city"], home: "Portland, OR" });
-    expect(launch.step("navigator", "city_markets")?.status).toBe("ok");
+    expect(launch.step("navigator", "read_cities")?.status).toBe("ok");
     expect(launch.work("navigator")?.results.some((x) => x.kind === "city" && /Portland/.test(x.name))).toBe(false);
 
     const up = await run({ goals: ["step_up"], home: "Portland, OR" });

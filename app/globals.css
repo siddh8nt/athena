@@ -2539,3 +2539,26 @@ button.nav-item:hover:not(:disabled) { background: rgba(255, 255, 255, 0.045); c
   .crowd-sheet { width: 100%; max-height: none; height: 100%; border-radius: 0; padding: 20px 16px; }
   .crowd-line > div { flex-basis: 100%; }
 }
+
+/* The Navigator's blocks (§23.5 e): tables whose rows open a city or a neighbourhood, a map with a layer per crowd, a checklist. */
+.nav-table-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; }
+.nav-table table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.nav-table th, .nav-table td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--line-soft); white-space: nowrap; font-weight: 400; }
+.nav-table thead th { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; background: var(--sunken); }
+.nav-table tbody tr:last-child > * { border-bottom: 0; }
+.nav-table tbody th { font-weight: 600; white-space: normal; min-width: 9em; }
+.nav-table tr.nav-row { cursor: pointer; }
+.nav-table tr.nav-row:hover { background: var(--sunken); }
+.nav-table .linkish { font: inherit; font-weight: 600; text-align: left; padding: 0; }
+.nav-heat { display: flex; flex-direction: column; gap: 8px; }
+.nav-heat-keys { display: flex; flex-wrap: wrap; gap: 6px; }
+.nav-heat-keys button { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; min-height: 30px; padding: 0 12px; border-radius: 999px; opacity: 0.55; }
+.nav-heat-keys button.on { opacity: 1; }
+.nav-heat-dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+.nav-heat-map { height: 300px; border-radius: 12px; overflow: hidden; border: 1px solid var(--line); background: var(--sunken); }
+.nav-check.nav-done p:first-child { text-decoration: line-through; color: var(--muted); }
+.nav-sheet-facts { grid-template-columns: 1fr; }
+.nav-sheet-line { font-weight: 600; }
+@media (max-width: 640px) {
+  .nav-heat-map { height: 240px; }
+}

@@ -5,9 +5,10 @@ import { createPortal } from "react-dom";
 import { itemId, latest } from "@/lib/agent/outcomes";
 import type { Handoff } from "@/lib/agent/handoffs";
 import { NEAR_MISS_LABEL } from "@/lib/journey/types";
-import { TIER_LABEL, type Block, type CrowdPage, type Line, type Named, type PageSource, type PageTab, type Section } from "@/lib/team/page";
+import { TIER_LABEL, type Block, type CrowdPage, type Detail, type Line, type Named, type PageSource, type PageTab, type Section } from "@/lib/team/page";
 import { MARKS, MARK_LABEL, type Mark, type Outcome, type WorkItem } from "@/lib/team/types";
 import { Handoffs } from "./Team";
+import { HeatLayers } from "./HeatLayers";
 
 // One page shape for every subagent (PRD §23.5 b): a tab per crowd (Win first, Win next, Watch) and Across all
 // three, the same sections in the same order in every crowd tab. On a phone the tabs swipe, the sections fold into
@@ -16,9 +17,9 @@ import { Handoffs } from "./Team";
 const ACROSS = "across";
 const TONES = ["More playful", "More premium", "Shorter"];
 /** Kinds a founder reaches out to or tries, and so can mark. */
-const MARKABLE = new Set(["message", "rival", "show", "podcast", "creator"]);
+const MARKABLE = new Set(["message", "rival", "show", "podcast", "creator", "neighbourhood", "step"]);
 
-type Picked = { named: Named; kind: string; src?: PageSource; crowd?: PageTab["crowd"] };
+type Picked = { named: Named; kind: string; src?: PageSource; crowd?: PageTab["crowd"]; detail?: Detail };
 
 export function CrowdTabs({
   page,
@@ -39,13 +40,16 @@ export function CrowdTabs({
   const ids = [...page.tabs.map((t) => t.crowd.id), ...(page.across ? [ACROSS] : [])];
   const [on, setOn] = useState(ids[0]);
   const [picked, setPicked] = useState<Picked | null>(null);
+  // A row that opens a section on Across all three (a city's own page): the tab switches and the section opens.
+  const [focus, setFocus] = useState<string | null>(null);
   const cur = ids.includes(on) ? on : ids[0];
   const tab = page.tabs.find((t) => t.crowd.id === cur);
   const sections = tab?.sections ?? page.across?.sections ?? [];
   const sources = new Map((tab?.sources ?? page.across?.sources ?? []).map((s) => [s.id, s]));
   const marks = new Map(latest(outcomes).filter((o) => o.agent === agent).map((o) => [o.item, o.mark]));
-  const mark = (id: string, kind: string, name: string, m: Mark) => onMark({ id, kind, name, why: "", group: kind, sources: [], callIds: [] }, m);
-  const ctx: Ctx = { tab, sources, marks, mark, pick: setPicked, onHooks, avoid: latest(outcomes).filter((o) => o.agent === agent && o.kind === "message" && o.mark === "no").map((o) => o.name) };
+  const mark = (id: string, kind: string, name: string, m: Mark, group?: string) => onMark({ id, kind, name, why: "", group: group ?? kind, sources: [], callIds: [] }, m);
+  const go = (id: string) => (setOn(ACROSS), setFocus(id));
+  const ctx: Ctx = { tab, sources, marks, mark, pick: setPicked, go, onHooks, avoid: latest(outcomes).filter((o) => o.agent === agent && o.kind === "message" && o.mark === "no").map((o) => o.name) };
 
   return (
     <div className="crowd-page">
@@ -64,7 +68,7 @@ export function CrowdTabs({
       </div>
       <div className="dash-tab-body crowd-body" key={cur} role="tabpanel">
         {tab?.crowd.nearMiss && <p className="small crowd-near">{NEAR_MISS_LABEL}</p>}
-        <Folds key={cur} sections={sections} ctx={ctx} onHandoff={onHandoff} />
+        <Folds key={cur} sections={sections} ctx={ctx} onHandoff={onHandoff} focus={cur === ACROSS ? focus : null} />
         <p className="small muted crowd-method">{tab?.method ?? page.across?.method}</p>
       </div>
       {picked && <Sheet p={picked} marks={marks} mark={mark} onHandoff={onHandoff} onClose={() => setPicked(null)} />}
@@ -76,26 +80,34 @@ type Ctx = {
   tab?: PageTab;
   sources: Map<string, PageSource>;
   marks: Map<string, Mark>;
-  mark: (id: string, kind: string, name: string, m: Mark) => void;
+  mark: (id: string, kind: string, name: string, m: Mark, group?: string) => void;
   pick: (p: Picked) => void;
+  go: (section: string) => void;
   onHooks?: (crowdId: string, lines: Line[]) => void;
   avoid: string[];
 };
 
 /** Each section folds to its title and summary; on a phone only the first starts open. */
-function Folds({ sections, ctx, onHandoff }: { sections: Section[]; ctx: Ctx; onHandoff?: (h: Handoff) => void }) {
+function Folds({ sections, ctx, onHandoff, focus }: { sections: Section[]; ctx: Ctx; onHandoff?: (h: Handoff) => void; focus?: string | null }) {
   const [shut, setShut] = useState<string[]>([]);
   useEffect(() => {
-    if (window.matchMedia?.("(max-width: 640px)").matches) setShut(sections.slice(1).map((s) => s.id));
+    // A city's own page starts folded, so Across reads as its overview first; on a phone only the first section is open.
+    const phone = window.matchMedia?.("(max-width: 640px)").matches;
+    setShut(sections.filter((s, i) => s.id !== focus && ((phone && i > 0) || s.id.startsWith("city:"))).map((s) => s.id));
     // Only on arrival: a fold the founder opens stays open.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  useEffect(() => {
+    if (!focus) return;
+    setShut((x) => x.filter((id) => id !== focus));
+    requestAnimationFrame(() => document.getElementById(`sec-${focus}`)?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  }, [focus]);
   return (
     <>
       {sections.map((s) => {
         const closed = shut.includes(s.id);
         return (
-          <div key={s.id} className={`kb-fold crowd-sec${closed ? " kb-shut" : ""}`}>
+          <div key={s.id} id={`sec-${s.id}`} className={`kb-fold crowd-sec${closed ? " kb-shut" : ""}`}>
             <button type="button" className="kb-fold-head" aria-expanded={!closed} onClick={() => setShut(closed ? shut.filter((x) => x !== s.id) : [...shut, s.id])}>
               <strong>{s.title}</strong>
               {s.summary && <small className="muted">{s.summary}</small>}
@@ -200,6 +212,25 @@ function BlockView({ b, section, ctx }: { b: Block; section: string; ctx: Ctx })
       </div>
     );
   if (b.type === "paths") return <Paths b={b} />;
+  if (b.type === "heat") return <HeatLayers b={b} />;
+  if (b.type === "table") return <Table b={b} ctx={ctx} />;
+  if (b.type === "checks")
+    return (
+      <div className="crowd-lines">
+        {b.label && <p className="crowd-label">{b.label}</p>}
+        <ul>
+          {b.checks.map((c) => (
+            <li key={c.item} className={`crowd-line nav-check${ctx.marks.get(c.item) === "yes" ? " nav-done" : ""}`}>
+              <div>
+                <p>{c.text}</p>
+                {c.detail && <p className="small muted">{c.detail}</p>}
+              </div>
+              <Marks name={c.text} mark={ctx.marks.get(c.item)} onMark={(m) => ctx.mark(c.item, "step", c.text, m, c.group)} />
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
   if (b.type === "steps")
     return (
       <ol className="crowd-steps">
@@ -212,6 +243,54 @@ function BlockView({ b, section, ctx }: { b: Block; section: string; ctx: Ctx })
       </ol>
     );
   return null;
+}
+
+/** A table whose rows open: a city's own page on Across all three, or a sheet with the row's detail. On a phone it scrolls sideways inside its card. */
+function Table({ b, ctx }: { b: Extract<Block, { type: "table" }>; ctx: Ctx }) {
+  const open = (r: (typeof b.rows)[number]) => (r.goto ? ctx.go(r.goto) : r.detail ? ctx.pick({ named: { name: r.detail.title, item: r.detail.item }, kind: r.detail.kind ?? "row", detail: r.detail, crowd: ctx.tab?.crowd }) : undefined);
+  return (
+    <div className="nav-table">
+      {b.label && <p className="crowd-label">{b.label}</p>}
+      <div className="nav-table-scroll">
+        <table>
+          <thead>
+            <tr>
+              {b.columns.map((c) => (
+                <th key={c} scope="col">
+                  {c}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {b.rows.map((r, i) => {
+              const m = r.detail?.item ? ctx.marks.get(r.detail.item) : undefined;
+              const live = !!(r.goto || r.detail);
+              return (
+                <tr key={i} className={`${live ? "nav-row" : ""}${m ? ` crowd-chip-${m}` : ""}`} onClick={live ? () => open(r) : undefined}>
+                  {r.cells.map((c, j) =>
+                    j === 0 && live ? (
+                      <th key={j} scope="row">
+                        <button type="button" className="linkish" onClick={(e) => (e.stopPropagation(), open(r))}>
+                          {c}
+                        </button>
+                      </th>
+                    ) : j === 0 ? (
+                      <th key={j} scope="row">
+                        {c}
+                      </th>
+                    ) : (
+                      <td key={j}>{c}</td>
+                    ),
+                  )}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
 }
 
 /** An image only shows once it has loaded; one that can't load simply isn't on the board. */
@@ -337,7 +416,7 @@ function Sheet({ p, marks, mark, onHandoff, onClose }: { p: Picked; marks: Map<s
     window.addEventListener("keydown", k);
     return () => window.removeEventListener("keydown", k);
   }, [onClose]);
-  const { named: n, kind, src, crowd } = p;
+  const { named: n, kind, src, crowd, detail } = p;
   const next: Handoff[] =
     crowd && onHandoff
       ? kind === "show" || kind === "tv_show"
@@ -357,7 +436,22 @@ function Sheet({ p, marks, mark, onHandoff, onClose }: { p: Picked; marks: Map<s
           </button>
         </div>
         {n.note && <p className="small">{n.note}</p>}
-        {crowd && <p className="small muted">{crowd.name}</p>}
+        {!detail && crowd && <p className="small muted">{crowd.name}</p>}
+        {detail && (
+          <dl className="crowd-facts nav-sheet-facts">
+            {detail.facts.map((f) => (
+              <div key={f.label}>
+                <dt className="small muted">{f.label}</dt>
+                <dd>{f.value}</dd>
+              </div>
+            ))}
+          </dl>
+        )}
+        {detail?.lines?.map((l) => (
+          <p key={l} className="nav-sheet-line">
+            {l}
+          </p>
+        ))}
         {src && <p className="small muted">From {src.label}{src.callId ? ` · call ${src.callId}` : ""}</p>}
         {n.item && MARKABLE.has(kind) && <Marks name={n.name} mark={marks.get(n.item)} onMark={(m) => mark(n.item!, kind, n.name, m)} />}
         {next.length > 0 && <Handoffs list={next} onHandoff={(h) => (onClose(), onHandoff!(h))} />}

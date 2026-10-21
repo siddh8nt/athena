@@ -62,20 +62,47 @@ export function nameNeighbourhoods(all: PlaceRow[], cells: HeatmapCell[], scale?
     return best;
   };
 
-  const byName = new Map<string, number[]>();
+  type Group = { ranks: number[]; lat: number; lon: number };
+  const add = (m: Map<string, Group>, key: string, c: HeatmapCell) => {
+    const g = m.get(key) ?? { ranks: [], lat: 0, lon: 0 };
+    g.ranks.push(c.query.affinity_rank);
+    g.lat += c.location.latitude;
+    g.lon += c.location.longitude;
+    m.set(key, g);
+  };
+  const byName = new Map<string, Group>();
+  const unnamed = new Map<string, Group>();
   for (const c of cells) {
     const at: [number, number] = [c.location.latitude, c.location.longitude];
     const best = nearest(at, known) ?? nearest(at, other);
-    if (!best) continue;
-    const ranks = byName.get(best[0]) ?? [];
-    ranks.push(c.query.affinity_rank);
-    byName.set(best[0], ranks);
+    if (best) add(byName, best[0], c);
+    // Cells no name reaches, grouped by their 5-character geohash (about 5 km).
+    else if (c.location.geohash) add(unnamed, c.location.geohash.slice(0, 5), c);
   }
   const mean = cells.reduce((a, c) => a + c.query.affinity_rank, 0) / cells.length;
-  const out = [...byName.entries()]
-    .filter(([, ranks]) => ranks.length >= level.minCells)
-    .map(([name, ranks]) => ({ name, cells: ranks.length, score: (ranks.reduce((a, b) => a + b, 0) + PRIOR_CELLS * mean) / (ranks.length + PRIOR_CELLS), source: "Overture" as const }))
-    .sort((a, b) => b.score - a.score || b.cells - a.cells);
+  const row = (name: string, g: Group, around?: boolean): Neighbourhood => ({
+    name,
+    cells: g.ranks.length,
+    score: (g.ranks.reduce((a, b) => a + b, 0) + PRIOR_CELLS * mean) / (g.ranks.length + PRIOR_CELLS),
+    source: "Overture",
+    at: [g.lat / g.ranks.length, g.lon / g.ranks.length],
+    ...(around ? { around } : {}),
+  });
+  const out = [...byName.entries()].filter(([, g]) => g.ranks.length >= level.minCells).map(([name, g]) => row(name, g));
+  // A hot unnamed group is kept as "around" the nearest place within four join distances, when it's hotter than the city.
+  const wide = all.filter((r) => r[7] >= s - 3 * pad && r[7] <= n + 3 * pad && r[8] >= w - 3 * padLon && r[8] <= e + 3 * padLon && !COMPLEX.test(r[0]));
+  for (const g of unnamed.values()) {
+    const r = row("", g, true);
+    if (g.ranks.length < level.minCells || r.score <= mean) continue;
+    let best: PlaceRow | undefined;
+    let bestKm = level.maxKm * 4;
+    for (const p of wide) {
+      const d = km(r.at!, [p[7], p[8]]);
+      if (d < bestKm) (best = p), (bestKm = d);
+    }
+    if (best && !out.some((o) => o.name === best![0])) out.push({ ...r, name: best[0] });
+  }
+  out.sort((a, b) => b.score - a.score || b.cells - a.cells);
   return out.length ? out : null;
 }
 

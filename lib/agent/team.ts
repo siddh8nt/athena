@@ -11,10 +11,12 @@ import type { SourceRef } from "@/lib/fits/types";
 import { checkClaims, type Claim } from "./cite";
 import { CLAIMS, PLAIN_NUMBERS, runAgent, type AgentBudget, type AgentRun, type Finisher, type Source } from "./loop";
 import { TOOLS, type AgentState, type Decision, type FounderQuestion, type Tool } from "./tools";
-import { PLAYS, aimed, type TeamCtx } from "./plays";
+import { PLAYS, aimed, yoursOf, type TeamCtx } from "./plays";
+import { navigatorPage, type BackFill } from "./navigator";
+import type { CrowdPage } from "@/lib/team/page";
 import { SPECIALISTS, nameOf, specialist, waitingOn, type SpecialistId } from "./specialists";
 import { GOALS, checkCustom, checkGoals, customQuestion, proposeGoals, teamFor, teamLine, type GoalFacts } from "./goals";
-import { itemId, outcomeLine, staleRuns, whatChanged } from "./outcomes";
+import { itemId, latest, outcomeLine, staleRuns, whatChanged } from "./outcomes";
 import { crowdSignature } from "./evidence";
 import { metroById } from "@/lib/playbook/metros";
 import { gatherEvidence } from "@/lib/fits/gather";
@@ -148,8 +150,8 @@ export function makeFinisher(agent: SpecialistId, goal: string): Finisher {
 
 // ---- Code's decider ----------------------------------------------------------------------------------------------
 
-/** Tools that change the crowds run alone in their turn, so nothing reads the crowds while they move. */
-const RESHAPES = new Set(["build_taste_graph", "probe_entity"]);
+/** Tools that change the crowds, or the city the team works in, run alone in their turn, so nothing reads them while they move. */
+const RESHAPES = new Set(["build_taste_graph", "probe_entity", "read_cities"]);
 /** Calls code makes in one turn. */
 const PER_TURN = 3;
 
@@ -341,6 +343,25 @@ function winFirst(s: AgentState): CrowdCard | undefined {
 }
 
 /** Runs one specialist on the loop. Resolves with its work (never throws); the work streams as it's checked. */
+/** The Navigator's page from its read, with the shops the Rep found and the moments the Promoter found filled in (§23.5 i). */
+function navigatorPageOf(t: TeamCtx): CrowdPage | undefined {
+  if (!t.found.navigator) return undefined;
+  const city = t.city?.id;
+  const fill: BackFill = city
+    ? {
+        ...(t.found.places?.length ? { venues: { metroId: city, points: t.found.places.map((p) => ({ name: p.name, lat: p.lat, lon: p.lon, neighbourhood: p.neighbourhood })) } } : {}),
+        ...(t.found.moments?.length ? { moments: { metroId: city, names: t.found.moments.slice(0, 8).map((m) => m.name) } } : {}),
+      }
+    : {};
+  return navigatorPage(t.found.navigator, yoursOf(t), { channel: t.brand.channel, fill, outcomes: latest(t.outcomes) });
+}
+
+/** Once the Rep or the Promoter has run, the Navigator's page is sent again with what they found. */
+function refillNavigator(t: TeamCtx, id: SpecialistId, nav: Work | undefined, send: (e: TeamEvent) => void) {
+  const page = (id === "rep" || id === "promoter") && nav ? navigatorPageOf(t) : undefined;
+  if (nav && page) send({ type: "work", agent: "navigator", work: { ...nav, page } });
+}
+
 export async function runSpecialist(r: SpecialistInput): Promise<Work | undefined> {
   const { id, team: t } = r;
   const s = specialist(id);
@@ -458,6 +479,7 @@ export async function runSpecialist(r: SpecialistInput): Promise<Work | undefine
     ...(heard ? { outcomes: heard } : {}),
     ...(r.previous ? { changed: whatChanged(r.previous, work) } : {}),
     ...(id === "scout" && t.found.scout ? { page: t.found.scout } : {}),
+    ...(id === "navigator" && navigatorPageOf(t) ? { page: navigatorPageOf(t) } : {}),
     shared: id === "navigator" && t.city ? { city: t.city } : id === "scout" && t.next ? { crowd: t.next.name } : id === "analyst" && t.crowd ? { crowd: t.crowd.name } : undefined,
   };
   if (id === "analyst" && t.ranked) t.ranked = { ...t.ranked, answer: { headline: done.headline, reasons: done.claims.map((c) => ({ crowd: "", text: c.text, sources: c.sources })), assumptions: [] }, sources: done.sources };
@@ -547,6 +569,7 @@ export async function runTeam(r: TeamInput): Promise<Partial<Record<SpecialistId
       works[id] = w;
       qlooCalls += w.qlooCalls;
     }
+    refillNavigator(t, id, works.navigator ?? r.state.works.navigator, r.send);
     finished.add(id);
     // A probe moved the crowds: what was built on the old ones re-runs, in parallel, narrated (§23.2 step 8i).
     if (id === "analyst" && before && crowdSignature(t.crowds) !== before) {
@@ -689,6 +712,7 @@ export async function runWorkflow(r: WorkflowInput): Promise<{ works: Partial<Re
       works[step.id] = done;
       qlooCalls += done.qlooCalls;
     }
+    refillNavigator(t, step.id, works.navigator ?? r.state.works.navigator, r.send);
     w = setStep(w, step.id, paused ? "paused" : "done");
     emit();
   };

@@ -6,6 +6,7 @@ import { isChainName } from "@/lib/methods/names";
 import { withCalls } from "./run";
 import { locationParams } from "@/lib/places/location";
 import type { BlockContext, Enriched } from "./types";
+import type { AreaFigures } from "@/lib/enrich/census";
 
 export type MarketRow = {
   rank: number;
@@ -22,7 +23,8 @@ export type MarketRow = {
   census?: { population?: Enriched<number>; medianIncome?: Enriched<number> };
 };
 
-export type Neighbourhood = { name: string; cells: number; score: number; source: "Overture" | "Qloo" };
+/** `at`: the mean of its cells (lat, lon). `around`: hot cells no name reached, named for the nearest place ("around Mission"). */
+export type Neighbourhood = { name: string; cells: number; score: number; source: "Overture" | "Qloo"; at?: [number, number]; around?: boolean };
 
 export type MarketsData = {
   /** "brands": every named metro scored on the crowd's brands (v4.0); "venues": one diversified places call (v3.0). */
@@ -37,6 +39,8 @@ export type MarketsData = {
 export type MarketsEnrichers = {
   census?: (metro: Metro) => Promise<MarketRow["census"]>;
   neighbourhoods?: (metro: Metro, cells: HeatmapCell[]) => Promise<Neighbourhood[] | null>;
+  /** Census tract and ZIP figures for points in a city (the Navigator's Level 3). */
+  areas?: (points: [number, number][]) => Promise<(AreaFigures | undefined)[]>;
 };
 
 /** Below this many brands a metro's mean is too thin to rank on, and Markets uses the venues method instead. */

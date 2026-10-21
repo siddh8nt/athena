@@ -26,7 +26,18 @@ export type Block =
   | { type: "paths"; nodes: { id: string; name: string; tier: CrowdTier }[]; edges: { a: string; b: string; strength: "strong" | "thin" | "leap"; shared: string[] }[] }
   /** A sequence, never a schedule: each step names the signal for moving on. */
   | { type: "steps"; steps: { text: string; signal?: string; crowd?: string }[] }
-  | { type: "note"; text: string };
+  | { type: "note"; text: string }
+  /** Rows a founder scans; a row opens its detail sheet, or `goto` opens that section (a city's own page). */
+  | { type: "table"; label?: string; columns: string[]; rows: Row[] }
+  /** A city's taste heat, one layer per crowd, each toggled. Cells are [lat, lon, heat 0–1]. */
+  | { type: "heat"; city: { name: string; center: [number, number]; bbox?: [number, number, number, number] }; layers: { crowd: string; name: string; tier: CrowdTier; cells: [number, number, number][] }[] }
+  /** Next steps: ticked when done, then marked for whether they worked, so the subagent re-ranks from them. */
+  | { type: "checks"; label?: string; checks: { text: string; item: string; detail?: string; group?: string }[] };
+
+/** A table row's detail: what opens when the founder taps it. */
+export type Detail = { title: string; facts: { label: string; value: string }[]; lines?: string[]; item?: string; kind?: string };
+
+export type Row = { cells: string[]; goto?: string; detail?: Detail };
 
 export type Section = { id: string; title: string; summary?: string; blocks: Block[] };
 

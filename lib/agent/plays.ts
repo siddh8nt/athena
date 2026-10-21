@@ -6,7 +6,7 @@ import type { QlooClient } from "@/lib/qloo/client";
 import { results } from "@/lib/qloo/client";
 import type { BlockContext, TagChip } from "@/lib/blocks/types";
 import { fingerprint } from "@/lib/blocks/fingerprint";
-import { markets, type MarketRow, type MarketsEnrichers, type Neighbourhood } from "@/lib/blocks/markets";
+import type { MarketsEnrichers, Neighbourhood } from "@/lib/blocks/markets";
 import { places, type VenuePick } from "@/lib/blocks/places";
 import { partners, type PartnerCard, type PartnersData } from "@/lib/blocks/partners";
 import { message, positionAgainst, type MessageData, type PositionCard } from "@/lib/blocks/message";
@@ -15,6 +15,7 @@ import type { HookEvidence, Hooks } from "./hooks";
 import type { Look, LookEvidence } from "./looks";
 import { by, oneLineEvidence, readCrowd, scoutPage, writeCrowd, type CrowdInput } from "./scout";
 import { mergePage, type CrowdPage, type CrowdTier } from "@/lib/team/page";
+import { isStrong, readCities, roles, verdict, VERDICT_LABEL, type NavRead } from "./navigator";
 import { onlineStop, type OnlineData } from "@/lib/stops/online";
 import { alreadyIn, nextRetailers, type RetailCategory, type RetailerPick } from "@/lib/stops/retailers";
 import { buildPlaybook, VENUE_TAGS, type CategoryId, type Motion, type Tier } from "@/lib/playbook/config";
@@ -106,7 +107,7 @@ export type TeamCtx = {
   /** The crowd the founder handed to the Scout to win next (§23.2 step 8.3b). */
   focusNext?: CrowdCard;
   city?: { id: string; name: string };
-  cities?: MarketRow[];
+  cities?: { metroId: string; name: string }[];
   hoods?: string[];
   found: {
     fingerprint?: TagChip[];
@@ -119,6 +120,8 @@ export type TeamCtx = {
     rivals?: PositionCard[];
     /** The Scout's page (§23.5 d): its last one when it starts, merged with what it reads now. */
     scout?: CrowdPage;
+    /** The Navigator's read (§23.5 e): its page is built from it, with what the Rep and the Promoter found filled in. */
+    navigator?: NavRead;
   };
   outcomes: Outcome[];
   /** Probes the Analyst ran this session, whether the last one changed the crowds, and whether one ran with fewer than three crowds (§23.5 c). */
@@ -128,8 +131,6 @@ export type TeamCtx = {
 const ALL: SpecialistId[] = [...SPECIALIST_IDS];
 /** Fewer venues than this after stockists and heard-back ones leave, and the Rep widens. */
 export const FEW_VENUES = 8;
-/** Two cities this close on taste are a tie, broken on reach and income. */
-export const CLOSE_CITIES = 0.02;
 /** A partner whose crowd ranks the brand below this percentile is one-way. */
 export const ONE_WAY = 0.5;
 
@@ -143,6 +144,9 @@ const once = (name: string, f: (t: TeamCtx, s: AgentState) => Decision | undefin
 
 /** Going deeper at home, not launching elsewhere: the Navigator works the home city instead of ranking new ones. */
 const homeGoal = (t: TeamCtx) => (t.goals.includes("deepen_home") && !t.goals.includes("launch_city") && t.brand.homeMetro ? metroById(t.brand.homeMetro) : undefined);
+
+/** The cities the brand already has: where it sells and its home. Home base, never counted as new. */
+export const yoursOf = (t: TeamCtx) => [...new Set([...t.brand.soldIn, ...(t.brand.homeMetro ? [t.brand.homeMetro] : [])])];
 
 /** The crowd a play aims at: Win first, else the main crowd. */
 export const aimed = (t: TeamCtx, s?: AgentState): CrowdCard | undefined => t.crowd ?? (s?.crowds ?? t.crowds)?.crowds.find((c) => c.main) ?? (s?.crowds ?? t.crowds)?.crowds[0];
@@ -365,56 +369,77 @@ export const PLAYS: Tool[] = [
 
   // ---- Navigator -------------------------------------------------------------------------------------------------
   {
-    name: "city_markets",
+    name: "read_cities",
     for: ["navigator"],
     description:
-      "Ranks US cities by how strongly the crowd's brands score there (one Qloo call per city), leaving out cities the brand already sells in. When the top two are close it breaks the tie on residents and median income (Census), and sizes the list to the team's capacity (2 unless the founder said). " +
-      `Not for going deeper in the home city: that goal works the city the brand already sells in. About ${METROS.length + 1} Qloo calls the first time.`,
-    properties: { capacity: { type: "integer", description: "How many cities to work at once, when the founder said; else leave it out." } },
-    qloo: () => METROS.length + 1,
-    maxMs: 45_000,
-    when: once("city_markets", (t) =>
-      homeGoal(t) ? skip(`you're going deeper in ${homeGoal(t)!.name}, so there's no new city to rank`) : t.city ? skip(`the city is already set: ${t.city.name}`) : { args: {}, why: `Ranking cities for ${aimed(t)?.name ?? "your crowd"}${t.brand.soldIn.length ? `, leaving out where you already sell` : ""}` },
-    ),
+      "Reads where all three crowds live, at three levels. Level 1: every US city scored for each crowd at once (their brands and your rivals, one Qloo call per city), each crowd's top new cities, and the overlap cities where two or three crowds are strong. " +
+      "Level 2: each worked city's fit per crowd, residents and income (Census), the rivals strong there and a verdict (Launch here, Test here, Later). Level 3: a heatmap per crowd in each worked city, every hot neighbourhood named, with its Census tract and ZIP and a role (anchor, spillover, pop-up spot, online-target zip). " +
+      "Cities the brand already sells in are kept as home base, never counted as new; when the goal is to go deeper at home, the home city is worked first. Sizes each crowd's list to the team's capacity (2 unless the founder said). " +
+      `About ${METROS.length} Qloo calls plus 3 per worked city.`,
+    properties: { capacity: { type: "integer", description: "How many new cities each crowd gets, when the founder said; else leave it out." } },
+    qloo: () => METROS.length + 15,
+    maxMs: 90_000,
+    when: once("read_cities", (t, s) => ((s.crowds ?? t.crowds)?.crowds.length ? { args: {}, why: homeGoal(t) ? `Mapping your crowds in ${homeGoal(t)!.name}, and the cities each one ranks next` : "Finding the cities each crowd ranks, and where two or three are strong at once" } : undefined)),
     async run(a, { qloo, state, status }) {
       const t = state.team;
-      if (!t || !aimed(t, state)) return none("needs the crowds first");
-      const r = await shared(t, "markets", () => markets(blockCtx(t, qloo, status), { census: t.enrich.markets?.census }));
-      const sold = new Set(t.brand.soldIn);
-      const rows = r.data.metros.filter((m) => !sold.has(m.metroId));
-      if (!rows.length) return { summary: "no city scored for this crowd", data: {}, status: "empty" };
-      // A close tie on taste is broken on reach, then income, and the trace says so.
-      let ranked = rows;
-      let tie: string | undefined;
-      const [x, y] = rows;
-      if (x && y && x.score !== undefined && y.score !== undefined && Math.abs(x.score - y.score) <= CLOSE_CITIES) {
-        const pop = (m: MarketRow) => m.census?.population?.value;
-        const inc = (m: MarketRow) => m.census?.medianIncome?.value;
-        const by = pop(x) && pop(y) && pop(x) !== pop(y) ? "residents" : inc(x) && inc(y) && inc(x) !== inc(y) ? "median income" : undefined;
-        const yWins = by === "residents" ? pop(y)! > pop(x)! : by === "median income" ? inc(y)! > inc(x)! : false;
-        if (yWins) ranked = [y, x, ...rows.slice(2)];
-        tie = by ? `${x.name} and ${y.name} were close on taste; ${(yWins ? y : x).name} has more ${by}` : `${x.name} and ${y.name} were close on taste, with no Census figures to break the tie; kept the taste order`;
+      if (!t || !(state.crowds ?? t.crowds)?.crowds.length) return none("needs the crowds first");
+      const inputs = scoutCrowds(t, state);
+      const cap = Math.max(1, Math.min(5, typeof a.capacity === "number" ? Math.round(a.capacity) : (t.brand.capacity ?? 2)));
+      const yours = yoursOf(t);
+      const home = homeGoal(t);
+      const read = await readCities(qloo, inputs, {
+        rivals: t.brand.competitors.slice(0, 5),
+        ownId: t.brand.ownId,
+        comparables: t.brand.comparables,
+        yours,
+        cap,
+        must: home?.id,
+        census: t.enrich.markets?.census,
+        names: t.enrich.markets?.neighbourhoods,
+        areas: t.enrich.markets?.areas,
+        status,
+      });
+      t.found.navigator = read;
+      const outcomes = latest(t.outcomes);
+      const v = (id: string) => verdict(read, id, yours, outcomes);
+      // The Rep and the Promoter work the first city: home when going deeper there, else the best launch.
+      const order = ["launch", "test", "later", "home"];
+      const ranked = read.cities.filter((c) => !c.yours).sort((x, y) => order.indexOf(v(x.metroId)) - order.indexOf(v(y.metroId)));
+      const first = (home && read.cities.find((c) => c.metroId === home.id)) || ranked[0];
+      const winFirst = read.crowds.find((c) => c.tier === "win_first") ?? read.crowds[0];
+      t.cities = winFirst.cities.filter((f) => !yours.includes(f.metroId)).slice(0, cap).map((f) => ({ metroId: f.metroId, name: f.name }));
+      if (first) {
+        t.city = { id: first.metroId, name: first.name };
+        const role = roles(first);
+        t.hoods = [...first.hoods].sort((x, y) => Number(role.get(y.name) === "anchor") - Number(role.get(x.name) === "anchor")).slice(0, 5).map((h) => h.name);
       }
-      const cap = Math.max(1, Math.min(10, typeof a.capacity === "number" ? Math.round(a.capacity) : (t.brand.capacity ?? 2)));
-      const pick = ranked.slice(0, cap);
-      t.cities = pick;
-      t.city = { id: pick[0].metroId, name: pick[0].name };
-      t.hoods = undefined;
-      const census = (m: MarketRow) => (m.census?.population?.value ? { residents: m.census.population.value, median_income: m.census.medianIncome?.value } : undefined);
+      const strong = (id: string) => read.crowds.filter((c) => isStrong(c.cities.find((f) => f.metroId === id))).map((c) => c.crowd.name);
+      const overlap = read.cities.filter((c) => !c.yours && strong(c.metroId).length >= 2).map((c) => c.name);
       return {
-        summary: `${pick.map((m) => m.name).join(", ")}${tie ? `. ${tie}` : ""}${cap !== 2 && !a.capacity && t.brand.capacity ? ` (${cap}, as you can work)` : ""}`,
-        data: { cities: pick.map((m) => ({ name: m.name, score: m.score, why: m.reason, leans: m.leans, ...census(m) })), tie, capacity: cap, left_out_as_already_sold: t.brand.soldIn.map((id) => metroById(id).name) },
-        items: pick.map((m, i) => item("city", m.name, i === 0 && tie ? `${m.reason}. ${tie}` : m.reason, { group: "city", ref: m.metroId })),
+        summary: `${read.cities.map((c) => `${c.name}: ${VERDICT_LABEL[v(c.metroId)]}`).join("; ")}${overlap.length ? `. Overlap: ${list(overlap)}` : ""}`,
+        data: {
+          crowds: read.crowds.map((c) => ({ crowd: c.crowd.name, tier: c.tier, top_new_cities: c.cities.filter((f) => !yours.includes(f.metroId)).slice(0, cap).map((f) => ({ city: f.name, why: f.reason, sd: f.z })) })),
+          cities: read.cities.map((c) => ({ city: c.name, verdict: VERDICT_LABEL[v(c.metroId)], strong_for: strong(c.metroId), residents: c.census?.residents, median_income: c.census?.income, rivals_strong: c.rivals, neighbourhoods: c.hoods.slice(0, 6).map((h) => h.name) })),
+          overlap,
+          capacity: cap,
+          already_yours: yours.map((id) => metroById(id).name),
+        },
+        status: read.cities.length ? "ok" : "thin",
+        items: read.cities.filter((c) => !c.yours || c.metroId === home?.id).map((c) => item("city", c.name, `${VERDICT_LABEL[v(c.metroId)]}: ${strong(c.metroId).length ? `strong for ${list(strong(c.metroId))}` : "no crowd strong yet"}`, { group: c.metroId, ref: c.metroId })),
       };
     },
   },
   {
     name: "neighbourhoods",
     for: ["navigator"],
-    description: "Maps where the crowd's taste concentrates inside the chosen city (a Qloo heatmap) and names the neighbourhoods, strongest first; for going deeper at home, the home city, which it sets as the city the Rep works in. 1 Qloo call. Needs a city or a home city.",
+    description:
+      "Maps where the crowd's taste concentrates inside one city (a Qloo heatmap) and names the neighbourhoods, strongest first, and sets it as the city the Rep works in. read_cities already maps every city it worked, for all three crowds: use this for a city the founder names that it didn't work. " +
+      "For a city read_cities worked, it returns those neighbourhoods again at no cost. 1 Qloo call otherwise. Needs a city or a home city.",
     properties: { city: { type: "string", description: "A US city; the chosen one when empty." } },
     qloo: () => 1,
-    when: once("neighbourhoods", (t) => {
+    when: once("neighbourhoods", (t, s) => {
+      // The cities read sets the city and its neighbourhoods for all three crowds; until it has run, this waits for it.
+      if (!t.found.navigator && (s.crowds ?? t.crowds)?.crowds.length) return undefined;
       const home = homeGoal(t);
       if (home && (t.city?.id !== home.id || !t.hoods)) return { args: {}, why: `Finding the neighbourhoods in ${home.name}, where you already sell, that your crowd concentrates in` };
       return t.city && !t.hoods ? { args: {}, why: `Finding the neighbourhoods in ${t.city.name} where the taste concentrates` } : undefined;
@@ -427,6 +452,18 @@ export const PLAYS: Tool[] = [
       const metro = metroById(r?.status === "ok" ? r.id : (homeGoal(t)?.id ?? t.city?.id ?? t.brand.homeMetro ?? "nyc"));
       // The neighbourhoods set the city the Rep and the Promoter work in.
       if (t.city?.id !== metro.id) t.city = { id: metro.id, name: metro.name };
+      // A city the Navigator's read already worked: its neighbourhoods across all three crowds, anchors first, no new call.
+      const worked = t.found.navigator?.cities.find((c) => c.metroId === metro.id);
+      if (worked?.hoods.length) {
+        const role = roles(worked);
+        const kept = [...worked.hoods].sort((x, y) => Number(role.get(y.name) === "anchor") - Number(role.get(x.name) === "anchor")).slice(0, 5);
+        t.hoods = kept.map((h) => h.name);
+        return {
+          summary: `${metro.name}: ${t.hoods.slice(0, 3).join(", ")}, from the cities already mapped`,
+          data: { city: metro.name, neighbourhoods: kept.map((h) => ({ name: h.name, role: role.get(h.name) })) },
+          items: kept.map((h) => item("neighbourhood", h.name, `Where your crowds' taste runs hot in ${metro.name}`, { group: "neighbourhood" })),
+        };
+      }
       const ctx = blockCtx(t, qloo, status, { target: metro.id });
       const heat = await qloo.insights({ "filter.type": "urn:heatmap", ...(await locationParams(metro)), "signal.interests.entities": ctx.pb.signal.crowd ?? [] });
       const cells = results(heat).heatmap ?? [];

@@ -19,6 +19,8 @@ export function llmConfig() {
     pro: process.env.GEMINI_PRO_MODEL ?? "gemini-3.1-pro-preview",
     // For replies a person waits on. 9 Oct: 1.0-1.8 s for a short answer vs 2.8-20 s for 3.8 Flash at busy times.
     lite: process.env.GEMINI_LITE_MODEL ?? "gemini-3.1-flash-lite",
+    // Asked too when a Flash call stalls (see withBackup). 22 Oct: ~1 s on this project while 3.8 Flash hung.
+    backup: process.env.GEMINI_BACKUP_MODEL ?? "gemini-2.5-flash",
   };
 }
 
@@ -58,6 +60,51 @@ function systemOf(opts: { system?: string; dated?: boolean }) {
   return text ? { systemInstruction: { parts: [{ text }] } } : {};
 }
 
+// 22 Oct: 3.8 Flash on the global endpoint sometimes sat in Google's queue for 45 s+ with no reply, while 2.5 Flash on
+// the same project answered in ~1 s. A hang isn't an error, so the retries above never fired. Now, when a Flash call
+// has nothing back after STALL_MS, the same request also goes to the backup model; the first good answer wins and
+// the other is cancelled. The first call keeps running, so a long answer that is simply slow is never cut off.
+const STALL_MS = 12_000;
+type Sent = { res: Response; model: string };
+
+async function withBackup(post: (model: string, own: AbortSignal) => Promise<Sent>, primary: string, backup: string): Promise<Sent> {
+  const a = new AbortController();
+  const b = new AbortController();
+  const first = post(primary, a.signal);
+  let timer: ReturnType<typeof setTimeout> | number | undefined;
+  const early = await Promise.race([first, new Promise<undefined>((r) => (timer = setTimeout(r, STALL_MS)))]);
+  clearTimeout(timer);
+  if (early) return early;
+  console.warn(`gemini: ${primary} sent nothing in ${STALL_MS} ms, also asking ${backup}`);
+  const second = post(backup, b.signal);
+  const ok = (p: Promise<Sent>) => p.then((v) => (v.res.ok ? v : Promise.reject(v)));
+  try {
+    const win = await Promise.any([ok(first), ok(second)]);
+    (win.model === primary ? b : a).abort();
+    return win;
+  } catch (e) {
+    // Neither answered well: hand back a response so the retry logic decides, else the first error.
+    const errors = (e as AggregateError).errors as unknown[];
+    const sent = errors.find((x): x is Sent => !!x && typeof x === "object" && "res" in x);
+    if (sent) return sent;
+    throw errors[0];
+  }
+}
+
+// Gemini 2.x sets thinking by a token budget, not Gemini 3's thinkingLevel, so a level is turned into a budget when
+// the call lands on a 2.x model (the main Flash model or a fallback). 2.5 Flash takes 0 to 24,576.
+const BUDGET: Record<string, number> = { MINIMAL: 0, LOW: 1024, MEDIUM: 4096, HIGH: 8192 };
+function bodyFor(model: string, body: string): string {
+  if (!/^gemini-2\./.test(model) || !body.includes('"thinkingLevel"')) return body;
+  const b = JSON.parse(body) as { generationConfig?: { thinkingConfig?: { thinkingLevel?: string; thinkingBudget?: number } } };
+  const t = b.generationConfig?.thinkingConfig;
+  if (t?.thinkingLevel) {
+    t.thinkingBudget = BUDGET[t.thinkingLevel] ?? 1024;
+    delete t.thinkingLevel;
+  }
+  return JSON.stringify(b);
+}
+
 const retryable = (status: number) => status === 429 || status >= 500;
 /** 1 s, 2 s, 4 s, 8 s, capped at 16 s, each with up to 50% jitter. */
 export const backoffMs = (attempt: number) => Math.min(16_000, 1000 * 2 ** attempt) * (1 + Math.random() * 0.5);
@@ -77,19 +124,22 @@ async function send(tier: Tier, makeUrl: (model: string) => string, body: string
     const release = await acquire(current);
     if (Date.now() - queued > 2_000) console.warn(`gemini gate: ${current} call waited ${Date.now() - queued} ms (${inFlight[current]} in flight)`);
     let res: Response;
+    let used = model;
     try {
       const token = await auth.getAccessToken();
-      res = await fetch(makeUrl(model), {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        body,
-        signal: signal ?? AbortSignal.timeout(Math.max(5_000, deadline - Date.now())),
-      });
+      const post = (m: string, own: AbortSignal) =>
+        fetch(makeUrl(m), {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+          body: bodyFor(m, body),
+          signal: AbortSignal.any([own, signal ?? AbortSignal.timeout(Math.max(5_000, deadline - Date.now()))]),
+        }).then((r) => ({ res: r, model: m }));
+      ({ res, model: used } = current === "flash" && cfg.backup && cfg.backup !== model ? await withBackup(post, model, cfg.backup) : await post(model, new AbortController().signal));
     } finally {
       release();
     }
     const wait = backoffMs(attempt);
-    if (!retryable(res.status) || attempt >= 5 || Date.now() + wait + 5_000 > deadline) return { res, model };
+    if (!retryable(res.status) || attempt >= 5 || Date.now() + wait + 5_000 > deadline) return { res, model: used };
     await res.body?.cancel().catch(() => undefined);
     await new Promise((r) => setTimeout(r, wait));
   }

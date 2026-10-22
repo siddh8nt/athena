@@ -2618,3 +2618,22 @@ button.nav-item:hover:not(:disabled) { background: rgba(255, 255, 255, 0.045); c
   .promo-mark { grid-column: 3; }
   .promo-months ol { grid-template-columns: repeat(6, 1fr); }
 }
+
+/* The Executive's task board (§23.5 n): four columns on a desktop, stacked on a phone. */
+.exec { display: flex; flex-direction: column; gap: 12px; }
+.exec-note { margin: 4px 0 0; }
+.exec-board { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; align-items: start; }
+.exec-col { display: flex; flex-direction: column; gap: 8px; padding: 10px; border-radius: 12px; background: var(--sunken); min-width: 0; }
+.exec-col h4 { margin: 0; font-size: 13px; display: flex; align-items: center; gap: 6px; }
+.exec-n { font-size: 11px; padding: 0 6px; border-radius: 999px; background: var(--surface); color: var(--faint); }
+.exec-col ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.exec-empty { margin: 0; }
+.exec-task { display: flex; flex-direction: column; gap: 4px; padding: 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); min-width: 0; }
+.exec-task p { margin: 0; }
+.exec-task strong { overflow-wrap: anywhere; }
+.exec-task .seg, .exec-task .spec-marks { flex-wrap: wrap; }
+.exec-task .seg button, .exec-task .spec-marks button { font-size: 11px; padding: 1px 7px; }
+.exec-done .exec-task { opacity: 0.85; }
+.exec-skipped .exec-task { opacity: 0.7; }
+@media (max-width: 1100px) { .exec-board { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .exec-board { grid-template-columns: 1fr; } }

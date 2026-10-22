@@ -4,8 +4,8 @@ import { useEffect, useState, type ReactNode } from "react";
 import { GoalsBar, statusOf, type TeamLive, type View } from "./Team";
 import { inputById } from "@/lib/team/inputs";
 import { TIER_LABEL } from "@/lib/team/page";
-import { KIND_LABEL, planStale } from "@/lib/agent/synthesis";
-import { SPECIALIST_IDS, nameOf, specialist, type AgentId, type SpecialistId } from "@/lib/agent/specialists";
+import { KIND_LABEL, planStale, planUnitemised } from "@/lib/agent/synthesis";
+import { EXECUTIVE, SPECIALIST_IDS, nameOf, specialist, type AgentId, type SpecialistId } from "@/lib/agent/specialists";
 import type { Answer, GrowthPlan, StepState, TeamState, Work, Workflow, WorkflowStep } from "@/lib/team/types";
 
 // The founder's dashboard after onboarding (PRD §23.2 step 8.5 b–d): the growth plan's workflow as a live diagram
@@ -160,6 +160,7 @@ const DASH_TABS = [
   { id: "plan", label: "Athena's plan" },
   { id: "answers", label: "Your answers" },
   { id: "working", label: "What's working" },
+  { id: "executive", label: "The Executive" },
 ] as const;
 export type DashTab = (typeof DASH_TABS)[number]["id"];
 
@@ -238,6 +239,9 @@ export function Dashboard(p: {
   onAdd: (id: SpecialistId) => void;
   onEditAnswer: (a: Answer, v: string) => void;
   onUpdatePlan: () => void;
+  onRewritePlan: () => void;
+  /** The Executive's task board (§23.5 n), for its tab. */
+  executive: ReactNode;
 }) {
   const { team, live } = p;
   const [tab, setTab] = useState<DashTab>(tabFromUrl);
@@ -332,6 +336,23 @@ export function Dashboard(p: {
               </li>
             );
           })}
+          {/* The Executive (§23.5 n): no workflow step of its own; its board fills from Athena's plan. */}
+          <li className="dash-agent">
+            <span className="team-badge" aria-hidden>{EXECUTIVE.name.slice(0, 1)}</span>
+            <div>
+              <strong>The {EXECUTIVE.name}</strong>
+              <p className="small">{EXECUTIVE.tile}</p>
+              <div className="dash-acts">
+                {plan?.steps?.length ? (
+                  <button type="button" className="linkish small" onClick={() => pick("executive")}>
+                    Open the {EXECUTIVE.name}
+                  </button>
+                ) : (
+                  <small className="muted">Ready once Athena&apos;s plan is written</small>
+                )}
+              </div>
+            </div>
+          </li>
         </ul>
       </section>
     </>
@@ -350,7 +371,7 @@ export function Dashboard(p: {
       <div className="dash-tab-body" key={tab} role="tabpanel">
         {tab === "overview" && overview}
         {tab === "knowledge" && <KnowledgeBase parts={p.kb} />}
-        {tab === "plan" && <GrowthPlanView plan={plan} team={team} running={busy} onOpen={(id) => (id === "dashboard" ? pick("overview") : p.onOpen(id))} onUpdate={p.onUpdatePlan} />}
+        {tab === "plan" && <GrowthPlanView plan={plan} team={team} running={busy} onOpen={(id) => (id === "dashboard" ? pick("overview") : p.onOpen(id))} onUpdate={p.onUpdatePlan} onRewrite={p.onRewritePlan} />}
         {tab === "answers" && (
           <section className="dash-sec">
             <div className="dash-sec-head">
@@ -369,6 +390,7 @@ export function Dashboard(p: {
           </section>
         )}
         {tab === "working" && <section className="dash-sec">{p.working}</section>}
+        {tab === "executive" && p.executive}
       </div>
     </div>
   );
@@ -379,7 +401,7 @@ export function Dashboard(p: {
  * for which crowds, where, through what, the words, when and the cost, every line cited to the subagent it came from,
  * and which earlier steps it waits on; then what the sources disagree on and what's still open.
  */
-export function GrowthPlanView({ plan, team, running, onOpen, onUpdate }: { plan?: GrowthPlan; team: TeamState; running: boolean; onOpen: (id: View) => void; onUpdate: () => void }) {
+export function GrowthPlanView({ plan, team, running, onOpen, onUpdate, onRewrite }: { plan?: GrowthPlan; team: TeamState; running: boolean; onOpen: (id: View) => void; onUpdate: () => void; onRewrite: () => void }) {
   if (!plan) {
     // Before the plan is started, say what will be here and where it starts.
     if (!team.workflow)
@@ -406,7 +428,9 @@ export function GrowthPlanView({ plan, team, running, onOpen, onUpdate }: { plan
     );
   }
   // A plan saved before the numbered steps is written again from the same work.
-  const stale = !plan.steps || planStale(plan, team.works);
+  // Newer work re-runs what's stale; a plan that only lacks its results is written again from the same work.
+  const newer = !plan.steps || planStale(plan, team.works);
+  const stale = newer || planUnitemised(plan, team.works);
   return (
     <section className="gplan" aria-label="Athena's plan">
       <header className="gplan-head">
@@ -416,8 +440,8 @@ export function GrowthPlanView({ plan, team, running, onOpen, onUpdate }: { plan
       </header>
       {stale && (
         <div className="stale-flag gplan-stale">
-          <span className="small">{plan.steps ? "A subagent has newer work than this plan." : "This plan was written before the numbered steps."}</span>
-          <button type="button" className="linkish small" disabled={running} onClick={onUpdate}>
+          <span className="small">{!plan.steps ? "This plan was written before the numbered steps." : planUnitemised(plan, team.works) ? "This plan was written before its steps named each shop, partner and event." : "A subagent has newer work than this plan."}</span>
+          <button type="button" className="linkish small" disabled={running} onClick={newer ? onUpdate : onRewrite}>
             {running ? "Updating" : "Update the plan"}
           </button>
         </div>

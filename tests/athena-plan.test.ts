@@ -191,6 +191,15 @@ describe("Athena's plan (§23.5 m)", () => {
     expect(next?.depends).toEqual(firsts);
   });
 
+  it("names each step's results with the subagent that owns them, for the Executive's marks (§23.5 n)", () => {
+    const items = (plan.steps ?? []).flatMap((s) => s.items ?? []);
+    expect(items.length).toBeGreaterThan(0);
+    const owner: Record<string, string> = { venue: "rep", creator: "matchmaker", partner: "matchmaker", podcast: "matchmaker", event: "promoter" };
+    for (const i of items) expect(i.agent).toBe(owner[i.kind]);
+    // What the founder marked No is in no step's items either.
+    for (const o of no) expect(items.some((i) => i.id === o.item)).toBe(false);
+  });
+
   it("records which works it read, so a newer run shows it out of date", () => {
     expect(plan.from).toMatchObject({ navigator: 5, rep: 5, scout: 5 });
     expect(plan.at).toBe(9);

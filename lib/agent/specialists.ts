@@ -169,9 +169,25 @@ export const ATHENA = {
   mission: "Turn the founder's goals into work for the subagents, run them, answer small asks herself, and keep track of what's working.",
 };
 
+/**
+ * The Executive (§23.5 n): a subagent, so only Athena is an agent. It does no research and has no tools or Qloo budget,
+ * so it isn't a workflow step: it turns Athena's plan into tasks the founder tracks. It never sends, books or applies.
+ */
+export const EXECUTIVE = {
+  id: "executive" as const,
+  name: "Executive",
+  role: "Tasks from Athena's plan",
+  tile: "Turns Athena's plan into tasks you can track",
+  mission: "Turn each step of Athena's plan into tasks you can track: from which subagent, the action, what it needs, its status and its outcome.",
+  canAct: false as const,
+};
+/** Every subagent with a page: the six that research, and the Executive. */
+export type SubagentId = SpecialistId | typeof EXECUTIVE.id;
+export const isSubagent = (id: unknown): id is SubagentId => id === EXECUTIVE.id || isSpecialist(id);
+
 export const specialist = (id: SpecialistId): Specialist => SPECIALISTS.find((s) => s.id === id)!;
 export const isSpecialist = (id: unknown): id is SpecialistId => typeof id === "string" && (SPECIALIST_IDS as readonly string[]).includes(id);
-export const nameOf = (id: AgentId) => (id === "athena" ? ATHENA.name : specialist(id).name);
+export const nameOf = (id: AgentId | SubagentId) => (id === "athena" ? ATHENA.name : id === EXECUTIVE.id ? EXECUTIVE.name : specialist(id).name);
 
 /** Why a specialist can't start yet ("needs a city first, from the Navigator"), or undefined when it can. */
 export function waitingOn(id: SpecialistId, have: { crowds: boolean; city: boolean; home?: boolean }): string | undefined {

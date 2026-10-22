@@ -121,8 +121,38 @@ export type Answer = { id: string; agent: AgentId; question: string; answer: str
 /** One line of a plan step, cited to the subagent whose result it comes from (§23.5 m). `url`: its source, for a date. */
 export type PlanLine = { kind: "who" | "where" | "through" | "words" | "when" | "cost"; agent?: SpecialistId; text: string; url?: string };
 
+/** A result a plan step acts on, with the subagent that owns it, so the Executive's mark goes back to that subagent (§23.5 n). */
+export type PlanItem = { id: string; kind: string; name: string; agent: SpecialistId; group?: string };
+
 /** One numbered step of Athena's plan (§23.5 m): what to do, for which crowds, and the earlier steps it waits on. */
-export type PlanStep = { n: number; what: string; crowds: string[]; phase: "shared" | "win_first" | "win_next" | "watch"; lines: PlanLine[]; depends: number[] };
+export type PlanStep = { n: number; what: string; crowds: string[]; phase: "shared" | "win_first" | "win_next" | "watch"; lines: PlanLine[]; depends: number[]; items?: PlanItem[] };
+
+/** A task's status on the Executive's board (§23.5 n). */
+export const TASK_STATUSES = ["todo", "doing", "done", "skipped"] as const;
+export type TaskStatus = (typeof TASK_STATUSES)[number];
+export const TASK_LABEL: Record<TaskStatus, string> = { todo: "To do", doing: "Doing", done: "Done", skipped: "Skipped" };
+
+/** One tracked task (§23.5 n): from which subagent, the action, what it needs, its status and its outcome mark. */
+export type Task = {
+  id: string;
+  /** The plan step it came from. */
+  step: number;
+  stepWhat: string;
+  phase: PlanStep["phase"];
+  crowds: string[];
+  agent: SpecialistId | "athena";
+  action: string;
+  needs: string;
+  /** The result it acts on, when there is one: its mark goes back to `agent`. */
+  item?: Omit<PlanItem, "agent">;
+  status: TaskStatus;
+  mark?: Mark;
+  /** No longer in Athena's plan (marked No), kept so the board still shows it. */
+  left?: boolean;
+};
+
+/** What the founder did on the board: a status set by hand, when, and the task as it was, so one that leaves the plan stays. */
+export type TaskNote = { status?: TaskStatus; at: number; task?: Task };
 
 /** Athena's growth plan (§23.5 m): numbered steps, shared moves first, then Win first, Win next and Watch; then what's left. */
 export type GrowthPlan = {
@@ -193,6 +223,8 @@ export type TeamState = {
   answered?: Answer[];
   /** Athena's growth plan, once the workflow's last step has run. */
   plan?: GrowthPlan;
+  /** The Executive's board: what the founder set on each task, by task id (§23.5 n). */
+  tasks?: Record<string, TaskNote>;
 };
 
 export const emptyTeam = (): TeamState => ({ goals: [], works: {}, outcomes: [] });

@@ -8,13 +8,13 @@ import type { Galaxy } from "@/lib/taste/galaxy";
 import type { BenchTask } from "@/lib/bench/lines";
 import type { AloneStop } from "@/lib/proof/alone";
 import { addEvent, lineDetail, lineText, settleRun, type Line } from "@/lib/agent/transcript";
-import { ATHENA, isSpecialist, nameOf, panelIds, specialist, type AgentId, type SpecialistId } from "@/lib/agent/specialists";
+import { ATHENA, EXECUTIVE, isSpecialist, nameOf, panelIds, specialist, type AgentId, type SpecialistId } from "@/lib/agent/specialists";
 import { GOALS, pickGoals, teamFor, teamLine } from "@/lib/agent/goals";
 import { fromCity, fromWork, type Handoff } from "@/lib/agent/handoffs";
 import { resetFrom } from "@/lib/agent/workflow";
 import { latest, staleRuns, whatsWorking } from "@/lib/agent/outcomes";
 import { nodesAdded } from "@/lib/graph/types";
-import { MARKS, MARK_LABEL, markLabel, marksFor, type AgentStatus, type Answer, type Goal, type Mark, type Route, type TeamEvent, type TeamState, type Work, type WorkItem } from "@/lib/team/types";
+import { MARKS, MARK_LABEL, markLabel, marksFor, type AgentStatus, type Answer, type Goal, type Mark, type Route, type Task, type TaskStatus, type TeamEvent, type TeamState, type Work, type WorkItem } from "@/lib/team/types";
 import { pacer } from "@/lib/stream/pace";
 import { withHooks, type Line as PageLine } from "@/lib/team/page";
 import { CrowdTabs } from "./CrowdTabs";
@@ -46,7 +46,7 @@ export type TeamLive = {
 };
 
 /** What the journey shows: one agent's workspace, or the founder's dashboard (§23.2 step 8.4h). */
-export type View = AgentId | "dashboard";
+export type View = AgentId | "dashboard" | typeof EXECUTIVE.id;
 
 const emptyLive = (): TeamLive => ({ status: {}, lines: {}, replies: {}, asks: [], answers: {}, asked: {}, running: 0, held: {}, blocking: {} });
 
@@ -415,6 +415,18 @@ export function useTeam(p: {
     resynth.current = setTimeout(again, 2500);
   };
 
+  /** Athena's plan written again from the same results, nothing re-run (as after a mark): a plan saved before its steps named their results. */
+  const rewritePlan = () => replan({ resynth: true });
+  /** The Executive's board (§23.5 n): a status set by hand, kept with the task as it was, so it stays if it leaves the plan. */
+  const setTask = (task: Task, status: TaskStatus) => p.setTeam((t) => ({ ...t, tasks: { ...t.tasks, [task.id]: { status, at: Date.now(), task: { ...task, left: undefined } } } }));
+  /** A mark on a task is an outcome for the subagent that owns its result: it shows on that subagent's page too. */
+  const markTask = (task: Task, m: Mark) => {
+    if (!task.item || task.agent === "athena") return;
+    const prev = latestTeam.current.tasks?.[task.id];
+    p.setTeam((t) => ({ ...t, tasks: { ...t.tasks, [task.id]: { ...(prev?.status ? { status: prev.status } : {}), at: prev?.at ?? 0, task: { ...task, left: undefined } } } }));
+    mark(task.agent, { ...task.item, why: "", sources: [], callIds: [] }, m);
+  };
+
   /** The Analyst measures and ranks the crowds, once, for the whole journey (§23.2 step 8.1a). */
   const measure = () => {
     const g = GOALS.find((x) => x.id === "know_crowd")!;
@@ -434,7 +446,7 @@ export function useTeam(p: {
     setActive(lastStarted.current);
   };
 
-  return { live, active, setActive, follow, pickTab, followRun, propose, answer, editAnswer, askAthena, askSpecialist, chat, refresh, mark, hooks, start, measure, handoff, addToPlan };
+  return { live, active, setActive, follow, pickTab, followRun, propose, answer, editAnswer, askAthena, askSpecialist, chat, refresh, rewritePlan, mark, setTask, markTask, hooks, start, measure, handoff, addToPlan };
 }
 
 const omitKey = <T,>(o: Record<string, T>, k: string): Record<string, T> => Object.fromEntries(Object.entries(o).filter(([x]) => x !== k));
@@ -460,7 +472,7 @@ function statusText(id: AgentId, s: AgentStatus): string {
 /** The left panel (§23.2 step 8f): Athena and the six, each with live status. On a phone the list is a menu. */
 export function TeamPanel({ live, team, active, onOpen, athena }: { live: TeamLive; team: TeamState; active: View; onOpen: (id: View) => void; athena?: string }) {
   const ids = panelIds(team);
-  const on = (id: AgentId) => team.goals.some((g) => isSpecialist(id) && g.team.includes(id));
+  const on = (id: View) => team.goals.some((g) => isSpecialist(id) && g.team.includes(id));
   // Collapsed to a rail of icons with live status, or open to the list; the choice is remembered.
   const [rail, flip] = useRail();
   // Whoever holds a question the run waits on pulses gently until it is answered (§23.5 a3).
@@ -502,6 +514,7 @@ export function TeamPanel({ live, team, active, onOpen, athena }: { live: TeamLi
               {nameOf(id)} · {statusText(id, statusOf(id, live, team))}
             </option>
           ))}
+          <option value={EXECUTIVE.id}>{EXECUTIVE.name} · {EXECUTIVE.role}</option>
         </select>
       </label>
       <div className="team-list">
@@ -510,6 +523,7 @@ export function TeamPanel({ live, team, active, onOpen, athena }: { live: TeamLi
         <span className="nav-section">Subagents</span>
         <ul>
           {ids.filter((id) => id !== "athena").map((id) => <li key={id}>{row(id)}</li>)}
+          <li>{item(EXECUTIVE.id, EXECUTIVE.name, undefined, undefined, `${EXECUTIVE.name}: ${EXECUTIVE.tile}`)}</li>
         </ul>
       </div>
     </aside>

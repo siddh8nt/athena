@@ -7,4 +7,6 @@ import type { GrowthPlan, PlanLine, Work } from "@/lib/team/types";
 export const KIND_LABEL: Record<PlanLine["kind"], string> = { who: "Who", where: "Where", through: "Through", words: "The words", when: "When", cost: "Cost" };
 
 /** The plan is out of date when a subagent it read has run again since. */
+/** A plan saved before its steps named their results (§23.5 n): written again once, so the Executive has them as tasks. */
+export const planUnitemised = (plan: GrowthPlan, works: Partial<Record<SpecialistId, Work>>) => !!plan.steps?.length && !plan.steps.some((s) => s.items) && (["rep", "matchmaker", "promoter"] as const).some((id) => works[id]);
 export const planStale = (plan: GrowthPlan, works: Partial<Record<SpecialistId, Work>>) => Object.entries(works).some(([id, w]) => w && plan.from[id as SpecialistId] !== undefined && w.at > (plan.from[id as SpecialistId] ?? 0));

@@ -557,7 +557,7 @@ const STEP_MARKS: Mark[] = ["yes", "no"];
 const STEP_LABEL: Partial<Record<Mark, string>> = { yes: "Done", no: "Didn't work" };
 
 /** A result's marks; the Promoter's read Applied, Booked, Went and Skipped. A checklist step is Done or Didn't work. */
-function Marks({ agent, step, name, mark, onMark }: { agent?: string; step?: boolean; name: string; mark?: Mark; onMark: (m: Mark) => void }) {
+export function Marks({ agent, step, name, mark, onMark }: { agent?: string; step?: boolean; name: string; mark?: Mark; onMark: (m: Mark) => void }) {
   return (
     <span className="spec-marks" role="group" aria-label={`What happened with ${name}`}>
       {(step ? STEP_MARKS : marksFor(agent)).map((m) => (

@@ -6,7 +6,7 @@ import { itemId } from "./outcomes";
 import { nameOf, type SpecialistId } from "./specialists";
 import { INPUTS } from "@/lib/team/inputs";
 import { TIER_LABEL, TIER_ORDER, type CrowdPage, type CrowdTier, type Line } from "@/lib/team/page";
-import type { GrowthPlan, Mark, Outcome, PlanLine, PlanStep, Work } from "@/lib/team/types";
+import type { GrowthPlan, Mark, Outcome, PlanItem, PlanLine, PlanStep, Work } from "@/lib/team/types";
 
 // Athena's plan (PRD §23.5 m): the workflow's last step. It reads every subagent's finished result and does no new
 // research. Numbered steps: the shared moves first (the cities where crowds overlap, shops and partners that fit
@@ -96,6 +96,13 @@ export function athenaPlan(p: AthenaPlanInput): GrowthPlan {
     const fit = fitOf(b, budget);
     return `${x.name}: ${lower(offerOf(kind, b, budget))}${fit ? ` (${lower(FIT_LABEL[fit])})` : ""}`;
   };
+  // Each step's results, with the subagent that owns them, so the Executive's marks go back to it (§23.5 n).
+  const shopItem = (s: Shop): PlanItem => ({ id: shopId(s), kind: "venue", name: s.name, agent: "rep", group: s.kind });
+  const partnerItem = (x: Creator | Partner): PlanItem => {
+    const kind = "platform" in x ? "creator" : x.kind === "brand" ? "partner" : "podcast";
+    return { id: partnerId(x), kind, name: x.name, agent: "matchmaker", group: kind };
+  };
+  const eventItem = (e: PromoEvent): PlanItem => ({ id: e.id, kind: "event", name: e.name, agent: "promoter", group: e.kind });
   // An event's cost: the fee as published, and how it sits with the budget when there is a fee to read.
   const eventCost = (e: PromoEvent) => {
     const fit = costFit(e, budget);
@@ -155,6 +162,7 @@ export function athenaPlan(p: AthenaPlanInput): GrowthPlan {
         { kind: "cost", agent: "rep", text: `${offerFor(rep.budget)}, sized to ${BUDGET_WORD[rep.budget]}` },
       ],
       depends: after,
+      items: multiShops.map(shopItem),
     });
   }
 
@@ -174,6 +182,7 @@ export function athenaPlan(p: AthenaPlanInput): GrowthPlan {
         { kind: "cost", agent: "matchmaker", text: multiPartners.map(partnerCost).join("; ") },
       ],
       depends: after,
+      items: multiPartners.map(partnerItem),
     });
   }
 
@@ -191,6 +200,7 @@ export function athenaPlan(p: AthenaPlanInput): GrowthPlan {
         { kind: "cost", agent: "promoter", text: eventCost(e) },
       ],
       depends: after,
+      items: [eventItem(e)],
     });
   }
 
@@ -233,6 +243,7 @@ export function athenaPlan(p: AthenaPlanInput): GrowthPlan {
             { kind: "cost", agent: "rep", text: `${offerFor(rep.budget)}, sized to ${BUDGET_WORD[rep.budget]}` },
           ],
           depends: wait,
+          items: shops.map(shopItem),
         }),
       );
     }
@@ -254,6 +265,7 @@ export function athenaPlan(p: AthenaPlanInput): GrowthPlan {
             { kind: "cost", agent: "matchmaker", text: pick.map(partnerCost).join("; ") },
           ],
           depends: wait,
+          items: pick.map(partnerItem),
         }),
       );
     }
@@ -275,6 +287,7 @@ export function athenaPlan(p: AthenaPlanInput): GrowthPlan {
             { kind: "cost", agent: "promoter", text: eventCost(first) },
           ],
           depends: wait,
+          items: events.map(eventItem),
         }),
       );
     }

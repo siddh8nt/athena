@@ -79,6 +79,7 @@ const PATHS: Record<string, React.ReactNode> = {
     </>
   ),
   promoter: <path d="M4 10v4a1 1 0 001 1h2l6 4V5L7 9H5a1 1 0 00-1 1z M17 9a4 4 0 010 6 M19.5 6.5a7.5 7.5 0 010 11" />,
+  executive: <path d="M9 5h10 M9 12h10 M9 19h10 M4 5l1 1 2-2 M4 12l1 1 2-2 M4.5 19h1.5" />,
   dashboard: (
     <>
       <rect x="4" y="4" width="7" height="7" rx="1.5" />

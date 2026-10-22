@@ -2,13 +2,13 @@
 
 import { useEffect, useRef, type ReactNode } from "react";
 import { PanelGrip } from "./Resize";
-import { nameOf, type AgentId, type SpecialistId } from "@/lib/agent/specialists";
+import { nameOf, type AgentId, type EXECUTIVE, type SubagentId } from "@/lib/agent/specialists";
 
 // The three views after onboarding (PRD §23.2 step 8.5a): the dashboard, the Athena tab and a subagent's page. Each
 // is only a layout: the journey holds every piece of state and hands in the sidebar, the one chat and the outputs.
 
 /** Which view is open: `/plan` is the dashboard, `/plan?agent=athena` the Athena tab, `/plan?agent=scout` a subagent page. */
-export type Page = AgentId | "dashboard";
+export type Page = AgentId | "dashboard" | typeof EXECUTIVE.id;
 
 /**
  * The full-screen dashboard (§23.2 step 8.5j): the sidebar and the page, with the one chat with Athena in a drawer
@@ -121,7 +121,7 @@ export function AthenaRoom(p: {
 
 /** A subagent's page: its work in the main area, with the same chat with Athena docked beside it. On a phone the chat
  *  is a sheet over the page, opened from the page's head or by the Paused banner's Answer. */
-export function SubagentPage({ id, nav, chat, bodyRef, sheet, setSheet, children }: { id: SpecialistId; nav: ReactNode; chat: ReactNode; bodyRef: React.RefObject<HTMLDivElement | null>; sheet: boolean; setSheet: (o: boolean) => void; children: ReactNode }) {
+export function SubagentPage({ id, nav, chat, bodyRef, sheet, setSheet, children }: { id: SubagentId; nav: ReactNode; chat: ReactNode; bodyRef: React.RefObject<HTMLDivElement | null>; sheet: boolean; setSheet: (o: boolean) => void; children: ReactNode }) {
   return (
     <main className={`journey-main agent-stage page-stage sub-stage${sheet ? " sheet-on" : ""}`}>
       {nav}

@@ -31,13 +31,14 @@ import type { GraphInput } from "@/lib/graph/types";
 import { keepFile, workspace } from "@/lib/knowledge/workspace";
 import { bySource, mergeNotes, themesOf, type Synth } from "@/lib/knowledge/notes";
 import { RunProgress, StepTimer } from "./Progress";
+import { ExecutiveBoard } from "./Executive";
 import { AthenaRoom, DashboardPage, PausedBanner, SubagentPage, focusTray, usePausedTab, type Page } from "./Views";
 import type { Channel } from "@/lib/journey/growth";
 import { NEAR_MISS_LABEL, crowdAfterFits, emptyJourney, loadedJourney, type CrowdCard, type CrowdMeeting, type Journey as JourneyState } from "@/lib/journey/types";
 import type { Galaxy as GalaxyData } from "@/lib/taste/galaxy";
 import { packBySlug } from "@/lib/journey/packs";
 import { emptyTeam, type Mark, type TeamEvent, type TeamState, type WorkItem } from "@/lib/team/types";
-import { isSpecialist, nameOf, panelIds, specialist, type AgentId, type SpecialistId } from "@/lib/agent/specialists";
+import { isSpecialist, isSubagent, nameOf, panelIds, specialist, type AgentId, type SpecialistId } from "@/lib/agent/specialists";
 import { growthQuestion, seedOf, type GrowthQuestion } from "@/lib/journey/flow";
 
 // The journey (PRD §23.2 step 8.1): one path. Onboarding writes the Brand Graph; one growth question in the
@@ -72,7 +73,7 @@ function readEntry(): { fresh: boolean; message: string } {
 function pageFromUrl(): Page {
   try {
     const a = new URLSearchParams(window.location.search).get("agent");
-    return a === "athena" || isSpecialist(a) ? a : "dashboard";
+    return a === "athena" || isSubagent(a) ? a : "dashboard";
   } catch {
     return "dashboard";
   }
@@ -316,7 +317,7 @@ export function Journey() {
   }, [!!team.workflow, tm.live.running]);
   // The team's focus is a tab in the Athena tab's panel (§23.2 step 8.5): when the flow hands the work on, Athena
   // brings that subagent's tab forward; it never moves the founder off the page they're on. "See your dashboard" does.
-  const tab: AgentId = tm.active === "dashboard" ? "athena" : tm.active;
+  const tab: AgentId = tm.active === "dashboard" || tm.active === "executive" ? "athena" : tm.active;
   // The dashboard's chat drawer (§23.2 step 8.5j).
   const [drawer, setDrawer] = useState(false);
   const subPage = isSpecialist(page) ? page : undefined;
@@ -572,7 +573,7 @@ export function Journey() {
         // so far: she replies, looks it up, edits the graph, asks a subagent, changes the plan, or asks what they mean.
         setWorking({ text: THINKING, by: "chat" });
         void tm
-          .chat(message, { page, history: msgs.filter((m) => m.text && !m.card && !m.live).slice(-30).map(({ who, text }) => ({ who, text })) })
+          .chat(message, { page: page === "executive" ? "dashboard" : page, history: msgs.filter((m) => m.text && !m.card && !m.live).slice(-30).map(({ who, text }) => ({ who, text })) })
           .finally(() => setWorking((w) => (w?.text === THINKING ? undefined : w)));
       }
       setAbout(undefined);
@@ -633,6 +634,21 @@ export function Journey() {
   };
 
   // The sidebar: Dashboard, Athena, then the subagents.
+  // The Executive's board (§23.5 n): on its own page and in the dashboard's tab. "Athena's plan" opens the plan tab.
+  const execEl = (
+    <ExecutiveBoard
+      team={team}
+      running={tm.live.running > 0}
+      onUpdate={tm.rewritePlan}
+      onStatus={tm.setTask}
+      onMark={tm.markTask}
+      onOpen={(id) => {
+        if (id !== "plan") return go(id);
+        window.history.pushState(null, "", "/plan?tab=plan");
+        window.dispatchEvent(new PopStateEvent("popstate"));
+      }}
+    />
+  );
   const navEl = <TeamPanel live={tm.live} team={team} active={page} onOpen={(id) => (go(id), setAbout(undefined))} />;
 
   // The one chat with Athena (§23.2 step 8.5j): the same thread, draft and questions on the Athena tab and every subagent page.
@@ -755,7 +771,7 @@ export function Journey() {
           </button>
           .
         </p>
-        <GrowthPlanView plan={team.plan} team={team} running={tm.live.running > 0} onOpen={(id) => (isSpecialist(id) ? go(id) : id === "athena" ? tm.pickTab(id) : go(id))} onUpdate={tm.refresh} />
+        <GrowthPlanView plan={team.plan} team={team} running={tm.live.running > 0} onOpen={(id) => (isSpecialist(id) ? go(id) : id === "athena" ? tm.pickTab(id) : go(id))} onUpdate={tm.refresh} onRewrite={tm.rewritePlan} />
       </>
     ) : id === "analyst" ? (
       <div id="stop-analyst">
@@ -872,8 +888,14 @@ export function Journey() {
             onAdd={(id) => (tm.addToPlan(id), setDrawer(true))}
             onEditAnswer={tm.editAnswer}
             onUpdatePlan={tm.refresh}
+            onRewritePlan={tm.rewritePlan}
+            executive={execEl}
           />
         </DashboardPage>
+      ) : page === "executive" ? (
+        <SubagentPage id={page} nav={navEl} chat={chatEl} bodyRef={panelBody} sheet={subSheet} setSheet={setSubSheet}>
+          {execEl}
+        </SubagentPage>
       ) : subPage ? (
         <SubagentPage id={subPage} nav={navEl} chat={chatEl} bodyRef={panelBody} sheet={subSheet} setSheet={setSubSheet}>
           <SpecialistWorkspace id={subPage} live={tm.live} team={team} />

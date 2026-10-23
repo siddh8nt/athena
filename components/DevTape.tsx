@@ -1,0 +1,167 @@
+"use client";
+
+import { useEffect, useState } from "react";
+
+// Developer mode (dev server only; the layout leaves it out of production builds). It wraps the browser's fetch for
+// /api/*: in Record it saves every response to /.cache/dev with a snapshot of the app after it; in Replay it serves
+// the recorded response (the exact request, else the closest for that route) and turns the server offline, so a
+// request with no recording gets fixtures and no Gemini, and nothing reaches Qloo or Google.
+
+export type DevMode = "live" | "record" | "replay";
+const MODE = "athena:dev:mode";
+const COUNT = "athena:dev:count";
+
+export function devMode(): DevMode {
+  try {
+    const m = localStorage.getItem(MODE);
+    return m === "record" || m === "replay" ? m : "live";
+  } catch {
+    return "live";
+  }
+}
+
+/** Every athena:* key except developer mode's own, which a snapshot leaves alone. */
+export function appStore(): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i)!;
+    if (k.startsWith("athena:") && !k.startsWith("athena:dev:")) out[k] = localStorage.getItem(k) ?? "";
+  }
+  return out;
+}
+
+export async function saveSnapshot(label: string, auto = false, route?: string) {
+  const at = Date.now();
+  const snapshot = { name: `${auto ? "auto" : "saved"}-${at}`, label, url: location.pathname + location.search, at, store: appStore(), auto, route };
+  await devPost({ op: "save", snapshot });
+}
+
+export const devPost = (body: unknown) =>
+  realFetch()("/api/dev", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }).then((r) => r.json());
+
+const w = () => window as Window & { __athenaRealFetch?: typeof fetch; __athenaSynced?: Promise<unknown> };
+const realFetch = () => w().__athenaRealFetch ?? window.fetch.bind(window);
+
+function hash(s: string, seed: number) {
+  let h = seed;
+  for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619);
+  return (h >>> 0).toString(16).padStart(8, "0");
+}
+
+/** A request body as text: JSON and form fields as sent, files by name and size. */
+function bodyText(b: BodyInit | null | undefined): string {
+  if (b == null) return "";
+  if (typeof b === "string") return b;
+  if (b instanceof URLSearchParams) return b.toString();
+  if (b instanceof FormData) return [...b.entries()].map(([k, v]) => `${k}=${typeof v === "string" ? v : `file:${v.name}:${v.size}`}`).join("&");
+  return "";
+}
+
+/** A recorded body as a response; an event stream is paced out so the page moves as it did, only faster. */
+function replayed(t: { status: number; type: string; body: string; ms: number }): Response {
+  const headers = { "content-type": t.type || "application/json" };
+  if (!t.type.includes("event-stream")) return new Response(t.body, { status: t.status, headers });
+  const events = t.body.split("\n\n").filter((e) => e.trim());
+  const gap = Math.min(80, 4000 / Math.max(1, events.length));
+  const enc = new TextEncoder();
+  const stream = new ReadableStream<Uint8Array>({
+    async start(c) {
+      for (const e of events) {
+        c.enqueue(enc.encode(`${e}\n\n`));
+        await new Promise((r) => setTimeout(r, gap));
+      }
+      c.close();
+    },
+  });
+  return new Response(stream, { status: t.status, headers });
+}
+
+function bump(kind: "recorded" | "replayed" | "nearest" | "fixtures") {
+  try {
+    const c = JSON.parse(sessionStorage.getItem(COUNT) ?? "{}") as Record<string, number>;
+    c[kind] = (c[kind] ?? 0) + 1;
+    sessionStorage.setItem(COUNT, JSON.stringify(c));
+    window.dispatchEvent(new Event("athena:dev"));
+  } catch {}
+}
+
+function install() {
+  const win = w();
+  if (win.__athenaRealFetch) return;
+  const real = (win.__athenaRealFetch = window.fetch.bind(window));
+  const mode = devMode();
+  win.__athenaSynced = devPost({ op: "mode", offline: mode === "replay" }).catch(() => undefined);
+  window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = new URL(typeof input === "string" ? input : input instanceof URL ? input.href : input.url, location.href);
+    const m = devMode();
+    if (m === "live" || url.origin !== location.origin || !url.pathname.startsWith("/api/") || url.pathname.startsWith("/api/dev")) return real(input, init);
+    await win.__athenaSynced;
+    const path = url.pathname;
+    const req = `${url.search}|${bodyText(init?.body)}`;
+    const key = `${hash(`${init?.method ?? "GET"} ${path} ${req}`, 2166136261)}${hash(req, 374761393)}`;
+    if (m === "replay") {
+      const hit = (await devPost({ op: "replay", path, key, req: bodyText(init?.body) }).catch(() => null)) as { tape: Parameters<typeof replayed>[0]; exact: boolean } | null;
+      if (hit) {
+        bump(hit.exact ? "replayed" : "nearest");
+        return replayed(hit.tape);
+      }
+      bump("fixtures");
+      return real(input, init);
+    }
+    const t0 = Date.now();
+    const res = await real(input, init);
+    res
+      .clone()
+      .text()
+      .then(async (body) => {
+        const tape = { path, key, req: bodyText(init?.body), status: res.status, type: res.headers.get("content-type") ?? "", body, at: Date.now(), ms: Date.now() - t0 };
+        await devPost({ op: "record", tape });
+        bump("recorded");
+        // Let the page store what the response changed, then keep that moment as a step.
+        setTimeout(() => void saveSnapshot(path.replace("/api/", ""), true, path), 2500);
+      })
+      .catch(() => undefined);
+    return res;
+  };
+}
+
+if (typeof window !== "undefined" && process.env.NODE_ENV !== "production") install();
+
+/** A small pill in the corner while Record or Replay is on, linking to the step map. */
+export function DevTape() {
+  const [mode, setMode] = useState<DevMode>("live");
+  const [count, setCount] = useState<Record<string, number>>({});
+  useEffect(() => {
+    const read = () => {
+      setMode(devMode());
+      try {
+        setCount(JSON.parse(sessionStorage.getItem(COUNT) ?? "{}"));
+      } catch {}
+    };
+    read();
+    window.addEventListener("athena:dev", read);
+    return () => window.removeEventListener("athena:dev", read);
+  }, []);
+  const [saved, setSaved] = useState(false);
+  if (mode === "live") return null;
+  const parts = Object.entries(count).map(([k, n]) => `${n} ${k}`);
+  const pill = { font: "600 11px/1.2 var(--font-label), sans-serif", padding: "6px 10px", borderRadius: 999, background: mode === "record" ? "#b42318" : "#1d4ed8", color: "#fff", textDecoration: "none", border: 0, cursor: "pointer" } as const;
+  const save = async () => {
+    const label = window.prompt("Name this snapshot", document.title);
+    if (label === null) return;
+    await saveSnapshot(label || "Snapshot");
+    setSaved(true);
+    setTimeout(() => setSaved(false), 1500);
+  };
+  return (
+    <div style={{ position: "fixed", left: 12, bottom: 12, zIndex: 9999, display: "flex", gap: 6, opacity: 0.88 }}>
+      <a href="/dev" style={pill}>
+        DEV · {mode}
+        {parts.length ? ` · ${parts.join(", ")}` : ""}
+      </a>
+      <button type="button" onClick={save} style={pill}>
+        {saved ? "Saved" : "Save snapshot"}
+      </button>
+    </div>
+  );
+}

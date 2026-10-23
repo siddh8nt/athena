@@ -1,6 +1,7 @@
 import "server-only";
 import { GoogleAuth } from "google-auth-library";
 import { timePrompt } from "@/lib/time/now";
+import { isOffline } from "@/lib/dev/offline";
 
 // Gemini on Vertex AI (Â§12.8). Global endpoint only: both models returned 404 in us-central1 (8 Oct).
 // Auth: Application Default Credentials (gcloud locally, the service account on Cloud Run). No key stored.
@@ -13,14 +14,15 @@ const auth = new GoogleAuth({ scopes: ["https://www.googleapis.com/auth/cloud-pl
 
 export function llmConfig() {
   return {
-    project: process.env.GOOGLE_CLOUD_PROJECT ?? "",
+    // Developer mode's offline switch reads as "not configured", so no Gemini call is made.
+    project: isOffline() ? "" : (process.env.GOOGLE_CLOUD_PROJECT ?? ""),
     location: process.env.GOOGLE_CLOUD_LOCATION ?? "global",
     flash: process.env.GEMINI_FLASH_MODEL ?? "gemini-3.8-flash",
     pro: process.env.GEMINI_PRO_MODEL ?? "gemini-3.1-pro-preview",
     // For replies a person waits on. 9 Oct: 1.0-1.8 s for a short answer vs 2.8-20 s for 3.8 Flash at busy times.
     lite: process.env.GEMINI_LITE_MODEL ?? "gemini-3.1-flash-lite",
-    // Asked too when a Flash call stalls (see withBackup). 22 Oct: ~1 s on this project while 3.8 Flash hung.
-    backup: process.env.GEMINI_BACKUP_MODEL ?? "gemini-2.5-flash",
+    // Asked too when a Flash call stalls (see withBackup). 23 Oct: 2.5 Flash returns 404 on this project; Flash-Lite ~1.2 s.
+    backup: process.env.GEMINI_BACKUP_MODEL ?? "gemini-3.1-flash-lite",
   };
 }
 

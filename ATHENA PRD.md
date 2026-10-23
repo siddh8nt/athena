@@ -2850,6 +2850,18 @@ The 2 keys allow 20k calls a month, about 28–35 full new-brand runs before war
 - **Later phase, on your approval:** acting on tasks (sending, booking, applying) and monitoring progress. Each action type will need its own approval rule.
 - **On the dashboard,** the tile reads "Turns Athena's plan into tasks you can track" and is runnable once a plan exists. No "coming soon" or failure state.
 
+#### (o) Developer mode (founder, 22 Oct; built 84a51c5)
+
+- **Why:** to step through every flow and subagent state, and change the UI, without spending Qloo or Gemini calls or waiting on live runs.
+- **`/dev`, a step map:** onboarding, the workflow, each subagent's Working / Waiting on you / Done, Athena's plan and the Executive board. Each card opens the real app at that point from the newest saved snapshot.
+- **Three modes:**
+  - **Live:** real calls, nothing saved.
+  - **Record:** real calls, and each API response is saved.
+  - **Replay:** the saved responses are served back, Qloo runs on fixtures and Gemini is off, so nothing is called.
+- **Snapshots:** the page's saved state, taken automatically as steps change or by hand with "Save snapshot".
+- **Where it lives:** recordings and snapshots stay in `.cache/dev`, which is gitignored, so no Qloo data reaches the repo.
+- **Dev server only:** `/dev` returns 404 in production, and the dev pill never renders there.
+
 #### Done when
 
 - **Checks pass:** tsc, lint and tests, with new tests for:

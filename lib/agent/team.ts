@@ -692,9 +692,10 @@ export async function runWorkflow(r: WorkflowInput): Promise<{ works: Partial<Re
   };
   for (const g of r.goals) r.send({ type: "assign", goal: g, team: g.team, line: [teamLine(g.team), g.outside ?? ""].filter(Boolean).join(" ") });
 
-  // A step cut off mid-run, or one paused for an answer that's now in, starts again; with no crowds, everything does.
-  w = { ...w, steps: w.steps.map((s) => (s.state === "running" || s.state === "paused" || (r.resynth && s.id === "athena") ? { ...s, state: "todo" } : s)) };
-  if (!t.crowds?.crowds.length && w.steps.find((s) => s.id === "analyst")?.state === "done") w = resetFrom(w, ["analyst"]);
+  // A step cut off mid-run, or one paused for an answer that's now in, starts again. With no crowds at all the Analyst
+  // measures again, alone: the finished work that read its crowds stands, so a resume never starts the team over.
+  const lost = !t.crowds?.crowds.length;
+  w = { ...w, steps: w.steps.map((s) => (s.state === "running" || s.state === "paused" || (r.resynth && s.id === "athena") || (lost && s.id === "analyst") ? { ...s, state: "todo" } : s)) };
   // A re-plan after a mark only writes the plan again: what the marks make stale re-runs when the founder asks.
   const stale = r.resynth ? [] : staleRuns(r.state, r.graphRev).filter((s) => w.steps.some((x) => x.id === s.agent && x.state === "done"));
   if (stale.length) {

@@ -270,9 +270,18 @@ export function Journey() {
   // on the crowds or the fits. A returning founder's crowds stay as they were measured.
   const measureFor = `${seedKey}|${g.rev.crowds ?? 0}|${g.rev.fits ?? 0}`;
   const measuredFor = useRef(j.crowds && j.crowdsFor === seedKey ? measureFor : "");
-  const proposedOnce = useRef(!!team.proposed);
+  // Goals chosen or a workflow under way: the workflow's own Analyst measures, and the goals question isn't asked again.
+  const planned = (x: typeof team) => !!x.workflow || x.goals.some((g) => g.id !== "know_crowd");
+  const teamNow = useRef(team);
+  teamNow.current = team;
+  const proposedOnce = useRef(!!team.proposed || planned(team));
   useEffect(() => {
     if (j.stop !== "crowd" || !turn.ready || measuredFor.current === measureFor) return;
+    if (planned(teamNow.current) && !g.rev.crowds && !g.rev.fits) {
+      measuredFor.current = measureFor;
+      setMeasured(true);
+      return;
+    }
     const fresh = !j.crowds || j.crowdsFor !== seedKey || measuredFor.current.split("|")[1] !== String(g.rev.crowds ?? 0);
     measuredFor.current = measureFor;
     setMeasured(false);
@@ -288,7 +297,7 @@ export function Journey() {
     void tm.measure().finally(() => {
       setMeasured(true);
       // Goals come once the crowds are ranked (or Qloo had too little to split them): 3–4, from the Brand Graph.
-      if (!proposedOnce.current) {
+      if (!proposedOnce.current && !planned(teamNow.current)) {
         proposedOnce.current = true;
         void tm.propose();
       }
@@ -306,11 +315,12 @@ export function Journey() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [j.stop, !!j.crowds, tm.live.running]);
   // A workflow saved with a step paused for the founder picks up the same way (founder, 21 Oct): its questions aren't
-  // saved, so on a reload the workflow resumes and asks again only what is still unknown, finished steps kept.
+  // saved, so on a reload the workflow resumes and asks again only what is still unknown, finished steps kept. A step
+  // saved mid-run resumes too: its stream ended with the page, so it would otherwise sit on Working.
   const reasked = useRef(false);
   useEffect(() => {
     const open = Object.keys(tm.live.blocking).some((id) => !(id in tm.live.answers));
-    if (reasked.current || !team.workflow?.steps.some((s) => s.state === "paused") || tm.live.running || open) return;
+    if (reasked.current || !team.workflow?.steps.some((s) => s.state === "paused" || s.state === "running") || tm.live.running || open) return;
     reasked.current = true;
     tm.refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps

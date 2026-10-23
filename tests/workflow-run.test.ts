@@ -73,6 +73,13 @@ describe("the workflow run (§23.2 step 8.5f)", () => {
     expect(third.some((e) => e.type === "plan")).toBe(true);
     expect(third.some((e) => e.type === "reply" && e.text === "I updated the plan from your marks.")).toBe(true);
     expect(resynth.workflow.steps.every((s) => s.state === "done")).toBe(true);
+
+    // Crowds lost on a resume: the Analyst measures again alone; the finished subagents are not started over.
+    const lost: TeamEvent[] = [];
+    const paused = { ...second.workflow, steps: second.workflow.steps.map((s) => (s.id === "rep" ? { ...s, state: "paused" as const } : s)) };
+    await runWorkflow({ goals: g, team: { ...t, crowds: undefined }, state: { ...state, works: second.works as never }, graphRev: 0, qloo, env: {} as never, send: (e) => lost.push(e), llm: false, workflow: paused, answered });
+    const rerun = lost.flatMap((e) => (e.type === "status" && e.status.state === "working" && e.status.step === "Starting" ? [e.agent] : []));
+    expect([...new Set(rerun)].sort()).toEqual(["analyst", "rep"]);
   }, 60_000);
 });
 

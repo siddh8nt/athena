@@ -172,6 +172,21 @@ export async function cachedCrowds(input: SeedInput, probes: string[] = []): Pro
   return extras ? { ...hit, ...extras } : hit;
 }
 
+type Latest = { seed: SeedInput; probes: string[] };
+
+/** Marks a brand's newest crowds, so a request carrying an older seed or probes still finds them. */
+export async function rememberCrowds(brand: string, seed: SeedInput, probes: string[]): Promise<void> {
+  if (brand) await getStore().set<Latest>("crowds-latest", brand.toLowerCase(), { seed, probes }, TTL).catch(() => undefined);
+}
+
+/** A brand's newest crowds, with the seed and probes they were measured from. */
+export async function latestCrowds(brand: string): Promise<(Latest & { crowds: CrowdsResult }) | undefined> {
+  if (!brand) return undefined;
+  const at = (await getStore().get<Latest>("crowds-latest", brand.toLowerCase()).catch(() => undefined))?.value;
+  const crowds = at && (await cachedCrowds(at.seed, at.probes));
+  return at && crowds ? { ...at, crowds } : undefined;
+}
+
 /** The stored graph for a seed (and probes), when one was kept. */
 export async function savedGraph(input: SeedInput, probes: string[] = []): Promise<SavedGraph | undefined> {
   return (await getStore().get<SavedGraph>("graph", probeKey(baseKey(input), probes)).catch(() => undefined))?.value;

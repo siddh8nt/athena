@@ -126,6 +126,9 @@ export function useTeam(p: {
       // never hides, or shares a Skip with, an earlier one still showing. An input (budget, regions) is one question
       // whichever run asks it.
       const id = e.ask.id === "custom" || e.ask.id.startsWith("input_") ? e.ask.id : `${e.ask.id}-r${n}`;
+      // An input answered earlier in this same stream (the Rep's budget, then the Promoter's) isn't asked again: the
+      // stream started before the answer, and the resume after it carries the answer.
+      if (id.startsWith("input_") && latestTeam.current.answered?.some((x) => x.id === id)) return;
       if (id !== "custom") {
         open.current.set(id, { agent: e.agent, n });
         setLive((l) => ({ ...l, blocking: { ...l.blocking, [id]: { agent: e.agent, n } } }));

@@ -76,7 +76,7 @@ const corr = (a: number[], b: number[]) => a.reduce((s, x, i) => s + x * b[i], 0
 const reducedMotion = () => typeof window !== "undefined" && !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
 /** One crowd's place in the ranking: its tier, a line of reach, momentum and timing, and whether it's on watch. */
-export type CrowdDecision = { tier: string; line: string; watch: boolean };
+export type CrowdDecision = { tier: string; watch: boolean };
 
 type Props = {
   galaxy: GalaxyData;
@@ -261,7 +261,7 @@ export function Galaxy({ galaxy, names, decisions, step, probes: yourProbes = []
       </header>
 
       {list ? (
-        <GalaxyList g={galaxy} crowds={crowds} crowdName={crowdName} colour={colour} decisions={decisions} />
+        <GalaxyList g={galaxy} crowds={crowds} crowdName={crowdName} colour={colour} />
       ) : (
         <div className="galaxy-stage" onMouseLeave={() => (setHover(null), onLight?.(null))}>
           <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Taste Galaxy: ${galaxy.nodes.length} entities in ${crowds.length || "no"} crowds. Use "Show as a list" for every name.`} onClick={() => setSel(null)}>
@@ -318,19 +318,14 @@ export function Galaxy({ galaxy, names, decisions, step, probes: yourProbes = []
               hulls.map(({ c, pts }) => {
                 if (!pts.length) return null;
                 const topPt = pts.reduce((a, b) => (b[1] < a[1] ? b : a));
-                const d = decisions?.[c];
+                // Names and colours only (§23.5 p): each crowd's tier, reach and attention are on its fit card.
                 const x = Math.min(W - 110, Math.max(110, topPt[0]));
-                const y = Math.max(d ? 28 : 14, topPt[1] - 18);
+                const y = Math.max(14, topPt[1] - 18);
                 return (
-                  <g key={`h${c}`} className={`hull-label${d?.watch ? " watch" : ""}`}>
-                    <text x={x} y={d ? y - 13 : y} textAnchor="middle" style={{ fill: colour(c) }}>
-                      {d ? `${d.tier} · ${crowdName(c)}` : crowdName(c)}
+                  <g key={`h${c}`} className={`hull-label${decisions?.[c]?.watch ? " watch" : ""}`}>
+                    <text x={x} y={y} textAnchor="middle" style={{ fill: colour(c) }}>
+                      {crowdName(c)}
                     </text>
-                    {d && (
-                      <text x={x} y={y} textAnchor="middle" className="hull-line">
-                        {d.line}
-                      </text>
-                    )}
                   </g>
                 );
               })}
@@ -405,7 +400,7 @@ function EntityCard({ g, i, at, crowdName, pinned, onClose, yours, onAsk }: { g:
   );
 }
 
-function GalaxyList({ g, crowds, crowdName, colour, decisions }: { g: GalaxyData; crowds: number[]; crowdName: (c: number) => string; colour: (c: number) => string; decisions?: Props["decisions"] }) {
+function GalaxyList({ g, crowds, crowdName, colour }: { g: GalaxyData; crowds: number[]; crowdName: (c: number) => string; colour: (c: number) => string }) {
   const groups = crowds.length ? crowds : [-1];
   return (
     <div className="galaxy-list">
@@ -413,7 +408,6 @@ function GalaxyList({ g, crowds, crowdName, colour, decisions }: { g: GalaxyData
         <div key={c}>
           <h4>
             <span className="swatch" style={{ background: colour(c) }} aria-hidden /> {c >= 0 ? crowdName(c) : "Everything so far"}
-            {c >= 0 && decisions?.[c] && <small className="muted"> · {decisions[c]!.tier} · {decisions[c]!.line}</small>}
           </h4>
           <ul>
             {g.nodes

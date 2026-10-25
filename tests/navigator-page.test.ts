@@ -118,11 +118,12 @@ describe("roles and crowd size", () => {
 });
 
 describe("the page", () => {
-  it("gives each crowd tab its cities, hot neighbourhoods and rivals, with worked cities opening their own page", () => {
+  it("gives each crowd tab its cities, with why and the rivals there, and hot neighbourhoods, with worked cities opening their own page", () => {
     const r = nav();
     const tab = crowdTab(r, r.crowds[0], []);
-    expect(tab.sections.map((s) => s.id)).toEqual(["cities", "hoods", "rivals"]);
+    expect(tab.sections.map((s) => s.id)).toEqual(["cities", "hoods"]);
     const table = tab.sections[0].blocks[0];
+    expect(table.type === "table" && table.columns).toEqual(["City", "Fit", "Why", "Residents", "Income", "Rivals strong here", "Verdict"]);
     expect(table.type === "table" && table.rows[0].goto).toBe("city:nyc");
     expect(table.type === "table" && table.rows[0].cells.at(-1)).toBe("Launch here");
   });
@@ -135,8 +136,8 @@ describe("the page", () => {
   it("opens Across with the overview and overlap cities, a page per city, and next steps grouped by city", () => {
     const a = across(nav(), []);
     expect(a.sections.map((s) => s.id)).toEqual(["overview", "city:nyc", "city:la", "next"]);
-    const lines = a.sections[0].blocks.find((b) => b.type === "lines");
-    expect(lines?.type === "lines" && lines.lines[0].text).toBe("New York");
+    const overview = a.sections[0].blocks.find((b) => b.type === "table");
+    expect(overview?.type === "table" && overview.rows.find((r) => r.cells[0] === "New York")?.cells[2]).toMatch(/^2 crowds/);
     const checks = a.sections.at(-1)!.blocks[0];
     expect(checks.type === "checks" && checks.checks.map((c) => c.group)).toEqual(["nyc", "la"]);
     expect(checks.type === "checks" && checks.checks[0].text).toBe("Launch in New York, starting in SoHo");
@@ -145,12 +146,12 @@ describe("the page", () => {
     const fill = { venues: [{ metroId: "nyc", points: [{ name: "Shop", lat: 40.7231, lon: -74.0001 }] }] };
     const page = navigatorPage(nav(), [], { fill, at: 1 });
     const nyc = page.across!.sections.find((s) => s.id === "city:nyc")!;
-    const t = nyc.blocks.find((b) => b.type === "table");
+    const t = nyc.blocks.find((b) => b.type === "table" && !!b.label?.startsWith("Every hot neighbourhood"));
     expect(t?.type === "table" && t.columns).toContain("Shops");
     expect(t?.type === "table" && t.rows[0].cells).toContain("1");
     expect(nyc.summary).toMatch(/^Launch here/);
     const plain = navigatorPage(nav(), [], { at: 1 }).across!.sections.find((s) => s.id === "city:nyc")!;
-    const t2 = plain.blocks.find((b) => b.type === "table");
+    const t2 = plain.blocks.find((b) => b.type === "table" && !!b.label?.startsWith("Every hot neighbourhood"));
     expect(t2?.type === "table" && t2.columns).not.toContain("Shops");
   });
 });

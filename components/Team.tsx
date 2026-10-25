@@ -64,7 +64,7 @@ export function useTeam(p: {
   /** The Taste Galaxy as it forms while the Analyst measures (§23.2 step 8.1b). */
   onGalaxy?: (g: Galaxy) => void;
   /** Athena says it in the chat; `run` puts that subagent's live step trail under the line. */
-  say: (text: string, run?: SpecialistId) => void;
+  say: (text: string, run?: SpecialistId, handoff?: boolean) => void;
   /** Athena's reply as it streams in (§23.2 step 8.5n); her reply event replaces it. */
   stream?: (delta: string) => void;
   /** The router sent the message to the Brand Graph's reader. */
@@ -155,7 +155,7 @@ export function useTeam(p: {
       // and a subagent's answer comes into the thread as hers, with its trail under it.
       const trail = e.run ?? (isSpecialist(who) ? who : undefined);
       if (e.run) bring(e.run);
-      p.say(e.text, trail);
+      p.say(e.text, trail, !!e.run);
     } else if (e.type === "memory") p.onMemory(e);
     else if (e.type === "galaxy") p.onGalaxy?.(e.galaxy);
   };

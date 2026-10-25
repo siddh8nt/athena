@@ -721,7 +721,6 @@ function crowdTab(read: MatchRead, c: MatchCrowd, opts: PageOpts): PageTab {
             { label: "The audience to match", value: leanOf(c.skew) },
             { label: "Where they are", value: and(c.cities) || "—" },
             { label: "What they love", value: c.loves.slice(0, 6).join(", ") || "—" },
-            { label: "Budget fit by band", value: bandFits(read) },
           ],
         },
       ],
@@ -795,9 +794,6 @@ function across(read: MatchRead, opts: PageOpts): NonNullable<CrowdPage["across"
         ...(shared.length
           ? [{ type: "lines" as const, label: "One ask, several crowds", lines: shared.slice(0, 10).map((x) => ({ text: x.name, reason: `${facetsOf(read, x).Group[0]}: fits ${and(crowdNames(read, x))}`, item: idOf(x) })) }]
           : [{ type: "note" as const, text: "No partner fits two crowds at once yet, so each crowd has its own" }]),
-        ...(read.creators.length ? [{ type: "table" as const, label: "Creators", columns: CREATOR_COLUMNS, rows: byShared(read.creators).map((x) => creatorRow(read, x, opts)), facets: [...FACETS, "Crowd"] }] : []),
-        ...(read.brands.length ? [{ type: "table" as const, label: "Brands", columns: BRAND_COLUMNS, rows: byShared(read.brands).map((x) => partnerRow(read, x, opts)), facets: [...FACETS, "Crowd"] }] : []),
-        ...(read.podcasts.length ? [{ type: "table" as const, label: "Podcasts", columns: POD_COLUMNS, rows: byShared(read.podcasts).map((x) => partnerRow(read, x, opts)), facets: [...FACETS, "Crowd"] }] : []),
       ],
     },
     {
@@ -826,7 +822,6 @@ function across(read: MatchRead, opts: PageOpts): NonNullable<CrowdPage["across"
   return { sections, sources: [{ id: "qloo-insights", label: "Qloo insights" }], method: `Read from ${read.calls} Qloo signals · ${read.crowds.length} crowds · ${plural(all.length, "partner")}` };
 }
 
-const byShared = <T extends { crowds: Record<string, number> }>(xs: T[]) => [...xs].sort((a, b) => fitsOf(b).length - fitsOf(a).length);
 
 /** The Matchmaker's page: a tab per crowd in tier order, then Across all three. */
 export function matchPage(read: MatchRead, opts: Partial<PageOpts> = {}): CrowdPage {

@@ -372,13 +372,13 @@ function cityPage(read: NavRead, city: CityRead, v: Verdict, opts: { channel?: "
   const start = anchors.filter((h) => h.name !== city.name).map(label);
   const entry =
     v === "home"
-      ? `Go deeper: ${start.length ? `the shops in ${and(start)}` : "more shops"} you aren't in yet`
+      ? "Go deeper: the shops you aren't in yet"
       : opts.channel === "online"
-        ? `Online first: geo-target the hot ZIPs, then a pop-up in ${start[0] ?? city.name}`
+        ? "Online first: geo-target the hot ZIPs, then a pop-up"
         : v === "launch"
-          ? `Shops first, starting in ${and(start) || city.name}`
+          ? "Shops first"
           : v === "test"
-            ? `A pop-up or an event first${start[0] ? `, in ${start[0]}` : ""}, to test demand`
+            ? "A pop-up or an event first, to test demand"
             : "Online first, until a crowd here grows";
   const here = opts.fill?.moments?.find((m) => m.metroId === city.metroId);
   const moments = here?.names ?? [];
@@ -390,17 +390,21 @@ function cityPage(read: NavRead, city: CityRead, v: Verdict, opts: { channel?: "
         { label: "Verdict", value: VERDICT_LABEL[v] },
         { label: "Residents", value: people(city.census?.residents), src: "census" },
         { label: "Median household income", value: money(city.census?.income), src: "census" },
-        ...fits.map(({ c }) => {
-          const n = crowdSize(city, c.crowd.id);
-          return { label: `${c.crowd.name}: people in its hot areas`, value: n ? `about ${people(n)} (estimate: residents of its hot ZIPs)` : "—", src: "census" };
-        }),
         { label: "Rivals strong here", value: city.rivals.length ? and(city.rivals) : "None of your rivals over-index here" },
       ],
     },
     {
-      type: "lines",
-      label: "Fit, crowd by crowd",
-      lines: fits.map(({ c, f }) => ({ tag: TIER_LABEL[c.tier], text: `${c.crowd.name}: ${isStrong(f) ? "strong here" : f && f.z > 0 ? "above its average" : "below its average"}`, reason: f?.reason })),
+      type: "table",
+      label: "Crowd by crowd",
+      columns: ["Crowd", "Tier", "Fit", "People in its hot areas"],
+      rows: fits.map(({ c, f }) => {
+        const n = crowdSize(city, c.crowd.id);
+        const fit = isStrong(f) ? "Strong here" : f && f.z > 0 ? "Above its average" : "Below its average";
+        return {
+          cells: [c.crowd.name, TIER_LABEL[c.tier], fit, n ? `about ${people(n)}` : "—"],
+          detail: { title: `${c.crowd.name} in ${city.name}`, facts: [{ label: "Fit", value: f?.reason ?? fit }, ...(n ? [{ label: "People in its hot areas", value: `about ${people(n)} (estimate: residents of its hot ZIPs, Census)` }] : [])] },
+        };
+      }),
     },
     {
       type: "lines",
@@ -409,7 +413,7 @@ function cityPage(read: NavRead, city: CityRead, v: Verdict, opts: { channel?: "
         { text: entry, tag: "How to enter" },
         { text: `Lead with ${lead?.c.crowd.name ?? "your Win first crowd"}`, tag: "Which crowd" },
         ...(start.length ? [{ text: `Start in ${and(start)}`, tag: "Where" }] : []),
-        { text: `The Rep finds the shops in ${and(start) || city.name}; the Promoter looks for events and moments in ${city.name}`, tag: "Next" },
+        { text: "The Rep finds the shops there; the Promoter looks for events and moments around them", tag: "Next" },
       ],
     },
     ...(moments.length ? [{ type: "names" as const, label: "Moments there, from the Promoter", groups: [{ label: "Moments", names: moments.map((name) => ({ name, kind: "moment" })) }] }] : []),
@@ -430,7 +434,7 @@ function cityPage(read: NavRead, city: CityRead, v: Verdict, opts: { channel?: "
   return { id: `city:${city.metroId}`, title: city.name, summary: `${VERDICT_LABEL[v]} · ${strong.length ? `strong for ${and(strong.map((x) => x.c.crowd.name))}` : "no crowd strong yet"}`, blocks };
 }
 
-/** A crowd tab (Level 1 for that crowd): its city ranking, its hot neighbourhoods and where its rivals are. */
+/** A crowd tab (Level 1 for that crowd): its city ranking, with why and the rivals strong there, and its hot neighbourhoods. */
 export function crowdTab(read: NavRead, c: CrowdCities, yours: string[], outcomes: Outcome[] = []): PageTab {
   const fresh = c.cities.filter((f) => !yours.includes(f.metroId));
   const shown = fresh.slice(0, read.cap + 3);
@@ -446,17 +450,25 @@ export function crowdTab(read: NavRead, c: CrowdCities, yours: string[], outcome
       blocks: [
         {
           type: "table",
-          columns: ["City", "Fit", "Residents", "Income", "Verdict"],
+          columns: ["City", "Fit", "Why", "Residents", "Income", "Rivals strong here", "Verdict"],
           rows: shown.map((f, i) => {
             const x = census.get(f.metroId);
+            const w = worked.find((y) => y.metroId === f.metroId);
             return {
-              cells: [`${i + 1}. ${f.name}`, isStrong(f) ? "Strong" : f.z > 0 ? "Above average" : "Below average", people(x?.census?.residents), money(x?.census?.income), i < read.cap ? VERDICT_LABEL[verdict(read, f.metroId, yours, outcomes)] : "Not worked yet"],
+              cells: [
+                `${i + 1}. ${f.name}`,
+                isStrong(f) ? "Strong" : f.z > 0 ? "Above average" : "Below average",
+                i < read.cap ? f.reason : "",
+                people(x?.census?.residents),
+                money(x?.census?.income),
+                w ? (w.rivals.length ? and(w.rivals) : "None") : "",
+                i < read.cap ? VERDICT_LABEL[verdict(read, f.metroId, yours, outcomes)] : "Not worked yet",
+              ],
               ...(x ? { goto: `city:${f.metroId}` } : {}),
               detail: { title: f.name, facts: [{ label: "Fit", value: f.reason }, { label: "Score", value: f.score !== undefined ? `${f.score} (${f.z >= 0 ? "+" : ""}${f.z} sd)` : "—" }] },
             };
           }),
         },
-        { type: "lines", label: "Why", lines: shown.slice(0, read.cap).map((f) => ({ text: f.name, reason: f.reason })) },
         ...(mine.length ? [{ type: "note" as const, text: `Already yours: ${and(mine.map((f) => `${f.name}${isStrong(f) ? " (strong for this crowd)" : ""}`))}. Kept as home base, not counted as new.` }] : []),
       ],
     },
@@ -467,17 +479,6 @@ export function crowdTab(read: NavRead, c: CrowdCities, yours: string[], outcome
       blocks: hot.length
         ? [{ type: "names", groups: worked.map((city) => ({ label: city.name, names: hot.filter((x) => x.city === city).map((x) => ({ name: label(x.h), kind: "neighbourhood", note: x.h.area?.zip ? `ZIP ${x.h.area.zip.id}` : undefined })) })).filter((g) => g.names.length) }]
         : [{ type: "note", text: "Its taste is spread evenly across its cities, with no neighbourhood standing out yet" }],
-    },
-    {
-      id: "rivals",
-      title: "Rivals in its cities",
-      summary: "From the Analyst's rivals, scored city by city",
-      blocks: [
-        {
-          type: "lines",
-          lines: worked.map((city) => ({ text: city.name, reason: city.rivals.length ? `${and(city.rivals)} over-${city.rivals.length === 1 ? "indexes" : "index"} here` : "None of your rivals over-index here" })),
-        },
-      ],
     },
   ];
   return {
@@ -507,19 +508,24 @@ export function across(read: NavRead, yours: string[], opts: { channel?: "online
     {
       id: "overview",
       title: "Cities at a glance",
-      summary: overlap.length ? `${overlap.length} overlap ${overlap.length === 1 ? "city" : "cities"}` : undefined,
+      summary: overlap.length ? `${overlap.length} overlap ${overlap.length === 1 ? "city" : "cities"}: one launch reaches two or three crowds` : undefined,
       blocks: [
         {
           type: "table",
-          columns: ["City", "Crowds strong here", "Residents", "Income", "Verdict"],
+          columns: ["City", "Crowds strong here", "One launch reaches", "Residents", "Income", "Verdict"],
           rows: cities.map((c) => ({
-            cells: [c.name, strongIn(read, c.metroId).map((x) => x.crowd.name).join(", ") || "None yet", people(c.census?.residents), money(c.census?.income), VERDICT_LABEL[v(c.metroId)]],
+            cells: [
+              c.name,
+              strongIn(read, c.metroId).map((x) => x.crowd.name).join(", ") || "None yet",
+              overlap.includes(c) ? `${strongIn(read, c.metroId).length} crowds: an efficient first launch` : "",
+              people(c.census?.residents),
+              money(c.census?.income),
+              VERDICT_LABEL[v(c.metroId)],
+            ],
             goto: `city:${c.metroId}`,
           })),
         },
-        ...(overlap.length
-          ? [{ type: "lines" as const, label: "Overlap cities: an efficient first launch", lines: overlap.map((c) => ({ text: c.name, reason: `Strong for ${and(strongIn(read, c.metroId).map((x) => x.crowd.name))}: one launch reaches ${strongIn(read, c.metroId).length} crowds` })) }]
-          : [{ type: "note" as const, text: "No city is strong for two crowds at once yet, so each crowd starts in its own city" }]),
+        ...(overlap.length ? [] : [{ type: "note" as const, text: "No city is strong for two crowds at once yet, so each crowd starts in its own city" }]),
         ...(mine.length ? [{ type: "note" as const, text: `Already yours: ${and(mine.map((m) => `${m.name}${m.strong.length ? ` (strong for ${and(m.strong.map((x) => x.crowd.name))})` : ""}`))}. Kept as home base, not counted as new.` }] : []),
       ],
     },

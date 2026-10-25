@@ -42,13 +42,12 @@ export type Block =
   /** A suggested split of the founder's budget, edited in place and kept per viewer. Shares sum to 100; never a schedule. */
   /** Shares of the partner budget, in percent, for the founder to change. */
   | { type: "budget"; label?: string; rows: { label: string; share: number; note?: string }[]; note?: string }
-  /** Dated things on a calendar, filtered by city (All, each city, Online) and viewed by range or as a list. */
-  | { type: "calendar"; label?: string; items: CalItem[]; cities: string[]; today: string }
-  /** The year ahead as a strip: how many dated things fall in each month. */
-  | { type: "months"; label?: string; months: { month: string; label: string; n: number; names: string[] }[] };
+  /** Dated things only, filtered by city and viewed by range; the 12-months view opens with the year as a strip.
+   * `list`: the events as a table (formats, fee, facets), shown as the List view, so each event is listed once. */
+  | { type: "calendar"; label?: string; items: CalItem[]; cities: string[]; today: string; list?: { columns: string[]; rows: Row[]; facets?: string[] } };
 
-/** A calendar entry: ● an event in a city, ◆ the founder's own moment, ○ online. An undated one (an online place) lists only. */
-export type CalItem = { item?: string; name: string; date?: string; mark: "event" | "own" | "moment" | "online"; city: string; crowds: string[]; note?: string; kind?: string; group?: string; detail?: Detail };
+/** A calendar entry: ● an event in a city, ◆ the founder's own moment, ◇ a moment. */
+export type CalItem = { item?: string; name: string; date: string; mark: "event" | "own" | "moment"; city: string; crowds: string[]; note?: string; kind?: string; group?: string; detail?: Detail };
 
 /** A table row's detail: what opens when the founder taps it. */
 export type Detail = {

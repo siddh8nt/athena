@@ -83,10 +83,23 @@ const urlOf = (p: Page) => (p === "dashboard" ? "/plan" : `/plan?agent=${p}`);
 function load(): Saved | undefined {
   try {
     const s = JSON.parse(localStorage.getItem(STORE) ?? "null") as Saved | null;
-    return s?.brief && s.msgs?.length && s.journey ? s : undefined;
+    return s?.brief && s.msgs?.length && s.journey ? { ...s, msgs: onceEach(s.msgs) } : undefined;
   } catch {
     return undefined;
   }
+}
+
+/** A thread saved before handoffs updated in place (§23.5 p) can hold the same handoff line again for each resume: the repeats go. */
+function onceEach(msgs: Msg[]): Msg[] {
+  const seen = new Set<string>();
+  return msgs.filter((m) => {
+    if (!m.run) return true;
+    const k = `${m.run}
+${m.text}`;
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
 }
 
 const hash = (s: string) => {
@@ -153,10 +166,15 @@ export function Journey() {
     end.current?.scrollIntoView({ block: "end", behavior: "smooth" });
   }, [brief, msgs, turn, j]);
 
-  // A reply that streamed in (§23.2 step 8.5n) is replaced by the whole of it; anything else is a new line.
-  const say = (t: string, run?: SpecialistId) => {
+  // A reply that streamed in (§23.2 step 8.5n) is replaced by the whole of it; anything else is a new line. A handoff
+  // to a subagent that already has one (a resumed or re-run step) updates that line where it is (§23.5 p).
+  const say = (t: string, run?: SpecialistId, handoff?: boolean) => {
     setWorking((w) => (w?.text === THINKING ? undefined : w));
-    setMsgs((m) => [...(m.at(-1)?.live ? m.slice(0, -1) : m), { who: "athena", text: t, ...(run ? { run } : {}) }]);
+    setMsgs((m) => {
+      const at = handoff && run ? m.findLastIndex((x) => x.handoff && x.run === run) : -1;
+      if (at >= 0) return m.map((x, i) => (i === at ? { ...x, text: t } : x));
+      return [...(m.at(-1)?.live ? m.slice(0, -1) : m), { who: "athena", text: t, ...(run ? { run } : {}), ...(handoff ? { handoff } : {}) }];
+    });
   };
   const stream = (d: string) => {
     setWorking((w) => (w?.text === THINKING ? undefined : w));
@@ -767,7 +785,7 @@ export function Journey() {
   );
 
   // Each one's own output (§23.2 step 8.4f), shown in its tab on the Athena tab and on its own page.
-  const outputOf = (id: AgentId) =>
+  const outputOf = (id: AgentId, onPage = false) =>
     id === "athena" ? (
       <>
         {/* The goals open Athena's tab (§23.2 step 8.5p); the Brand Graph lives on the dashboard alone (8.5b). */}
@@ -791,7 +809,7 @@ export function Journey() {
           step={analystStep}
           measured={measured}
           forming={forming}
-          fits={{ steps: [], running: !!analystStep && !j.fits, asks, answers, onAnswer: (q, a) => setAnswers((x) => ({ ...x, [q.id]: a })) }}
+          fits={{ steps: [], running: !!analystStep && !j.fits, asks, answers, onAnswer: (q, a) => setAnswers((x) => ({ ...x, [q.id]: a })), headed: onPage }}
           onHandoff={tm.handoff}
           onAsk={askAbout}
           probing={j.crowds ? analystStep : undefined}
@@ -909,7 +927,7 @@ export function Journey() {
       ) : subPage ? (
         <SubagentPage id={subPage} nav={navEl} chat={chatEl} bodyRef={panelBody} sheet={subSheet} setSheet={setSubSheet}>
           <SpecialistWorkspace id={subPage} live={tm.live} team={team} />
-          {outputOf(subPage)}
+          {outputOf(subPage, true)}
         </SubagentPage>
       ) : (
         <AthenaRoom
@@ -1005,7 +1023,7 @@ function skewLine(s: CrowdCard["skew"]): string | undefined {
   return [topAge && topAge[1] >= 0.1 ? `leans ${ages[topAge[0]] ?? topAge[0]}` : "", g ? `leans ${g}` : ""].filter(Boolean).join(", ");
 }
 
-type FitsView = { steps: AgentEvent[]; running: boolean; asks: Asked[]; answers: Record<string, string>; onAnswer: (q: Asked, a: string) => void; strategy?: StrategyView };
+type FitsView = { steps: AgentEvent[]; running: boolean; asks: Asked[]; answers: Record<string, string>; onAnswer: (q: Asked, a: string) => void; strategy?: StrategyView; headed?: boolean };
 
 /**
  * The Analyst's results (§23.2 step 8.1b): the Taste Galaxy forming live while it measures, then the crowds it ranked
@@ -1036,45 +1054,65 @@ function AnalystResults({ j, step, measured, forming, fits, onAsk, probing, alon
   const from = [r.seed.brand?.name, ...r.seed.lookalikes.map((l) => l.name)].filter(Boolean);
   const decisions = tiersFor(j.fits, r.crowds);
   const slot = (id: string) => Math.max(0, r.crowds.findIndex((c) => c.id === id)) % 4;
+  const index = (id: string | null) => (id === null ? null : r.crowds.findIndex((c) => c.id === id));
   return (
     <section className="crowds">
       {r.galaxy && <Galaxy galaxy={r.galaxy} names={r.crowds.map((c) => c.name)} decisions={decisions} probes={r.probes ?? []} onAsk={onAsk} probing={probing} lit={lit} onLight={setLit} />}
-      <Fits run={j.fits} {...fits} slot={slot} foot={(f) => (f.tier === "watch" ? null : <Handoffs list={fromCrowd({ id: f.crowd, name: f.name }, f.tier === "win_first")} onHandoff={onHandoff} />)} />
+      <Fits
+        run={j.fits}
+        {...fits}
+        slot={slot}
+        about={(f) => {
+          const c = r.crowds.find((x) => x.id === f.crowd);
+          return c ? <CrowdAbout r={r} c={c} /> : null;
+        }}
+        lit={lit === null ? null : (r.crowds[lit]?.id ?? null)}
+        onLight={(id) => setLit(index(id))}
+        foot={(f) => (f.tier === "watch" ? null : <Handoffs list={fromCrowd({ id: f.crowd, name: f.name }, f.tier === "win_first")} onHandoff={onHandoff} />)}
+      />
       <header className="card-head">
-        <h3>Your crowds</h3>
+        <h3>{j.fits ? "How the crowds were read" : "Your crowds"}</h3>
         <p className="small muted">
           Read from {from.join(", ")}{r.seed.tags.length ? ` and the traits ${r.seed.tags.map((t) => t.name.toLowerCase()).join(", ")}` : ""}. Built from {r.calls} Qloo calls.
         </p>
       </header>
-      <div className="crowd-grid">
-        {r.crowds.map((c, ci) => {
-          const chosen = j.crowdId === c.id;
-          const skew = skewLine(c.skew);
-          const d = decisions[ci];
-          return (
-            <article key={c.id} className={`crowd ${chosen ? "chosen" : ""} ${d?.watch ? "dimmed" : ""}${lit === ci ? " lit" : ""}`} onMouseEnter={() => setLit(ci)} onMouseLeave={() => setLit(null)}>
-              <p className="crowd-tag">{d ? `${d.tier} · ` : ""}{c.nearMiss ? NEAR_MISS_LABEL : c.main ? "Closest to your product" : "Next door"}</p>
+      {/* Each crowd is described once (§23.5 p): on its fit card once the fits are ranked, here only until then. */}
+      {!j.fits && (
+        <div className="crowd-grid">
+          {r.crowds.map((c, ci) => (
+            <article key={c.id} className={`crowd ${j.crowdId === c.id ? "chosen" : ""}${lit === ci ? " lit" : ""}`} onMouseEnter={() => setLit(ci)} onMouseLeave={() => setLit(null)}>
+              <p className="crowd-tag">{c.nearMiss ? NEAR_MISS_LABEL : c.main ? "Closest to your product" : "Next door"}</p>
               <h4>
                 <span className="swatch" style={{ background: `var(--crowd-${ci % 4})` }} aria-hidden />
                 {c.name}
               </h4>
-              <div className="taste-loves">
-                {c.loves.map((l, i) => (
-                  <span key={l.name} className="love" style={{ animationDelay: `${i * 50}ms` }}>
-                    {l.name} <small>{l.kind}</small>
-                  </span>
-                ))}
-              </div>
-              {!!c.cities.length && <p className="small"><strong>Concentrates in</strong> {c.cities.slice(0, 4).map((x) => x.name).join(", ")}</p>}
-              <Meeting r={r} crowd={c} />
-              {skew && <p className="small" title={SKEW_LABEL}><strong>Audience</strong> {skew} <span className="muted">· Qloo taste panel, to test</span></p>}
+              <CrowdAbout r={r} c={c} />
             </article>
-          );
-        })}
-      </div>
+          ))}
+        </div>
+      )}
       <WithWithout stop="crowd" question="Who are this product's customers, and what do they love?" athena={r.crowds.map((c) => ({ name: c.name, why: c.loves.slice(0, 6).map((l) => l.name).join(", ") }))} request={alone} />
       <p className="small muted">{SKEW_LABEL}</p>
     </section>
+  );
+}
+
+/** What a crowd loves, where it concentrates, where it meets the main crowd, and its taste-panel lean. */
+function CrowdAbout({ r, c }: { r: NonNullable<JourneyState["crowds"]>; c: CrowdCard }) {
+  const skew = skewLine(c.skew);
+  return (
+    <>
+      <div className="taste-loves">
+        {c.loves.map((l, i) => (
+          <span key={l.name} className="love" style={{ animationDelay: `${i * 50}ms` }}>
+            {l.name} <small>{l.kind}</small>
+          </span>
+        ))}
+      </div>
+      {!!c.cities.length && <p className="small"><strong>Concentrates in</strong> {c.cities.slice(0, 4).map((x) => x.name).join(", ")}</p>}
+      <Meeting r={r} crowd={c} />
+      {skew && <p className="small" title={SKEW_LABEL}><strong>Audience</strong> {skew} <span className="muted">· Qloo taste panel, to test</span></p>}
+    </>
   );
 }
 

@@ -219,7 +219,6 @@ function BlockView({ b, section, ctx }: { b: Block; section: string; ctx: Ctx })
   if (b.type === "pipeline") return <Pipeline b={b} ctx={ctx} />;
   if (b.type === "working") return <Working b={b} ctx={ctx} />;
   if (b.type === "calendar") return <Calendar b={b} ctx={ctx} />;
-  if (b.type === "months") return <Months b={b} />;
   if (b.type === "checks")
     return (
       <div className="crowd-lines">
@@ -682,7 +681,7 @@ const VIEWS = [
   { id: "year", label: "12 months", days: 366 },
   { id: "list", label: "List", days: 0 },
 ] as const;
-const MARK_GLYPH: Record<CalItem["mark"], string> = { event: "●", own: "◆", moment: "◇", online: "○" };
+const MARK_GLYPH: Record<CalItem["mark"], string> = { event: "●", own: "◆", moment: "◇" };
 const DAY_MS = 86_400_000;
 const at = (d: string) => new Date(`${d}T12:00:00Z`).getTime();
 /** The last day of the current season (winter Dec–Feb, spring Mar–May, summer Jun–Aug, autumn Sep–Nov). */
@@ -692,25 +691,26 @@ const seasonEnd = (today: string) => {
   return [Date.UTC(y, 2, 1), Date.UTC(y, 5, 1), Date.UTC(y, 8, 1), Date.UTC(y, 11, 1), Date.UTC(y + 1, 2, 1)].find((e) => e > t)! - DAY_MS / 2;
 };
 
-/** The Promoter's calendar: by city (All, each city, Online) and range, or as one list. ● event · ◆ your moment · ◇ moment · ○ online. */
+/** The Promoter's calendar: dated things by city and range; 12 months opens with the year as a strip, and List is the
+ *  events table, so each event is listed once. ● event · ◆ your moment · ◇ moment. */
 function Calendar({ b, ctx }: { b: Extract<Block, { type: "calendar" }>; ctx: Ctx }) {
   const [city, setCity] = useState("All");
   const [view, setView] = useState<(typeof VIEWS)[number]["id"]>("year");
   const start = at(b.today);
   const end = view === "season" ? seasonEnd(b.today) : view === "list" ? Infinity : start + VIEWS.find((v) => v.id === view)!.days * DAY_MS;
-  const here = b.items.filter((i) => city === "All" || i.city === city || ((i.mark === "own" || i.mark === "moment") && city !== "Online"));
-  const dated = here.filter((i) => i.date && at(i.date) >= start && at(i.date) <= end).sort((x, y) => x.date!.localeCompare(y.date!));
-  const undated = here.filter((i) => !i.date);
-  const months = [...new Set(dated.map((i) => i.date!.slice(0, 7)))];
+  const here = b.items.filter((i) => city === "All" || i.city === city || i.mark !== "event");
+  const dated = here.filter((i) => at(i.date) >= start && at(i.date) <= end).sort((x, y) => x.date.localeCompare(y.date));
+  const months = [...new Set(dated.map((i) => i.date.slice(0, 7)))];
+  const list = b.list && { type: "table" as const, ...b.list, rows: b.list.rows.filter((r) => city === "All" || r.facets?.City?.includes(city)) };
   const open = (i: CalItem) => i.detail && ctx.pick({ named: { name: i.name, item: i.item }, kind: i.kind ?? "event", detail: i.detail, crowd: ctx.tab?.crowd });
   const row = (i: CalItem) => {
     const m = i.item ? ctx.marks.get(i.item) : undefined;
     return (
-      <li key={(i.item ?? i.name) + (i.date ?? "")} className={`promo-cal-item promo-${i.mark}${m ? ` crowd-chip-${m}` : ""}`}>
+      <li key={(i.item ?? i.name) + i.date} className={`promo-cal-item promo-${i.mark}${m ? ` crowd-chip-${m}` : ""}`}>
         <span className="promo-glyph" aria-hidden>
           {MARK_GLYPH[i.mark]}
         </span>
-        {i.date && <span className="promo-day small">{new Date(`${i.date}T12:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" })}</span>}
+        <span className="promo-day small">{new Date(`${i.date}T12:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" })}</span>
         <span className="promo-what">
           <button type="button" className="linkish" onClick={() => open(i)}>
             {i.name}
@@ -731,7 +731,7 @@ function Calendar({ b, ctx }: { b: Extract<Block, { type: "calendar" }>; ctx: Ct
       {b.label && <p className="crowd-label">{b.label}</p>}
       <div className="promo-cal-bar">
         <div className="promo-chips" role="group" aria-label="City">
-          {["All", ...b.cities, "Online"].map((c) => (
+          {["All", ...b.cities].map((c) => (
             <button key={c} type="button" className={city === c ? "on" : ""} aria-pressed={city === c} onClick={() => setCity(c)}>
               {c}
             </button>
@@ -744,37 +744,38 @@ function Calendar({ b, ctx }: { b: Extract<Block, { type: "calendar" }>; ctx: Ct
             </button>
           ))}
         </div>
-        <p className="small muted promo-legend">● event · ◆ your moment · ◇ moment · ○ online</p>
+        <p className="small muted promo-legend">● event · ◆ your moment · ◇ moment</p>
       </div>
+      {view === "year" && <Months items={dated} today={b.today} />}
       {view === "list" ? (
-        <ul className="promo-cal-list">{dated.map(row)}</ul>
+        list?.rows.length ? <Table b={list} ctx={ctx} /> : <ul className="promo-cal-list">{dated.map(row)}</ul>
       ) : (
         months.map((mo) => (
           <div key={mo} className="promo-month">
             <p className="small muted crowd-group-label">{new Date(`${mo}-01T12:00:00Z`).toLocaleDateString("en-US", { month: "long", year: "numeric", timeZone: "UTC" })}</p>
-            <ul className="promo-cal-list">{dated.filter((i) => i.date!.startsWith(mo)).map(row)}</ul>
+            <ul className="promo-cal-list">{dated.filter((i) => i.date.startsWith(mo)).map(row)}</ul>
           </div>
         ))
       )}
       {!dated.length && <p className="small muted">Nothing dated in this range{city !== "All" ? ` for ${city}` : ""}; a longer range shows what&apos;s further out.</p>}
-      {!!undated.length && (city === "All" || city === "Online") && (
-        <div className="promo-month">
-          <p className="small muted crowd-group-label">Any time, online</p>
-          <ul className="promo-cal-list">{undated.map(row)}</ul>
-        </div>
-      )}
     </div>
   );
 }
 
-/** The year ahead as a strip: one cell per month, stronger where more is dated. */
-function Months({ b }: { b: Extract<Block, { type: "months" }> }) {
-  const max = Math.max(1, ...b.months.map((m) => m.n));
+/** The year ahead as a strip, from the calendar's own dated items: one cell per month, stronger where more is dated. */
+function Months({ items, today }: { items: CalItem[]; today: string }) {
+  const first = new Date(at(today));
+  const months = Array.from({ length: 12 }, (_, k) => {
+    const d = new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth() + k, 1, 12));
+    const month = d.toISOString().slice(0, 7);
+    const names = items.filter((i) => i.date.startsWith(month)).map((i) => i.name);
+    return { month, label: d.toLocaleDateString("en-US", { month: "short", timeZone: "UTC" }), n: names.length, names };
+  });
+  const max = Math.max(1, ...months.map((m) => m.n));
   return (
     <div className="promo-months">
-      {b.label && <p className="crowd-label">{b.label}</p>}
       <ol>
-        {b.months.map((m) => (
+        {months.map((m) => (
           <li key={m.month} title={m.names.join(", ") || "Nothing dated yet"}>
             <span className="promo-month-cell" style={{ opacity: m.n ? 0.25 + (0.75 * m.n) / max : 0.08 }} aria-hidden />
             <small>{m.label}</small>

@@ -155,7 +155,8 @@ export function crowdTab(r: CrowdRead, c: TabCtx): PageTab {
   ];
   if (crowd.cities.length) facts.push({ label: "Top cities", value: crowd.cities.slice(0, 4).map((x) => x.name).join(", "), src: ANALYST });
   const loves = new Map<string, Named[]>();
-  const seen = new Set<string>();
+  // Shows, podcasts and creators are listed once, under where their attention goes.
+  const seen = new Set([...m.references.filter((x) => x.kind === "tv_show"), ...r.online.podcasts, ...r.online.creators].map((x) => lc(x.name)));
   const add = (group: string, n: Named) => {
     if (seen.has(lc(n.name))) return;
     seen.add(lc(n.name));
@@ -176,6 +177,8 @@ export function crowdTab(r: CrowdRead, c: TabCtx): PageTab {
   // 2. Words.
   const mine = new Set(r.phrases.map((p) => lc(p.name)));
   const themeNames = new Set(m.themes.map((t) => lc(t.name)));
+  // A phrase that is already a theme is listed once, as the theme.
+  const phrases = r.phrases.filter((p) => !themeNames.has(lc(p.name)));
   const avoid: Named[] = [];
   for (const o of c.others)
     for (const p of o.phrases.slice(0, 4))
@@ -194,7 +197,7 @@ export function crowdTab(r: CrowdRead, c: TabCtx): PageTab {
       {
         type: "names" as const,
         groups: [
-          ...(r.phrases.length ? [{ label: "Their own phrases", names: r.phrases.map((p) => ({ name: p.name, src: src(p.callId, `Qloo: ${crowd.name}'s phrases`) })) }] : []),
+          ...(phrases.length ? [{ label: "Their own phrases", names: phrases.map((p) => ({ name: p.name, src: src(p.callId, `Qloo: ${crowd.name}'s phrases`) })) }] : []),
           ...(avoid.length ? [{ label: "Words to avoid", names: avoid.slice(0, 6) }] : []),
         ],
       },
@@ -308,10 +311,7 @@ export function across(reads: CrowdRead[], meetings: CrowdMeeting[], opts: { cha
   });
   const one = (opts.oneLine?.hooks ?? []).slice(0, 2).map((h) => ({ text: h.text, from: (h.claims ?? []).map((c) => c.ref), tag: "All three" }));
   const fallback = sharedThemes(reads);
-  const only: Line[] = sorted.flatMap((x) => {
-    const h = x.message.hooks?.hooks[0];
-    return h ? [{ text: h.text, tag: `Only ${x.crowd.name}`, from: (h.claims ?? []).map((c) => c.ref) }] : [];
-  });
+  // Each crowd's own hooks stay on its tab; here only the line that works for all three.
   const calls = reads.reduce((n, x) => n + x.calls, 0);
   const sections: Section[] = [
     { id: "paths", title: "Paths between crowds", blocks: [{ type: "paths", nodes: sorted.map((x) => ({ id: x.crowd.id, name: x.crowd.name, tier: x.tier })), edges }] },
@@ -321,7 +321,6 @@ export function across(reads: CrowdRead[], meetings: CrowdMeeting[], opts: { cha
       title: "One message",
       blocks: [
         one.length ? { type: "lines", label: "Works for all three", lines: one } : { type: "names", groups: [{ label: "What all three share", names: fallback.map((name) => ({ name })) }] },
-        ...(only.length ? [{ type: "lines", label: "Works for one", lines: only } as Block] : []),
       ],
     },
   ];

@@ -776,6 +776,7 @@ a.button.big { padding: 11px 20px; font-size: 15px; font-weight: 600; }
 .fit { border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; }
 .fit p { margin: 0; }
 .fit.chosen { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.fit.lit { border-color: var(--emph); }
 .tier-watch .fit { opacity: 0.8; }
 .fit-head { display: flex; align-items: baseline; gap: 10px; }
 .fit-head h5 { margin: 0; font-size: 15px; flex: 1; display: flex; align-items: center; gap: 6px; }
@@ -2603,7 +2604,6 @@ button.nav-item:hover:not(:disabled) { background: rgba(255, 255, 255, 0.045); c
 .promo-month { margin-top: 10px; }
 .promo-cal-list { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
 .promo-cal-item { display: grid; grid-template-columns: 16px 56px 1fr auto; gap: 8px; align-items: baseline; padding: 6px 8px; border-radius: 8px; background: var(--sunken); }
-.promo-cal-item.promo-online { background: transparent; border: 1px dashed var(--line); }
 .promo-glyph { color: var(--accent); }
 .promo-own .promo-glyph { color: var(--fg); }
 .promo-what { min-width: 0; }

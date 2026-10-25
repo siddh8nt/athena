@@ -44,6 +44,8 @@ const read = (shops: Shop[], over: Partial<RepRead> = {}): RepRead => ({
 
 const blocks = (r: RepRead, id: string) => repPage(r).across!.sections.find((s) => s.id === id)!.blocks;
 const table = (bs: Block[]) => bs.find((b): b is Extract<Block, { type: "table" }> => b.type === "table")!;
+/** Every shop is listed in full once, on its city's page (§23.5 p). */
+const shops = (bs: Block[]) => bs.find((b): b is Extract<Block, { type: "table" }> => b.type === "table" && !!b.label?.startsWith("Every matching shop"))!;
 
 describe("the Rep's page", () => {
   it("ranks a shop for two crowds above stronger single-crowd shops", () => {
@@ -52,7 +54,8 @@ describe("the Rep's page", () => {
     const page = repPage(read(ranked));
     const over = page.across!.sections.find((s) => s.id === "overview")!;
     expect(over.summary).toBe("1 shop fit two or three crowds");
-    expect(table(over.blocks).rows.map((r) => r.cells[0])).not.toContain("Weak");
+    expect(JSON.stringify(over.blocks)).not.toContain("Weak");
+    expect(shops(page.across!.sections.find((s) => s.id === "city:nyc")!.blocks).rows.map((r) => r.cells[0])).toEqual(["Both", "Solo"]);
   });
 
   it("gives each branch of a chain its own row", () => {
@@ -64,7 +67,7 @@ describe("the Rep's page", () => {
 
   it("never pitches a stockist again and shows it grey on the map", () => {
     const r = read([shop("Already", { a: 0.9 }, { stocked: true }), shop("New", { a: 0.9 })]);
-    expect(table(blocks(r, "overview")).rows.map((x) => x.cells[0])).toEqual(["New"]);
+    expect(shops(blocks(r, "city:nyc")).rows.map((x) => x.cells[0])).toEqual(["New"]);
     const heat = blocks(r, "map")[0] as Extract<Block, { type: "heat" }>;
     expect(heat.pins?.find((p) => p.name === "Already")?.grey).toBe(true);
     expect(heat.pins?.find((p) => p.name === "New")?.tier).toBe("win_first");
@@ -73,7 +76,7 @@ describe("the Rep's page", () => {
   });
 
   it("gives every row the six filters", () => {
-    const t = table(blocks(read([shop("Both", { a: 0.5, b: 0.5 })]), "overview"));
+    const t = shops(blocks(read([shop("Both", { a: 0.5, b: 0.5 })]), "city:nyc"));
     expect(t.facets).toEqual(["Crowd", "City", "Neighbourhood", "Tier", "Wholesale", "Has email"]);
     expect(t.rows[0].facets).toMatchObject({ Crowd: ["Pantry cooks", "Natural wine people"], Tier: ["Win first", "Win next"], "Has email": ["No email"] });
   });

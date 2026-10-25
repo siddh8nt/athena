@@ -113,8 +113,9 @@ describe("the Matchmaker's page", () => {
     const tab = matchPage(r).tabs[0].sections.find((s) => s.id === "creators")!;
     const t = tab.blocks.find((b): b is Extract<Block, { type: "table" }> => b.type === "table")!;
     expect(t.facets).toEqual(["Group", "Band", "Budget fit", "Has email"]);
-    const shared = across(r, "shared").blocks.find((b): b is Extract<Block, { type: "table" }> => b.type === "table")!;
-    expect(shared.facets).toContain("Crowd");
+    // Each partner is listed in full once, on its crowd's tab (§23.5 p); across all three, the pipeline filters by crowd.
+    const board = across(r, "pipeline").blocks.find((b): b is Extract<Block, { type: "pipeline" }> => b.type === "pipeline")!;
+    expect(board.facets).toContain("Crowd");
   });
 
   it("lists what was left out with the reason", () => {

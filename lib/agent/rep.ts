@@ -515,7 +515,6 @@ function crowdTab(read: RepRead, c: RepCrowd, opts: PageOpts): PageTab {
           rows: [
             { label: "Shop types that fit", value: kinds.size ? [...kinds.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([k, n]) => `${k} (${n})`).join(", ") : "—" },
             { label: "Typical price level", value: prices.length ? price(prices[Math.floor(prices.length / 2)]) : "—" },
-            { label: "Its cities", value: and(c.cities.map(cityName)) || "—" },
           ],
         },
       ],
@@ -573,8 +572,6 @@ function cityPage(read: RepRead, city: RepCity, opts: PageOpts): Section {
   const stocked = here.filter((s) => s.stocked);
   const r = entryRoute(read, city.metroId);
   const count = (h: string) => fitting.filter((s) => s.hood === h).length;
-  const dense = city.hoods.filter((h) => count(h.name) >= 5).map((h) => h.name);
-  const thin = city.hoods.filter((h) => (h.role === "anchor" || h.role === "spillover") && count(h.name) <= 1).map((h) => h.name);
   const chains = [...new Set(Object.values(read.retailers).flat().filter((x) => x.cities.includes(city.metroId)).map((x) => x.name))];
   const rivals = [...new Set(here.flatMap((s) => (s.site?.brands ?? []).filter((b) => read.competitors.some((c) => nameSim(c, b) >= 0.9))))];
   const rank = (s: Shop) => (s.role === "anchor" ? 0 : s.role === "spillover" ? 1 : 2);
@@ -584,8 +581,6 @@ function cityPage(read: RepRead, city: RepCity, opts: PageOpts): Section {
       rows: [
         { label: "Matching shops", value: String(fitting.length) },
         { label: "Retailers here", value: chains.length ? and(chains) : "None of the crowds' retailers found here" },
-        { label: "Dense neighbourhoods", value: dense.length ? and(dense) : "None with five or more yet" },
-        ...(thin.length ? [{ label: "Thin neighbourhoods", value: and(thin) }] : []),
         { label: "Entry route", value: `${r.route}: ${r.why}` },
       ],
     },
@@ -631,7 +626,8 @@ function across(read: RepRead, opts: PageOpts): NonNullable<CrowdPage["across"]>
       summary: multi.length ? `${plural(multi.length, "shop")} fit two or three crowds` : plural(all.length, "matching shop"),
       blocks: [
         ...(multi.length ? [{ type: "lines" as const, label: "One pitch, several crowds", lines: multi.slice(0, 8).map((s) => ({ text: s.name, reason: `${s.city}${s.hood ? `, ${s.hood}` : ""}: fits ${and(fitsOf(s).map((id) => read.crowds.find((c) => c.id === id)?.name ?? id))}`, item: itemId("venue", s.name) })) }] : [{ type: "note" as const, text: "No shop fits two crowds at once yet, so each crowd has its own shops" }]),
-        all.length ? { type: "table", columns: SHOP_COLUMNS, rows: all.map((s) => shopRow(read, s, opts.pitches?.[s.id])), facets: FACETS } : { type: "note", text: "The Rep is still looking for shops in these cities" },
+        // Every shop is listed in full once, on its city's page; here only the ones a single pitch reaches twice.
+        ...(all.length ? [] : [{ type: "note" as const, text: "The Rep is still looking for shops in these cities" }]),
       ],
     },
     {

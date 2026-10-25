@@ -751,7 +751,8 @@ const audienceRow = (read: PromoRead, a: Audience): Row => ({
   facets: { Kind: [AUDIENCE_LABEL[a.kind]], Crowd: crowdNames(read, a.crowds) },
 });
 
-/** Everything dated, for the calendar: events in their cities (●), the founder's own moments (◆), the rest online (○). */
+/** Everything dated, for the calendar: events in their cities (●) and moments (◆ the founder's own, ◇ the rest).
+ *  Online places have no date, so they live only in the Online table. */
 function calendarItems(read: PromoRead, opts: PageOpts, crowd?: string): CalItem[] {
   const mine = (ids: string[]) => !crowd || ids.includes(crowd);
   return [
@@ -783,31 +784,21 @@ function calendarItems(read: PromoRead, opts: PageOpts, crowd?: string): CalItem
         group: m.kind,
         detail: momentDetail(read, m),
       })),
-    ...read.audiences
-      .filter((a) => mine(a.crowds))
-      .map((a): CalItem => ({
-        item: a.id,
-        name: a.name,
-        mark: "online",
-        city: "Online",
-        crowds: crowdNames(read, a.crowds),
-        note: a.how,
-        kind: "audience",
-        group: a.kind,
-        detail: audienceDetail(read, a),
-      })),
   ];
 }
 
+/** The calendar, whose List view is the events table (formats, fee, facets): one place for each event. */
 const calendar = (read: PromoRead, opts: PageOpts, crowd?: string, label?: string): Block => {
   const items = calendarItems(read, opts, crowd);
   const cities = [...new Set(items.filter((i) => i.mark === "event").map((i) => i.city))];
+  const events = read.events.filter((e) => !crowd || e.crowds.includes(crowd)).sort((a, b) => a.date.localeCompare(b.date));
   return {
     type: "calendar",
     ...(label ? { label } : {}),
     items,
     cities,
     today: read.at,
+    ...(events.length ? { list: { columns: EVENT_COLUMNS, rows: events.map((e) => eventRow(read, e, opts)), facets: crowd ? FACETS : [...FACETS, "Crowd"] } } : {}),
   };
 };
 
@@ -846,28 +837,18 @@ function crowdTab(read: PromoRead, c: PromoCrowd, opts: PageOpts): PageTab {
     {
       id: "calendar",
       title: "Calendar",
-      summary: "Events, your moments and online, by date",
-      blocks: [calendar(read, opts, c.id)],
-    },
-    {
-      id: "events",
-      title: "Events",
-      summary: events.length ? `${plural(events.length, "event")}, ${events.filter((e) => e.fee).length} with a published fee` : "No dated event with time to prepare yet",
-      blocks: events.length
-        ? [
-            {
-              type: "table",
-              columns: EVENT_COLUMNS,
-              rows: events.map((e) => eventRow(read, e, opts)),
-              facets: FACETS,
-            },
-          ]
-        : [
-            {
-              type: "note",
-              text: `No event in ${and(cities) || "these cities"} has a published date with ${LEAD_DAYS} days to prepare yet; the online audiences and moments below still work now`,
-            },
-          ],
+      summary: events.length ? `${plural(events.length, "event")}, ${events.filter((e) => e.fee).length} with a published fee, and your moments` : "Your moments, by date; no dated event with time to prepare yet",
+      blocks: [
+        ...(events.length
+          ? []
+          : [
+              {
+                type: "note" as const,
+                text: `No event in ${and(cities) || "these cities"} has a published date with ${LEAD_DAYS} days to prepare yet; the moments here and the online places below still work now`,
+              },
+            ]),
+        calendar(read, opts, c.id),
+      ],
     },
     ...(top
       ? [
@@ -983,29 +964,6 @@ export function promoBudget(budget: Budget): Extract<Block, { type: "budget" }> 
   };
 }
 
-/** Months ahead with how many dated things fall in each, for the year strip. */
-function months(read: PromoRead): Extract<Block, { type: "months" }> {
-  const start = new Date(`${read.at.slice(0, 7)}-01T12:00:00Z`);
-  const dated = [...read.events.map((e) => ({ name: e.name, date: e.date })), ...read.moments.map((m) => ({ name: m.name, date: m.date }))];
-  return {
-    type: "months",
-    months: Array.from({ length: 12 }, (_, k) => {
-      const d = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + k, 1, 12));
-      const key = d.toISOString().slice(0, 7);
-      const here = dated.filter((x) => x.date.startsWith(key));
-      return {
-        month: key,
-        label: d.toLocaleDateString("en-US", {
-          month: "short",
-          timeZone: "UTC",
-        }),
-        n: here.length,
-        names: here.slice(0, 6).map((x) => x.name),
-      };
-    }),
-  };
-}
-
 function across(read: PromoRead, opts: PageOpts): NonNullable<CrowdPage["across"]> {
   const overlap = read.events.filter((e) => e.crowds.length >= 2);
   const heard = latest(opts.outcomes.filter((o) => o.agent === "promoter"));
@@ -1030,14 +988,13 @@ function across(read: PromoRead, opts: PageOpts): NonNullable<CrowdPage["across"
                 text: "No event fits two crowds at once yet, so each crowd has its own",
               },
             ]),
-        calendar(read, opts, undefined, "Every crowd"),
       ],
     },
     {
-      id: "year",
-      title: "The year ahead",
-      summary: "Dated events and moments by month",
-      blocks: [months(read)],
+      id: "calendar",
+      title: "Calendar",
+      summary: "Every crowd's events and moments, by date",
+      blocks: [calendar(read, opts)],
     },
     {
       id: "pipeline",
@@ -1081,14 +1038,14 @@ function across(read: PromoRead, opts: PageOpts): NonNullable<CrowdPage["across"
     {
       id: "left",
       title: "Moved or left out",
-      summary: read.moved.length ? plural(read.moved.length, "event") : "Nothing moved",
+      summary: read.moved.length ? plural(new Set(read.moved).size, "event") : "Nothing moved",
       blocks: [
         ...(read.moved.length
           ? [
               {
                 type: "lines" as const,
                 label: "Too close to prepare for",
-                lines: read.moved.map((t) => ({ text: t })),
+                lines: [...new Set(read.moved)].map((t) => ({ text: t })),
               },
             ]
           : [

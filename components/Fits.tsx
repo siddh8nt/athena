@@ -19,25 +19,13 @@ const TIERS: Tier[] = ["win_first", "win_next", "watch"];
 const HORIZONS: Horizon[] = ["now", "next_quarter", "season", "year"];
 
 const away = (days: number) => (days <= 0 ? "today" : days === 1 ? "tomorrow" : `in ${days} days`);
-const people = (n: number) => (n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${Math.round(n / 1e3)}k` : String(n));
 
-/** The map's line for each crowd (§23.2 step 5d): its tier, new reach, momentum and next peak, by crowd index. */
+/** Each crowd's tier for the map, by crowd index; the map dims the crowds to watch (its reach and attention are on the fit card). */
 export function tiersFor(run: FitsRun | undefined, crowds: CrowdCard[]): (CrowdDecision | undefined)[] {
   if (!run) return [];
   return crowds.map((c) => {
     const f = run.fits.fits.find((x) => x.crowd === c.id);
-    if (!f) return undefined;
-    const reach = f.params.reach?.value;
-    const mom = f.params.momentum?.value;
-    const peak = HORIZONS.flatMap((h) => run.calendar.horizons[h]).find((m) => m.kind === "crowd" && m.crowd === c.id);
-    const line = [
-      reach !== undefined ? `${people(reach)} new reach` : "",
-      mom !== undefined ? `attention ${mom >= 0 ? "+" : "−"}${Math.abs(Math.round(mom * 100))}% on a year ago` : "",
-      peak ? `peaks ${MONTHS[new Date(`${peak.date}T00:00:00Z`).getUTCMonth()].slice(0, 3)}` : "",
-    ]
-      .filter(Boolean)
-      .join(" · ");
-    return { tier: TIER_LABEL[f.tier], line, watch: f.tier === "watch" };
+    return f ? { tier: TIER_LABEL[f.tier], watch: f.tier === "watch" } : undefined;
   });
 }
 
@@ -55,9 +43,16 @@ type Props = {
   slot: (id: string) => number;
   /** Each fit's foot: the handoffs to the specialists who work it (§23.2 step 8.3b). */
   foot?: (f: Fit) => ReactNode;
+  /** On the Analyst's own page its head already says the headline (§23.5 p), so it isn't said again here. */
+  headed?: boolean;
+  /** What each fit's crowd loves and where it is (§23.5 p): the crowd's card, folded into its fit's. */
+  about?: (f: Fit) => ReactNode;
+  /** Linked views (§9.26): the crowd lit in the Galaxy lights its fit card, and the other way round. */
+  lit?: string | null;
+  onLight?: (crowd: string | null) => void;
 };
 
-export function Fits({ run, steps, running, asks, answers, onAnswer, strategy, slot, foot }: Props) {
+export function Fits({ run, steps, running, asks, answers, onAnswer, strategy, slot, foot, headed, about, lit, onLight }: Props) {
   const live = steps.filter((s) => s.why);
   if (!run)
     return (
@@ -101,7 +96,7 @@ export function Fits({ run, steps, running, asks, answers, onAnswer, strategy, s
           <span className="spin" aria-hidden /> <span className="shimmer-text">{live.at(-1)?.why ?? "Ranking again with what you told me"}</span>
         </p>
       )}
-      {answer.headline && <p className="fits-headline">{answer.headline}</p>}
+      {answer.headline && !headed && <p className="fits-headline">{answer.headline}</p>}
       {overall.map((r, i) => (
         <p key={i} className="small">
           {r.text} <Cites ids={r.sources} sources={sources} />
@@ -115,7 +110,7 @@ export function Fits({ run, steps, running, asks, answers, onAnswer, strategy, s
           <div key={t} className={`fits-tier tier-${t}`}>
             <h4 className="crowd-tag">{TIER_LABEL[t]}</h4>
             {inTier.map((f) => (
-              <FitCard key={f.crowd} f={f} said={said(f.crowd)} sources={sources} slot={slot(f.crowd)}>
+              <FitCard key={f.crowd} f={f} said={said(f.crowd)} sources={sources} slot={slot(f.crowd)} about={about?.(f)} lit={lit === f.crowd} onLight={onLight}>
                 {planned(f.crowd) ? (
                   <StrategyCard s={planned(f.crowd)!} said={plan!.answer.lines.filter((l) => l.crowd === f.crowd)} sources={planSources} />
                 ) : planning(f) ? (
@@ -158,9 +153,9 @@ export function Fits({ run, steps, running, asks, answers, onAnswer, strategy, s
   );
 }
 
-function FitCard({ f, said, sources, slot, children }: { f: Fit; said: FitsAnswer["reasons"]; sources: Map<string, SourceRef>; slot: number; children?: ReactNode }) {
+function FitCard({ f, said, sources, slot, about, lit, onLight, children }: { f: Fit; said: FitsAnswer["reasons"]; sources: Map<string, SourceRef>; slot: number; about?: ReactNode; lit?: boolean; onLight?: (crowd: string | null) => void; children?: ReactNode }) {
   return (
-    <article className="fit">
+    <article className={`fit${lit ? " lit" : ""}`} onMouseEnter={onLight && (() => onLight(f.crowd))} onMouseLeave={onLight && (() => onLight(null))}>
       <div className="fit-head">
         <span className="rank">{f.rank}</span>
         <h5>
@@ -177,6 +172,7 @@ function FitCard({ f, said, sources, slot, children }: { f: Fit; said: FitsAnswe
             </p>
           ))
         : f.reasons.map((r, i) => <p key={i} className="small">{r}</p>)}
+      {about}
       {/* When to move is the Promoter's (§23.2 step 8.5l): its calendar, not the Analyst's fits. */}
       <details className="fit-params">
         <summary className="small">The six measures</summary>

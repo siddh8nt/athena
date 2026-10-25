@@ -2861,6 +2861,43 @@ The 2 keys allow 20k calls a month, about 28–35 full new-brand runs before war
 - **Snapshots:** the page's saved state, taken automatically as steps change or by hand with "Save snapshot".
 - **Where it lives:** recordings and snapshots stay in `.cache/dev`, which is gitignored, so no Qloo data reaches the repo.
 - **Dev server only:** `/dev` returns 404 in production, and the dev pill never renders there.
+- **Way in, for now (23 Oct, 4125dbd):** an "Open dev mode" link under the subtitle on the "Tell me about your brand" page, dev server only, because the pill hides in Live mode. It's temporary.
+
+#### (p) No duplicates on any page (founder, 25 Oct; not built)
+
+- **Why:** the same things are listed two or three times on one page. The Promoter shows its online places twice: once as a full table under Online, and again as a cramped list under "Any time, online" in the Calendar, where they don't belong because they have no date. Audited on the recorded Diaspora Co. run in `/dev`; every subagent page and Athena's panel has the same problem.
+- **The rule:** each thing (a crowd, city, shop, partner, event, online place, hook) is listed in full in one place: the place where the founder acts on it. Anywhere else it is at most a one-line mention that opens that place. A shortlist with a reason ("One pitch, several crowds", "Doors you can afford") may name items listed elsewhere, as links, never as a second table.
+- **Promoter:**
+  - The Calendar holds dated things only (events and moments). Online places leave it, and its city filter drops "Online"; they live only in the Online table.
+  - The Events table and the Calendar list the same events: they become one section, Calendar, whose List view is the events table (formats, fee, facets) and whose month views are the calendar.
+  - Across all three: "The year ahead" month strip repeats the Calendar and folds into its 12-months view; "Events for several crowds" stays as a shortlist; the Pipeline stays.
+- **Rep:**
+  - Crowd tab: the "Its cities" fact repeats the cities table and goes.
+  - Across all three: the same shops are listed three times (the 140-row overview table, each city's "Every matching shop", the Pipeline). The overview table goes; city pages and the Pipeline stay.
+  - City pages: the "Dense / Thin neighbourhoods" facts repeat the Neighbourhoods table and go.
+- **Matchmaker:**
+  - Across all three: the full Creators, Brands and Podcasts tables repeat the crowd tabs and the Pipeline, and go; "One ask, several crowds" and the Pipeline stay.
+  - "Budget fit by band" shows on every crowd tab and again in the Budget plan; it stays in the Budget plan only.
+- **Scout:**
+  - "Who they are" and "Where their attention goes" both list shows and podcasts. Shows, podcasts and creators live only under attention, where the handoffs are; "Who they are" keeps music, film, books and brands.
+  - Across all three: "Works for one" repeats each crowd tab's hooks and goes; "Works for all three" stays.
+- **Navigator:**
+  - Crowd tab: the "Why" lines name the same cities as the table above them; the reason moves into the city's row.
+  - Across all three: the "Overlap cities" lines repeat cities in the table; overlap becomes a tag on the row.
+  - City pages: the per-crowd people counts (facts) and "Fit, crowd by crowd" (lines) become one row per crowd. "Actions" says the place twice ("Shops first, starting in X" and "Start in X"); each distinct action appears once.
+- **Analyst:**
+  - The headline shows twice (page head and inside "Your most valuable fits"); it shows once, in the head.
+  - Each crowd appears three times: the Taste Galaxy legend (with reach and attention), the fits ranking, and the "Your crowds" cards. The legend keeps only names and colours, and each crowd's card from "Your crowds" (what they love, where, audience) folds into its fit card.
+- **Athena's panel:** a resumed run posts the same handoff again (Rep and Promoter three times each on the Diaspora Co. run). There is one handoff line per subagent per run, and a re-run updates it in place.
+- **Across subagents:** an item another subagent owns is a one-line link to it, not a copy. The Navigator's "Moments there, from the Promoter" and the Rep's hosts on the Promoter page already work this way and stay.
+- **Later, after (p): pipelines move to the Executive (founder, 25 Oct).** The Rep, Matchmaker and Promoter each track their items in a Pipeline, and the Executive tracks the plan's tasks on its board, so an item can be tracked in two places. In (p) the pipelines stay as they are. Later, tracking moves to the Executive and each subagent's Pipeline is replaced by a link to the board, filtered to that subagent. The board gains a view of every item, not only the plan's (the Rep alone has 140 shops; the plan picks about 24 tasks in all). It's a view change only: pipeline rows and board tasks already share item ids and the same marks, so nothing is moved or re-run. How the board shows every item is decided when this is built.
+- **No data is lost:** only views change. Every item still sits on its page, marks keep working, and the subagents' reads and Qloo calls don't change.
+
+##### (p) Done when
+
+- **A check finds no duplicates:** a test walks every page built from the recorded Diaspora Co. run and fails if one view lists the same item twice, outside the named shortlists.
+- **Checks pass:** tsc and the test suite.
+- **Seen live in Edge:** every subagent page and Athena's panel, on desktop and at 375 px, from the `/dev` snapshots in Replay (no calls), then one Record run on a brand to confirm a fresh run builds the new pages.
 
 #### Done when
 

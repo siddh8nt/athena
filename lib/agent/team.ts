@@ -17,7 +17,7 @@ import { repPage } from "./rep";
 import { matchPage } from "./matchmaker";
 import { promoFill, promoterPage } from "./promoter";
 import type { CrowdPage } from "@/lib/team/page";
-import { SPECIALISTS, nameOf, specialist, waitingOn, type SpecialistId } from "./specialists";
+import { SPECIALISTS, isSpecialist, nameOf, specialist, waitingOn, type SpecialistId } from "./specialists";
 import { GOALS, checkCustom, checkGoals, customQuestion, proposeGoals, teamFor, teamLine, type GoalFacts } from "./goals";
 import { itemId, latest, outcomeLine, staleRuns, whatChanged } from "./outcomes";
 import { crowdSignature } from "./evidence";
@@ -400,7 +400,13 @@ export async function runSpecialist(r: SpecialistInput): Promise<Work | undefine
     goal: goalText,
     brand: { name: t.brand.name },
     system: systemFor(id, t),
-    intro: [`Goal: ${goalText}`, `Your part: ${s.mission}`, t.question ? `The founder asks: ${t.question}` : "", `Budget: ${s.budget.qloo} Qloo calls, ${Math.round((r.budget?.ms ?? s.budget.ms) / 1000)} seconds. The Brand Graph is source s1.`].filter(Boolean).join("\n"),
+    intro: [
+      `Goal: ${goalText}`,
+      `Your part: ${s.mission}`,
+      // The Analyst is where the crowds come from: with none yet, it can't hand them off, and the whole team waits on them.
+      id === "analyst" && !state.crowds?.crowds.length ? "No crowds are measured yet. Measuring them with build_taste_graph is yours: no one else provides them, and every other subagent waits on them." : "",
+      t.question ? `The founder asks: ${t.question}` : "",
+      `Budget: ${s.budget.qloo} Qloo calls, ${Math.round((r.budget?.ms ?? s.budget.ms) / 1000)} seconds. The Brand Graph is source s1.`].filter(Boolean).join("\n"),
     finisher: makeFinisher(id, goalId),
     given: given(t, { probes: [], asks: 0, ...state }),
     budget: { ...s.budget, ...r.budget },
@@ -437,6 +443,9 @@ export async function runSpecialist(r: SpecialistInput): Promise<Work | undefine
     if (res.answered) last = res.state;
     paused = !!res.paused;
     if (paused) last = res.state;
+    // The Analyst finished without measuring: code's decider measures from where the model stopped, since every
+    // other subagent works from the crowds and none can stand in for them.
+    if (id === "analyst" && !paused && !byRules && !(last?.crowds ?? t.crowds)?.crowds.length) await first.fallback();
   } catch (err) {
     console.error(`${id} run failed`, err);
   }
@@ -673,6 +682,9 @@ export type WorkflowInput = TeamInput & {
   resynth?: boolean;
 };
 
+/** A work with no results that handed back, where a step it needs has delivered since. */
+export const handedBack = (work: Work | undefined, needed: (Work | undefined)[]) => !!work && !work.results.length && !!work.handoff && needed.some((n) => !!n && n.results.length > 0 && n.at > work.at);
+
 /**
  * Runs Athena's workflow (§23.2 step 8.5f): each step once what it needs is done, up to three at once. Before a step,
  * the inputs only the founder knows are asked as questions that pause it; a subagent's own question pauses it too.
@@ -702,6 +714,10 @@ export async function runWorkflow(r: WorkflowInput): Promise<{ works: Partial<Re
     w = resetFrom(w, stale.map((s) => s.agent));
     say(`The Brand Graph changed since ${list(stale.map((s) => `the ${nameOf(s.agent)}`))} ran, so ${stale.length > 1 ? "they run" : "it runs"} again, with what depends on ${stale.length > 1 ? "them" : "it"}.`);
   }
+  // A subagent that handed back with nothing, because a step it needs hadn't delivered yet, runs again once that step
+  // has finished since: its "done" was a wait, not work.
+  const waited = r.resynth ? [] : w.steps.filter((s) => s.state === "done" && isSpecialist(s.id) && handedBack(r.state.works[s.id], s.needs.map((n) => (isSpecialist(n) ? r.state.works[n] : undefined))));
+  if (waited.length) w = resetFrom(w, waited.map((s) => s.id));
   emit();
 
   const works: Partial<Record<SpecialistId, Work>> = {};
@@ -728,7 +744,10 @@ export async function runWorkflow(r: WorkflowInput): Promise<{ works: Partial<Re
       qlooCalls += done.qlooCalls;
     }
     refillNavigator(t, step.id, works.navigator ?? r.state.works.navigator, r.send);
-    w = setStep(w, step.id, paused ? "paused" : "done");
+    // The Analyst is done only once the crowds exist: everything after it works from them. Without them it stays to
+    // do, and runs again on the next post rather than handing the team nothing.
+    const measured = step.id !== "analyst" || !!t.crowds?.crowds.length;
+    w = setStep(w, step.id, paused ? "paused" : measured ? "done" : "todo");
     emit();
   };
 
@@ -754,6 +773,7 @@ export async function runWorkflow(r: WorkflowInput): Promise<{ works: Partial<Re
         continue;
       }
       const id = step.id;
+      if (id === "analyst" && ran.has(id) && !t.crowds?.crowds.length) continue;
       // What only the founder knows, asked just before the step that needs it, and only when it isn't known.
       let missing = missingInputs(step.inputs, r.answered, { stockists: t.brand.stockists.length });
       // The Brand Graph is read first (founder, 21 Oct): what it already says is taken from it and never asked.

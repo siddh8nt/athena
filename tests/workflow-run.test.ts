@@ -83,6 +83,40 @@ describe("the workflow run (§23.2 step 8.5f)", () => {
   }, 60_000);
 });
 
+describe("no subagent works from crowds that aren't there", () => {
+  // The model ends the Analyst's run without measuring, handing back to itself (seen live, 25 Oct).
+  const quits = (async () => {
+    const call = { name: "finish_work", args: { headline: "We need the crowds first", results: [], claims: [], handoff: "the crowds, from the Analyst" } };
+    return { parts: [{ functionCall: call }], calls: [call], text: "", model: "test", ms: 0 };
+  }) as never;
+
+  it("code measures when the Analyst's model finishes without crowds, so the Scout gets them", async () => {
+    const { qloo, state, t } = await setup();
+    const g = goals("partners");
+    const workflow = await planWorkflow(g, t, false);
+    const events: TeamEvent[] = [];
+    const out = await runWorkflow({ goals: g, team: t, state, graphRev: 0, qloo, env: {} as never, send: (e) => events.push(e), llm: false, model: (id) => (id === "analyst" ? quits : undefined), workflow, answered: [] });
+    expect(t.crowds?.crowds.length).toBeGreaterThan(0);
+    expect(out.workflow.steps.find((s) => s.id === "analyst")?.state).toBe("done");
+    expect(out.works.scout?.results.length).toBeGreaterThan(0);
+    expect(events.some((e) => e.type === "step" && e.event.summary === "needs the crowds first")).toBe(false);
+  }, 60_000);
+
+  it("a subagent that handed back with nothing runs again once what it needs has delivered", async () => {
+    const { qloo, state, t } = await setup();
+    const g = goals("partners");
+    const first = await runWorkflow({ goals: g, team: t, state, graphRev: 0, qloo, env: {} as never, send: () => {}, llm: false, workflow: await planWorkflow(g, t, false), answered: [] });
+    // As a journey saved before the fix holds it: the Scout ran on no crowds and handed back, the Analyst measured later.
+    const works = { ...first.works, scout: { ...first.works.scout!, results: [], handoff: { need: "the ranked crowds, from the Analyst" }, at: 1 } };
+    const done = { ...first.workflow, steps: first.workflow.steps.map((s) => ({ ...s, state: "done" as const })) };
+    const again: TeamEvent[] = [];
+    await runWorkflow({ goals: g, team: t, state: { ...state, works: works as never }, graphRev: 0, qloo, env: {} as never, send: (e) => again.push(e), llm: false, workflow: done, answered: [] });
+    const ran = again.flatMap((e) => (e.type === "status" && e.status.state === "working" && e.status.step === "Starting" ? [e.agent] : []));
+    expect(ran).toContain("scout");
+    expect(ran).not.toContain("analyst");
+  }, 60_000);
+});
+
 describe("a typed answer (§23.2 step 8.5h)", () => {
   const question = { question: "What can you spend on growth in the next three months?", options: [{ label: "Under $1,000" }, { label: "$1,000 to $10,000" }] };
   const workflow: Workflow = { goals: ["launch_city"], by: "rules", steps: ["analyst", "navigator", "rep", "promoter", "athena"].map((id) => ({ id: id as never, task: "", needs: [], why: "", inputs: [], state: "todo" })) };

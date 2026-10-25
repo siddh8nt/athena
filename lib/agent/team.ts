@@ -385,8 +385,9 @@ export async function runSpecialist(r: SpecialistInput): Promise<Work | undefine
     if (e.type === "event") {
       r.send({ type: "step", agent: id, event: e.event });
       if (e.event.status === "running" && e.event.tool !== "think") status({ state: "working", step: e.event.why });
-      // Asked about one entity, the answer from what's measured shows first; a probe, if any, follows.
-      if (e.event.tool === "place_entity" && e.event.status !== "running" && e.event.summary) r.send({ type: "reply", agent: id, text: `${cap(e.event.summary)}.` });
+      // Asked about one entity, the answer from what's measured shows first; a probe, if any, follows. A placement the
+      // subagent looked up for itself is its own working, not an answer to the founder, and stays in its trail.
+      if (e.event.tool === "place_entity" && t.asked && e.event.status !== "running" && e.event.summary) r.send({ type: "reply", agent: id, text: `${cap(e.event.summary)}.` });
     } else if (e.type === "ask") r.send({ type: "ask", agent: id, ask: { ...e.ask, id: `${id}-${e.ask.id}` } as Asked });
     else if (e.type === "work") work = e.work;
   };

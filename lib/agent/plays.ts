@@ -327,7 +327,8 @@ export const PLAYS: Tool[] = [
       const g = state.crowds?.galaxy;
       const id = str(a.entity_id, 80) || t?.asked?.id || "";
       const i = g?.nodes.findIndex((n) => n.id === id || (!id && n.name === t?.asked?.name)) ?? -1;
-      const name = t?.asked?.name ?? id;
+      // The founder's name for the node only when it's the node they asked about.
+      const name = t?.asked && (!id || id === t.asked.id) ? t.asked.name : id;
       if (!g || i < 0) return { summary: `${name} isn't on the measured map yet`, data: { name, on_map: false }, status: "thin" };
       const n = g.nodes[i];
       const crowd = n.crowd >= 0 ? state.crowds!.crowds[n.crowd] : undefined;

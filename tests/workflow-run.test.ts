@@ -117,6 +117,23 @@ describe("no subagent works from crowds that aren't there", () => {
   }, 60_000);
 });
 
+describe("a subagent's own lookups stay in its trail", () => {
+  it("a placement the founder didn't ask for isn't said in the chat, and a raw id never is", async () => {
+    const { qloo, state, t } = await setup();
+    const g = goals("partners");
+    // The Analyst's model places an entity by id before handing over to code, unasked by the founder (seen live, 25 Oct).
+    let turn = 0;
+    const looks = (async () => {
+      const call = turn++ === 0 ? { name: "place_entity", args: { entity_id: "DAEC51CD-0000-4000-8000-000000000000" } } : { name: "finish_work", args: { headline: "", results: [], claims: [] } };
+      return { parts: [{ functionCall: call }], calls: [call], text: "", model: "test", ms: 0 };
+    }) as never;
+    const events: TeamEvent[] = [];
+    await runWorkflow({ goals: g, team: t, state, graphRev: 0, qloo, env: {} as never, send: (e) => events.push(e), llm: false, model: (id) => (id === "analyst" ? looks : undefined), workflow: await planWorkflow(g, t, false), answered: [] });
+    expect(events.some((e) => e.type === "step" && e.event.tool === "place_entity")).toBe(true);
+    expect(events.filter((e) => e.type === "reply" && /DAEC51CD|measured map/.test(e.text))).toEqual([]);
+  }, 60_000);
+});
+
 describe("a typed answer (§23.2 step 8.5h)", () => {
   const question = { question: "What can you spend on growth in the next three months?", options: [{ label: "Under $1,000" }, { label: "$1,000 to $10,000" }] };
   const workflow: Workflow = { goals: ["launch_city"], by: "rules", steps: ["analyst", "navigator", "rep", "promoter", "athena"].map((id) => ({ id: id as never, task: "", needs: [], why: "", inputs: [], state: "todo" })) };

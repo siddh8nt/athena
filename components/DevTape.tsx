@@ -110,19 +110,38 @@ function install() {
     }
     const t0 = Date.now();
     const res = await real(input, init);
-    res
-      .clone()
+    if (!res.body) return res;
+    const [mine, theirs] = res.body.tee();
+    const recorded = new Response(mine)
       .text()
       .then(async (body) => {
         const tape = { path, key, req: bodyText(init?.body), status: res.status, type: res.headers.get("content-type") ?? "", body, at: Date.now(), ms: Date.now() - t0 };
         await devPost({ op: "record", tape });
         bump("recorded");
-        // Let the page store what the response changed, then keep that moment as a step.
-        setTimeout(() => void saveSnapshot(path.replace("/api/", ""), true, path), 2500);
       })
       .catch(() => undefined);
-    return res;
+    // The page plays a stream's events out paced, so it can still be applying them after the network stream ends. The
+    // snapshot waits for the page itself to read the end, then a moment for it to store what changed.
+    return new Response(endsAt(theirs, () => void recorded.then(() => setTimeout(() => void saveSnapshot(path.replace("/api/", ""), true, path), 1500))), { status: res.status, statusText: res.statusText, headers: res.headers });
   };
+}
+
+/** The same body, calling `onEnd` when its reader reaches the end: read on demand, so the reader's pace is kept. */
+function endsAt(body: ReadableStream<Uint8Array>, onEnd: () => void): ReadableStream<Uint8Array> {
+  const src = body.getReader();
+  return new ReadableStream<Uint8Array>(
+    {
+      async pull(c) {
+        const { done, value } = await src.read();
+        if (done) {
+          c.close();
+          onEnd();
+        } else c.enqueue(value);
+      },
+      cancel: (why) => src.cancel(why),
+    },
+    { highWaterMark: 0 },
+  );
 }
 
 if (typeof window !== "undefined" && process.env.NODE_ENV !== "production") install();

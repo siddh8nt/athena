@@ -9,6 +9,7 @@ import { TIER_LABEL, type Block, type CalItem, type CrowdPage, type Detail, type
 import { markLabel, marksFor, type Mark, type Outcome, type WorkItem } from "@/lib/team/types";
 import { Handoffs } from "./Team";
 import { HeatLayers } from "./HeatLayers";
+import { InYourCalendar } from "./McpConnect";
 
 // One page shape for every subagent (PRD §23.5 b): a tab per crowd (Win first, Win next, Watch) and Across all
 // three, the same sections in the same order in every crowd tab. On a phone the tabs swipe, the sections fold into
@@ -744,7 +745,9 @@ function Calendar({ b, ctx }: { b: Extract<Block, { type: "calendar" }>; ctx: Ct
             </button>
           ))}
         </div>
-        <p className="small muted promo-legend">● event · ◆ your moment · ◇ moment</p>
+        <p className="small muted promo-legend">
+          ● event · ◆ your moment · ◇ moment · <InYourCalendar />
+        </p>
       </div>
       {view === "year" && <Months items={dated} today={b.today} />}
       {view === "list" ? (

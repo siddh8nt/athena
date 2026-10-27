@@ -4,11 +4,12 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 // Mint and revoke connect links (PRD §23.6 c, d). The Athena MCP panel calls POST to get a link to
-// paste into the founder's own AI tool, and again to get a new one (which replaces the old). DELETE revokes. The
+// paste into the founder's own AI tool, and again to get a new one (which replaces the old). DELETE revokes. Scope
+// "cal" is the calendar feed's own link (§23.6 g), a path under /cal. The
 // workspace id is the browser's own random UUID; the link's secret is returned once and never stored in the clear.
 
 const wsId = (v: unknown) => (typeof v === "string" && /^[A-Za-z0-9-]{8,64}$/.test(v) ? v : "");
-const scopeOf = (v: unknown): Scope => (v === "read" ? "read" : "full");
+const scopeOf = (v: unknown): Scope => (v === "read" || v === "cal" ? v : "full");
 
 export async function POST(req: Request): Promise<Response> {
   const b = (await req.json().catch(() => ({}))) as { ws?: unknown; scope?: unknown; label?: unknown };
@@ -19,7 +20,7 @@ export async function POST(req: Request): Promise<Response> {
   const minted = await mintLink(ws, scope, label);
   if (!minted) return Response.json({ ok: false });
   // A path, not an absolute URL: the client prepends its own origin, so this works on localhost and on Cloud Run alike.
-  return Response.json({ ok: true, scope, path: `/mcp/${minted.secret}` });
+  return Response.json({ ok: true, scope, path: scope === "cal" ? `/cal/${minted.secret}.ics` : `/mcp/${minted.secret}` });
 }
 
 export async function DELETE(req: Request): Promise<Response> {

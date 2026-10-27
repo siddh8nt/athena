@@ -13,7 +13,8 @@ async function handle(req: Request, ctx: { params: Promise<{ secret: string }> }
   const { secret } = await ctx.params;
   const bearer = req.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
   const meta = (await resolveLink(secret)) ?? (bearer ? await resolveLink(bearer) : undefined);
-  if (!meta) return new Response("Not found", { status: 404 });
+  // A calendar feed's link (§23.6 g) sits in a calendar app, so it opens the feed and nothing else.
+  if (!meta || meta.scope === "cal") return new Response("Not found", { status: 404 });
   return handleMcp(req, meta);
 }
 

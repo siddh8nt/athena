@@ -6,6 +6,7 @@ import { planStale, planUnitemised } from "@/lib/agent/synthesis";
 import { nameOf, type SpecialistId } from "@/lib/agent/specialists";
 import { strengthWord } from "@/lib/agent/fit";
 import { TIER_LABEL } from "@/lib/team/page";
+import { InYourCalendar } from "./McpConnect";
 import { markLabel, type Drafts, type Src, type TeamState } from "@/lib/team/types";
 import {
   EXEC_TABS,
@@ -21,6 +22,7 @@ import {
   stageOf,
   statesOf,
   tabItems,
+  rowTarget,
   waitingSteps,
   wayIn,
   type ContactView,
@@ -216,6 +218,21 @@ export function ExecutivePlan(p: Props) {
   const [by, setBy] = useState<Partial<Record<ExecTab, Record<string, string>>>>({});
   const [openId, setOpenId] = useState<string>();
   const [shown, setShown] = useState(PAGE);
+
+  // A calendar entry's "Open in Athena" link (/plan?tab=executive&item=<id>, §23.6 g) opens its row once: on its
+  // owner's tab, or its parent's row when it sits under one.
+  const [linked, setLinked] = useState(false);
+  useEffect(() => {
+    if (linked || !team.plan) return;
+    setLinked(true);
+    const asked = new URLSearchParams(window.location.search).get("item");
+    const to = asked ? rowTarget(plan, asked) : undefined;
+    if (!to) return;
+    setTab(to.tab);
+    setOpenId(to.id);
+    setShown(Infinity);
+    requestAnimationFrame(() => requestAnimationFrame(() => document.querySelector(`[data-item="${CSS.escape(to.id)}"]`)?.scrollIntoView({ block: "center" })));
+  }, [linked, team.plan, plan]);
 
   if (!team.plan) return <Pending team={team} running={p.running} onOpen={p.onOpen} />;
 
@@ -708,7 +725,7 @@ function Row({ it, ctx, mixed }: { it: ExecItem; ctx: Ctx; mixed?: boolean }) {
   const crowdLine = forOf(it, ctx.crowds);
   const text = stageText(sg, it, ctx);
   return (
-    <li className={`xp-row xp-st-${sg}${sg === "reading" || sg === "drafting" ? " xp-live" : ""}${it.left ? " xp-left" : ""}${open ? " xp-open" : ""}`}>
+    <li data-item={it.id} className={`xp-row xp-st-${sg}${sg === "reading" || sg === "drafting" ? " xp-live" : ""}${it.left ? " xp-left" : ""}${open ? " xp-open" : ""}`}>
       <button type="button" className="xp-row-head" aria-expanded={open} onClick={() => ctx.setOpen(open ? undefined : it.id)}>
         {it.date && <DateChip d={it.date} />}
         <span className="xp-main">
@@ -756,6 +773,12 @@ function Opened({ it, ctx, c }: { it: ExecItem; ctx: Ctx; c?: ContactView }) {
             <button type="button" className="linkish small" onClick={() => p.onOpen(it.agent as SpecialistId)}>
               Open the {nameOf(it.agent as SpecialistId)}
             </button>
+          </>
+        )}
+        {(it.date || ctx.state(it.id).mark === "pitched") && (
+          <>
+            <span className="muted"> · </span>
+            <InYourCalendar />
           </>
         )}
         {others.length > 0 && <span className="muted"> · Also listed by {and(others.map((a) => `the ${nameOf(a)}`))}</span>}

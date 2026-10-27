@@ -245,6 +245,18 @@ export function tabItems(plan: ExecPlan, tab: ExecTab): ExecItem[] {
   return plan.items.filter((i) => i.agent === tab).sort((a, b) => a.rank - b.rank);
 }
 
+/**
+ * Where a link to an item opens (a calendar entry's "Open in Athena", §23.6 g): its row on its owner's tab, or its
+ * parent's row when it sits under one; Now when no owner's tab lists it.
+ */
+export function rowTarget(plan: ExecPlan, id: string): { tab: ExecTab; id: string } | undefined {
+  const asked = plan.byId.get(id);
+  const it = asked?.parent && plan.byId.has(asked.parent) ? plan.byId.get(asked.parent)! : asked;
+  if (!it) return undefined;
+  const tab = EXEC_TABS.find((t) => t !== "now" && t !== "results" && tabItems(plan, t).some((i) => i.id === it.id)) ?? "now";
+  return { tab, id: it.id };
+}
+
 // ---- Status
 
 /** Where an item stands: a status set by hand after its latest mark wins, else the mark decides. */

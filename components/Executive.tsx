@@ -7,7 +7,7 @@ import { nameOf, type SpecialistId } from "@/lib/agent/specialists";
 import { strengthWord } from "@/lib/agent/fit";
 import { TIER_LABEL } from "@/lib/team/page";
 import { InYourCalendar } from "./McpConnect";
-import { markLabel, type Drafts, type Src, type TeamState } from "@/lib/team/types";
+import { markLabel, type Drafts, type Mark, type Src, type TeamState } from "@/lib/team/types";
 import {
   EXEC_TABS,
   contactKey,
@@ -57,6 +57,10 @@ type Props = {
   onUpdatePlan: () => void;
   onRewritePlan: () => void;
   onBringBack: (id: string) => void;
+  /** One tap on a row once it's sent: they replied yes or no (§23.6 h). */
+  onMark?: (it: ExecItem, m: Mark) => void;
+  /** The view-only copy for the founder's team (§23.6 k): no Start, no editing, no Ask Athena; drafts copy only. */
+  readOnly?: boolean;
 };
 
 type Run = { queue: string[]; rows: Record<string, string> };
@@ -186,6 +190,7 @@ type Ctx = {
   openId?: string;
   setOpen: (id?: string) => void;
   p: Props;
+  ro: boolean;
 };
 
 function stageText(sg: Stage, it: ExecItem, ctx: Ctx): string | undefined {
@@ -241,7 +246,7 @@ export function ExecutivePlan(p: Props) {
   const stages = new Map(plan.items.map((it) => [it.id, stageOf(it, state(it.id), x, now, run)]));
   const stage = (it: ExecItem) => stages.get(it.id) ?? "ready";
   const crowds = [...new Set(plan.items.flatMap((i) => i.crowds))];
-  const ctx: Ctx = { plan, team, state, stage, run, now, brand: p.brand, crowds, openId, setOpen: setOpenId, p };
+  const ctx: Ctx = { plan, team, state, stage, run, now, brand: p.brand, crowds, openId, setOpen: setOpenId, p, ro: !!p.readOnly };
 
   const newer = !team.plan.steps || planStale(team.plan, team.works);
   const unitemised = planUnitemised(team.plan, team.works);
@@ -302,7 +307,7 @@ export function ExecutivePlan(p: Props) {
       );
     }
     if (tab === "results") return <Results plan={plan} team={team} />;
-    if (tab === "now") return <NowSteps plan={plan} state={state} exec={x} list={main} filtering={filtering} disagreements={team.plan!.disagreements} row={row} onStartAnyway={p.onStartAnyway} />;
+    if (tab === "now") return <NowSteps plan={plan} state={state} exec={x} list={main} filtering={filtering} disagreements={team.plan!.disagreements} row={row} onStartAnyway={p.readOnly ? undefined : p.onStartAnyway} />;
     const groups = groupsOf(tab, main, (city) => {
       const rep = tabItems(plan, "rep").filter((i) => i.cities.includes(city)).length;
       const promo = tabItems(plan, "promoter").filter((i) => !isChild(i, plan) && i.cities.includes(city)).length;
@@ -391,7 +396,7 @@ export function ExecutivePlan(p: Props) {
         </div>
       </header>
 
-      {(newer || unitemised) && (
+      {!p.readOnly && (newer || unitemised) && (
         <div className="stale-flag">
           <span className="small">{!team.plan.steps ? "This plan was written before the numbered steps." : newer ? "A subagent has newer work than this plan." : "This plan was written before its steps named each shop, partner and event."}</span>{" "}
           <button type="button" className="linkish small" disabled={p.running} onClick={newer ? p.onUpdatePlan : p.onRewritePlan}>
@@ -405,7 +410,7 @@ export function ExecutivePlan(p: Props) {
           <span className="xp-pulse" aria-hidden />
           <span className="small">{live.exec.line}</span>
         </div>
-      ) : !x?.started && targets.length > 0 ? (
+      ) : !x?.started && targets.length > 0 && !p.readOnly ? (
         <div className="xp-banner">
           <p className="small">
             The Executive finds how to reach all {targets.length} targets and writes the drafts. Nothing is sent: you send each one yourself.
@@ -415,7 +420,7 @@ export function ExecutivePlan(p: Props) {
           </button>
         </div>
       ) : null}
-      {firstReady && !pipe && (
+      {firstReady && !pipe && !p.readOnly && (
         <p className="small muted xp-hint">
           Sent something or heard back? Tell Athena: “emailed {firstReady.name}” or “they said yes”.
         </p>
@@ -445,19 +450,19 @@ export function ExecutivePlan(p: Props) {
         <section className="xp-group xp-needs" aria-label="Needs a contact">
           <header className="xp-group-head">
             <h3 className="eyebrow">Needs a contact</h3>
-            <span className="small muted">If you have a contact for any of these, tell Athena.</span>
+            {!p.readOnly && <span className="small muted">If you have a contact for any of these, tell Athena.</span>}
           </header>
           <ul className="xp-list">{needs.map((it) => row(it))}</ul>
         </section>
       )}
 
-      {!pipe && tab !== "results" && <LeftOutList items={plan.leftOut.filter((l) => tab === "now" || l.agent === tab)} onBringBack={p.onBringBack} />}
+      {!pipe && tab !== "results" && <LeftOutList items={plan.leftOut.filter((l) => tab === "now" || l.agent === tab)} onBringBack={p.readOnly ? undefined : p.onBringBack} />}
     </section>
   );
 }
 
 /** What the brand-fit check left out (§23.6 n), last and folded: each with Athena's one line why, and Bring it back. */
-function LeftOutList({ items, onBringBack }: { items: LeftOut[]; onBringBack: (id: string) => void }) {
+function LeftOutList({ items, onBringBack }: { items: LeftOut[]; onBringBack?: (id: string) => void }) {
   if (!items.length) return null;
   return (
     <details className="xp-group xp-leftout">
@@ -469,9 +474,11 @@ function LeftOutList({ items, onBringBack }: { items: LeftOut[]; onBringBack: (i
               <strong>{l.name}</strong>
               {l.why && <span className="muted"> · {l.why}</span>}
             </span>
-            <button type="button" className="linkish small" onClick={() => onBringBack(l.id)}>
-              Bring it back
-            </button>
+            {onBringBack && (
+              <button type="button" className="linkish small" onClick={() => onBringBack(l.id)}>
+                Bring it back
+              </button>
+            )}
           </li>
         ))}
       </ul>
@@ -602,7 +609,7 @@ function Filters({ items, facets, by, hide, setBy }: { items: ExecItem[]; facets
 }
 
 /** Now: Athena's steps in her order. A step that waits on another is greyed until it holds, or until started anyway. */
-function NowSteps({ plan, state, exec, list, filtering, disagreements, row, onStartAnyway }: { plan: ExecPlan; state: (id: string) => ItemState; exec: TeamState["exec"]; list: ExecItem[]; filtering: boolean; disagreements: string[]; row: (it: ExecItem, mixed?: boolean) => ReactNode; onStartAnyway: (n: number) => void }) {
+function NowSteps({ plan, state, exec, list, filtering, disagreements, row, onStartAnyway }: { plan: ExecPlan; state: (id: string) => ItemState; exec: TeamState["exec"]; list: ExecItem[]; filtering: boolean; disagreements: string[]; row: (it: ExecItem, mixed?: boolean) => ReactNode; onStartAnyway?: (n: number) => void }) {
   const waits = waitingSteps(plan, state, exec);
   const ids = new Set(list.map((i) => i.id));
   const notes = new Set(plan.steps.flatMap((s) => s.notes ?? []));
@@ -634,9 +641,11 @@ function NowSteps({ plan, state, exec, list, filtering, disagreements, row, onSt
               {on && (
                 <p className="small xp-once">
                   Starts after {and(on.map((n) => `“${what(n)}”`))}.{" "}
-                  <button type="button" className="linkish small" onClick={() => onStartAnyway(s.n)}>
-                    Start anyway
-                  </button>
+                  {onStartAnyway && (
+                    <button type="button" className="linkish small" onClick={() => onStartAnyway(s.n)}>
+                      Start anyway
+                    </button>
+                  )}
                 </p>
               )}
               {s.notes?.map((n) => (
@@ -762,27 +771,44 @@ function Opened({ it, ctx, c }: { it: ExecItem; ctx: Ctx; c?: ContactView }) {
           <DraftsView it={it} ctx={ctx} c={c} />
         </div>
       )}
+      {!ctx.ro && p.onMark && it.outreach && ["sent", "waiting", "follow"].includes(ctx.stage(it)) && (
+        <p className="small xp-heard">
+          Heard back?{" "}
+          {(["yes", "no"] as const).map((m, i) => (
+            <span key={m}>
+              {i > 0 && <span className="muted"> · </span>}
+              <button type="button" className="linkish small" onClick={() => p.onMark!(it, m)}>
+                {it.agent === "promoter" ? markLabel(m, it.agent) : m === "yes" ? "They said yes" : "They said no"}
+              </button>
+            </span>
+          ))}
+        </p>
+      )}
       <History it={it} ctx={ctx} c={c} />
-      <p className="xp-foot small">
-        <button type="button" className="linkish small" onClick={() => p.onAsk(it)}>
-          Ask Athena about this
-        </button>
-        {it.agent !== "athena" && (
-          <>
-            <span className="muted"> · </span>
-            <button type="button" className="linkish small" onClick={() => p.onOpen(it.agent as SpecialistId)}>
-              Open the {nameOf(it.agent as SpecialistId)}
-            </button>
-          </>
-        )}
-        {(it.date || ctx.state(it.id).mark === "pitched") && (
-          <>
-            <span className="muted"> · </span>
-            <InYourCalendar />
-          </>
-        )}
-        {others.length > 0 && <span className="muted"> · Also listed by {and(others.map((a) => `the ${nameOf(a)}`))}</span>}
-      </p>
+      {ctx.ro ? (
+        others.length > 0 && <p className="xp-foot small muted">Also listed by {and(others.map((a) => `the ${nameOf(a)}`))}</p>
+      ) : (
+        <p className="xp-foot small">
+          <button type="button" className="linkish small" onClick={() => p.onAsk(it)}>
+            Ask Athena about this
+          </button>
+          {it.agent !== "athena" && (
+            <>
+              <span className="muted"> · </span>
+              <button type="button" className="linkish small" onClick={() => p.onOpen(it.agent as SpecialistId)}>
+                Open the {nameOf(it.agent as SpecialistId)}
+              </button>
+            </>
+          )}
+          {(it.date || ctx.state(it.id).mark === "pitched") && (
+            <>
+              <span className="muted"> · </span>
+              <InYourCalendar />
+            </>
+          )}
+          {others.length > 0 && <span className="muted"> · Also listed by {and(others.map((a) => `the ${nameOf(a)}`))}</span>}
+        </p>
+      )}
     </div>
   );
 }
@@ -1010,7 +1036,7 @@ function Reach({ it, ctx, c }: { it: ExecItem; ctx: Ctx; c?: ContactView }) {
           ))}
         </div>
       )}
-      {sg === "needs" && <p className="small muted">If you have a way to reach them, tell Athena.</p>}
+      {sg === "needs" && !ctx.ro && <p className="small muted">If you have a way to reach them, tell Athena.</p>}
       {!fields.length && !c.social.length && queuedish && <p className="small muted">Found as the Executive reaches them.</p>}
     </div>
   );
@@ -1042,7 +1068,7 @@ function DraftsView({ it, ctx, c }: { it: ExecItem; ctx: Ctx; c?: ContactView })
     return (
       <div className="xp-sec">
         <p className="crowd-label">The hook</p>
-        <Draft key={it.name} body={it.name} kind="hook" names={[ctx.brand]} />
+        <Draft key={it.name} body={it.name} kind="hook" names={[ctx.brand]} fixed={ctx.ro} />
       </div>
     );
   if (!d) {
@@ -1050,8 +1076,8 @@ function DraftsView({ it, ctx, c }: { it: ExecItem; ctx: Ctx; c?: ContactView })
     return (
       <div className="xp-sec">
         <p className="crowd-label">Drafts</p>
-        {own && <Draft key={own.body} subject={own.subject ?? `${ctx.brand} for ${it.name}`} body={own.body} kind="email" names={names} to={c?.email?.value} onOpened={opened} />}
-        <p className="small muted">{x?.started ? "The Executive writes the email, DM and call script when its turn comes." : "The Executive writes the email, DM and call script once you start it."}</p>
+        {own && <Draft key={own.body} subject={own.subject ?? `${ctx.brand} for ${it.name}`} body={own.body} kind="email" names={names} to={c?.email?.value} onOpened={opened} fixed={ctx.ro} />}
+        <p className="small muted">{x?.started ? "The Executive writes the email, DM and call script when its turn comes." : `The Executive writes the email, DM and call script once ${ctx.ro ? "the plan is started" : "you start it"}.`}</p>
       </div>
     );
   }
@@ -1080,11 +1106,11 @@ function DraftsView({ it, ctx, c }: { it: ExecItem; ctx: Ctx; c?: ContactView })
               </button>
             </p>
           )}
-          <Draft key={email.body} subject={email.subject} body={email.body} kind="email" names={names} to={c?.email?.value} form={c?.email ? undefined : c?.form?.value} onOpened={opened} />
+          <Draft key={email.body} subject={email.subject} body={email.body} kind="email" names={names} to={c?.email?.value} form={c?.email ? undefined : c?.form?.value} onOpened={opened} fixed={ctx.ro} />
         </>
       )}
       {ch === "dm" && (
-        <Draft key={d.dm} body={d.dm} kind="dm" names={names}>
+        <Draft key={d.dm} body={d.dm} kind="dm" names={names} fixed={ctx.ro}>
           {prof && <CopyOpen text={d.dm} url={prof.url} site={prof.site} onOpened={opened} />}
         </Draft>
       )}
@@ -1152,10 +1178,13 @@ function CopyOpen({ text, url, site, onOpened }: { text: string; url: string; si
   );
 }
 
+/** Gmail's compose window with the recipient, subject and body filled in (§23.6 h): a plain link, no sign-in asked of Athena. */
+const gmail = (to: string | undefined, subject: string, body: string) => `https://mail.google.com/mail/?${new URLSearchParams({ view: "cm", fs: "1", ...(to ? { to } : {}), su: subject, body }).toString().replace(/\+/g, "%20")}`;
 const mailto = (to: string | undefined, subject: string, body: string) => `mailto:${to ? encodeURIComponent(to) : ""}?${new URLSearchParams({ subject, body }).toString().replace(/\+/g, "%20")}`;
 
-/** A draft with its tones and Copy; an email also opens in the mail app, or their form when there's no email. */
-function Draft({ subject, body, kind, names, to, form, onOpened, children }: { subject?: string; body: string; kind: "email" | "dm" | "hook"; names: string[]; to?: string; form?: string; onOpened?: () => void; children?: ReactNode }) {
+/** A draft with its tones and Copy; an email also opens in the mail app, or their form when there's no email. A fixed
+ *  draft (the team's view-only copy) has no tones, so a viewer can't rewrite it or spend on it. */
+function Draft({ subject, body, kind, names, to, form, onOpened, fixed, children }: { subject?: string; body: string; kind: "email" | "dm" | "hook"; names: string[]; to?: string; form?: string; onOpened?: () => void; fixed?: boolean; children?: ReactNode }) {
   const [d, setD] = useState({ subject, body });
   const [busy, setBusy] = useState<string>();
   const retone = async (tone: string) => {
@@ -1180,23 +1209,30 @@ function Draft({ subject, body, kind, names, to, form, onOpened, children }: { s
         </p>
       )}
       <pre className="nav-draft-body">{d.body}</pre>
-      <div className="nav-draft-acts nav-draft-tones">
-        {TONES.map((t) => (
-          <button key={t} type="button" disabled={!!busy} onClick={() => retone(t)}>
-            {busy === t ? "Rewriting…" : t}
-          </button>
-        ))}
-        {d.body !== body && (
-          <button type="button" disabled={!!busy} onClick={() => setD({ subject, body })}>
-            As first written
-          </button>
-        )}
-      </div>
+      {!fixed && (
+        <div className="nav-draft-acts nav-draft-tones">
+          {TONES.map((t) => (
+            <button key={t} type="button" disabled={!!busy} onClick={() => retone(t)}>
+              {busy === t ? "Rewriting…" : t}
+            </button>
+          ))}
+          {d.body !== body && (
+            <button type="button" disabled={!!busy} onClick={() => setD({ subject, body })}>
+              As first written
+            </button>
+          )}
+        </div>
+      )}
       <div className="nav-draft-acts">
         <CopyButton text={text} />
         {kind === "email" && (to || !form) && (
           <a className="button" href={mailto(to, d.subject ?? "", d.body)} onClick={onOpened}>
             Open in mail app
+          </a>
+        )}
+        {kind === "email" && (to || !form) && (
+          <a className="button" href={gmail(to, d.subject ?? "", d.body)} target="_blank" rel="noopener noreferrer" onClick={onOpened}>
+            Open in Gmail
           </a>
         )}
         {kind === "email" && !to && form && (

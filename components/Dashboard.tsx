@@ -6,6 +6,9 @@ import { inputById } from "@/lib/team/inputs";
 import { EXECUTIVE, SPECIALIST_IDS, nameOf, specialist, type AgentId, type SpecialistId } from "@/lib/agent/specialists";
 import { execPlan, statesOf, stripOf } from "@/lib/exec/plan";
 import type { Answer, StepState, TeamState, Work, Workflow, WorkflowStep } from "@/lib/team/types";
+import type { Journey } from "@/lib/journey/types";
+import { thisWeek, weekEmpty, type WeekLine } from "@/lib/workspace/week";
+import { workspace } from "@/lib/knowledge/workspace";
 
 // The founder's dashboard after onboarding (PRD §23.2 step 8.5 b–d): the growth plan's workflow as a live diagram
 // under the goals, ending on Execute Plan, Athena's lead tile and the subagents' tiles, the founder's answers
@@ -203,6 +206,99 @@ function tileLine(id: SpecialistId, team: TeamState, live: TeamLive, step?: Work
   return { text: specialist(id).mission, tone: "muted" };
 }
 
+/** This week (§23.6 j), at the top of Overview: the pitches with no reply after their wait, what falls due in the next
+ *  seven days, and the next events. Each line opens its row in Execute Plan, or its source when it has none. */
+function ThisWeek({ team, onRow }: { team: TeamState; onRow: (id: string) => void }) {
+  const [now] = useState(() => Date.now());
+  const w = thisWeek({ journey: { team } as Journey }, now);
+  const part = (head: string, ls: WeekLine[]) =>
+    !!ls.length && (
+      <div className="week-part">
+        <span className="eyebrow">{head}</span>
+        <ul className="week-list">
+          {ls.map((l) => (
+            <li key={l.key}>
+              {l.row ? (
+                <button type="button" className="week-line" onClick={() => onRow(l.row!)}>
+                  <strong>{l.title}</strong>
+                  <span className="small muted">{l.sub}</span>
+                </button>
+              ) : (
+                <a className="week-line" href={l.url} target="_blank" rel="noreferrer">
+                  <strong>{l.title}</strong>
+                  <span className="small muted">{l.sub}</span>
+                </a>
+              )}
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
+  return (
+    <section className="dash-sec dash-week">
+      <div className="dash-sec-head">
+        <h3>This week</h3>
+        <small className="muted">From your plan and what you&apos;ve marked</small>
+      </div>
+      {weekEmpty(w) ? (
+        <p className="small muted">Nothing falls due this week, and no pitch is waiting on a reply.</p>
+      ) : (
+        <>
+          {part("No reply yet", w.quiet)}
+          {part("Due this week", w.due)}
+          {part("Next events", w.events)}
+        </>
+      )}
+      <MondayEmail />
+    </section>
+  );
+}
+
+/** "Email me this every Monday" (§23.6 j): the founder's address and one toggle, saved for the Monday run. Hidden
+ *  until Athena's sending account is set up, so it never offers a send that can't happen. */
+function MondayEmail() {
+  const [ready, setReady] = useState(false);
+  const [email, setEmail] = useState("");
+  const [on, setOn] = useState(false);
+  const [note, setNote] = useState("");
+  useEffect(() => {
+    let live = true;
+    fetch(`/api/digest?ws=${encodeURIComponent(workspace())}`)
+      .then((r) => r.json())
+      .then((j: { ready?: boolean; email?: string; on?: boolean }) => {
+        if (!live) return;
+        setReady(!!j.ready);
+        if (j.email) setEmail(j.email);
+        setOn(!!j.on);
+      })
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, []);
+  if (!ready) return null;
+  const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+  const save = async (next: boolean) => {
+    if (!valid) return setNote("Add your email address first.");
+    setOn(next);
+    const r = await fetch("/api/digest", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ws: workspace(), email: email.trim(), on: next }) })
+      .then((x) => x.json() as Promise<{ ok?: boolean }>)
+      .catch(() => ({ ok: false }));
+    if (!r.ok) setOn(!next);
+    setNote(r.ok ? (next ? `Every Monday morning, to ${email.trim()}.` : "Off. Turn it on again any time.") : "Saving takes a moment; try the toggle again.");
+  };
+  return (
+    <div className="week-mail">
+      <label className="week-mail-toggle">
+        <input type="checkbox" checked={on} onChange={(e) => save(e.target.checked)} />
+        <span>Email me this every Monday</span>
+      </label>
+      <input type="email" className="week-mail-to" placeholder="you@yourbrand.com" value={email} onChange={(e) => (setEmail(e.target.value), setNote(""))} onBlur={() => on && valid && save(true)} aria-label="Your email address" />
+      {note && <small className="muted">{note}</small>}
+    </div>
+  );
+}
+
 /** The dashboard's tabs (§23.5 a1), kept in the URL as `/plan?tab=…` so Back and Forward move between them. */
 const DASH_TABS = [
   { id: "overview", label: "Overview" },
@@ -318,8 +414,14 @@ export function Dashboard(p: {
         ? "Puts the team's work in order once their steps are done; the Executive turns it into your plan."
         : "Leads the team: your goals, the workflow, the order of the work.";
   const count: Partial<Record<DashTab, number>> = { answers: team.answered?.length || undefined };
+  // A This week line opens its row: Execute Plan reads `?item` when it mounts (§23.6 g).
+  const openRow = (id: string) => {
+    window.history.pushState(null, "", `/plan?tab=executive&item=${encodeURIComponent(id)}`);
+    setTab("executive");
+  };
   const overview = (
     <>
+      {plan && <ThisWeek team={team} onRow={openRow} />}
       {!w && !goals.length ? (
         <section className="dash-start">
           <span className="eyebrow">Next</span>

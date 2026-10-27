@@ -780,6 +780,7 @@ export function Journey() {
       onUpdatePlan={tm.refresh}
       onRewritePlan={tm.rewritePlan}
       onBringBack={tm.bringBack}
+      onMark={tm.markItem}
     />
   );
   const navEl = <TeamPanel live={tm.live} team={team} active={page} onOpen={(id) => (go(id), setAbout(undefined))} />;

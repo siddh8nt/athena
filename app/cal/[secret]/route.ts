@@ -15,7 +15,8 @@ const ICS = { "Content-Type": "text/calendar; charset=utf-8", "Cache-Control": "
 
 export async function GET(req: Request, ctx: { params: Promise<{ secret: string }> }): Promise<Response> {
   const { secret } = await ctx.params;
-  const meta = await resolveLink(secret.replace(/\.ics$/i, ""));
+  const found = await resolveLink(secret.replace(/\.ics$/i, ""));
+  const meta = found?.scope === "share" ? undefined : found; // a share link opens the team's page, not the feed
   const saved = meta ? ((await readSnapshot(meta.ws))?.saved as Parameters<typeof calendarFile>[0] | undefined) : undefined;
   if (!meta || !saved?.journey) {
     return new Response(icsOf([], { name: "Your brand", replaced: !meta }), { headers: ICS });

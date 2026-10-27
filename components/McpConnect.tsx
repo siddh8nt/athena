@@ -16,10 +16,12 @@ import { CAL_FILE, calendarFile } from "@/lib/workspace/calendar";
 // Section 2, "As a file" (f), downloads athena-brand.md, built in the browser from its own journey (the demo's comes
 // from the seeded sample). Section 3, "Calendar" (g): Subscribe to a live feed of the plan's dated things, on its own
 // calendar-only link, or Download a one-off .ics. "In your calendar" lines elsewhere open the panel at this section
-// (the `athena:mcp` window event). Section 4 (Share with your team) arrives with (k).
+// (the `athena:mcp` window event). Section 4, "Share with your team" (k): a link to a view-only Execute Plan for
+// co-founders or advisors, on its own share-only link; New link revokes the old one.
 
 const SECRET_KEY = "athena:link:full"; // the secret this browser was shown, so the panel shows the same link each time
 const CAL_KEY = "athena:link:cal"; // the calendar feed's own secret, kept the same way
+const SHARE_KEY = "athena:link:share"; // the team page's own secret, kept the same way
 const JOURNEY_KEY = "athena:journey:v1"; // the journey as components/Journey.tsx saves it: { brief, journey, … }
 /** The demo's calendar feed: the demo link's fixed secret, read only (lib/workspace/demo.ts). */
 const DEMO_CAL = "fishwife-sample-plan";
@@ -229,6 +231,8 @@ export function McpPanel({ onClose, demo, at }: { onClose: () => void; demo?: st
 
         <AsAFile demo={!!demo} />
         <Calendar demo={!!demo} />
+        <ShareWithTeam demo={!!demo} />
+        {demo && <SendMeThis />}
       </aside>
     </div>,
     document.body,
@@ -405,6 +409,136 @@ function Calendar({ demo }: { demo: boolean }) {
           </div>
         </>
       )}
+    </section>
+  );
+}
+
+/** Section 4 (§23.6 k): a link to the view-only Execute Plan for the founder's team, minted the first time it's shown;
+ *  New link revokes the old one. The demo shows the Fishwife sample's page, with no New link. */
+function ShareWithTeam({ demo }: { demo: boolean }) {
+  const [url, setUrl] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState("");
+  const urlOf = (secret: string) => (secret ? `${window.location.origin}/share/${secret}` : "");
+
+  const mint = useCallback(async (): Promise<string> => {
+    try {
+      const res = await fetch("/api/workspace/link", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ws: workspace(), scope: "share" }) });
+      const j = (await res.json()) as { ok?: boolean; path?: string };
+      const secret = j.ok && j.path ? j.path.replace(/^\/share\//, "") : "";
+      if (secret)
+        try {
+          localStorage.setItem(SHARE_KEY, secret);
+        } catch {
+          // Storage unavailable: the link still works this visit.
+        }
+      return secret;
+    } catch {
+      return "";
+    }
+  }, []);
+
+  useEffect(() => {
+    if (url) return;
+    if (demo) return void setUrl(urlOf(DEMO_CAL));
+    let live = true;
+    (async () => {
+      let secret = "";
+      try {
+        secret = localStorage.getItem(SHARE_KEY) ?? "";
+      } catch {
+        // Storage unavailable.
+      }
+      if (!secret) {
+        setBusy(true);
+        secret = await mint();
+        if (live) setBusy(false);
+      }
+      if (live) setUrl(urlOf(secret));
+    })();
+    return () => {
+      live = false;
+    };
+  }, [url, demo, mint]);
+
+  const renew = async () => {
+    setBusy(true);
+    setUrl(urlOf(await mint()));
+    setBusy(false);
+    setNote("New link ready: the old one no longer opens the plan.");
+  };
+
+  return (
+    <section className="mcp-section" id="mcp-share">
+      <h3>Share with your team</h3>
+      <p className="small muted">
+        {demo ? "The sample plan's" : "Your"} Execute Plan as a view-only page, for co-founders or advisors. It looks the same and follows the plan as it changes, with nothing to start or edit.
+      </p>
+      {busy ? <CopyRow value="Preparing your share link…" label="Copy link" disabled /> : <CopyRow value={url} label="Copy link" />}
+      <div className="mcp-link-foot">
+        {url && !busy && (
+          <a className="mcp-new" href={url} target="_blank" rel="noopener noreferrer">
+            Open the page
+          </a>
+        )}
+        {!demo && (
+          <button type="button" className="mcp-new" onClick={renew} disabled={busy}>
+            New link
+          </button>
+        )}
+        {note && <span className="small muted">{note}</span>}
+      </div>
+      {!demo && <p className="small muted mcp-note">Anyone with the link can see the plan, but nothing else in your workspace. Use New link to stop the old one working.</p>}
+    </section>
+  );
+}
+
+/** The judges' Send me this (§23.6 j): the Fishwife sample's This week, emailed once to the address they type, as a
+ *  founder gets it every Monday. Hidden until Athena's sending account is set up. */
+function SendMeThis() {
+  const [ready, setReady] = useState(false);
+  const [to, setTo] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState("");
+  useEffect(() => {
+    let live = true;
+    fetch("/api/digest")
+      .then((r) => r.json())
+      .then((j: { ready?: boolean }) => live && setReady(!!j.ready))
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, []);
+  if (!ready) return null;
+  const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to.trim());
+  const send = async () => {
+    setBusy(true);
+    const j = await fetch("/api/digest", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ demo: true, email: to.trim() }) })
+      .then((r) => r.json() as Promise<{ result?: string }>)
+      .catch(() => ({ result: "busy" }));
+    setBusy(false);
+    setNote(
+      j.result === "sent"
+        ? `On its way to ${to.trim()}. It can take a minute; check spam if it doesn't show.`
+        : j.result === "already"
+          ? "Already sent to this address today: check your inbox."
+          : j.result === "bad"
+            ? "That address doesn't look complete."
+            : "Athena has sent a lot of samples today. Try again tomorrow.",
+    );
+  };
+  return (
+    <section className="mcp-section" id="mcp-email">
+      <h3>Monday email</h3>
+      <p className="small muted">Each Monday a founder gets This week by email: pitches with no reply, what&apos;s due, and the next events. Get the sample&apos;s once.</p>
+      <div className="mcp-link-foot">
+        <input type="email" className="week-mail-to" placeholder="you@example.com" value={to} onChange={(e) => (setTo(e.target.value), setNote(""))} aria-label="Your email address" />
+        <button type="button" className="mcp-new" onClick={send} disabled={busy || !valid}>
+          {busy ? "Sending…" : "Send me this"}
+        </button>
+      </div>
+      {note && <small className="muted">{note}</small>}
     </section>
   );
 }

@@ -13,8 +13,9 @@ const LINK = "ws-link"; // hash -> the workspace and scope the secret opens
 const CUR = "ws-link-cur"; // `${ws}:${scope}` -> the hash of the current link, so a new one revokes it
 
 /** What a connect link may do. "full": read and write and ask Athena (the founder's own). "read": read only (demo).
- *  "cal": the calendar feed only (§23.6 g); a calendar app holds that URL, so it never opens the MCP server. */
-export type Scope = "full" | "read" | "cal";
+ *  "cal": the calendar feed only (§23.6 g); a calendar app holds that URL, so it never opens the MCP server.
+ *  "share": the view-only Execute Plan page for the founder's team (§23.6 k), and nothing else. */
+export type Scope = "full" | "read" | "cal" | "share";
 
 /** What a secret opens, as stored under its hash. Never includes the secret itself. */
 export type LinkMeta = { ws: string; scope: Scope; at: number; label?: string };

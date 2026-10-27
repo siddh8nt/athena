@@ -11,6 +11,7 @@ import { readSnapshot, markTask, answerQuestion, addFact } from "./server";
 import { type LinkMeta } from "./links";
 import { reserved } from "./demo";
 import { ACTIONABLE, BRAND_FILE, STAGE_NOTE, brandFile } from "./brand-file";
+import { thisWeek, weekText } from "./week";
 
 // The Athena MCP server (PRD §23.6 b). A founder's own AI tool connects through a link (links.ts) and reads the
 // same brief, crowds, plan and Execute Plan the app shows, and writes back the founder's marks, answers and facts —
@@ -97,6 +98,11 @@ export function buildServer(meta: LinkMeta): McpServer {
     return { contents: [{ uri: "athena://questions", mimeType: "application/json", text: JSON.stringify(v.team.plan?.open ?? [], null, 2) }] };
   });
 
+  // This week (§23.6 j): the same three lists as the Overview tab and the Monday email.
+  server.registerResource("this-week", "athena://this-week", { title: "This week", description: "Pitches with no reply after their wait, what falls due in the next seven days, and the next events.", mimeType: "text/plain" }, async () => {
+    const v = await readView(ws);
+    return { contents: [{ uri: "athena://this-week", mimeType: "text/plain", text: weekText(thisWeek({ brief: v.brief, journey: v.journey })) }] };
+  });
   server.registerResource("brand-file", "athena://brand-file", { title: BRAND_FILE, description: "Everything above in one page to read first: the brand, crowds, Athena's plan in order and the open tasks.", mimeType: "text/markdown" }, async () => {
     const v = await readView(ws);
     return { contents: [{ uri: "athena://brand-file", mimeType: "text/markdown", text: brandFile({ brief: v.brief, journey: v.journey }) }] };
@@ -162,7 +168,7 @@ export function buildServer(meta: LinkMeta): McpServer {
   // ---- Prompts: the questions a founder asks most, ready to run in their tool.
 
   server.registerPrompt("whats_next", { title: "What should I do next?", description: "Athena's view of the next moves." }, () => ({ messages: [{ role: "user", content: { type: "text", text: "Read athena://tasks and athena://plan, then tell me the two or three things I should do next for my brand and why." } }] }));
-  server.registerPrompt("since_last_week", { title: "What's changed?", description: "What's new in the plan and outreach." }, () => ({ messages: [{ role: "user", content: { type: "text", text: "Read athena://tasks and athena://plan and tell me what's changed and what's waiting on me." } }] }));
+  server.registerPrompt("since_last_week", { title: "What's changed?", description: "What's new in the plan and outreach." }, () => ({ messages: [{ role: "user", content: { type: "text", text: "Read athena://this-week, then athena://tasks for detail, and tell me what's waiting on me this week: the pitches with no reply, what's due, and the next events." } }] }));
   server.registerPrompt("prep_for_call", { title: "Prep me for a call", description: "A quick brief before reaching out to one contact.", argsSchema: { who: z.string().min(1) } }, ({ who }) => ({ messages: [{ role: "user", content: { type: "text", text: `I'm about to reach out to ${who}. Call get_draft for them and read athena://brief, then give me a two-line prep: why them, and the opening line.` } }] }));
 
   return server;

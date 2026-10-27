@@ -2862,3 +2862,15 @@ a.xp-src { color: var(--muted); text-decoration: underline dotted; text-underlin
 .share-main { max-width: 1180px; margin: 0 auto; padding: 40px 16px 80px; display: flex; flex-direction: column; gap: 24px; }
 .share-head { display: flex; flex-direction: column; gap: 8px; }
 .share-head h1 { font-family: var(--font-display); font-weight: 400; font-size: 40px; letter-spacing: -0.01em; line-height: 1.1; margin: 0; }
+
+/* Phones (§23.7 d): every tap target at least 44 px tall. A link inside a sentence keeps its line. */
+@media (max-width: 640px) {
+  button:not(.linkish), a.button, select, [role="tab"], input:not([type="checkbox"]):not([type="radio"]):not([type="range"]) { min-height: 44px; }
+  button.linkish:not(p *):not(li > span *), a.wordmark-link { min-height: 44px; display: inline-flex; align-items: center; }
+  .dash-tabs button.dash-tab, .journey-top .top-actions .linkish, .journey-top .top-actions button:not(.primary), .intake select, .bg-fact select, .team-menu select, .pipe-row select { min-height: 44px; }
+  .record-line, .run-trail-step, .q-tray .question-hint { white-space: normal; }
+  .question-options > li > button { min-height: 44px; align-items: center; }
+  /* A chip keeps its look; its tap area reaches 44 px. */
+  .crowd-chips button.crowd-chip { position: relative; }
+  .crowd-chips button.crowd-chip::after { content: ""; position: absolute; inset: -7px 0; }
+}

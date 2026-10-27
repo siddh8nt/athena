@@ -98,6 +98,7 @@ describe("the founder's line in an ask", () => {
     expect(founderLine("Brightland", "olive oil")).toBe("I'm the founder of Brightland. We make olive oil.");
     expect(founderLine("Brightland", "Brightland sells cold-pressed olive oils.")).toBe("I'm the founder of Brightland. Brightland sells cold-pressed olive oils.");
     expect(founderLine("Brightland", "Brightland")).toBe("I'm the founder of Brightland.");
+    expect(founderLine("Fishwife Tinned Seafood Co.", "Fishwife sells premium tinned seafood.")).toBe("I'm the founder of Fishwife Tinned Seafood Co. Fishwife sells premium tinned seafood.");
   });
 });
 

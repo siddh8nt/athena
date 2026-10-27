@@ -205,4 +205,14 @@ describe("Athena's plan (§23.5 m)", () => {
     expect(plan.at).toBe(9);
     expect(athenaPlan({ works: {}, crowds: [] })).toMatchObject({ steps: [], headline: "The plan fills in as the subagents finish." });
   });
+
+  it("never shows a crowd's raw id, even when its crowds haven't reached the plan", () => {
+    const bare = athenaPlan({ works, crowds: [], outcomes: no, now: 9 }).steps!;
+    expect(bare.length).toBeGreaterThan(0);
+    const ids = new Set(crowds.map((c) => c.id));
+    for (const s of bare) {
+      for (const c of s.crowds) expect(ids.has(c), c).toBe(false);
+      for (const id of ids) expect(s.what).not.toMatch(new RegExp(`\\b${id}\\b`));
+    }
+  });
 });

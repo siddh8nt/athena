@@ -1,19 +1,19 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKey, type MouseEvent as ReactMouse } from "react";
+import { createPortal } from "react-dom";
 import { StepTimer } from "./Progress";
-import { forceCollide, forceLink, forceManyBody, forceRadial, forceSimulation, type SimulationLinkDatum, type SimulationNodeDatum } from "d3-force";
-import { zoom, zoomIdentity, type ZoomTransform } from "d3-zoom";
+import { zoom, zoomIdentity, type D3ZoomEvent, type ZoomBehavior, type ZoomTransform } from "d3-zoom";
 import { select } from "d3-selection";
 import { Question } from "./Question";
 import type { FileChip } from "./chat";
 import { sourceLabel } from "@/lib/brief/source";
 import type { Sourced } from "@/lib/brief/types";
-import { allNodes, buildGraph, fromLabel, listGroups } from "@/lib/graph/build";
+import { allNodes, fromLabel, listGroups } from "@/lib/graph/build";
 import type { EditQuestion, GraphState, Op, SetField } from "@/lib/graph/edit";
 import { shapePath } from "@/lib/graph/shapes";
 import { RUN_LABEL, staleLine, type RunId } from "@/lib/graph/stale";
-import { BRAND, EDGE_TYPES, NODE_TYPES, themeId, type GraphEdge, type GraphInput, type GraphNode } from "@/lib/graph/types";
+import { BRAND, EDGE_TYPES, NODE_TYPES, themeId, typesInOrder, type Graph, type GraphEdge, type GraphInput, type GraphNode } from "@/lib/graph/types";
 import { sourcesOf, themesOf } from "@/lib/knowledge/notes";
 import type { LiveFact } from "@/lib/knowledge/types";
 
@@ -24,11 +24,6 @@ import type { LiveFact } from "@/lib/knowledge/types";
 // (resolved first), hidden ("Remove") or marked wrong (which also stops every agent inferring it). What an edit
 // changed flashes, with one Undo; the runs it moved are flagged, each with a one-click re-run.
 
-const W = 720;
-const H = 460;
-/** On a phone the graph is drawn taller than wide, so the rings still fit a narrow screen. */
-const NARROW = { w: 560, h: 520 };
-const RING = [0, 120, 185, 225];
 const FLASH_MS = 2400;
 
 type Props = {
@@ -46,16 +41,15 @@ type Props = {
   onRerun: (run: RunId) => void;
 };
 
-/** Each theme its own hue, and its notes and their sources the same hue, lighter (§23.2 step 8.2b). */
+/** Each theme a tint of one soft family (§23.5 r), the same in the graph and the list. */
 const HUES = 8;
 const themeHue = (themes: string[], t: string) => `var(--theme-${Math.max(0, themes.indexOf(t)) % HUES})`;
-const nodeColour = (n: GraphNode, byId?: Map<string, GraphNode>, themes: string[] = []) => {
-  const root = byId && n.parent ? (byId.get(n.parent)?.parent ? byId.get(byId.get(n.parent)!.parent!) : byId.get(n.parent)) : n;
-  if (root?.type === "theme" && themes.length) return themeHue(themes, root.label);
+/** The list's swatches keep each type's colour and shape. */
+const nodeColour = (n: GraphNode) => {
   const c = NODE_TYPES[n.type].colour;
   return c === "crowd" ? `var(--crowd-${n.crowd ?? 0})` : c;
 };
-/** Founder-given nodes are solid; Athena's own reads and guesses are drawn hollow, so a guess never looks like a fact. */
+/** Founder-given nodes are solid; Athena's own reads and guesses are drawn as a thin outline, so a guess never looks like a fact. */
 const guessed = (n: GraphNode) => n.source.kind === "inferred" || n.source.kind === "agent_guess";
 
 function useNarrow() {
@@ -462,253 +456,657 @@ function ListView({ input, flash, onEdit }: { input: GraphInput; flash: Set<stri
   );
 }
 
-type SimNode = SimulationNodeDatum & { id: string; r: number; ring: number; pad?: number };
-type SimLink = SimulationLinkDatum<SimNode> & { id: string };
+// The graph (§23.5 r), in the Galaxy's style: themes are soft regions round the brand with a dot for each note, and
+// everything else is a small dot on an outer ring, grouped by type. Every position is worked out once, with every
+// note placed, so opening a theme zooms to it instead of moving anything.
+
+/** Layout units, about a pixel at rest: notes sit this far apart inside a theme, ring dots this far apart. */
+const NOTE_GAP = 7;
+const RING_GAP = 12;
+const GROUP_GAP = 30;
+/** The card's width beside the graph on a wide screen, kept clear when a theme's notes are named. */
+const CARD_W = 280;
+/** An open theme's names get at least this much room, a row this tall each; more rows than fit scroll. */
+const COL_W = 160;
+const ROW = 14;
+/** Small caps at 10px run about 7px a character; text at 11px about 6. */
+const CAPS_W = 7;
+const TEXT_W = 6;
+
+type Spot = { x: number; y: number };
+type Size = { w: number; h: number };
+type Region = { n: GraphNode; notes: GraphNode[]; x: number; y: number; R: number; tint: string };
+type Arc = { type: string; a0: number; a1: number };
+type Layout = { at: Map<string, Spot>; regions: Region[]; arcs: Arc[]; ring: string[]; dots: Spot[]; Ro: number; a: number; k0: number };
+type Box = { x0: number; y0: number; x1: number; y1: number };
+type Place = "out" | "above" | "below" | "left" | "right" | "in";
+type Tip = { x: number; y: number; head: string; body: string; edge?: GraphEdge };
+
+const cut = (s: string, n: number) => (s.length > n ? `${s.slice(0, Math.max(1, n - 1)).trimEnd()}…` : s);
+
+/** Words into at most two lines of about n characters, the second cut with "…". */
+function lines(s: string, n: number): string[] {
+  const out: string[] = [];
+  for (const word of s.split(/\s+/).filter(Boolean)) {
+    const last = out.at(-1);
+    if (last !== undefined && `${last} ${word}`.length <= n) out[out.length - 1] = `${last} ${word}`;
+    else out.push(word);
+  }
+  return out.length <= 2 ? out.map((l) => cut(l, n + 4)) : [cut(out[0], n + 4), cut(out.slice(1).join(" "), n)];
+}
+
+/** Every position, once: the brand at the centre, the themes on a ring round it, everything else on an outer ring. */
+function layout(g: Graph, themes: string[], { w, h }: Size, brandW: number): Layout {
+  const at = new Map<string, Spot>([[BRAND, { x: 0, y: 0 }]]);
+  // A wide box stretches the rings sideways, so the graph uses the width it has.
+  const a = Math.min(1.9, Math.max(1, w / h));
+  const clear = Math.max(34, brandW / 2 + 10);
+  const regions: Region[] = g.nodes
+    .filter((n) => n.type === "theme")
+    .map((n) => {
+      const notes = g.nodes.filter((x) => x.parent === n.id);
+      return { n, notes, x: 0, y: 0, R: Math.max(18, NOTE_GAP * Math.sqrt(notes.length) + 8), tint: themeHue(themes, n.label) };
+    });
+  const maxR = Math.max(0, ...regions.map((r) => r.R));
+  let Rt = 0;
+  if (regions.length) {
+    // Each theme takes its share of the ring by size, the first at the top; the ring grows until no two touch.
+    const need = regions.reduce((s, r) => s + 2 * r.R + 14, 0);
+    Rt = Math.max(clear + maxR + 8, need / (2 * Math.PI));
+    for (let i = 0; i < 80; i++, Rt *= 1.04) {
+      let th = -Math.PI / 2 - ((2 * regions[0].R + 14) / need) * Math.PI;
+      for (const r of regions) {
+        const span = ((2 * r.R + 14) / need) * 2 * Math.PI;
+        r.x = Math.cos(th + span / 2) * Rt * a;
+        r.y = Math.sin(th + span / 2) * Rt;
+        th += span;
+      }
+      const apart = regions.every((r, j) => {
+        const s = regions[(j + 1) % regions.length];
+        return r === s || Math.hypot(r.x - s.x, r.y - s.y) >= r.R + s.R + 10;
+      });
+      if (apart) break;
+    }
+    // Notes on a sunflower spiral inside their theme: evenly spread, the first at the middle.
+    for (const r of regions) {
+      at.set(r.n.id, { x: r.x, y: r.y });
+      r.notes.forEach((n, j) => {
+        const d = NOTE_GAP * Math.sqrt(j + 0.5);
+        at.set(n.id, { x: r.x + Math.cos(j * 2.39996) * d, y: r.y + Math.sin(j * 2.39996) * d });
+      });
+    }
+  }
+  // Everything else on the outer ring: one run per type in the registry's order, clockwise from the top.
+  const groups = typesInOrder()
+    .filter(([type]) => type !== "brand" && type !== "theme")
+    .map(([type]) => ({ type, nodes: g.nodes.filter((n) => n.type === type && !n.parent) }))
+    .filter((x) => x.nodes.length);
+  const runs = groups.reduce((s, x) => s + (x.nodes.length - 1) * RING_GAP, 0);
+  const Ro = Math.max(regions.length ? Rt + maxR + 36 : clear + 40, (runs + groups.length * GROUP_GAP) / (2 * Math.PI));
+  const gap = (2 * Math.PI - runs / Ro) / Math.max(1, groups.length);
+  const arcs: Arc[] = [];
+  const dots: Spot[] = [];
+  let th = -Math.PI / 2 + gap / 2;
+  for (const x of groups) {
+    const a0 = th;
+    x.nodes.forEach((n, i) => {
+      const an = th + (i * RING_GAP) / Ro;
+      const p = { x: Math.cos(an) * Ro * a, y: Math.sin(an) * Ro };
+      at.set(n.id, p);
+      dots.push(p);
+    });
+    th += ((x.nodes.length - 1) * RING_GAP) / Ro;
+    arcs.push({ type: x.type, a0, a1: th });
+    th += gap;
+  }
+  const k0 = Math.max(0.2, Math.min(2.2, (w / 2 - 14) / (Ro * a + 12), (h / 2 - 14) / (Ro + 12)));
+  return { at, regions, arcs, ring: groups.map((x) => x.type), dots, Ro, a, k0 };
+}
+
+/** A label's box: beside its region facing away from the brand, above, below, to the left or right of it, or over it. */
+function capsBox(place: Place, text: string[], c: Spot, Rs: number, u: Spot): Box {
+  const wd = Math.max(...text.map((l) => l.length)) * CAPS_W;
+  const ht = text.length * 12;
+  const [cx, top] =
+    place === "out"
+      ? [c.x + u.x * (Rs + 6) + (u.x * wd) / 2, c.y + u.y * (Rs + 6) - ht / 2 + (u.y * ht) / 2]
+      : place === "above"
+        ? [c.x, c.y - Rs - 5 - ht]
+        : place === "below"
+          ? [c.x, c.y + Rs + 5]
+          : place === "left"
+            ? [c.x - Rs - 5 - wd / 2, c.y - ht / 2]
+            : place === "right"
+              ? [c.x + Rs + 5 + wd / 2, c.y - ht / 2]
+              : [c.x, c.y - ht / 2];
+  return { x0: cx - wd / 2, y0: top, x1: cx + wd / 2, y1: top + ht };
+}
+
+const overlaps = (p: Box, q: Box) => p.x0 < q.x1 + 2 && q.x0 < p.x1 + 2 && p.y0 < q.y1 + 2 && q.y0 < p.y1 + 2;
+const touches = (b: Box, c: Spot, R: number) => Math.hypot(Math.max(b.x0, Math.min(c.x, b.x1)) - c.x, Math.max(b.y0, Math.min(c.y, b.y1)) - c.y) < R + 1;
+const unit = (from: Spot, to: Spot) => {
+  const d = Math.hypot(to.x - from.x, to.y - from.y);
+  return d ? { x: (to.x - from.x) / d, y: (to.y - from.y) / d } : { x: 0, y: -1 };
+};
 
 /**
- * The graph: grown from the Galaxy (d3-force, zoom and pan), shape and colour by type, never colour alone. It sits
- * inside the scrolling list, so it never traps the page: a mouse zooms with Ctrl or ⌘ held (a trackpad pinch sends
- * that), and a finger pans the page while two fingers pan and pinch the graph.
+ * Where each theme's name sits at rest, and how it wraps. No name overlaps another or the brand's, or runs off the stage;
+ * each keeps clear of other themes and the ring's dots where it can. A name with no clear place, as on a small phone
+ * with many themes, is left to its hover tip and the list below rather than drawn over another.
+ */
+function placeCaps(L: Layout, size: Size, brand: Box): Map<string, { place: Place; text: string[] }> {
+  const at = (p: Spot) => ({ x: size.w / 2 + p.x * L.k0, y: size.h / 2 + p.y * L.k0 });
+  const centre = at({ x: 0, y: 0 });
+  const placed: Box[] = [brand];
+  const out = new Map<string, { place: Place; text: string[] }>();
+  for (const r of [...L.regions].sort((p, q) => q.notes.length - p.notes.length)) {
+    const c = at(r);
+    let best: { place: Place; text: string[]; box: Box; score: number } | undefined;
+    // The wide wrap first; the narrow one only when it finds a clearer place.
+    for (const wrap of [20, 12]) {
+      const text = lines(r.n.label, wrap);
+      for (const place of ["out", "above", "below", "left", "right", "in"] as const) {
+        const box = capsBox(place, text, c, r.R * L.k0, unit(centre, c));
+        if (placed.some((p) => overlaps(p, box)) || box.x0 < 4 || box.y0 < 4 || box.x1 > size.w - 4 || box.y1 > size.h - 4) continue;
+        const score =
+          L.regions.filter((o) => o !== r && touches(box, at(o), o.R * L.k0)).length +
+          L.dots.filter((d) => touches(box, at(d), 4)).length +
+          // Over its own dots only when nothing outside is clear.
+          (place === "in" && r.notes.length ? 1.5 : 0) +
+          (wrap < 20 ? 0.5 : 0);
+        if (!best || score < best.score) best = { place, text, box, score };
+        if (!score) break;
+      }
+      if (best && !best.score) break;
+    }
+    if (!best) continue;
+    placed.push(best.box);
+    out.set(r.n.id, { place: best.place, text: best.text });
+  }
+  return out;
+}
+
+const onKey = (go: () => void) => (e: ReactKey) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), go());
+
+/**
+ * The graph sits inside the scrolling list, so it never traps the page: a mouse zooms with Ctrl or ⌘ held (a trackpad
+ * pinch sends that), and a finger scrolls the page while two fingers pan and pinch the graph. Full screen, one finger pans.
  */
 function GraphView({ input, flash, narrow, onEdit }: { input: GraphInput; flash: Set<string>; narrow: boolean; onEdit: (ops: Op[]) => void }) {
-  // Themes collapsed by default (§23.2 step 8.2b): one theme open at a time, and one of its notes.
-  const [open, setOpen] = useState<string[]>([]);
-  const g = useMemo(() => buildGraph({ ...input, open }), [input, open]);
-  const expand = (n: GraphNode) =>
-    setOpen((o) => (o.includes(n.id) ? o.filter((x) => x !== n.id && !(n.type === "theme" && x.startsWith("fact:"))) : n.type === "theme" ? [n.id] : [...o.filter((x) => !x.startsWith("fact:")), n.id]));
-  const svg = useRef<SVGSVGElement>(null);
-  const wrap = useRef<HTMLDivElement>(null);
-  const placed = useRef(new Map<string, { x: number; y: number }>());
-  const [, setFrame] = useState(0);
-  const [t, setT] = useState<ZoomTransform>(zoomIdentity);
-  const [picked, setPicked] = useState<string>();
-  const [tip, setTip] = useState<{ e: GraphEdge; x: number; y: number }>();
-  const [hover, setHover] = useState<string>();
+  const all = useMemo(() => allNodes(input), [input]);
+  const byId = useMemo(() => new Map(all.nodes.map((n) => [n.id, n])), [all]);
   const themes = themesOf(input.facts);
-  const shape =JSON.stringify([g.nodes.map((n) => n.id), g.edges.map((e) => e.id)]);
+  const brandName = byId.get(BRAND)?.label ?? "";
+  const brandText = lines(brandName, 18);
+  const shape = all.nodes.map((n) => `${n.id}<${n.parent ?? ""}`).join("|");
 
-  useEffect(() => {
-    const prev = placed.current;
-    const nodes: SimNode[] = g.nodes.map((n, i) => {
-      const ty = NODE_TYPES[n.type];
-      const p = prev.get(n.id);
-      // The golden angle, so one type's nodes start spread round the ring, not bunched on one side.
-      const a = i * 2.39996;
-      const r = n.members ? ty.size + 4 : ty.size;
-      return n.id === BRAND ? { id: n.id, r, ring: 0, x: 0, y: 0, fx: 0, fy: 0 } : { id: n.id, r, ring: ty.ring, pad: n.type === "theme" || n.members ? 30 : 12, x: p?.x ?? Math.cos(a) * RING[ty.ring], y: p?.y ?? Math.sin(a) * RING[ty.ring] };
-    });
-    const ids = new Set(nodes.map((n) => n.id));
-    const links: SimLink[] = g.edges.filter((e) => ids.has(e.from) && ids.has(e.to)).map((e) => ({ id: e.id, source: e.from, target: e.to }));
-    const sm = forceSimulation(nodes)
-      .force("link", forceLink<SimNode, SimLink>(links).id((d) => d.id).distance((l) => 40 + 30 * Math.abs((l.source as SimNode).ring - (l.target as SimNode).ring)).strength(0.2))
-      .force("radial", forceRadial<SimNode>((d) => RING[d.ring], 0, 0).strength(0.8))
-      .force("charge", forceManyBody().strength(-70))
-      .force("collide", forceCollide<SimNode>((d) => d.r + (d.pad ?? 10)));
-    const keep = () => nodes.forEach((n) => placed.current.set(n.id, { x: n.x ?? 0, y: n.y ?? 0 }));
-    if (reducedMotion()) {
-      sm.stop();
-      sm.tick(220);
-      keep();
-      setFrame((f) => f + 1);
-      return;
-    }
-    // Nodes already placed hold still; only the new ones settle in.
-    if (prev.size) sm.alpha(0.35);
-    let raf = 0;
-    sm.on("tick", () => {
-      keep();
-      if (!raf) raf = requestAnimationFrame(() => ((raf = 0), setFrame((f) => f + 1)));
-    });
-    return () => {
-      sm.stop();
-      cancelAnimationFrame(raf);
+  const wrap = useRef<HTMLDivElement>(null);
+  const stage = useRef<HTMLDivElement>(null);
+  const svg = useRef<SVGSVGElement>(null);
+  const zr = useRef<ZoomBehavior<SVGSVGElement, unknown>>(undefined);
+  const tNow = useRef<ZoomTransform>(zoomIdentity);
+  const anim = useRef(0);
+  const held = useRef(0);
+  const [size, setSize] = useState<Size>({ w: 720, h: 420 });
+  const [t, setT] = useState<ZoomTransform>(zoomIdentity);
+  const [moving, setMoving] = useState(false);
+  const [focus, setFocus] = useState<string>();
+  const [picked, setPicked] = useState<string>();
+  const [full, setFull] = useState(false);
+  const [tip, setTip] = useState<Tip>();
+  const [hot, setHot] = useState<{ id: string; y: number }>();
+
+  const L = useMemo(
+    () => layout(all, themes, size, Math.max(...brandText.map((l) => l.length)) * CAPS_W),
+    [shape, themes.join("|"), brandName, size.w, size.h], // eslint-disable-line react-hooks/exhaustive-deps
+  );
+  const base = (p: Spot) => ({ x: size.w / 2 + p.x * L.k0, y: size.h / 2 + p.y * L.k0 });
+  const on = (p: Spot) => {
+    const b = base(p);
+    return { x: t.x + t.k * b.x, y: t.y + t.k * b.y };
+  };
+  const pos = (id: string) => on(L.at.get(id) ?? { x: 0, y: 0 });
+  const region = (id?: string) => (id ? L.regions.find((r) => r.n.id === id) : undefined);
+  const brandBox = (c: Spot): Box => {
+    const wd = Math.max(...brandText.map((l) => l.length)) * CAPS_W;
+    return { x0: c.x - wd / 2, y0: c.y + 10, x1: c.x + wd / 2, y1: c.y + 10 + brandText.length * 12 };
+  };
+  const caps = useMemo(() => placeCaps(L, size, brandBox(base({ x: 0, y: 0 }))), [L]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // A stage too narrow for the card beside an open theme's names puts the card under the graph, as on a phone.
+  const tight = narrow || size.w < 760;
+  const right = (tight ? size.w : size.w - CARD_W - 24) - 8;
+  // A theme opened sits on the left, large, its notes named in a column to its right.
+  const Rf = Math.max(30, Math.min(0.3 * size.h, 0.2 * size.w, (right - 38 - COL_W) / 2));
+  const focusT = (r: Region) => {
+    const k = Math.max(1, Math.min(8, Rf / (r.R * L.k0)));
+    const b = base(r);
+    return zoomIdentity.translate(16 + Rf - k * b.x, size.h / 2 - k * b.y).scale(k);
+  };
+
+  /** Zooms to a transform, the given point gliding to its new place as the scale eases (none with reduced motion). */
+  const go = (to: ZoomTransform, about: Spot = { x: 0, y: 0 }) => {
+    const s = svg.current;
+    const z = zr.current;
+    if (!s || !z) return;
+    cancelAnimationFrame(anim.current);
+    const from = tNow.current;
+    const b = base(about);
+    const s0 = { x: from.x + from.k * b.x, y: from.y + from.k * b.y };
+    const s1 = { x: to.x + to.k * b.x, y: to.y + to.k * b.y };
+    const ms = reducedMotion() ? 0 : 450;
+    const t0 = performance.now();
+    setMoving(true);
+    const step = (now: number) => {
+      const p = ms ? Math.min(1, (now - t0) / ms) : 1;
+      const e = p < 0.5 ? 4 * p ** 3 : 1 - (-2 * p + 2) ** 3 / 2;
+      const k = from.k * (to.k / from.k) ** e;
+      z.transform(select(s), zoomIdentity.translate(s0.x + (s1.x - s0.x) * e - k * b.x, s0.y + (s1.y - s0.y) * e - k * b.y).scale(k));
+      if (p < 1) anim.current = requestAnimationFrame(step);
+      else setMoving(false);
     };
-  }, [shape]); // eslint-disable-line react-hooks/exhaustive-deps
+    anim.current = requestAnimationFrame(step);
+  };
 
   useEffect(() => {
     if (!svg.current) return;
     const s = select(svg.current);
     const z = zoom<SVGSVGElement, unknown>()
-      .scaleExtent([0.5, 4])
-      .filter((e: MouseEvent & TouchEvent & WheelEvent) => (e.type === "wheel" ? e.ctrlKey || e.metaKey : e.type.startsWith("touch") ? e.touches.length > 1 : !e.button))
-      .on("zoom", (e: { transform: ZoomTransform }) => setT(e.transform));
-    s.call(z);
+      .scaleExtent([0.6, 8])
+      .filter((e: MouseEvent & TouchEvent & WheelEvent) => (e.type === "wheel" ? e.ctrlKey || e.metaKey : e.type.startsWith("touch") ? full || e.touches.length > 1 : !e.button))
+      .on("zoom", (e: D3ZoomEvent<SVGSVGElement, unknown>) => {
+        tNow.current = e.transform;
+        setT(e.transform);
+        // The founder's own zoom or pan stops a zoom under way.
+        if (e.sourceEvent) (cancelAnimationFrame(anim.current), setMoving(false));
+      });
+    s.call(z).on("dblclick.zoom", null);
+    zr.current = z;
     return () => void s.on(".zoom", null);
-  }, []);
+  }, [full]);
 
-  const at = (id: string) => placed.current.get(id) ?? { x: 0, y: 0 };
-  const byId = new Map(g.nodes.map((n) => [n.id, n]));
-  const node = picked ? byId.get(picked) : undefined;
-  const labelled = (n: GraphNode) => n.id === BRAND || n.type === "crowd" || n.type === "theme" || !!n.members || g.nodes.length <= 22 || picked === n.id;
-  const types = [...new Set(g.nodes.map((n) => n.type))];
-  const short = (s: string) => (s.length > 20 ? `${s.slice(0, 19)}…` : s);
+  useEffect(() => {
+    const el = stage.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([e]) => {
+      const { width: w, height: h } = e.contentRect;
+      if (w > 40 && h > 40) setSize((s) => (Math.abs(s.w - w) < 1 && Math.abs(s.h - h) < 1 ? s : { w, h }));
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [full]);
 
-  return (
-    <div className="bg-graph" ref={wrap}>
-      <svg ref={svg} viewBox={narrow ? `${-NARROW.w / 2} ${-NARROW.h / 2} ${NARROW.w} ${NARROW.h}` : `${-W / 2} ${-H / 2} ${W} ${H}`} role="img" aria-label={`The Brand Graph: ${g.nodes.length} nodes. The list below reads the same graph.`} onClick={(e) => e.target === svg.current && setPicked(undefined)}>
-        <g transform={t.toString()}>
-          {g.edges.map((e) => {
-            const a = at(e.from);
-            const b = at(e.to);
-            const lit = picked && (e.from === picked || e.to === picked);
-            const child = byId.get(e.from)?.parent === e.to ? byId.get(e.from) : byId.get(e.to)?.parent === e.from ? byId.get(e.to) : undefined;
+  // A new size or a new graph keeps the view: the theme open stays open, otherwise the whole graph shows.
+  useEffect(() => {
+    const s = svg.current;
+    const z = zr.current;
+    if (!s || !z) return;
+    cancelAnimationFrame(anim.current);
+    setMoving(false);
+    const r = region(focus);
+    z.transform(select(s), r ? focusT(r) : zoomIdentity);
+    if (focus && !r) setFocus(undefined);
+  }, [L, full]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!full) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => void (document.body.style.overflow = prev);
+  }, [full]);
+
+  const zoomed = t.k !== 1 || t.x !== 0 || t.y !== 0;
+  /** Esc or a click on empty space: back to the whole graph. */
+  const back = () => {
+    const r = region(focus);
+    setPicked(undefined);
+    setFocus(undefined);
+    setTip(undefined);
+    setHot(undefined);
+    if (r || zoomed) go(zoomIdentity, r ?? { x: 0, y: 0 });
+  };
+  useEffect(() => {
+    const key = (e: KeyboardEvent) => {
+      if (e.key !== "Escape" || (e.target as HTMLElement | null)?.closest?.("input, textarea, select")) return;
+      if (focus || picked || zoomed) back();
+      else if (full) setFull(false);
+    };
+    window.addEventListener("keydown", key);
+    return () => window.removeEventListener("keydown", key);
+  });
+
+  const openTheme = (r: Region, note?: string) => {
+    setPicked(note);
+    setTip(undefined);
+    setHot(undefined);
+    if (focus === r.n.id) return;
+    setFocus(r.n.id);
+    go(focusT(r), r);
+  };
+  const pickRing = (n: GraphNode, toggle = true) => {
+    const r = region(focus);
+    if (r) (setFocus(undefined), go(zoomIdentity, r));
+    setPicked(toggle && picked === n.id ? undefined : n.id);
+  };
+  /** A name in the card: its theme opens for a theme or a note, otherwise it is picked. */
+  const pickAny = (id: string) => {
+    const n = byId.get(id);
+    const r = n && region(n.type === "theme" ? n.id : n.parent);
+    if (r) openTheme(r, n.type === "theme" ? undefined : id);
+    else if (n && n.id !== BRAND) pickRing(n, false);
+  };
+
+  // Lines show only for the node picked, never to its own theme.
+  const own = (e: GraphEdge) => byId.get(e.from)?.parent === e.to || byId.get(e.to)?.parent === e.from || byId.get(e.from)?.type === "theme";
+  const shown = picked ? all.edges.filter((e) => (e.from === picked || e.to === picked) && !own(e)) : [];
+  const near = new Set(shown.flatMap((e) => [e.from, e.to]));
+  const open = region(focus);
+  const lit = focus || picked ? new Set([...(open ? [open.n.id, ...open.notes.map((n) => n.id)] : []), ...(picked ? [picked] : []), ...near]) : undefined;
+  const dim = focus ? 0.12 : 0.3;
+  const alpha = (id: string) => (!lit || lit.has(id) ? 1 : dim);
+  const dotR = (r: number) => r * Math.sqrt(L.k0 * t.k);
+
+  const hover = (head: string, body: string, edge?: GraphEdge) => (e: ReactMouse) => {
+    const b = wrap.current?.getBoundingClientRect();
+    if (b) setTip({ x: e.clientX - b.left, y: e.clientY - b.top, head, body, edge });
+  };
+  const unhover = () => setTip(undefined);
+
+  // The open theme's notes, named in a column clear of the card, each joined to its dot, none overlapping. A theme with
+  // more notes than the column holds lists them in a scrolling column instead, joining only the one pointed at.
+  const colX = open ? on(open).x + open.R * L.k0 * t.k + 22 : 0;
+  const notes = open && !moving ? open.notes.map((n) => ({ n, d: pos(n.id) })).sort((p, q) => p.d.y - q.d.y) : [];
+  const listed = notes.length > Math.floor((size.h - 28) / ROW) + 1;
+  const column = (() => {
+    if (listed) return [];
+    const x = colX;
+    const chars = Math.max(8, Math.floor((right - x) / TEXT_W));
+    const rows = notes;
+    const top = 16;
+    const bottom = size.h - 12;
+    const gap = Math.min(15, (bottom - top) / Math.max(1, rows.length - 1));
+    const ys: number[] = [];
+    rows.forEach((row, i) => ys.push(Math.max(row.d.y, i ? ys[i - 1] + gap : top)));
+    for (let i = ys.length - 1, lim = bottom; i >= 0; lim = ys[i] - gap, i--) ys[i] = Math.min(ys[i], lim);
+    for (let i = 0, lo = top; i < ys.length; lo = ys[i] + gap, i++) ys[i] = Math.max(ys[i], lo);
+    return rows.map((row, i) => ({ ...row, x, y: ys[i], text: cut(row.n.label, chars) }));
+  })();
+
+  // A picked ring node is named beside its dot, and so is each node its lines reach where the name has room; the
+  // rest are named on hover and in the card, so no two names overlap.
+  const centre = pos(BRAND);
+  const named = (() => {
+    if (focus || !picked) return [];
+    const ids = [...new Set([picked, ...near])].filter((id) => id !== BRAND && !byId.get(id)?.parent && byId.get(id)?.type !== "theme");
+    const taken: Box[] = [brandBox(centre)];
+    const out: { id: string; x: number; y: number; anchor: "start" | "end" | "middle"; text: string }[] = [];
+    for (const id of ids) {
+      const p = pos(id);
+      const u = unit(centre, p);
+      const text = cut(byId.get(id)!.label, 28);
+      const anchor = u.x > 0.3 ? "start" : u.x < -0.3 ? "end" : "middle";
+      const x = p.x + u.x * 9;
+      const y = p.y + u.y * 9 + 4;
+      const w = text.length * TEXT_W;
+      const x0 = anchor === "start" ? x : anchor === "end" ? x - w : x - w / 2;
+      const box = { x0, y0: y - 10, x1: x0 + w, y1: y + 3 };
+      if (id !== picked && taken.some((b) => overlaps(box, b))) continue;
+      taken.push(box);
+      out.push({ id, x, y, anchor, text });
+    }
+    return out.slice(0, 9);
+  })();
+
+  const arcPath = (x: Arc) => {
+    const d = 5 / L.Ro;
+    const from = x.a0 - d;
+    const span = x.a1 - x.a0 + 2 * d;
+    const n = Math.max(2, Math.ceil((span * L.Ro) / 6));
+    const R = L.Ro + 9;
+    return Array.from({ length: n + 1 }, (_, i) => {
+      const an = from + (span * i) / n;
+      const p = on({ x: Math.cos(an) * R * L.a, y: Math.sin(an) * R });
+      return `${i ? "L" : "M"}${p.x.toFixed(1)},${p.y.toFixed(1)}`;
+    }).join("");
+  };
+
+  const card = picked ? byId.get(picked) : open?.n;
+  const ringTypes = L.ring.map((type) => NODE_TYPES[type].plural.replace(/^\w/, (c) => c.toLowerCase()));
+  const brandAt = pos(BRAND);
+  const bb = brandBox(brandAt);
+
+  const view = (
+    <div className={`bg-graph${full ? " full" : ""}${tight ? " tight" : ""}`} ref={wrap}>
+      <div className="bg-stage" ref={stage}>
+        <svg
+          ref={svg}
+          viewBox={`0 0 ${size.w} ${size.h}`}
+          role="img"
+          aria-label={`The Brand Graph: ${L.regions.length} themes and ${all.nodes.length - L.regions.length - 1} other nodes. The list below reads the same graph.`}
+          onClick={(e) => e.target === svg.current && (focus || picked || zoomed) && back()}
+        >
+          <g style={{ opacity: focus ? dim : picked ? 0.5 : 1 }} className="bg-fade">
+            {L.arcs.map((x) => <path key={x.type} className="bg-arc" d={arcPath(x)} />)}
+          </g>
+          {L.regions.map((r) => {
+            const c = on(r);
+            const go = () => openTheme(r);
+            return (
+              <circle
+                key={r.n.id}
+                cx={c.x}
+                cy={c.y}
+                r={r.R * L.k0 * t.k}
+                fill={r.tint}
+                stroke={r.tint}
+                className={`bg-region bg-fade${focus === r.n.id ? " on" : ""}${flash.has(r.n.id) ? " flash" : ""}`}
+                style={{ opacity: !lit || lit.has(r.n.id) || r.notes.some((n) => lit.has(n.id)) ? 1 : dim }}
+                role="button"
+                tabIndex={focus && focus !== r.n.id ? -1 : 0}
+                aria-label={`Theme: ${r.n.label}, ${r.notes.length} note${r.notes.length === 1 ? "" : "s"}`}
+                aria-expanded={focus === r.n.id}
+                onClick={go}
+                onKeyDown={onKey(go)}
+                // A theme whose name had no clear place at rest is named on hover.
+                onMouseMove={!focus && !caps.has(r.n.id) ? hover("Theme", r.n.label) : undefined}
+                onMouseLeave={unhover}
+              />
+            );
+          })}
+          {shown.map((e) => {
+            const a = pos(e.from);
+            const b = pos(e.to);
             return (
               <g key={e.id}>
-                <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} className={`bg-edge${child ? " child" : ""}${lit ? " lit" : ""}${tip?.e.id === e.id ? " hover" : ""}`} style={child ? { stroke: nodeColour(child, byId, themes) } : undefined} />
-                <line
-                  x1={a.x}
-                  y1={a.y}
-                  x2={b.x}
-                  y2={b.y}
-                  className="bg-edge-hit"
-                  onMouseMove={(ev) => {
-                    const r = wrap.current?.getBoundingClientRect();
-                    if (r) setTip({ e, x: ev.clientX - r.left, y: ev.clientY - r.top });
-                  }}
-                  onMouseLeave={() => setTip(undefined)}
-                />
+                <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} className={`bg-edge${tip?.edge?.id === e.id ? " hover" : ""}`} />
+                <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} className="bg-edge-hit" onMouseMove={hover(EDGE_TYPES[e.kind], e.reason, e)} onMouseLeave={unhover} />
               </g>
             );
           })}
-          {g.nodes.map((n) => {
-            const p = at(n.id);
-            const tt = NODE_TYPES[n.type];
-            const r = n.members ? tt.size + 4 : tt.size;
-            const c = nodeColour(n, byId, themes);
-            const theme = n.type === "theme";
-            const sub = !!n.parent;
-            // A theme opens on click, as its card's button does; a note opens its sources the same way.
-            const pick = () => {
-              setPicked(n.id === picked ? undefined : n.id);
-              if (theme || (sub && n.type === "fact")) expand(n);
-            };
-            return (
-              <g
-                key={n.id}
-                transform={`translate(${p.x},${p.y})`}
-                className={`bg-node${theme ? " theme" : ""}${sub ? " sub" : ""}${flash.has(n.id) || n.members?.some((m) => flash.has(m.id)) ? " flash" : ""}${picked === n.id ? " picked" : ""}${n.tier?.watch ? " watch" : ""}`}
-                role="button"
-                tabIndex={0}
-                aria-label={`${tt.label}: ${n.label}`}
-                aria-expanded={theme ? open.includes(n.id) : undefined}
-                onClick={pick}
-                onMouseEnter={() => theme && setHover(n.id)}
-                onMouseLeave={() => theme && setHover(undefined)}
-                onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), pick())}
-              >
-                {theme || n.members ? (
-                  <>
-                    <circle r={r + 7} className="bg-halo" fill={c} />
-                    <circle r={r + 1} fill={c} stroke="var(--surface)" strokeWidth={1.5} />
-                    <text y={3.5} className="bg-node-count">{theme ? input.facts.filter((f) => f.theme === n.label).length : n.members!.length}</text>
-                  </>
-                ) : n.id === BRAND ? (
-                  <path d={shapePath(tt.shape, r)} fill={c} stroke={c} strokeWidth={1} />
-                ) : (
-                  // A soft disc in the type's colour, its shape marked inside, so type never rests on colour alone;
-                  // Athena's own reads stay hollow and dashed.
-                  <>
-                    <circle r={r + 5} className="bg-halo" fill={c} />
-                    <circle r={r + 1.5} fill={guessed(n) ? "var(--surface)" : c} stroke={c} strokeWidth={guessed(n) ? 1.5 : 1} strokeDasharray={guessed(n) ? "2 2" : undefined} />
-                    <path d={shapePath(tt.shape, Math.max(2, r * 0.55))} fill={guessed(n) ? c : "var(--surface)"} opacity={0.9} />
-                  </>
-                )}
-                {labelled(n) && (() => {
-                  // Labels point away from the brand, so they fan out with the graph instead of piling under nodes.
-                  if (n.id === BRAND) return <text y={r + 14} className="bg-node-label brand">{short(n.label)}</text>;
-                  const a = Math.atan2(p.y, p.x);
-                  const d = r + (theme || n.members ? 12 : 8);
-                  const cx = Math.cos(a);
-                  const anchor = cx > 0.35 ? "start" : cx < -0.35 ? "end" : "middle";
-                  return (
-                    <text x={cx * d} y={Math.sin(a) * d + (anchor === "middle" ? (Math.sin(a) > 0 ? 8 : -2) : 3.5)} textAnchor={anchor} className={theme ? "bg-node-label theme" : "bg-node-label"}>
-                      {short(n.label)}
-                    </text>
-                  );
-                })()}
-              </g>
-            );
-          })}
-          {hover && !open.includes(hover) && (() => {
-            // A closed theme, hovered: its notes appear faintly around it, not yet part of the graph.
-            const h = byId.get(hover);
-            if (!h) return null;
-            const p = at(hover);
-            const c = nodeColour(h, byId, themes);
-            const notes = input.facts.filter((f) => f.theme === h.label).slice(0, 12);
-            const away = Math.atan2(p.y, p.x);
-            return (
-              <g className="bg-ghosts" aria-hidden>
-                {notes.map((f, i) => {
-                  const a = away + (notes.length > 1 ? (i / (notes.length - 1) - 0.5) * Math.PI * 0.9 : 0);
-                  const x = p.x + Math.cos(a) * 42;
-                  const y = p.y + Math.sin(a) * 42;
-                  return (
-                    <g key={f.id}>
-                      <line x1={p.x} y1={p.y} x2={x} y2={y} stroke={c} />
-                      <circle cx={x} cy={y} r={3.5} fill={c} />
-                    </g>
-                  );
-                })}
-              </g>
-            );
+          {open && column.map((row) => <line key={row.n.id} x1={row.d.x} y1={row.d.y} x2={row.x - 4} y2={row.y} stroke={open.tint} className="bg-lead" />)}
+          {open && listed && hot && (() => {
+            const d = pos(hot.id);
+            return <line x1={d.x} y1={d.y} x2={colX - 4} y2={hot.y} stroke={open.tint} className="bg-lead" />;
           })()}
-        </g>
-      </svg>
+          {all.nodes.map((n) => {
+            if (n.type === "theme") return null;
+            const p = pos(n.id);
+            const home = region(n.parent);
+            const brand = n.id === BRAND;
+            const fill = brand ? "var(--ink)" : home ? home.tint : n.type === "crowd" ? `var(--crowd-${n.crowd ?? 0})` : "var(--muted)";
+            const r = brand ? 5.5 : dotR(n.type === "crowd" ? 4.4 : home ? 3 : 3.4);
+            const guess = !brand && guessed(n);
+            const inside = !!home && focus === home.n.id;
+            const pick = () => (home ? (inside ? setPicked(picked === n.id ? undefined : n.id) : openTheme(home)) : pickRing(n));
+            const head = NODE_TYPES[n.type].label;
+            const body = n.detail && home ? n.detail : n.label;
+            return (
+              <g key={n.id} className="bg-fade" style={{ opacity: alpha(n.id) }}>
+                <circle cx={p.x} cy={p.y} r={r} fill={guess ? "var(--sunken)" : fill} stroke={fill} className={`bg-dot${guess ? " guess" : ""}${flash.has(n.id) ? " flash" : ""}${picked === n.id ? " picked" : ""}${hot?.id === n.id ? " hot" : ""}`} />
+                {brand ? (
+                  <circle cx={p.x} cy={p.y} r={9} className="bg-hit still" onMouseMove={hover("Brand", n.label)} onMouseLeave={unhover} />
+                ) : (
+                  <circle
+                    cx={p.x}
+                    cy={p.y}
+                    r={home && !inside ? r + 1 : Math.max(r + 3, 8)}
+                    className="bg-hit"
+                    role="button"
+                    tabIndex={home && !inside ? -1 : 0}
+                    aria-label={`${head}: ${home ? body : n.label}`}
+                    onClick={pick}
+                    onKeyDown={onKey(pick)}
+                    onMouseMove={hover(head, body)}
+                    onMouseLeave={unhover}
+                  />
+                )}
+              </g>
+            );
+          })}
+          <text className="bg-cap brand bg-fade" style={{ opacity: alpha(BRAND) }} aria-hidden>
+            {brandText.map((l, i) => <tspan key={i} x={(bb.x0 + bb.x1) / 2} y={bb.y0 + 9 + i * 12}>{l}</tspan>)}
+          </text>
+          {L.regions.map((r) => {
+            const rest = caps.get(r.n.id);
+            const place = focus ? (focus === r.n.id ? "above" : undefined) : rest?.place;
+            if (!place) return null;
+            const c = on(r);
+            const text = focus ? lines(r.n.label, 20) : rest!.text;
+            const b = capsBox(place, text, c, r.R * L.k0 * t.k, unit(centre, c));
+            return (
+              <text key={r.n.id} className="bg-cap bg-fade" style={{ opacity: !lit || lit.has(r.n.id) || r.notes.some((n) => lit.has(n.id)) ? 1 : dim }} onClick={() => openTheme(r)} aria-hidden>
+                {text.map((l, i) => <tspan key={i} x={(b.x0 + b.x1) / 2} y={b.y0 + 9 + i * 12}>{l}</tspan>)}
+              </text>
+            );
+          })}
+          {column.map((row) => (
+            <text
+              key={row.n.id}
+              x={row.x}
+              y={row.y + 4}
+              className={`bg-nlabel${picked === row.n.id ? " picked" : ""}`}
+              onClick={() => setPicked(picked === row.n.id ? undefined : row.n.id)}
+              onMouseMove={row.text === row.n.label && !row.n.detail ? undefined : hover(NODE_TYPES[row.n.type].label, row.n.detail ?? row.n.label)}
+              onMouseLeave={unhover}
+            >
+              {row.text}
+            </text>
+          ))}
+          {named.map((l) => (
+            <text key={l.id} x={l.x} y={l.y} textAnchor={l.anchor} className={`bg-nlabel still${l.id === picked ? " picked" : ""}`}>
+              {l.text}
+            </text>
+          ))}
+        </svg>
+        {open && listed && (
+          <ul className="bg-names" style={{ left: colX, width: right - colX }} aria-label={`Notes in ${open.n.label}`} onScroll={() => setHot(undefined)}>
+            {notes.map(({ n }) => {
+              const point = (e: { currentTarget: HTMLElement }) => {
+                const b = e.currentTarget.getBoundingClientRect();
+                const s = stage.current?.getBoundingClientRect();
+                if (s) setHot({ id: n.id, y: b.top + b.height / 2 - s.top });
+              };
+              const long = !!n.detail || n.label.length * TEXT_W > right - colX - 8;
+              return (
+                <li key={n.id}>
+                  <button
+                    type="button"
+                    className={picked === n.id ? "picked" : undefined}
+                    aria-pressed={picked === n.id}
+                    onClick={() => setPicked(picked === n.id ? undefined : n.id)}
+                    onMouseEnter={point}
+                    onFocus={point}
+                    onMouseMove={long ? hover(NODE_TYPES[n.type].label, n.detail ?? n.label) : undefined}
+                    onMouseLeave={() => (setHot(undefined), unhover())}
+                    onBlur={() => setHot(undefined)}
+                  >
+                    {n.label}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+        {open && <button type="button" className="bg-out" onClick={back}>All themes</button>}
+        <button
+          type="button"
+          className="bg-expand"
+          aria-pressed={full}
+          onClick={() => {
+            held.current = wrap.current?.offsetHeight ?? 0;
+            setTip(undefined);
+            setFull((f) => !f);
+          }}
+        >
+          {full ? "Close" : "Expand"}
+        </button>
+      </div>
       {tip && (
-        <div className="bg-tip" style={{ left: Math.min(tip.x + 12, (wrap.current?.clientWidth ?? W) - 240), top: tip.y + 12 }} role="tooltip">
-          <span className="bg-label">{EDGE_TYPES[tip.e.kind]}</span>
-          <span>{tip.e.reason}</span>
-          <small className={`src src-${tip.e.source.kind}`}>{sourceLabel(tip.e.source)}</small>
+        <div className="bg-tip" style={{ left: Math.max(8, Math.min(tip.x + 12, (wrap.current?.clientWidth ?? size.w) - 250)), top: Math.min(tip.y + 14, size.h - 56) }} role="tooltip">
+          <span className="bg-label">{tip.head}</span>
+          <span>{tip.body}</span>
+          {tip.edge && <small className={`src src-${tip.edge.source.kind}`}>{sourceLabel(tip.edge.source)}</small>}
         </div>
       )}
-      <ul className="bg-legend" aria-label="Key">
-        {types.map((type) => <li key={type}><Swatch type={type} /> {NODE_TYPES[type].plural}</li>)}
-        <li><svg className="bg-swatch" width="14" height="14" viewBox="-7 -7 14 14" aria-hidden><path d={shapePath("circle", 4.5)} fill="none" stroke="var(--muted)" strokeDasharray="2 2" strokeWidth={1.5} /></svg> My read, not yet yours</li>
-      </ul>
-      <p className="small muted bg-hint">{narrow ? "Pinch to zoom, two fingers to pan. Tap a node for its card." : "Drag to pan; pinch, or scroll with Ctrl or ⌘ held, to zoom. Click a node for its card, hover a line for why it's there."}</p>
-      {node && <NodeCard n={node} edges={g.edges} names={byId} facts={input.facts} open={open.includes(node.id)} onExpand={() => expand(node)} onEdit={(ops) => (setPicked(undefined), onEdit(ops))} onPick={setPicked} />}
+      {card && <NodeCard n={card} tint={region(card.type === "theme" ? card.id : card.parent)?.tint} edges={all.edges} names={byId} facts={input.facts} onEdit={(ops) => (setPicked(undefined), onEdit(ops))} onPick={pickAny} />}
+      <p className="small muted bg-key">
+        {L.regions.length ? "Shaded: your themes, a dot for each note. " : ""}
+        {ringTypes.length ? `Outer ring, clockwise from the top: ${ringTypes.join(", ")}. ` : ""}A thin outline: my read, not yet yours.
+      </p>
+      <p className="small muted bg-hint">
+        {narrow
+          ? "Tap a theme to open it, or empty space to zoom back out. Two fingers pan and pinch."
+          : "Click a theme to open it; Esc or a click on empty space zooms back out. Drag to pan; scroll with Ctrl or ⌘ held to zoom."}
+      </p>
     </div>
+  );
+  if (!full) return view;
+  // Full screen sits over the page; a block of the same height keeps the page from jumping under it.
+  return (
+    <>
+      <div className="bg-graph-held" style={{ height: held.current }} aria-hidden />
+      {createPortal(view, document.body)}
+    </>
   );
 }
 
-/** A node's card (§13.12): what it is, where it came from, why it's linked, and Remove / Wrong for a fact. */
-function NodeCard({ n, edges, names, facts, open, onExpand, onEdit, onPick }: { n: GraphNode; edges: GraphEdge[]; names: Map<string, GraphNode>; facts: LiveFact[]; open: boolean; onExpand: () => void; onEdit: (ops: Op[]) => void; onPick: (id: string) => void }) {
+/** A node's card (§13.12): what it is, where it came from, why it's linked, and its edits. */
+function NodeCard({ n, tint, edges, names, facts, onEdit, onPick }: { n: GraphNode; tint?: string; edges: GraphEdge[]; names: Map<string, GraphNode>; facts: LiveFact[]; onEdit: (ops: Op[]) => void; onPick: (id: string) => void }) {
   const t = NODE_TYPES[n.type];
   const note = n.parent && n.type === "fact" ? facts.find((f) => `fact:${f.id}` === n.id) : undefined;
-  const opens = n.type === "theme" ? (open ? "Hide its notes" : "Show its notes") : note ? (open ? "Hide sources" : `${sourcesOf(note).length} source${sourcesOf(note).length === 1 ? "" : "s"}`) : undefined;
-  const mine = edges.filter((e) => e.from === n.id || e.to === n.id).slice(0, 4);
+  const srcs = note ? sourcesOf(note) : [];
+  // Its own lines: not the ones joining a note to its theme, nor a theme's to the brand.
+  const mine = edges
+    .filter((e) => (e.from === n.id || e.to === n.id) && names.get(e.from)?.parent !== e.to && names.get(e.to)?.parent !== e.from && !(n.type === "theme" && (e.from === BRAND || e.to === BRAND)))
+    .slice(0, 4);
+  const fill = tint ?? (n.type === "crowd" ? `var(--crowd-${n.crowd ?? 0})` : "var(--muted)");
   return (
     <article className="bg-card" aria-label={n.label}>
-      <p className="bg-label"><Swatch type={n.type} n={n} /> {n.members ? t.plural : t.label}</p>
+      <p className="bg-label">
+        <svg className="bg-swatch" width="14" height="14" viewBox="-7 -7 14 14" aria-hidden>
+          <circle r={4.5} fill={guessed(n) ? "none" : fill} stroke={fill} strokeWidth={1.2} />
+        </svg>{" "}
+        {t.label}
+      </p>
       <h4 className="bg-card-title">{n.label}</h4>
       {n.tier && <p className="small"><span className={`bg-tier${n.tier.watch ? " watch" : ""}`}>{n.tier.label}</span> {n.tier.reason}</p>}
       {n.when && <p className="small"><span className="bg-when">{n.when}</span></p>}
-      {n.detail && !n.members && <p className="small">{n.detail}</p>}
-      {n.members ? (
-        <ul className="bg-members small">
-          {n.members.map((m) => (
-            <li key={m.id}>
-              {m.label} <small className={`src src-${m.source.kind}`}>{fromLabel(m)}</small> <Actions n={m} onEdit={onEdit} />
-            </li>
-          ))}
-        </ul>
+      {n.detail && <p className="small">{n.detail}</p>}
+      {mine.map((e) => {
+        const other = names.get(e.from === n.id ? e.to : e.from);
+        return (
+          <p key={e.id} className="small bg-why">
+            {e.reason}
+            {other && other.id !== BRAND && <> · <button type="button" className="linkish" onClick={() => onPick(other.id)}>{other.label}</button></>}
+          </p>
+        );
+      })}
+      {srcs.length ? (
+        <ul className="bg-sources small muted">{srcs.map((w) => <li key={w}>{w}</li>)}</ul>
       ) : (
-        <>
-          {mine.map((e) => {
-            const other = names.get(e.from === n.id ? e.to : e.from);
-            return (
-              <p key={e.id} className="small bg-why">
-                {e.reason}
-                {other && other.id !== BRAND && <> · <button type="button" className="linkish" onClick={() => onPick(other.id)}>{other.label}</button></>}
-              </p>
-            );
-          })}
-          <small className={`src src-${n.source.kind}`}>{fromLabel(n)}</small>
-          {opens && <div><button type="button" className="linkish small" aria-expanded={open} onClick={onExpand}>{opens}</button></div>}
-          <div><Actions n={n} onEdit={onEdit} facts={facts} /></div>
-        </>
+        <small className={`src src-${n.source.kind}`}>{fromLabel(n)}</small>
       )}
+      <div><Actions n={n} onEdit={onEdit} facts={facts} /></div>
     </article>
   );
 }

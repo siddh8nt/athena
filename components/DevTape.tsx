@@ -162,6 +162,15 @@ export function DevTape() {
     return () => window.removeEventListener("athena:dev", read);
   }, []);
   const [saved, setSaved] = useState(false);
+  // On a phone the pills shrink to a word each, so they cover as little of the composer as they can.
+  const [narrow, setNarrow] = useState(false);
+  useEffect(() => {
+    const q = window.matchMedia("(max-width: 760px)");
+    const on = () => setNarrow(q.matches);
+    on();
+    q.addEventListener("change", on);
+    return () => q.removeEventListener("change", on);
+  }, []);
   if (mode === "live") return null;
   const parts = Object.entries(count).map(([k, n]) => `${n} ${k}`);
   const pill = { font: "600 11px/1.2 var(--font-label), sans-serif", padding: "6px 10px", borderRadius: 999, background: mode === "record" ? "#b42318" : "#1d4ed8", color: "#fff", textDecoration: "none", border: 0, cursor: "pointer" } as const;
@@ -172,14 +181,14 @@ export function DevTape() {
     setSaved(true);
     setTimeout(() => setSaved(false), 1500);
   };
+  // Above Next's own dev pill, which sits in the bottom-left corner.
   return (
-    <div style={{ position: "fixed", left: 12, bottom: 12, zIndex: 9999, display: "flex", gap: 6, opacity: 0.88 }}>
-      <a href="/dev" style={pill}>
-        DEV · {mode}
-        {parts.length ? ` · ${parts.join(", ")}` : ""}
+    <div style={{ position: "fixed", left: 12, bottom: 64, zIndex: 9999, display: "flex", gap: 6, opacity: 0.88 }}>
+      <a href="/dev" style={pill} title={`DEV · ${mode}${parts.length ? ` · ${parts.join(", ")}` : ""}`}>
+        {narrow ? (mode === "record" ? "Rec" : "Play") : `DEV · ${mode}${parts.length ? ` · ${parts.join(", ")}` : ""}`}
       </a>
       <button type="button" onClick={save} style={pill}>
-        {saved ? "Saved" : "Save snapshot"}
+        {saved ? "Saved" : narrow ? "Snap" : "Save snapshot"}
       </button>
     </div>
   );

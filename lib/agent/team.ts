@@ -29,7 +29,7 @@ import { reachOf } from "@/lib/journey/types";
 import { defaultCalendar } from "./fits";
 import { checkWorkflow, fallbackWorkflow, readySteps, resetFrom, setStep, type Have } from "./workflow";
 import { athenaPlan } from "./athena-plan";
-import { missingInputs } from "@/lib/team/inputs";
+import { askLead, missingInputs } from "@/lib/team/inputs";
 
 // The team runner (PRD §23.2 step 8): Athena turns the founder's goals into work for the specialists and runs them,
 // 2–3 at once, each a real agent on the step 2 loop with its own instructions, tools, budget and transcript. The
@@ -757,11 +757,13 @@ export async function runWorkflow(r: WorkflowInput): Promise<{ works: Partial<Re
     emit();
     const crowds = (t.fits?.fits ?? []).map((f) => ({ id: f.crowd, name: f.name, tier: f.tier, ...(f.reasons[0] ? { why: f.reasons[0] } : {}) }));
     plan = athenaPlan({ works: { ...r.state.works, ...works }, crowds, outcomes: r.state.outcomes, disagreements: r.disagreements, answers: [...r.answered, ...(t.answers ?? [])] });
+    // After a mark, the plan updates in place: one short line, not the announcement again. Her order is not yet the
+    // founder's plan: the Executive turns it into that (§23.5 q), so the line says the work is in order. It comes
+    // before the plan, so the Start / Later card the plan brings follows it in the chat (§23.5 r).
+    say(r.resynth && !ran.size ? "I updated the plan from your marks." : `The team's work is in order: ${plan.headline}`);
     r.send({ type: "plan", plan });
     w = setStep(w, "athena", "done");
     emit();
-    // After a mark, the plan updates in place: one short line, not the announcement again.
-    say(r.resynth && !ran.size ? "I updated the plan from your marks." : `Your plan is ready. ${plan.headline}`);
   };
 
   const running = new Map<string, Promise<void>>();
@@ -793,7 +795,7 @@ export async function runWorkflow(r: WorkflowInput): Promise<{ works: Partial<Re
       if (missing.length) {
         w = setStep(w, id, "paused");
         emit();
-        say(`The ${nameOf(id)} is next. ${missing.length > 1 ? "First, a couple of things" : "First, one thing"} only you know.`);
+        r.send({ type: "reply", text: askLead(nameOf(id), missing.length), asks: { agent: id, ids: missing.map((q) => q.id) } });
         for (const q of missing) {
           const { helps: _helps, ...ask } = q;
           r.send({ type: "ask", agent: id, ask });
@@ -803,7 +805,9 @@ export async function runWorkflow(r: WorkflowInput): Promise<{ works: Partial<Re
       }
       w = setStep(w, id, "running");
       emit();
-      if (!ran.has(id)) say(`${id === "analyst" ? "Starting with" : "Handing to"} the ${nameOf(id)}: ${step.task.charAt(0).toLowerCase()}${step.task.slice(1)}.`, id);
+      // The model's task may end in its own full stop; the line ends in one.
+      const task = step.task.trim().replace(/[.!;:,\s]+$/, "");
+      if (!ran.has(id)) say(`${id === "analyst" ? "Starting with" : "Handing to"} the ${nameOf(id)}: ${task.charAt(0).toLowerCase()}${task.slice(1)}.`, id);
       ran.add(id);
       running.set(id, runStep(step as WorkflowStep & { id: SpecialistId }).finally(() => running.delete(id)));
     }

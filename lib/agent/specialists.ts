@@ -170,15 +170,16 @@ export const ATHENA = {
 };
 
 /**
- * The Executive (§23.5 n): a subagent, so only Athena is an agent. It does no research and has no tools or Qloo budget,
- * so it isn't a workflow step: it turns Athena's plan into tasks the founder tracks. It never sends, books or applies.
+ * The Executive (§23.5 n, q): a subagent, so only Athena is an agent. It does no Qloo research and isn't a research
+ * step: it turns Athena's plan into the Executive plan, finds published contacts for her Now items and writes the
+ * drafts. It never sends, books or applies: the founder sends from their own mail app.
  */
 export const EXECUTIVE = {
   id: "executive" as const,
   name: "Executive",
-  role: "Tasks from Athena's plan",
-  tile: "Turns Athena's plan into tasks you can track",
-  mission: "Turn each step of Athena's plan into tasks you can track: from which subagent, the action, what it needs, its status and its outcome.",
+  role: "Your Executive plan",
+  tile: "Turns Athena's plan into yours: every item, contacts for Now, drafts to copy",
+  mission: "Turn Athena's plan into the Executive plan: every item the subagents found, her picks first under Now. For Now it finds each place's published address, website, phone, email and DM link, each with its source, and writes an email, a DM and a call script to copy. It keeps what you marked and when to follow up.",
   canAct: false as const,
 };
 /** Every subagent with a page: the six that research, and the Executive. */

@@ -8,7 +8,19 @@ import { isOffline } from "@/lib/dev/offline";
 
 export type GroundingSource = { title?: string; uri?: string };
 export type GroundingSupport = { text: string; chunks: number[] };
-export type LlmResult = { text: string; sources: GroundingSource[]; supports: GroundingSupport[]; queries: string[]; searchEntryPoint?: string; model: string; tokens?: number; ms: number };
+export type LlmResult = {
+  text: string;
+  sources: GroundingSource[];
+  supports: GroundingSupport[];
+  queries: string[];
+  searchEntryPoint?: string;
+  model: string;
+  tokens?: number;
+  ms: number;
+  /** The pages URL context opened, when it was on. [VERIFY 26 Oct, live: Gemini 3.x on Vertex returns search queries
+   *  but no groundingChunks, while a URL context read lists each page it retrieved with its status.] */
+  retrievedUrls?: string[];
+};
 
 const auth = new GoogleAuth({ scopes: ["https://www.googleapis.com/auth/cloud-platform"] });
 
@@ -198,11 +210,13 @@ export async function generate(opts: {
           webSearchQueries?: string[];
           searchEntryPoint?: { renderedContent?: string };
         };
+        urlContextMetadata?: { urlMetadata?: { retrievedUrl?: string; urlRetrievalStatus?: string }[] };
       }[];
       usageMetadata?: { totalTokenCount?: number };
     };
     if (!res.ok || data.error) throw new Error(`Vertex ${res.status}: ${data.error?.message ?? "error"}`);
     const c = data.candidates?.[0];
+    const opened = c?.urlContextMetadata?.urlMetadata;
     return {
       text: (c?.content?.parts ?? []).filter((p) => !p.thought).map((p) => p.text ?? "").join(""),
       // Keep positions: groundingSupports refer to chunks by index.
@@ -213,6 +227,7 @@ export async function generate(opts: {
       model,
       tokens: data.usageMetadata?.totalTokenCount,
       ms: Date.now() - started,
+      ...(opts.urlContext ? { retrievedUrls: (opened ?? []).filter((u) => u.retrievedUrl && /SUCCESS/.test(u.urlRetrievalStatus ?? "")).map((u) => u.retrievedUrl!) } : {}),
     };
   }
 }

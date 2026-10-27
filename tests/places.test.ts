@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { resolvePlace, type Resolution } from "@/lib/places/resolve";
-import { metroById } from "@/lib/playbook/metros";
+import { metroById, metroLevel } from "@/lib/playbook/metros";
 import places from "@/data/places.json";
 import outlinesFile from "@/data/outlines.json";
 import type { PlaceRow } from "@/lib/places/data";
@@ -66,5 +66,17 @@ describe("typed locations, harder forms", () => {
     const r = await go("near UCLA", async () => ({ label: "Westwood", parts: [{ name: "Westwood", kind: "neighborhood", state: "CA", city: "Los Angeles" }, { name: "Los Angeles", kind: "city", state: "CA" }] }));
     expect((r as { read: string[] }).read).toEqual(["Westwood, Los Angeles"]);
     expect(metroById((r as { id: string }).id).scale).toBe("local");
+  });
+});
+
+describe("typed places at metro level", () => {
+  it("a city typed as a home base is the named metro it sits in; a state stays itself", async () => {
+    for (const t of ["Los Angeles, CA", "Brooklyn"]) {
+      const r = await go(t);
+      expect(r.status).toBe("ok");
+      expect(metroLevel(metroById((r as { id: string }).id)).id).toBe(t === "Brooklyn" ? "nyc" : "la");
+    }
+    const state = await go("Ohio");
+    expect(metroLevel(metroById((state as { id: string }).id)).id).toBe((state as { id: string }).id);
   });
 });

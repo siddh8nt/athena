@@ -78,7 +78,8 @@ export function athenaPlan(p: AthenaPlanInput): GrowthPlan {
   const scout = w.scout?.page;
   const budget: Budget = rep?.budget ?? match?.budget ?? promo?.budget ?? "low";
   const crowds = [...p.crowds].sort((a, b) => TIER_ORDER.indexOf(a.tier) - TIER_ORDER.indexOf(b.tier));
-  const nameOfCrowd = (id: string) => crowds.find((c) => c.id === id)?.name ?? id;
+  // A crowd is named only once it's ranked: an id with no crowd behind it is left out, never shown raw.
+  const crowdNames = (ids: string[]) => ids.flatMap((id) => crowds.find((c) => c.id === id)?.name ?? []);
 
   const steps: PlanStep[] = [];
   const add = (s: Omit<PlanStep, "n">) => {
@@ -191,7 +192,7 @@ export function athenaPlan(p: AthenaPlanInput): GrowthPlan {
   for (const e of multiEvents) {
     used.add(e.id);
     add({
-      what: `Show up at ${noted(e.name, e.id)}: it reaches ${list(e.crowds.map(nameOfCrowd))}`,
+      what: `Show up at ${noted(e.name, e.id)}${crowdNames(e.crowds).length ? `: it reaches ${list(crowdNames(e.crowds))}` : ""}`,
       crowds: e.crowds,
       phase: "shared",
       lines: [
@@ -320,6 +321,8 @@ export function athenaPlan(p: AthenaPlanInput): GrowthPlan {
         clashes.push(`The Navigator says launch in ${c.name}, but the Rep found no shop there that fits a crowd yet.`);
   if (promo && launch.length && promo.events.length && !promo.events.some((e) => launch.some((c) => c.metroId === e.metroId)))
     clashes.push(`The Navigator's launch ${launch.length > 1 ? "cities have" : "city has"} no event from the Promoter yet; its events are elsewhere.`);
+  // Both are about the launch cities, so each is a note on the step that opens them (§23.5 q).
+  if (cityStep && clashes.length) steps[cityStep - 1].notes = [...clashes];
 
   const answered = new Set((p.answers ?? []).map((a) => a.question.trim().toLowerCase()));
   const helped = (ids: SpecialistId[]) => ids.some((id) => w[id]);
@@ -339,7 +342,7 @@ export function athenaPlan(p: AthenaPlanInput): GrowthPlan {
       ? `${steps.length} steps${lead.length ? `, winning ${list(lead.map((c) => c.name))} first` : ""}${rest.length ? `, then ${list(rest.map((c) => c.name))}` : ""}, from what ${list(ran.map((x) => `the ${nameOf(x.agent)}`))} found.`
       : "The plan fills in as the subagents finish.",
     // The crowds by name, as the founder reads them.
-    steps: steps.map((s) => ({ ...s, crowds: s.crowds.map(nameOfCrowd) })),
+    steps: steps.map((s) => ({ ...s, crowds: crowdNames(s.crowds) })),
     disagreements: [...(p.disagreements ?? []), ...clashes].slice(0, 6),
     open: [...new Set(open)].slice(0, 8),
     from: Object.fromEntries(ran.map((x) => [x.agent, x.at])),

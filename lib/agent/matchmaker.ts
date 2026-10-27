@@ -11,6 +11,7 @@ import type { Outcome } from "@/lib/team/types";
 import { TIER_LABEL, TIER_ORDER, type Block, type CrowdPage, type CrowdTier, type Detail, type PageTab, type Row, type Section } from "@/lib/team/page";
 import { applyOutcomes, itemId, latest } from "./outcomes";
 import { FITS, founderLine, type Budget } from "./rep";
+import { strengthWord } from "./fit";
 
 // The Matchmaker (PRD §23.5 g): creators, brands and podcasts for all three crowds, each checked from both sides where
 // Qloo can, sized into bands, and sized against the founder's budget. Contacts come only from public pages, each with
@@ -218,6 +219,11 @@ export function offerOf(kind: "creator" | "brand" | "podcast", b: Band | Size | 
 
 export const BRAND_FORMATS = ["Co-branded drop", "Bundle", "Giveaway", "Shared pop-up"];
 export const POD_FORMATS = ["Guest spot", "Host-read ad", "Sponsored episode"];
+/** The offer, then the other formats it doesn't already name: "A bundle or a shared giveaway (also: Co-branded drop, Shared pop-up)". */
+const formatLine = (offer: string, all: string[]) => {
+  const rest = all.filter((f) => !offer.toLowerCase().includes(f.toLowerCase()));
+  return rest.length ? `${offer} (also: ${rest.join(", ")})` : offer;
+};
 
 const brandSize = (p?: number): { size?: Size; why: string } =>
   !p ? { why: "Qloo gives no popularity for it" } : p >= BRAND_LARGE ? { size: "large", why: `Qloo popularity ${round(p)}: known nationally` } : p >= BRAND_MID ? { size: "mid", why: `Qloo popularity ${round(p)}: known regionally` } : { size: "small", why: `Qloo popularity ${round(p)}: an indie name` };
@@ -604,7 +610,7 @@ function creatorDetail(read: MatchRead, c: Creator, ask?: Ask): Detail {
       { label: "Band", value: c.band ? BAND_LABEL[c.band] : "Unknown until their size is found" },
       { label: "Budget fit", value: fit ? FIT_LABEL[fit] : "Unknown until their size is found" },
       { label: "Audience", value: `${AUDIENCE_LABEL[c.audience]}: ${c.audienceWhy}` },
-      ...read.crowds.map((x) => ({ label: `Fit for ${x.name}`, value: (c.crowds[x.id] ?? 0) >= FITS ? String(c.crowds[x.id]) : "Not a fit" })),
+      ...read.crowds.map((x) => ({ label: `Fit for ${x.name}`, value: (c.crowds[x.id] ?? 0) >= FITS ? `${strengthWord(c.crowds[x.id])} (${c.crowds[x.id]})` : "Not a fit" })),
       { label: "Offer", value: offerOf("creator", c.band, read.budget) },
       { label: "Rate", value: rate.src ? `${rate.text} (from ${rate.src.title})` : rate.text },
       { label: "Contact", value: contactLine(c) },
@@ -637,8 +643,8 @@ function partnerDetail(read: MatchRead, p: Partner, ask?: Ask): Detail {
               : "Can't be checked yet"
             : `Their ${isBrand ? "fans" : "listeners"} rank you #${p.reverseRank?.rank ?? "?"} of ${p.reverseRank?.of ?? "?"} brands like you${(p.mutual ?? 0) >= 0.7 ? ": a strong fit both ways" : ""}`,
       },
-      ...read.crowds.map((x) => ({ label: `Fit for ${x.name}`, value: (p.crowds[x.id] ?? 0) >= FITS ? String(p.crowds[x.id]) : "Not a fit" })),
-      { label: "Format", value: `${offerOf(isBrand ? "brand" : "podcast", p.size, read.budget)} (also: ${(isBrand ? BRAND_FORMATS : POD_FORMATS).join(", ")})` },
+      ...read.crowds.map((x) => ({ label: `Fit for ${x.name}`, value: (p.crowds[x.id] ?? 0) >= FITS ? `${strengthWord(p.crowds[x.id])} (${p.crowds[x.id]})` : "Not a fit" })),
+      { label: "Format", value: formatLine(offerOf(isBrand ? "brand" : "podcast", p.size, read.budget), isBrand ? BRAND_FORMATS : POD_FORMATS) },
       ...(p.owner ? [{ label: "Owner", value: `${p.owner.value} (from ${p.owner.src})` }] : []),
       ...(p.frequency ? [{ label: "Posts", value: `${p.frequency.value} (from ${p.frequency.src})` }] : []),
       ...(p.contact.episodes ? [{ label: "Episodes", value: `${p.contact.episodes.value} (from ${p.contact.episodes.source})` }] : []),

@@ -7,8 +7,10 @@ import type { FounderQuestion } from "@/lib/agent/tools";
 // found, its recommendation first, "Other" for anything else, and Skip. The run never waits: until the founder
 // answers, the "Assumed" line says what Athena is going ahead with.
 
-/** `for`: the subagent the question is asked for, said as Athena's "For the Navigator"; `pauses`: its step waits on it. */
-export type Asked = FounderQuestion & { id: string; for?: string; pauses?: boolean };
+/** `for`: the subagent the question is asked for, said as Athena's "For the Navigator"; `pauses`: its step waits on it;
+ *  `ticked`: a multi-pick that starts with every option picked ("Did these go out?"). With no `assumed` there's no Skip:
+ *  only the Executive's Start waits on the founder (§23.5 r). */
+export type Asked = FounderQuestion & { id: string; for?: string; pauses?: boolean; ticked?: boolean };
 
 export type TrayItem = { q: Asked; answer?: string; onAnswer: (answer: string) => void };
 
@@ -61,14 +63,14 @@ export function QuestionTray({ items }: { items: TrayItem[] }) {
 }
 
 export function Question({ q, answer, onAnswer }: { q: Asked; answer?: string; onAnswer: (answer: string) => void }) {
-  const [picked, setPicked] = useState<string[]>([]);
+  const [picked, setPicked] = useState<string[]>(() => (q.multi && q.ticked ? q.options.map((o) => o.label) : []));
   const [other, setOther] = useState("");
   const [typing, setTyping] = useState(false);
 
   if (answer !== undefined)
     return (
       <div className="question question-done">
-        <span className="muted small">{q.for ? `For the ${q.for}: ` : ""}{q.question}</span> <strong className="small">{answer || `Skipped; going with ${q.assumed}`}</strong>
+        <span className="muted small">{q.for ? `For the ${q.for}: ` : ""}{q.question}</span> <strong className="small">{answer || (q.assumed ? `Skipped; going with ${q.assumed}` : "")}</strong>
       </div>
     );
 
@@ -122,13 +124,17 @@ export function Question({ q, answer, onAnswer }: { q: Asked; answer?: string; o
         </li>
       </ol>
       <div className="question-foot">
-        <span className="muted small">Skip goes with “{q.assumed}”.</span>
+        {q.assumed && <span className="muted small">Skip goes with “{q.assumed}”.</span>}
         {q.multi && (
-          <button type="button" className="primary" disabled={!picked.length} onClick={() => onAnswer(picked.join(", "))}>
+          <button type="button" className="primary" disabled={!picked.length && !q.ticked} onClick={() => onAnswer(picked.join(", ") || "None")}>
             Done
           </button>
         )}
-        <button type="button" className="linkish" onClick={() => onAnswer("")}>Skip</button>
+        {q.assumed && (
+          <button type="button" className="linkish" onClick={() => onAnswer("")}>
+            Skip
+          </button>
+        )}
       </div>
     </div>
   );

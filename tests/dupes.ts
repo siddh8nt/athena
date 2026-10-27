@@ -35,8 +35,19 @@ export function itemsOf(b: Block): string[] {
       return b.lines.map((l) => lead(l.text));
     case "table":
       return b.rows.map((r) => (b.columns[0] === "Neighbourhood" ? HOOD : "") + r.cells[0]);
-    case "calendar":
-      return b.items.map((i) => i.name);
+    case "calendar": {
+      // A tour's stops in other cities or on other dates are dated things of their own; the same stop twice is not.
+      const stops = new Set<string>();
+      const names = new Set<string>();
+      return b.items.flatMap((i) => {
+        const stop = [i.name, i.city ?? "", i.date ?? ""].join("|");
+        if (stops.has(stop)) return [i.name];
+        stops.add(stop);
+        if (names.has(i.name)) return [];
+        names.add(i.name);
+        return [i.name];
+      });
+    }
     case "checks":
       return b.checks.map((c) => c.text);
     default:

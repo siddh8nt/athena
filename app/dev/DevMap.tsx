@@ -48,11 +48,11 @@ const FLOWS: Flow[] = [
     ],
   })),
   {
-    title: "Athena's plan and the Executive",
+    title: "The Executive plan",
     steps: [
-      { label: "Athena's plan", find: (s) => !!s.journey?.plan, url: "/plan?agent=athena" },
-      { label: "Executive board", find: (s) => !!s.journey?.plan, url: "/plan?agent=executive" },
-      { label: "Executive board, tasks marked", find: (s) => !!s.journey?.tasks, url: "/plan?agent=executive" },
+      { label: "Ready: Start / Later", find: (s) => !!s.journey?.plan && !s.journey.exec, url: "/plan" },
+      { label: "Started: contacts and drafts", find: (s) => !!s.journey?.exec, url: "/plan?agent=executive" },
+      { label: "Items marked", find: (s) => !!s.journey?.exec && !!s.journey.marks, url: "/plan?agent=executive" },
     ],
   },
 ];

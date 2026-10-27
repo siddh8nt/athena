@@ -11,6 +11,8 @@ import { alreadyIn, nextRetailers, type RetailCategory, type RetailerPick } from
 import type { Outcome } from "@/lib/team/types";
 import { TIER_LABEL, TIER_ORDER, type Block, type CrowdPage, type CrowdTier, type Detail, type PageTab, type Pin, type Row, type Section } from "@/lib/team/page";
 import { applyOutcomes, itemId, latest } from "./outcomes";
+import { founderLine } from "./founder-line";
+import { FITS, strengthWord } from "./fit";
 import { isStrong, roles, ROLE_LABEL, type CityRead, type NavRead, type Role } from "./navigator";
 
 // The Rep (PRD §23.5 f): crowd → city → neighbourhood → shops. Each crowd's cities come from the Navigator; a shop that
@@ -18,9 +20,7 @@ import { isStrong, roles, ROLE_LABEL, type CityRead, type NavRead, type Role } f
 // top 5. What a shop's own site says (brands on its shelves, a wholesale page, a public buyer email) is read once and
 // shown with its source; drafts are never sent.
 
-/** A crowd counts as fitting a shop at this strength or above (0–1, from the shop's rank for that crowd): the top half
- * of the crowd's list, so "fits several crowds" means a shop near the top for each. */
-export const FITS = 0.5;
+export { FITS } from "./fit";
 /** Fewer fitting shops than this in an anchor neighbourhood, and the Rep widens to the nearest other one. */
 export const FEW_IN_HOOD = 3;
 /** At least this many fitting shops in a city, and indie shops come first. */
@@ -170,13 +170,7 @@ export function shopCities(nav: NavRead): CityRead[] {
   return worked.filter((c) => c.yours || given.has(c.metroId));
 }
 
-/** The founder's line in an ask: "I'm the founder of X." plus what it makes, whether the Brand Graph holds a phrase
- * ("olive oil") or a whole sentence that already names the brand ("Brightland sells premium olive oils…"). */
-export function founderLine(brand: string, product: string): string {
-  const p = product.trim().replace(/[.\s]+$/, "");
-  const made = !p || p.toLowerCase() === brand.toLowerCase() ? "" : p.toLowerCase().startsWith(`${brand.toLowerCase()} `) ? ` ${p}.` : ` We make ${p}.`;
-  return `I'm the founder of ${brand}.${made}`;
-}
+export { founderLine };
 
 /** Shops ranked: those fitting more crowds first, then by summed strength. */
 export function rankShops(shops: Shop[]): Shop[] {
@@ -430,7 +424,6 @@ export function contactOf(s: Shop): string {
 }
 
 const price = (n?: number) => (n ? "$".repeat(Math.max(1, Math.min(4, Math.round(n)))) : "—");
-const strengthWord = (v?: number) => (v === undefined || v < FITS ? "—" : v >= 0.7 ? "Strong" : "Fits");
 
 function shopDetail(read: RepRead, s: Shop, pitch?: { subject: string; body: string }): Detail {
   const crowdName = (id: string) => read.crowds.find((c) => c.id === id)?.name ?? id;

@@ -16,6 +16,9 @@ export const INPUTS: Input[] = [
 
 export const inputById = (id: string) => INPUTS.find((q) => q.id === id);
 
+/** Athena's line before a subagent's questions, for as many as the founder will see. */
+export const askLead = (name: string, n: number) => `The ${name} is next. ${n > 1 ? "First, a couple of things" : "First, one thing"} only you know.`;
+
 /** The inputs a subagent's step needs, in the order Athena asks them. */
 export const inputsFor = (agent: SpecialistId | "athena") => (agent === "athena" ? [] : INPUTS.filter((q) => q.helps.includes(agent)).map((q) => q.id));
 

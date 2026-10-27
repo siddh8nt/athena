@@ -85,6 +85,11 @@ export const LIMITS = {
     const t = take(`team:${ip}`, 12, HOUR);
     return t.ok ? { ok: true as const } : { ok: false as const, message: "" };
   },
+  /** The Executive's lookups (§23.5 q): 60 small groups per IP per hour; past it, drafts come from the template. */
+  exec(ip: string) {
+    const t = take(`exec:${ip}`, 60, HOUR);
+    return t.ok ? { ok: true as const } : { ok: false as const, message: "" };
+  },
   /** Crowd geography (§9.26): 10 new maps per IP per hour, one Qloo call per crowd (cached maps don't count). */
   geography(ip: string) {
     const t = take(`geo:${ip}`, 10, HOUR);

@@ -124,8 +124,9 @@ export type PlanLine = { kind: "who" | "where" | "through" | "words" | "when" | 
 /** A result a plan step acts on, with the subagent that owns it, so the Executive's mark goes back to that subagent (§23.5 n). */
 export type PlanItem = { id: string; kind: string; name: string; agent: SpecialistId; group?: string };
 
-/** One numbered step of Athena's plan (§23.5 m): what to do, for which crowds, and the earlier steps it waits on. */
-export type PlanStep = { n: number; what: string; crowds: string[]; phase: "shared" | "win_first" | "win_next" | "watch"; lines: PlanLine[]; depends: number[]; items?: PlanItem[] };
+/** One numbered step of Athena's plan (§23.5 m): what to do, for which crowds, and the earlier steps it waits on.
+ *  `notes`: where the subagents disagree about this step, one line each, shown on its task (§23.5 q). */
+export type PlanStep = { n: number; what: string; crowds: string[]; phase: "shared" | "win_first" | "win_next" | "watch"; lines: PlanLine[]; depends: number[]; items?: PlanItem[]; notes?: string[] };
 
 /** A task's status on the Executive's board (§23.5 n). */
 export const TASK_STATUSES = ["todo", "doing", "done", "skipped"] as const;
@@ -166,9 +167,81 @@ export type GrowthPlan = {
   at: number;
 };
 
+/** Where a contact detail came from (§23.5 q): the subagent or Qloo that already had it, a page read, a search, or the founder. */
+export type Src = { label: string; url?: string };
+export type Field = { value: string; src: Src };
+
+/**
+ * One place's, organisation's or person's ways in (§23.5 q), saved once per key and shared by every item that is it: a
+ * venue that is a Rep shop and a Promoter host is one contact. Nothing is guessed: each field carries its source, and a
+ * field the lookup read for and didn't find is simply absent ("not published").
+ */
+export type Contact = {
+  key: string;
+  name: string;
+  address?: Field;
+  website?: Field;
+  phone?: Field;
+  email?: Field;
+  /** A contact or booking form. */
+  form?: Field;
+  /** DM links: a profile on Instagram, TikTok, X, YouTube… `ok`: the page Athena's server saw it on (§23.5 r). */
+  social?: (Field & { label: string; ok?: Src })[];
+  /** Two or more profiles on one site look like theirs (§23.5 r): the founder picks one; the first is the default. */
+  ask?: { site: string; options: { url: string; src: Src }[] };
+  /** What the lookup read, in order ("Their site's contact page", "A web search"), for the card's method line. */
+  checked: string[];
+  /** Every page the lookup actually opened, for the row's "pages read" and the page's live count (§23.5 r). */
+  pages?: string[];
+  /** "you": the founder typed it (Add it yourself); it wins over anything found. */
+  by: "found" | "you";
+  at: number;
+};
+
+/** The ways in a founder gives for an item, as they gave them. */
+export type GivenContact = { address?: string; website?: string; phone?: string; email?: string; dm?: string };
+
+/** The call or walk-in script (§23.5 q): opener, why them, the offer, an answer to "send me something", the close. */
+export type CallScript = { opener: string; why: string; offer: string; send: string; close: string };
+
+/** An item's three drafts (§23.5 q), from the owning subagent's pitch where there is one. Copied or opened, never sent. */
+export type Drafts = { email: { subject: string; body: string }; dm: string; call: CallScript; at: number };
+
+/** A follow-up wait for the items a rule covers, as Athena read the founder's words ("give retailers two weeks"). */
+export type WaitScope = { agents?: SpecialistId[]; kinds?: string[]; groups?: string[]; crowds?: string[]; cities?: string[]; names?: string[] };
+export type WaitRule = { days: number; scope: WaitScope; text: string; at: number };
+
+/** The Executive's own state (§23.5 q): started or left for later, the contacts and drafts it found, the follow-up waits. */
+export type ExecState = {
+  /** When the founder started it; until then the dashboard shows Start the Executive. */
+  started?: number;
+  /** When they said Later. */
+  later?: number;
+  /** What its lookups found, by contact key. */
+  contacts: Record<string, Contact>;
+  /** What the founder added themselves (Add it yourself), by contact key; it wins over anything found. */
+  yours?: Record<string, Contact>;
+  /** By item id. */
+  drafts: Record<string, Drafts>;
+  /** What the founder logged as spent on an item, for Spend against budget. */
+  spend?: Record<string, { usd: number; at: number }>;
+  /** The default wait (asked on the first Pitched mark) and the founder's rules for particular cases. */
+  wait?: { days?: number; rules: WaitRule[] };
+  /** When the founder opened an item's draft in the mail app, so "Did these go out?" asks once (§23.5 r). */
+  opened?: Record<string, number>;
+  /** What the founder chose for a mid-run question: phone-only shops get call scripts, or walk-in scripts. */
+  prefs?: { phoneOnly?: "call" | "walk" };
+  /** The mid-run questions already asked, by id, so each asks once. */
+  asked?: string[];
+  /** Now's steps the founder started before the steps they wait on held ("Start anyway"). */
+  early?: number[];
+};
+
 /**
  * Athena's one move for a typed message (§23.2 step 8.5n), decided by the model and checked by code: reply, use her
  * tools, edit the Brand Graph, hand to a subagent behind the scenes, change the workflow, or ask a clarifying question.
+ * `contacts`: the Executive finds contacts for the items a request covers (§23.5 q). `followup`: the founder set the
+ * follow-up wait, or a wait for particular cases.
  */
 export type Route =
   | { do: "reply"; reply: string }
@@ -176,7 +249,18 @@ export type Route =
   | { do: "graph" }
   | { do: "handoff"; to: SpecialistId; task: string; reply: string }
   | { do: "workflow"; change: { skip?: SpecialistId[]; add?: SpecialistId[]; city?: { id: string; name: string } }; reply: string }
-  | { do: "clarify"; question: string; options: { label: string }[]; reply?: string };
+  | { do: "clarify"; question: string; options: { label: string }[]; reply?: string }
+  | { do: "contacts"; scope: WaitScope & { limit?: number }; reply: string }
+  | { do: "followup"; days?: number; rules: Omit<WaitRule, "at">[]; reply: string }
+  /** What happened, in the founder's words (§23.5 r): "Emailed Museum of Sex", "they said yes", "spent $200 on the booth". */
+  | {
+      do: "outcome";
+      marks: { item: string; name: string; mark: Mark }[];
+      spend?: { item: string; name: string; usd: number }[];
+      /** A way to reach an item the founder gave in chat (§23.5 r): it wins over anything found, as one typed would. */
+      contacts?: ({ item: string; name: string } & GivenContact)[];
+      reply: string;
+    };
 
 /** The team route's stream. Every specialist's steps carry its id, so each has its own transcript. */
 export type TeamEvent =
@@ -191,8 +275,9 @@ export type TeamEvent =
   | { type: "work"; agent: SpecialistId; work: Work }
   /** A specialist that needs what another is waiting on the founder for: it waits too, and runs once they've answered. */
   | { type: "held"; agent: SpecialistId; on: SpecialistId }
-  /** Athena's words in the chat. `run`: the subagent whose step trail goes under it. */
-  | { type: "reply"; text: string; agent?: SpecialistId; run?: SpecialistId }
+  /** Athena's words in the chat. `run`: the subagent whose step trail goes under it. `asks`: the questions the line
+   *  leads into; one answered earlier in the same stream isn't shown, so the line counts only those still to show. */
+  | { type: "reply"; text: string; agent?: SpecialistId; run?: SpecialistId; asks?: { agent: SpecialistId; ids: string[] } }
   /** Athena's reply as it streams, a few words at a time; the reply event that follows replaces it. */
   | { type: "delta"; text: string }
   /** A move the client carries out: the graph's reader, a subagent behind the scenes, or a change to the workflow. */
@@ -205,6 +290,12 @@ export type TeamEvent =
   | { type: "memory"; crowds?: CrowdsResult; seed?: SeedInput; fits?: FitsResult; probes: string[]; calendar?: FitsRun["calendar"]; reach?: FitsRun["reach"]; answer?: FitsRun["answer"]; sources?: FitsRun["sources"] }
   /** The Taste Galaxy as it forms, round by round, while the Analyst measures. */
   | { type: "galaxy"; galaxy: Galaxy }
+  /** The Executive at work (§23.5 q): its narration, and how far through the items it's been asked for. `key`: the
+   *  contact it's on; `row`: that contact's short row text ("Reading 3 pages…", "Drafting…") (§23.5 r). */
+  | { type: "exec"; line: string; done: number; of: number; key?: string; row?: string }
+  /** A contact it found, saved by key; `items`: the rows it fills. */
+  | { type: "contact"; contact: Contact; items: string[] }
+  | { type: "drafts"; item: string; drafts: Drafts }
   | { type: "done"; qlooCalls: number; ms: number };
 
 /** What the journey keeps of the team. Optional on the journey, so saves from before step 8 load. */
@@ -223,8 +314,10 @@ export type TeamState = {
   answered?: Answer[];
   /** Athena's growth plan, once the workflow's last step has run. */
   plan?: GrowthPlan;
-  /** The Executive's board: what the founder set on each task, by task id (§23.5 n). */
+  /** What the founder set on each task of the Executive plan, by item id (§23.5 n, q). */
   tasks?: Record<string, TaskNote>;
+  /** The Executive's contacts, drafts and follow-up waits (§23.5 q). */
+  exec?: ExecState;
 };
 
 export const emptyTeam = (): TeamState => ({ goals: [], works: {}, outcomes: [] });

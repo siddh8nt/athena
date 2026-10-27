@@ -2899,6 +2899,194 @@ The 2 keys allow 20k calls a month, about 28–35 full new-brand runs before war
 - **Checks pass:** tsc and the test suite.
 - **Seen live in Edge:** every subagent page and Athena's panel, on desktop and at 375 px, from the `/dev` snapshots in Replay (no calls), then one Record run on a brand to confirm a fresh run builds the new pages.
 
+#### (q) The Executive plan replaces Athena's plan as the end output (founder, 26 Oct; built 26 Oct, the 375 px check and a fresh Record run still open)
+
+- **Why:** Athena's written plan repeats what each subagent's tab already shows. The founder needs an end output they can act on, follow and measure.
+- **Athena still plans.** She reads every subagent's work and decides the order: shared moves first, then Win first → Win next → Watch, and what waits on what. She also decides the disagreements and open items. Only her output changes: **the Executive subagent turns her order into the Executive plan.** It adds no reasoning of its own about order. This replaces (m) and (n) where they differ.
+- **Workflow:** Analyst → (Scout ∥ Navigator) → (Rep ∥ Matchmaker ∥ Promoter) → back-fill → **Executive plan**. In the dashboard's workflow diagram, the "Athena's plan" node becomes "Executive plan" and is the last node. (i)'s run order changes to match.
+- **Starting the Executive:** it does not start on its own, since its contact lookups spend searches.
+  - When the workflow reaches the Executive plan node, Athena pauses and asks in her chat, like the other subagents' questions: "The Executive can build your plan and find contacts for the N Now items. **Start** · **Later**".
+  - **Later** leaves the node Ready (never a failure) and a **Start the Executive** button under the workflow diagram on the dashboard, with one line on what it will do.
+  - Once it runs, the node narrates like any other ("Finding contacts: 12 of 28"), and the button becomes **Open the Executive plan**.
+  - When a subagent re-runs afterwards, the same question comes back as "Update the plan". Only changed items are rebuilt, and saved contacts are reused.
+- **Every item goes on the plan.** Each task shows:
+  - **Do:** one action, with its contact and drafts;
+  - **Watch:** its status (To do / Doing / Done / Skipped) and the owning subagent's marks;
+  - **Measure:** the outcome, which goes back to that subagent so it can re-rank.
+- **"Now" first:** the items Athena picks, in her order, each with "once step N holds". **Below Now:** every other item, grouped by subagent in that subagent's own ranking, filterable by crowd, city and subagent.
+- **Per subagent:**
+  - **Analyst:** no tasks. Its tiers set the order.
+  - **Scout:** use a hook, lead with a product angle. Watch: Used / Not used. Measure: which hooks worked. Its "move on when" signal is how Athena knows the next crowd's tasks can start.
+  - **Navigator:** launch or test a city, start in an Anchor neighbourhood, geo-target ZIPs. Watch: done or not. Measure: what worked re-ranks the cities.
+  - **Rep:** pitch a shop, apply to a national retailer. Watch: Pitched / Yes / No / No reply. Measure: yes rate by shop type, neighbourhood and entry route.
+  - **Matchmaker:** ask a creator, partner or podcast. Watch: the same marks. Measure: yes rate by group and band, and spend against the budget plan.
+  - **Promoter:** apply to an event, then its checklist (book, ship stock, tell partners, post); show up in an online audience; tie in a moment. Watch: Applied / Booked / Went / Skipped. Measure: results per event and spend. Dates come only from sourced deadlines.
+- **Outreach for the Now items:** once started, the Executive finds each Now item's contact details itself.
+  - **Address:** the business address, from Qloo's place entity or the item's own site.
+  - **Website, phone and public email.**
+  - **Social or DM links.**
+  - Each shows its source and nothing is guessed (l). For people (creators, podcast hosts) only business contacts, never a home address. A missing field reads "not published", with the next way in: contact form, DM or walk-in.
+- **Drafts for every item with a contact:** an email, a DM, and a call or walk-in script (opener, why them, the offer, an answer to "send me something", the close). They start from the owning subagent's pitch where there is one, so an item never has two pitches. Each has the tone buttons, Copy and Open in mail app; a phone number opens the phone app, a DM link the profile.
+- **Every item below Now:** two options on each item.
+  - **Find contact:** the Executive runs the same search for that item and fills in its card and drafts.
+  - **Add it yourself:** the founder types or pastes what they have, marked "from you".
+- **Through the chat:** e.g. "find contacts for the Rep's Brooklyn shops" or "get emails for the Matchmaker's podcasts". Athena hands it to the Executive, which fills those items top-ranked first, in small groups, rows filling as they go. She does not ask first.
+- **How contacts are found: never in bulk, always small and cheap.**
+  - **Small groups:** Now items go one of Athena's steps at a time, in her order, a few lookups at once inside a step. Never one batch across the plan.
+  - **Cheapest source first:** if Qloo already gave the place a website or address, the Executive reads that site's contact page. A web search runs only when there is no site, or no contact page on it.
+  - **Never twice:** contacts are saved per place or organisation. A venue that is both a Rep shop and a Promoter host venue is looked up once and fills both rows. A brand or chain with several items gets one lookup.
+  - **Kept:** a re-run or "Update the plan" reuses saved contacts and looks up only new items.
+  - There is no bulk "Find contacts" action. Bulk select is for marking and CSV export only, which cost no searches.
+- **Follow-up wait:** the first time the founder marks something Pitched, Athena asks in chat: "When should I bring up a pitch with no reply? **1 week** · **Choose**".
+  - The founder can change the default in chat at any time, or give rules for particular cases ("give retailers two weeks", "follow up with Museum of Sex in 3 days"). Athena works out which items a rule covers by reasoning, not keywords.
+  - The wait counts from the real time the founder marked Pitched, so no date is invented. The row says which rule set its wait.
+- **Sending:** Open in mail app only; nothing is sent from Athena. Sending from the founder's Gmail stays the later "acting" phase of (n), on approval: it needs Google OAuth with the `gmail.send` scope, which Google lists as sensitive. Unverified, that means an "unverified app" screen and a 100-user cap; in testing mode a user's consent lasts 7 days; review takes about 10 business days (Google's pages, checked 26 Oct). Each send would need its own confirm.
+- **Cost:** reading a site's contact page is a normal Gemini call. A web search is billed per search the model runs: for Gemini 3 models, the first 5,000 a month are free, then $14 per 1,000 (Google's Vertex pricing page, checked 26 Oct). All of it is within the $300 credit. Reading pages with URL context is billed as tokens only [VERIFY].
+- **The Executive plan page** (`/plan?agent=executive`, and the dashboard's Executive plan tab):
+  - **Top strip:** Now done (6 of 28), Waiting on a reply, Yes so far, and Spend against budget. Under them, one line on what needs the founder today ("3 pitches need a follow-up · 1 event deadline is close · 5 contacts are ready to send"); each part filters the list.
+  - **Tabs:** **Now · Rep · Matchmaker · Promoter · Navigator · Scout · Results**, each with a count.
+    - **Now** mixes every subagent in Athena's order, grouped under her steps. A step that waits on another is greyed with "Once step N holds" and a quiet **Start anyway**. When the Scout's "move on when" signal holds, the next crowd's steps open and Athena says so in chat.
+    - **Each subagent tab** holds all that subagent's items in its own ranking, with filters that fit it. Rep: crowd, city, neighbourhood, entry route, has email. Matchmaker: group, band, budget fit. Promoter: city or online, time window. Navigator: city, then its neighbourhoods. Scout: hooks and product angles. An item that is also in Now carries a small "Now" tag.
+    - **Results:** what is working, i.e. yes rate by shop type, band, neighbourhood and route, events gone to, and spend. Each line names the subagent that re-ranks from it.
+  - **List rows, not a kanban** (a board breaks at hundreds of items). Each row: the name and action ("Pitch Museum of Sex"), crowd chips, city, contact icons (address, website, phone, email, DM; filled = found, hollow = not published, absent = not looked up), status with the subagent's mark, and **one next-action button that follows the item's state:** Find contact → Review draft → Mark pitched → Log reply → Follow up. Scout and Navigator rows have no outreach; their buttons are "Use this hook" and "Done".
+  - **Detail panel** (opens beside the list; a full-screen sheet at 375 px): the contact card with each field's source; drafts as Email · DM · Call script with tone buttons, Copy and Open in mail app; "why this item" from the owning subagent plus any disagreement note; a history of what the founder did, using real click times; **Ask Athena about this**, which opens the chat with the item attached.
+  - **Mail-app confirm:** Athena cannot see whether a mail was sent, so after Open in mail app the row asks once: "Sent it? Mark pitched".
+  - **Follow-ups surface on their own:** a pitch past its wait rises to the top with a follow-up draft ready.
+  - **Chat and list stay in sync:** a chat request highlights the rows it fills; a mark made anywhere shows everywhere.
+  - **Never a failure state:** a lookup narrates ("Reading their contact page…"); a missing field reads "not published" with the next way in.
+  - **At 375 px:** rows become cards and the tabs scroll sideways.
+- **Views:** the dashboard's "Athena's plan" tab goes, and "The Executive" tab becomes "Executive plan". The Athena tab's right panel keeps the subagent tabs and links to the plan. Each subagent's results stay in its own tab.
+- **Pipelines:** this is the "later, after (p)" step. The Rep, Matchmaker and Promoter pipelines become links to the Executive plan filtered to that subagent; rows already share item ids and marks, so nothing is re-run.
+- **Disagreements:** a one-line note on the task they affect (e.g. "the Rep found no fitting shop here yet" on "Open in Los Angeles"). **Open items:** questions in Athena's chat, as now.
+
+##### (q) Done when
+
+- **Checks pass:** tsc and the test suite, with a test on the recorded run that every trackable item is on the Executive plan exactly once, Athena's picks under Now in her order, and no contact without a source.
+- **Checks pass (contacts):** a test that a place shared by two subagents is looked up once, and that a re-run looks up only new items.
+- **Seen live in Edge:** from the `/dev` snapshots in Replay, on desktop and at 375 px: the workflow ending on the Executive plan node with Athena's Start / Later question, and the Start button under the workflow after Later; the tabs, top strip and next-action buttons; Now items with contact cards (address, website, phone, email where published) and three copyable drafts; Find contact on an item below Now; a chat request filling items in small groups; the follow-up wait question on the first Pitched mark. Then one Record run on a brand to confirm a fresh run ends on the Executive plan.
+
+#### (r) The Executive runs itself: a live task orchestrator (founder, 26 Oct; the penultimate rework; not built)
+
+**The problem (founder, verbatim intent):**
+- The Executive feels like filling a government form or operating a bank portal: Start, Find contact, Mark pitched, a $ box, checkboxes.
+- Its most useful features are hidden behind form-like buttons.
+- Much of its text speaks to the builder, not the founder.
+
+**The rule:** after one human step, the run works by itself. The founder's input is chat, text or question cards, never forms. The flow must feel fluid.
+
+##### (r) Fixes, built first
+
+- **Narrow screens:** "Chat with Athena" opens the chat with its question cards, so no question is out of reach.
+- **Dev mode:** the dev buttons no longer overlap the insight pill.
+- **Shows and creators:**
+  - The lookup finds their Instagram, TikTok and YouTube profiles, plus the booking email on a YouTube channel's About page and in a podcast's RSS feed.
+  - Each profile becomes an "Open on Instagram" (TikTok, YouTube) button that opens in a new tab, next to a copyable DM pitch.
+  - Our server confirms the handle exists before the button shows, so it never leads to a dead page.
+- **Grounded search across the app:**
+  - Gemini 3.x on Vertex cites no pages when it searches [VERIFY 26 Oct, live], so every check that keeps only cited results drops data.
+  - One shared helper fixes this: when a search cites nothing, it opens the pages the search named and keeps only what those pages show, each field sourced to its page.
+  - Contacts already work this way. Follower counts, festival dates, promo sites and shop sites move to the helper.
+
+##### (r) Flow: one human step, then it runs
+
+- **Start is the only step that needs the founder:**
+  - When Athena's plan lands, the run pauses on a chat question card: Start now, or Later.
+  - After Later, a Start button waits on the Executive page.
+  - This is the only pause without a default.
+- **After Start, all of it runs with no button presses:**
+  - Contacts are found and drafts written for every item: Now first, then each subagent's items.
+  - Lookups go in small groups, never in bulk.
+  - An item with no way in tries a second route (profiles, RSS) by itself.
+  - Find contact and Look again go.
+- **Mid-run questions work like the subagents':**
+  - Where the Executive needs the founder, it pauses with a chat question card that has a default.
+  - E.g. "Two Instagram accounts look like Cafe Gratitude's: which one?"
+  - E.g. "8 shops list only a phone: write call scripts for them?"
+- **Results through chat:**
+  - "Emailed Museum of Sex", "they said yes" and "spent $200 on the booth" move items and log spend.
+  - After drafts are opened, a "Did these go out?" card asks, with each item ticked by default.
+  - A pitch past its wait brings a card offering a follow-up that is already drafted.
+- **One status path:** Ready → Sent → Waiting → Replied (yes / no), or Follow-up.
+- **What goes:**
+  - the To do / Doing / Done / Skipped statuses beside the marks;
+  - row checkboxes and bulk select;
+  - the $ field;
+  - the "Sent it?" prompts on rows.
+- **Sending:** the founder's mail app (mailto) or the DM app, as in (q). No Google sign-in.
+
+##### (r) The page: a real-time task orchestrator
+
+- **Top line:**
+  - Live counts that tick as the run works, e.g. "142 targets · 6 cities · 96 contacts found · 310 pages read · 40 drafts ready".
+  - Under it, a pipeline strip: Ready, Sent, Waiting, Replied. Each count filters the page.
+- **Every item is a live task row:**
+  - Queued, then "Reading 3 pages…", then Drafting, then Ready.
+  - Queued items show their place in line, so the founder sees the rest are in progress.
+- **An expanded row shows everything about the item, compactly:**
+  - **Why it's on the plan:** crowds, city, followers, what the subagent found.
+  - **How we dealt with it:** pages read; each contact with its source.
+  - **Ways to reach them:** email, phone, address; profile buttons.
+  - **Drafts:** the best channel's draft first, with copy and tone options, then the others.
+  - **History:** one line.
+- **Grouped by subagent, each with what it already builds in front:**
+  - **Rep:** shops, with the evidence that the crowd shops there.
+  - **Matchmaker:** partners and creators, DM first, with the collab idea and the budget bands.
+  - **Promoter:** the dated calendar, with apply-by dates and application links.
+  - **Navigator:** a by-city view of every action in one city.
+  - **Scout:** hooks ready to post, with tone buttons.
+  - **Analyst:** the crowds, as one context line on every row.
+- **Copy for the founder:**
+  - No step numbers, no "Checked their site's contact page" and no long source labels: each source is a small link on its field.
+  - The full capability shows through the live counts and each row's detail, never through manual work.
+- **Never a failure state:** an item still without a contact sits under "Needs a contact", with one line saying the founder can tell Athena if they have one.
+
+##### (r) The Brand Graph, as clean as the Taste Galaxy
+
+**The problem (founder, 26 Oct):** the Brand Graph looks awful: its colours, its size on the page, and how it responds to a click. Seen live at 1440 px on the Fishwife journey:
+- about a dozen colours: 8 repeating theme hues, plus type and crowd colours;
+- a numbered badge on every theme, a halo and an inner shape on every node, dashed hollow nodes and a black star at the centre;
+- names cut at 20 characters, some overlapping, bold and grey labels mixed;
+- a line from every node to the brand, so the centre is a starburst;
+- about 700 px tall on desktop, more than a screen with the fact strip;
+- opening a theme rebuilds the graph and every node moves, with no fade or zoom to show what opened.
+
+**The fix, in the Galaxy's style:**
+- **Layout:**
+  - Themes are soft shaded regions round the brand, as crowds are in the Galaxy, with their notes as small dots inside.
+  - Crowds, stockists, cities and similar brands are small dots on an outer ring, grouped by type.
+  - No lines to the centre: lines show only for the node picked.
+- **Colour:**
+  - Themes take one soft family of tints.
+  - Crowds keep their Galaxy colours, so the two graphs match.
+  - Everything else is neutral.
+  - Badges, halos, inner shapes and the star go. "My read, not yet yours" is a thin outline.
+- **Labels:**
+  - At rest, only the brand and the theme names, in the Galaxy's small caps, placed so none overlap.
+  - A note's name shows in full on hover.
+- **Size:** a fixed height of about 420 px on desktop and 360 px on a phone, with an Expand button that opens it full screen.
+- **Interaction:**
+  - Positions are worked out once with every note placed, so nothing moves.
+  - Clicking a theme zooms to it, fades the rest, names its notes and opens its card.
+  - Esc or a click on empty space zooms back out.
+- **Unchanged:** what the graph holds, the list below it, edits and sources.
+
+##### (r) Done when
+
+- **Checks pass:** tsc and the test suite, with tests that:
+  - after Start, every item reaches Ready or Needs a contact with no button press;
+  - only Start pauses without a default;
+  - every profile button has a source.
+- **Seen live in Edge, on desktop and at 375 px:**
+  - the Start / Later card;
+  - the run filling rows live, with queued items visible;
+  - one mid-run question card;
+  - a chat message moving a status;
+  - the "Did these go out?" card;
+  - an expanded row showing everything;
+  - profile buttons on a podcast;
+  - the Brand Graph at rest, a theme opened (nothing moves, the rest fades) and Expand.
+- **Then one fresh Record run** on a brand, start to finish.
+
 #### Done when
 
 - **Checks pass:** tsc, lint and tests, with new tests for:

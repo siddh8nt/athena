@@ -134,6 +134,21 @@ export function metroById(id: string): Metro {
   return { ...metro, excludeQuery: name };
 }
 
+/**
+ * Where a metro-level answer is wanted (a home base, a stockist's city): the named metro a typed place sits in, its
+ * centre inside the metro's box and the place no wider than it, nearest first; else the place itself. "Los Angeles, CA"
+ * typed as a home base is then the Los Angeles metro, not a second city beside it.
+ */
+export function metroLevel(p: Metro): Metro {
+  if (!p.id.startsWith("p~")) return p;
+  const [lat, lon] = p.center;
+  const w = (b: Metro["bbox"]) => b[2] - b[0];
+  const h = (b: Metro["bbox"]) => b[3] - b[1];
+  const d = (n: Metro) => (n.center[0] - lat) ** 2 + (n.center[1] - lon) ** 2;
+  const hit = METROS.filter((n) => lon >= n.bbox[0] && lon <= n.bbox[2] && lat >= n.bbox[1] && lat <= n.bbox[3] && w(p.bbox) <= w(n.bbox) && h(p.bbox) <= h(n.bbox));
+  return hit.sort((a, b) => d(a) - d(b))[0] ?? p;
+}
+
 /** Does this id name a metro Athena can rebuild? */
 export function isMetroId(id: string): boolean {
   try {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Asked } from "./Question";
 import { WithWithout, type AloneRequest } from "./WithWithout";
 import type { AgentEvent } from "@/lib/blocks/types";
@@ -12,9 +12,12 @@ import { ATHENA, EXECUTIVE, isSpecialist, nameOf, panelIds, specialist, type Age
 import { GOALS, pickGoals, teamFor, teamLine } from "@/lib/agent/goals";
 import { fromCity, fromWork, type Handoff } from "@/lib/agent/handoffs";
 import { resetFrom } from "@/lib/agent/workflow";
+import { askLead } from "@/lib/team/inputs";
 import { latest, staleRuns, whatsWorking } from "@/lib/agent/outcomes";
 import { nodesAdded } from "@/lib/graph/types";
-import { MARKS, MARK_LABEL, markLabel, marksFor, type AgentStatus, type Answer, type Goal, type Mark, type Route, type Task, type TaskStatus, type TeamEvent, type TeamState, type Work, type WorkItem } from "@/lib/team/types";
+import { MARKS, MARK_LABEL, markLabel, marksFor, type AgentStatus, type Answer, type Contact, type ExecState, type Goal, type Mark, type Route, type TaskStatus, type TeamEvent, type TeamState, type WaitRule, type Work, type WorkItem } from "@/lib/team/types";
+import { contactKey, contactOf, execPlan, execQueue, followDue, inScope, lookupsFor, planView, stageOf, statesOf, taskOf, waitOf, waitingSteps, whose, type ExecItem, type Lookup } from "@/lib/exec/plan";
+import { followCard, handleOf, phoneCard, profileCard, sentCard, startCard, waitCard } from "@/lib/exec/asks";
 import { pacer } from "@/lib/stream/pace";
 import { withHooks, type Line as PageLine } from "@/lib/team/page";
 import { CrowdTabs } from "./CrowdTabs";
@@ -43,6 +46,9 @@ export type TeamLive = {
   held: Partial<Record<SpecialistId, { on: SpecialistId; n: number }>>;
   /** Questions that pause their run until answered, by id. */
   blocking: Record<string, { agent: AgentId; n: number }>;
+  /** The Executive finding contacts (§23.5 q): its line, how far through, and the contacts it's on now. `queue`: the
+   *  contacts still waiting their turn, in order; `rows`: what it's doing on each one it's on (§23.5 r). */
+  exec?: { line: string; done: number; of: number; keys: string[]; queue: string[]; rows: Record<string, string> };
 };
 
 /** What the journey shows: one agent's workspace, or the founder's dashboard (§23.2 step 8.4h). */
@@ -93,6 +99,8 @@ export function useTeam(p: {
   // Streams still open, and the workflow runs to resume as soon as theirs ends.
   const streaming = useRef(new Set<number>());
   const resumeAfter = useRef(new Set<number>());
+  // A re-plan asked for while the workflow is already running waits for it, with what it was asked with.
+  const queued = useRef<Record<string, unknown> | undefined>(undefined);
   const change = useRef<Change>({});
   const liveRef = useRef(live);
   liveRef.current = live;
@@ -101,6 +109,12 @@ export function useTeam(p: {
     lastStarted.current = id;
     if (followRef.current) setActive(id);
   };
+  /** An input the founder has already answered: a stream that started before the answer may still ask it. */
+  const given = (id: string) => id.startsWith("input_") && !!latestTeam.current.answered?.some((x) => x.id === id);
+  /** The workflow is running: a "plan" stream is still open. */
+  const planning = () => [...streaming.current].some((m) => runs.current.get(m)?.action === "plan");
+  /** A question from this run still waits on the founder. */
+  const asking = (n: number) => [...open.current.values()].some((x) => x.n === n);
 
   const handle = (e: TeamEvent, n: number) => {
     if (e.type === "goals") p.setTeam((t) => ({ ...t, proposed: e.goals }));
@@ -110,7 +124,12 @@ export function useTeam(p: {
     else if (e.type === "step") line(e.agent, e.event, n);
     else if (e.type === "workflow") setTeam((t) => ({ ...t, workflow: e.workflow }));
     else if (e.type === "known") setTeam((t) => ({ ...t, answered: [...(t.answered ?? []).filter((x) => x.id !== e.answer.id), e.answer].slice(-24) }));
-    else if (e.type === "plan") setTeam((t) => ({ ...t, plan: e.plan }));
+    else if (e.type === "plan") {
+      setTeam((t) => ({ ...t, plan: e.plan }));
+      // The Executive turns her plan into the founder's; Athena asks once before it starts (§23.5 r), and after that
+      // new items run by themselves. A quiet re-plan after a mark changes no items, so it asks nothing.
+      if (!runs.current.get(n)?.resynth) askExec();
+    }
     else if (e.type === "delta") p.stream?.(e.text);
     else if (e.type === "route") route(e.route, n);
     else if (e.type === "ask" && e.ask.id === "clarify") {
@@ -128,7 +147,7 @@ export function useTeam(p: {
       const id = e.ask.id === "custom" || e.ask.id.startsWith("input_") ? e.ask.id : `${e.ask.id}-r${n}`;
       // An input answered earlier in this same stream (the Rep's budget, then the Promoter's) isn't asked again: the
       // stream started before the answer, and the resume after it carries the answer.
-      if (id.startsWith("input_") && latestTeam.current.answered?.some((x) => x.id === id)) return;
+      if (given(id)) return;
       if (id !== "custom") {
         open.current.set(id, { agent: e.agent, n });
         setLive((l) => ({ ...l, blocking: { ...l.blocking, [id]: { agent: e.agent, n } } }));
@@ -149,15 +168,30 @@ export function useTeam(p: {
       }));
     }
     else if (e.type === "reply") {
+      // A line leading into questions counts only those still to show: none left, and it isn't said.
+      const left = e.asks?.ids.filter((id) => !given(id));
+      if (left && !left.length) return;
+      const text = e.asks && left ? askLead(nameOf(e.asks.agent), left.length) : e.text;
       const who: AgentId = e.agent ?? "athena";
-      setLive((l) => ({ ...l, replies: { ...l.replies, [who]: [...(l.replies[who] ?? []), e.text].slice(-6) } }));
+      setLive((l) => ({ ...l, replies: { ...l.replies, [who]: [...(l.replies[who] ?? []), text].slice(-6) } }));
       // Only Athena speaks in the chat (§23.2 step 8.5k): a handoff she narrates carries the subagent's step trail,
       // and a subagent's answer comes into the thread as hers, with its trail under it.
       const trail = e.run ?? (isSpecialist(who) ? who : undefined);
       if (e.run) bring(e.run);
-      p.say(e.text, trail, !!e.run);
+      p.say(text, trail, !!e.run);
     } else if (e.type === "memory") p.onMemory(e);
     else if (e.type === "galaxy") p.onGalaxy?.(e.galaxy);
+    else if (e.type === "exec") execLine(e, n);
+    // A second look keeps what the first found: its new fields win, and nothing found before is lost.
+    else if (e.type === "contact") {
+      setExec((x) => {
+        const was = x.contacts[e.contact.key];
+        const c = was ? { ...was, ...e.contact, checked: [...new Set([...was.checked, ...e.contact.checked])], social: [...(e.contact.social ?? []), ...(was.social ?? []).filter((s) => !e.contact.social?.some((n) => n.label === s.label))] } : e.contact;
+        return { ...x, contacts: { ...x.contacts, [e.contact.key]: c } };
+      });
+      askProfile(e.contact);
+    }
+    else if (e.type === "drafts") setExec((x) => ({ ...x, drafts: { ...x.drafts, [e.item]: e.drafts } }));
   };
   const line = (agent: AgentId, ev: AgentEvent, n: number) => setLive((l) => ({ ...l, lines: { ...l.lines, [agent]: addEvent(l.lines[agent] ?? [], ev, n).slice(-60) } }));
 
@@ -166,14 +200,16 @@ export function useTeam(p: {
     const n = ++run.current;
     runs.current.set(n, { ...extra, action });
     streaming.current.add(n);
-    setLive((l) => ({ ...l, running: l.running + 1 }));
+    // The Executive's lookups run beside the team's work: they don't count as running, so nothing waits on them.
+    const team = action !== "exec";
+    if (team) setLive((l) => ({ ...l, running: l.running + 1 }));
     const body = p.body();
     // The founder's answers in the journey (the growth question), to the workflow's questions, and to the team's own
     // questions this visit, read as facts. The latest answer to a question stands.
     const given = Array.isArray(body.answers) ? (body.answers as { question: string; answer: string }[]) : [];
     const now = liveRef.current;
     // A skipped question counts as its recommended option, so the agent doesn't ask it again.
-    const facts = now.asks.filter((a) => a.id in now.answers && !/^(goals|custom)/.test(a.id));
+    const facts = now.asks.filter((a) => a.id in now.answers && !/^(goals|custom|exec)/.test(a.id));
     const all = [...given, ...(latestTeam.current.answered ?? []), ...facts.filter((a) => now.answers[a.id] || a.assumed).map((a) => ({ question: a.question, answer: now.answers[a.id] || a.assumed }))];
     const byQ = new Map(all.map((a) => [a.question, { question: a.question, answer: a.answer }]));
     const asked = [...byQ.values()].slice(-16);
@@ -206,15 +242,21 @@ export function useTeam(p: {
       // Past the time limit or offline: what the team found so far stays up.
     } finally {
       streaming.current.delete(n);
-      setLive((l) => ({
-        ...l,
-        running: Math.max(0, l.running - 1),
-        lines: Object.fromEntries(Object.entries(l.lines).map(([k, v]) => [k, settleRun(v ?? [], n)])),
-        // Anyone still marked working when the stream ends is settled from what they last returned.
-        status: Object.fromEntries(Object.entries(l.status).map(([k, s]) => [k, s?.state === "working" ? settled(k as AgentId, latestTeam.current) : s])),
-      }));
-      // Answered while the workflow was still running its other steps: it resumes now, from where it stands.
-      if (resumeAfter.current.delete(n)) replan();
+      if (team)
+        setLive((l) => ({
+          ...l,
+          running: Math.max(0, l.running - 1),
+          lines: Object.fromEntries(Object.entries(l.lines).map(([k, v]) => [k, settleRun(v ?? [], n)])),
+          // Anyone still marked working when the stream ends is settled from what they last returned.
+          status: Object.fromEntries(Object.entries(l.status).map(([k, s]) => [k, s?.state === "working" ? settled(k as AgentId, latestTeam.current) : s])),
+        }));
+      // Answered while the workflow was still running its other steps: it resumes now, from where it stands. Events
+      // land paced, so a question the stream asked after that answer may still be open: its answer resumes it then.
+      // A re-plan asked for while the workflow ran goes now, once.
+      const resume = resumeAfter.current.delete(n);
+      if (resume ? !asking(n) : queued.current) replan();
+      // Once started, what a run added to the pages is looked up with no button press (§23.5 r).
+      if (team && latestTeam.current.exec?.started) void autoRun();
     }
   };
 
@@ -225,9 +267,15 @@ export function useTeam(p: {
     return t.goals.filter((g) => ids.includes(g.id));
   };
   /** The workflow carries on (§23.2 step 8.5f): done steps stay done, the rest run, the plan comes last. */
-  const replan = (extra: Record<string, unknown> = {}) => {
+  const replan = (asked: Record<string, unknown> = {}) => {
     const goals = workflowGoals();
     if (!goals.length) return;
+    // One workflow stream at a time: a second would run the same steps beside the first and save their work twice,
+    // the later save landing after the plan. It waits for the running one; the change it carries waits with it.
+    const was = queued.current;
+    const extra = was ? { ...was, ...asked, ...(was.resynth && asked.resynth ? {} : { resynth: false }) } : asked;
+    if (planning()) return void (queued.current = extra);
+    queued.current = undefined;
     const c = change.current;
     change.current = {};
     // A quiet re-plan after a mark leaves the founder where they are.
@@ -295,6 +343,7 @@ export function useTeam(p: {
       const was = runs.current.get(Number(q.id.slice("clarify-r".length)));
       return void post("chat", { ...was, text: `${String(was?.text ?? "")} (Asked "${q.question}", they meant: ${a || q.assumed})`.slice(0, 600) });
     }
+    if (q.id === "exec" || q.id.startsWith("exec-")) return execAnswer(q, a);
     // Seen at once by a run started below, before React applies the update.
     liveRef.current = { ...liveRef.current, answers: { ...liveRef.current.answers, [q.id]: a } };
     setLive((l) => ({ ...l, answers: { ...l.answers, [q.id]: a } }));
@@ -380,11 +429,41 @@ export function useTeam(p: {
       // Before the workflow starts, the change waits for it; once it has, the plan runs again with it.
       if (latestTeam.current.workflow) replan();
     }
+    if (r.do === "contacts") {
+      // The items the founder's words cover, top-ranked first, looked up a few at a time (§23.5 q).
+      const t = latestTeam.current;
+      const its = execPlan(t).items.filter((i) => i.outreach && !i.left && inScope(r.scope, i)).sort((a, b) => a.rank - b.rank).slice(0, r.scope.limit ?? 12);
+      if (!its.length) return p.say("Nothing on the Executive plan matches that yet, so there's nothing to look up. Once the team lists some, ask again.");
+      const groups = lookupsFor(its, t.exec);
+      if (!groups.length) return p.say(its.length > 1 ? "Those items already have their contacts on the Executive plan." : "That item already has its contact on the Executive plan.");
+      p.say(r.reply);
+      return void runLookups(groups);
+    }
+    if (r.do === "followup") {
+      setWait(r.days, r.rules);
+      p.say(r.reply);
+    }
+    if (r.do === "outcome") {
+      // What the founder says happened moves the items and logs the spend (§23.5 r), as a mark on its row would.
+      const plan = execPlan(latestTeam.current);
+      for (const m of r.marks) {
+        const it = plan.byId.get(m.item);
+        if (it) markItem(it, m.mark);
+      }
+      for (const s of r.spend ?? []) logSpend(s.item, (latestTeam.current.exec?.spend?.[s.item]?.usd ?? 0) + s.usd);
+      for (const c of r.contacts ?? []) {
+        const it = plan.byId.get(c.item);
+        if (it) addContact(it, c);
+      }
+      p.say(r.reply);
+    }
   };
   /** A typed message to Athena: the router decides what to do with it. */
   const chat = (text: string, ctx: { page: AgentId | "dashboard"; history: { who: string; text: string }[] }) => {
     const open = liveRef.current.asks.filter((a) => !(a.id in liveRef.current.answers)).map((a) => a.question);
-    return post("chat", { text, ...ctx, open });
+    // The plan as its rows stand, so "emailed Amorino Gelato" names a row: the server keeps no pages of its own.
+    const view = planView(latestTeam.current, Date.now(), liveRef.current.exec);
+    return post("chat", { text, ...ctx, open, ...(view ? { planView: view } : {}) });
   };
 
   const askAthena = (text: string) => {
@@ -411,7 +490,12 @@ export function useTeam(p: {
   // the same results, with no new research.
   const resynth = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const mark = (agent: SpecialistId, item: WorkItem, m: Mark) => {
-    p.setTeam((t) => ({ ...t, outcomes: [...t.outcomes, { item: item.id, agent, kind: item.kind, name: item.name, ...(item.group ? { group: item.group } : {}), mark: m, at: Date.now() }].slice(-300) }));
+    const before = waiting();
+    setTeam((t) => ({ ...t, outcomes: [...t.outcomes, { item: item.id, agent, kind: item.kind, name: item.name, ...(item.group ? { group: item.group } : {}), mark: m, at: Date.now() }].slice(-300) }));
+    // The first pitch asks how long to wait for a reply before the plan brings it up again (§23.5 q).
+    if (m === "pitched" && !latestTeam.current.exec?.wait && !liveRef.current.asks.some((a) => a.id === "exec-wait"))
+      athenaAsk(waitCard);
+    announce(before);
     if (!latestTeam.current.plan) return;
     clearTimeout(resynth.current);
     const again = () => (liveRef.current.running ? (resynth.current = setTimeout(again, 3000)) : replan({ resynth: true }));
@@ -420,14 +504,313 @@ export function useTeam(p: {
 
   /** Athena's plan written again from the same results, nothing re-run (as after a mark): a plan saved before its steps named their results. */
   const rewritePlan = () => replan({ resynth: true });
-  /** The Executive's board (§23.5 n): a status set by hand, kept with the task as it was, so it stays if it leaves the plan. */
-  const setTask = (task: Task, status: TaskStatus) => p.setTeam((t) => ({ ...t, tasks: { ...t.tasks, [task.id]: { status, at: Date.now(), task: { ...task, left: undefined } } } }));
-  /** A mark on a task is an outcome for the subagent that owns its result: it shows on that subagent's page too. */
-  const markTask = (task: Task, m: Mark) => {
-    if (!task.item || task.agent === "athena") return;
-    const prev = latestTeam.current.tasks?.[task.id];
-    p.setTeam((t) => ({ ...t, tasks: { ...t.tasks, [task.id]: { ...(prev?.status ? { status: prev.status } : {}), at: prev?.at ?? 0, task: { ...task, left: undefined } } } }));
-    mark(task.agent, { ...task.item, why: "", sources: [], callIds: [] }, m);
+  // ---- The Executive plan (§23.5 q)
+
+  const setExec = (f: (x: ExecState) => ExecState) => setTeam((t) => ({ ...t, exec: f(t.exec ?? { contacts: {}, drafts: {} }) }));
+  /** Athena's own question, in the tray with the rest; asked again, it replaces the one before, and an unanswered one
+   *  whose id starts with `replace` goes too. */
+  const athenaAsk = (q: Omit<TeamAsk, "agent">, replace = q.id) =>
+    setLive((l) => ({ ...l, asks: [...l.asks.filter((a) => a.id !== q.id && !(a.id.startsWith(replace) && !(a.id in l.answers))), { ...q, agent: "athena" }], answers: omit(l.answers, q.id) }));
+  /** A mid-run question asks once, kept with the plan so a reload doesn't ask it again. */
+  const askedOnce = (id: string) => {
+    if (latestTeam.current.exec?.asked?.includes(id)) return false;
+    setExec((x) => ({ ...x, asked: [...(x.asked ?? []), id].slice(-300) }));
+    return true;
+  };
+
+  /** Once Athena's plan is in, the one question that waits on the founder: start the Executive now, or later (§23.5 r).
+   *  Once started, new items run by themselves. */
+  const askExec = (resumed = false) => {
+    const t = latestTeam.current;
+    if (t.exec?.started) return void autoRun(false, resumed);
+    const k = execPlan(t).items.filter((i) => i.outreach && !i.left).length;
+    if (!k || t.exec?.later) return;
+    athenaAsk(startCard(k));
+  };
+
+  /** The founder's answer to the Executive's questions: Start or Later, the follow-up wait, and the mid-run ones. */
+  const execAnswer = async (q: TeamAsk, a: string) => {
+    liveRef.current = { ...liveRef.current, answers: { ...liveRef.current.answers, [q.id]: a } };
+    setLive((l) => ({ ...l, answers: { ...l.answers, [q.id]: a } }));
+    const said = a || q.assumed;
+    const pick = async (fallback: string) => (isOption(q, said) ? said : ((await read(q, said)).option ?? fallback));
+    if (q.id === "exec-wait") {
+      if (said === "1 week") return setWait(7, []);
+      setExec((x) => ({ ...x, wait: x.wait ?? { rules: [] } }));
+      if (said === "Choose") return p.say("How long should I wait before bringing up a pitch with no reply? You can also give a rule for some items, like “give retailers two weeks”.");
+      return void chat(`For the follow-up wait: ${said}`, { page: "dashboard", history: [] });
+    }
+    if (q.id.startsWith("exec-profile:")) return pickProfile(q.id.slice("exec-profile:".length), await pick(q.assumed));
+    if (q.id === "exec-phone") {
+      const walk = (await pick(q.assumed)) === "Walk in instead";
+      setExec((x) => ({ ...x, prefs: { ...x.prefs, phoneOnly: walk ? "walk" : "call" } }));
+      return p.say(walk ? "Their rows show the address first, with the same script for a visit." : "Their rows show the number first, with a call script.");
+    }
+    if (q.id.startsWith("exec-sent-")) return sentAnswer(q, said);
+    if (q.id.startsWith("exec-follow-")) return followAnswer(q, await pick(q.assumed));
+    if ((await pick("Later")) === "Start now") return void startExec();
+    setExec((x) => ({ ...x, later: Date.now() }));
+    p.say("Fine. Start waits on the Executive page whenever you're ready.");
+  };
+
+  /** The founder started the Executive, from Athena's question or the Executive page: everything runs from here. */
+  const startExec = async () => {
+    setExec((x) => ({ ...x, started: x.started ?? Date.now(), later: undefined }));
+    // Started from the page with the question still up: the question goes.
+    setLive((l) => ({ ...l, asks: l.asks.filter((a) => a.id !== "exec" || a.id in l.answers) }));
+    await autoRun(true);
+  };
+
+  // One automatic run at a time; anything added meanwhile is looked up once it's through.
+  const autoRunning = useRef(false);
+  const autoAgain = useRef(false);
+  /** After Start, every item not yet looked up is, with no button press (§23.5 r): Now first, then each subagent's
+   *  items, a few at a time. `resumed`: a journey reloaded mid-run, so what's left isn't new. */
+  const autoRun = async (first = false, resumed = false): Promise<void> => {
+    if (autoRunning.current) return void (autoAgain.current = true);
+    autoRunning.current = true;
+    let ran = 0;
+    try {
+      for (;;) {
+        autoAgain.current = false;
+        const t = latestTeam.current;
+        const groups = execQueue(execPlan(t), t.exec);
+        const k = groups.reduce((s, g) => s + g.length, 0);
+        if (!k) break;
+        p.say(
+          first && !ran
+            ? `The Executive is on it: ${k} contact${k === 1 ? "" : "s"} to find, Now first, then each subagent's items, a few at a time. Rows fill in live on the Executive page. Nothing is sent: you send each draft yourself.`
+            : resumed && !ran
+              ? `The Executive is picking up where it left off: ${k} item${k === 1 ? "" : "s"} still to look up.`
+              : `The Executive is looking up the ${k} new item${k === 1 ? "" : "s"} on the plan.`,
+        );
+        await runLookups(groups);
+        ran += k;
+        // Something added while it ran: once more for that, and only that.
+        if (!autoAgain.current) break;
+      }
+    } finally {
+      autoRunning.current = false;
+    }
+    if (!ran) return first ? p.say("The Executive plan is up to date: every item has its contact and drafts.") : undefined;
+    const now = latestTeam.current;
+    const st = statesOf(now);
+    const stages = execPlan(now)
+      .items.filter((i) => i.outreach && !i.left)
+      .map((i) => stageOf(i, st(i.id), now.exec, Date.now()));
+    const ready = stages.filter((s) => s === "ready").length;
+    const needs = stages.filter((s) => s === "needs").length;
+    p.say(
+      `${first || resumed ? "Your Executive plan is ready" : "That's looked up"}: ${ready} item${ready === 1 ? " has" : "s have"} drafts to send${needs ? `, and ${needs} ${needs === 1 ? "is" : "are"} under Needs a contact. If you have one for any of them, tell me` : ""}.`,
+    );
+    askFollow();
+  };
+
+  /** Two profiles on one site look like theirs: the first is on the row, and the founder can pick another (§23.5 r). */
+  const askProfile = (c: Contact) => {
+    if (!c.ask || c.ask.options.length < 2 || !askedOnce(`exec-profile:${c.key}`)) return;
+    athenaAsk(profileCard(c));
+  };
+  const pickProfile = (key: string, label: string) =>
+    setExec((x) => {
+      const c = x.contacts[key];
+      const o = c?.ask?.options.find((v) => handleOf(v.url) === label) ?? c?.ask?.options[0];
+      if (!c?.ask || !o) return x;
+      const site = c.ask.site;
+      const { ask: _a, ...rest } = c;
+      return { ...x, contacts: { ...x.contacts, [key]: { ...rest, social: [{ label: site, value: o.url, src: o.src, ok: o.src }, ...(c.social ?? []).filter((s) => s.label !== site)] } } };
+    });
+
+  /** Several places give only a phone: call scripts, or a visit (§23.5 r). Asked once, with call scripts the default. */
+  const askPhone = () => {
+    const t = latestTeam.current;
+    if (t.exec?.prefs?.phoneOnly || t.exec?.asked?.includes("exec-phone")) return;
+    const only = new Map<string, ExecItem>();
+    for (const i of execPlan(t).items) {
+      const c = i.outreach && !i.left ? contactOf(i, t.exec) : undefined;
+      if (c?.phone && !c.email && !c.form && !c.social.length) only.set(c.key, i);
+    }
+    if (only.size < 2 || !askedOnce("exec-phone")) return;
+    athenaAsk(phoneCard([...only.values()]));
+  };
+
+  /** After drafts were opened in the mail or DM app, "Did these go out?", each one ticked (§23.5 r). */
+  const askSent = () => {
+    const t = latestTeam.current;
+    const plan = execPlan(t);
+    const st = statesOf(t);
+    const its = Object.entries(t.exec?.opened ?? {})
+      .sort((a, b) => a[1] - b[1])
+      .map(([id]) => plan.byId.get(id))
+      .filter((it): it is ExecItem => !!it && !st(it.id).mark);
+    const q = sentCard(its);
+    const l = liveRef.current;
+    if (!q || l.asks.some((a) => a.id === q.id && !(a.id in l.answers))) return;
+    athenaAsk(q, "exec-sent-");
+  };
+  const sentAnswer = (q: TeamAsk, said: string) => {
+    const plan = execPlan(latestTeam.current);
+    const asked = q.id.slice("exec-sent-".length).split("|").map((id) => plan.byId.get(id)).filter((it): it is ExecItem => !!it);
+    const went = asked.filter((it) => said === "All of them" || `, ${said}, `.includes(`, ${it.name}, `));
+    for (const it of went) markItem(it, "pitched");
+    setExec((x) => ({ ...x, opened: Object.fromEntries(Object.entries(x.opened ?? {}).filter(([id]) => !asked.some((it) => it.id === id))) }));
+    if (went.length) p.say(`${went.length === 1 ? `${went[0].name} is` : `${went.length} items are`} marked sent.`);
+  };
+
+  /** Pitches past their wait: their follow-ups are drafted on their rows, and Athena asks once per wait (§23.5 r). */
+  const askFollow = () => {
+    const t = latestTeam.current;
+    const st = statesOf(t);
+    const now = Date.now();
+    const seen = (i: ExecItem) => `exec-follow:${i.id}:${waitOf(i, t.exec).days}`;
+    const due = execPlan(t).items.filter((i) => i.outreach && !i.left && followDue(i, st(i.id), t.exec, now) && !t.exec?.asked?.includes(seen(i)));
+    if (!due.length) return;
+    setExec((x) => ({ ...x, asked: [...(x.asked ?? []), ...due.map(seen)].slice(-300) }));
+    athenaAsk(followCard(due, Math.max(...due.map((i) => waitOf(i, t.exec).days))), "exec-follow-");
+  };
+  const followAnswer = (q: TeamAsk, said: string) => {
+    const t = latestTeam.current;
+    const plan = execPlan(t);
+    const its = q.id.slice("exec-follow-".length).split("|").map((id) => plan.byId.get(id)).filter((it): it is ExecItem => !!it);
+    if (said === "Wait another week") {
+      if (!its.length) return;
+      const days = Math.max(...its.map((i) => waitOf(i, t.exec).days)) + 7;
+      setWait(undefined, [{ days, scope: { names: its.map((i) => i.name) }, text: `${its.length === 1 ? its[0].name : `${its.length} pitches`}: another week` }]);
+      return p.say("I'll bring them up again in a week.");
+    }
+    setActive(EXECUTIVE.id);
+    p.say(its.length === 1 ? `${whose(its[0].name)} follow-up is on its row, ready to copy.` : "The follow-ups are on the Executive page, each drafted on its row.");
+  };
+
+  // Back from the mail or DM app: anything opened and not marked asks "Did these go out?".
+  useEffect(() => {
+    const back = () => {
+      if (document.visibilityState === "visible") setTimeout(askSent, 800);
+    };
+    window.addEventListener("focus", back);
+    document.addEventListener("visibilitychange", back);
+    return () => {
+      window.removeEventListener("focus", back);
+      document.removeEventListener("visibilitychange", back);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // One request's lookups at a time, in the order asked: a later request starts once the one before is through.
+  const lookups = useRef<Promise<unknown>>(Promise.resolve());
+  /** The Executive finds contacts one small group at a time (§23.5 q): never in bulk, and nothing it has saved twice. */
+  const runLookups = (groups: Lookup[][]): Promise<void> => {
+    const total = groups.reduce((s, g) => s + g.length, 0);
+    const go = async () => {
+      if (!total) return;
+      const all = groups.flat().map((l) => l.key);
+      setLive((l) => ({
+        ...l,
+        exec: { line: total === 1 ? `Finding contacts for ${groups[0][0].name}` : `Finding contacts: 0 of ${total}`, done: 0, of: total, keys: [], queue: [...new Set([...(l.exec?.queue ?? []), ...all])], rows: l.exec?.rows ?? {} },
+      }));
+      // A group's contacts leave the line once it's through, found or already saved, even if its stream dropped.
+      const out = (keys: string[]) =>
+        setLive((l) => (l.exec ? { ...l, exec: { ...l.exec, queue: l.exec.queue.filter((k) => !keys.includes(k)), rows: Object.fromEntries(Object.entries(l.exec.rows).filter(([k]) => !keys.includes(k))) } } : l));
+      let base = 0;
+      for (const g of groups) {
+        // Read against what's saved now: an earlier group, or a request before this one, may have found it since.
+        const x = latestTeam.current.exec;
+        const fresh = g
+          .map((l) => {
+            const known = x?.yours?.[l.key] ?? (l.again ? undefined : x?.contacts[l.key]) ?? l.known;
+            return { ...l, items: l.items.filter((i) => !x?.drafts[i.id]), ...(known ? { known } : {}) };
+          })
+          .filter((l) => !l.known || l.items.length);
+        base += g.length - fresh.length;
+        out(g.filter((l) => !fresh.some((f) => f.key === l.key)).map((l) => l.key));
+        if (!fresh.length) continue;
+        setLive((l) => ({ ...l, exec: { ...(l.exec ?? { line: "", done: base, of: total, queue: [], rows: {} }), keys: fresh.map((f) => f.key) } }));
+        await post("exec", { groups: [fresh], progress: { base, total } });
+        out(fresh.map((f) => f.key));
+        base += fresh.length;
+        askPhone();
+      }
+      setLive((l) => ({ ...l, exec: undefined }));
+    };
+    const next = lookups.current.then(go, go);
+    lookups.current = next;
+    return next;
+  };
+  /** The Executive's line, counted across the groups of one request: each group is a post of its own. */
+  const execLine = (e: Extract<TeamEvent, { type: "exec" }>, n: number) => {
+    const pr = runs.current.get(n)?.progress as { base: number; total: number } | undefined;
+    const base = pr?.base ?? 0;
+    const of = pr?.total ?? e.of;
+    const text = /^Finding contacts(: \d+ of \d+$| for )/.test(e.line) && of > 1 ? `Finding contacts: ${base + e.done} of ${of}` : e.line;
+    setLive((l) => {
+      const x = l.exec ?? { line: "", done: 0, of, keys: [], queue: [], rows: {} };
+      // The contact it's on leaves the line; its row says what's happening, and clears when it's through.
+      const rows = e.key ? (e.row ? { ...x.rows, [e.key]: e.row } : omitKey(x.rows, e.key)) : x.rows;
+      return { ...l, exec: { ...x, line: text, done: base + e.done, of, rows, queue: e.key ? x.queue.filter((k) => k !== e.key) : x.queue } };
+    });
+  };
+
+  /** Find contact on any item, or a few at once: top-ranked first, in small groups. */
+  const findContact = (its: ExecItem[]) => runLookups(lookupsFor(its, latestTeam.current.exec));
+  /** "Add it yourself": what the founder knows wins over anything found, and the item gets its drafts. */
+  const addContact = (it: ExecItem, f: { address?: string; website?: string; phone?: string; email?: string; dm?: string }) => {
+    const key = contactKey(it);
+    if (!key) return;
+    const src = { label: "From you" };
+    const val = (v?: string) => v?.trim() || undefined;
+    // A link typed without its scheme gets one; a bare handle stays as typed.
+    const url = (v?: string) => {
+      const x = val(v);
+      return x && !/^https?:\/\//i.test(x) && /\.[a-z]{2,}/i.test(x) && !x.startsWith("@") ? `https://${x}` : x;
+    };
+    const prev = latestTeam.current.exec?.yours?.[key];
+    const c: Contact = { ...(prev ?? { key, name: it.name, checked: [] }), by: "you", at: Date.now() };
+    const fields = { address: val(f.address), website: url(f.website), phone: val(f.phone), email: val(f.email)?.toLowerCase() };
+    for (const k of ["address", "website", "phone", "email"] as const) {
+      const v = fields[k];
+      if (v) c[k] = { value: v, src };
+    }
+    const dm = url(f.dm);
+    if (dm) c.social = [{ label: dmLabel(dm), value: dm, src }, ...(c.social ?? []).filter((x) => x.value !== dm)];
+    setExec((x) => ({ ...x, yours: { ...x.yours, [key]: c } }));
+    if (!latestTeam.current.exec?.drafts[it.id]) void findContact([it]);
+  };
+
+  /** The follow-up wait: a new default, and the founder's rules for particular cases, the latest first. */
+  const setWait = (days: number | undefined, rules: Omit<WaitRule, "at">[]) =>
+    setExec((x) => {
+      const d = days ?? x.wait?.days;
+      return { ...x, wait: { ...(d ? { days: d } : {}), rules: [...(x.wait?.rules ?? []), ...rules.map((r) => ({ ...r, at: Date.now() }))].slice(-30) } };
+    });
+  /** The founder opened a draft in their mail or DM app: back here, "Did these go out?" asks (§23.5 r). */
+  const openedMail = (id: string) => setExec((x) => ({ ...x, opened: { ...x.opened, [id]: Date.now() } }));
+  /** What the founder spent on an item; nothing, or zero, takes it off. */
+  const logSpend = (id: string, usd: number) => setExec((x) => ({ ...x, spend: usd > 0 ? { ...x.spend, [id]: { usd, at: Date.now() } } : omitKey(x.spend ?? {}, id) }));
+  /** A step that waits on another, started anyway. */
+  const startAnyway = (n: number) => setExec((x) => ({ ...x, early: [...new Set([...(x.early ?? []), n])] }));
+  /** A mark from the Executive plan is the owning subagent's mark: it shows on that subagent's page too. */
+  const markItem = (it: ExecItem, m: Mark) => {
+    if (it.agent !== "athena") mark(it.agent, { id: it.id, kind: it.kind, name: it.name, ...(it.group ? { group: it.group } : {}), why: "", sources: [], callIds: [] }, m);
+  };
+  /** Done, Skipped or back to To do, set by hand: kept with the item as it was, so it stays if it leaves the pages. */
+  const setStatus = (it: ExecItem, status: TaskStatus) => {
+    const before = waiting();
+    const task = taskOf(execPlan(latestTeam.current), it, status);
+    setTeam((t) => ({ ...t, tasks: { ...t.tasks, [it.id]: { status, at: Date.now(), task } } }));
+    announce(before);
+  };
+  /** Now's steps that wait on another, as they stand. */
+  const waiting = () => {
+    const t = latestTeam.current;
+    return waitingSteps(execPlan(t), statesOf(t), t.exec);
+  };
+  /** When a step holds, Athena says what it opens. */
+  const announce = (before: Map<number, number[]>) => {
+    const after = waiting();
+    const opened = [...before.keys()].filter((n) => !after.has(n));
+    if (!opened.length) return;
+    const what = latestTeam.current.plan?.steps?.find((s) => s.n === opened[0])?.what;
+    p.say(opened.length > 1 ? "That's in hand, so the parts waiting on it can start." : `That's in hand, so the next part can start${what ? `: ${what}` : "."}`);
   };
 
   /** The Analyst measures and ranks the crowds, once, for the whole journey (§23.2 step 8.1a). */
@@ -449,7 +832,63 @@ export function useTeam(p: {
     setActive(lastStarted.current);
   };
 
-  return { live, active, setActive, follow, pickTab, followRun, propose, answer, editAnswer, askAthena, askSpecialist, chat, refresh, rewritePlan, mark, setTask, markTask, hooks, start, measure, handoff, addToPlan };
+  return {
+    live,
+    active,
+    setActive,
+    follow,
+    pickTab,
+    followRun,
+    propose,
+    answer,
+    editAnswer,
+    askAthena,
+    askSpecialist,
+    chat,
+    refresh,
+    rewritePlan,
+    mark,
+    hooks,
+    start,
+    measure,
+    handoff,
+    addToPlan,
+    /** A journey reloaded: Start / Later asks again if the Executive isn't started; if it is, what's left runs, and
+     *  drafts opened before and pitches past their wait ask. */
+    offerExec: () => {
+      askExec(true);
+      askSent();
+      askFollow();
+    },
+    startExec,
+    findContact,
+    addContact,
+    setWait,
+    openedMail,
+    logSpend,
+    startAnyway,
+    markItem,
+    setStatus,
+  };
+}
+
+/** A DM link's label from its site. */
+const DM_SITES: [RegExp, string][] = [
+  [/(^|\.)instagram\.com$/, "Instagram"],
+  [/(^|\.)tiktok\.com$/, "TikTok"],
+  [/(^|\.)(x|twitter)\.com$/, "X"],
+  [/(^|\.)(youtube\.com|youtu\.be)$/, "YouTube"],
+  [/(^|\.)facebook\.com$/, "Facebook"],
+  [/(^|\.)linkedin\.com$/, "LinkedIn"],
+  [/(^|\.)threads\.(net|com)$/, "Threads"],
+];
+function dmLabel(url: string): string {
+  try {
+    const host = new URL(url).hostname.replace(/^www\./, "");
+    return DM_SITES.find(([r]) => r.test(host))?.[1] ?? "DM";
+  } catch {
+    return "DM";
+  }
 }
 
 const omitKey = <T,>(o: Record<string, T>, k: string): Record<string, T> => Object.fromEntries(Object.entries(o).filter(([x]) => x !== k));

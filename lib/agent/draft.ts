@@ -153,7 +153,15 @@ export type DraftTone = (typeof DRAFT_TONES)[number];
  * A draft rewritten in place by a tone button (§23.5 g). The rewrite may only use the names already in the draft or
  * in its evidence, and no new numbers; when it strays, the draft stays as it was.
  */
-export async function retoneDraft(input: { subject?: string; body: string; tone: DraftTone; names: string[]; generate?: typeof generate }): Promise<{ subject?: string; body: string; changed: boolean }> {
+/** What a tone rewrite works on: an email, a DM, or a hook to post (§23.5 r). */
+export type ToneKind = "email" | "dm" | "hook";
+const TONE_SYSTEM: Record<ToneKind, string> = {
+  email: "You rewrite a short first-contact email from a small consumer brand in a new tone. Keep every fact; add no names, numbers or claims. Keep the greeting and sign-off lines. Reply with JSON only.",
+  dm: "You rewrite a short first-contact direct message from a small consumer brand in a new tone. Keep every fact; add no names, numbers or claims. It stays a DM: no subject line, no formal sign-off. Reply with JSON only.",
+  hook: "You rewrite a one-line marketing hook for a small consumer brand in a new tone. Keep its idea; add no names, numbers or claims. It stays one or two short sentences to post as is. Reply with JSON only.",
+};
+
+export async function retoneDraft(input: { subject?: string; body: string; tone: DraftTone; names: string[]; kind?: ToneKind; generate?: typeof generate }): Promise<{ subject?: string; body: string; changed: boolean }> {
   const same = { subject: input.subject, body: input.body, changed: false };
   const gen = input.generate ?? generate;
   const res = await gen({
@@ -163,8 +171,8 @@ export async function retoneDraft(input: { subject?: string; body: string; tone:
     temperature: 0.6,
     maxOutputTokens: 1024,
     budgetMs: 20_000,
-    system: "You rewrite a short first-contact email from a small consumer brand in a new tone. Keep every fact; add no names, numbers or claims. Keep the greeting and sign-off lines. Reply with JSON only.",
-    prompt: `Tone: ${input.tone}${input.tone === "Shorter" ? " (at most 3 sentences)" : ""}\nSubject: ${input.subject ?? ""}\nBody:\n${input.body}\n\nReturn {"subject": "...", "body": "..."}`,
+    system: TONE_SYSTEM[input.kind ?? "email"],
+    prompt: `Tone: ${input.tone}${input.tone === "Shorter" ? ` (at most ${(input.kind ?? "email") === "email" ? 3 : 2} sentences)` : ""}\nSubject: ${input.subject ?? ""}\nBody:\n${input.body}\n\nReturn {"subject": "...", "body": "..."}`,
   }).catch(() => undefined);
   const j = res && parseJson<{ subject?: string; body?: string }>(res.text);
   const body = typeof j?.body === "string" ? j.body.trim().slice(0, 4000) : "";

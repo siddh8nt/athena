@@ -3,22 +3,15 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { GoalsBar, statusOf, type TeamLive, type View } from "./Team";
 import { inputById } from "@/lib/team/inputs";
-import { TIER_LABEL } from "@/lib/team/page";
-import { KIND_LABEL, planStale, planUnitemised } from "@/lib/agent/synthesis";
 import { EXECUTIVE, SPECIALIST_IDS, nameOf, specialist, type AgentId, type SpecialistId } from "@/lib/agent/specialists";
-import type { Answer, GrowthPlan, StepState, TeamState, Work, Workflow, WorkflowStep } from "@/lib/team/types";
+import { execPlan, statesOf, stripOf } from "@/lib/exec/plan";
+import type { Answer, StepState, TeamState, Work, Workflow, WorkflowStep } from "@/lib/team/types";
 
 // The founder's dashboard after onboarding (PRD §23.2 step 8.5 b–d): the growth plan's workflow as a live diagram
-// under the goals, Athena's lead tile and the six subagents' tiles, the founder's answers (editable), what's working,
-// and the Brand Knowledge Base. Only a view: the journey holds the state and hands in the pieces.
+// under the goals, ending on the Executive plan, Athena's lead tile and the subagents' tiles, the founder's answers
+// (editable), what's working, and the Brand Knowledge Base. Only a view: the journey holds the state and hands in the pieces.
 
 const goalsOf = (team: TeamState) => team.goals.filter((g) => g.id !== "know_crowd");
-
-/** "the Analyst's, the Rep's and the Promoter's": whose work a plan reads. */
-function whose(ids: SpecialistId[]): string {
-  const xs = ids.map((id) => `the ${nameOf(id)}'s`);
-  return xs.length > 1 ? `${xs.slice(0, -1).join(", ")} and ${xs.at(-1)}` : (xs[0] ?? "the team's");
-}
 
 /** A step's state, read live: the workflow's own, with this visit's statuses over it while a run streams. */
 function nodeState(step: WorkflowStep, live: TeamLive): StepState {
@@ -58,11 +51,11 @@ export function WorkflowDiagram({ team, live, onOpen, onChat, compact }: { team:
   if (!w) return null;
   const opening: StepState = live.asks.some((a) => a.id === "goals" && !(a.id in live.answers)) ? "paused" : "done";
   const cols = columns(w);
-  const node = (id: AgentId, state: StepState, title: string, sub: string, onClick: () => void) => (
-    <button key={id} type="button" className={`wf-node wf-${state}`} onClick={onClick} aria-label={`${title}: ${STATE_LABEL[state]}`}>
+  const node = (id: AgentId, state: StepState, title: string, sub: string, onClick: () => void, label = STATE_LABEL[state]) => (
+    <button key={id} type="button" className={`wf-node wf-${state}${label === "Ready" ? " wf-ready" : ""}`} onClick={onClick} aria-label={`${title}: ${label}`}>
       <span className="wf-state">
         {state === "running" ? <span className="spin" aria-hidden /> : <span className="wf-dot" aria-hidden />}
-        {STATE_LABEL[state]}
+        {label}
       </span>
       <strong>{title}</strong>
       <small>{sub}</small>
@@ -73,6 +66,20 @@ export function WorkflowDiagram({ team, live, onOpen, onChat, compact }: { team:
     if (st?.state === "working") return st.step;
     return s.task;
   };
+  // The last node is the Executive plan (§23.5 q): Athena orders the team's work, the Executive turns it into the
+  // founder's plan. Her plan written and the Executive not yet started, it waits Ready for the founder's Start.
+  const last = (s: WorkflowStep) => {
+    const state = nodeState(s, live);
+    const ready = state === "done" && !!team.plan && !team.exec?.started;
+    return node(
+      "athena",
+      live.exec ? "running" : ready ? "todo" : state,
+      "Executive plan",
+      live.exec?.line ?? (state === "running" && live.status.athena?.state === "working" ? live.status.athena.step : team.plan && state === "done" ? team.plan.headline : "Athena orders the team's work; the Executive turns it into your plan"),
+      () => onOpen(team.plan ? "executive" : "athena"),
+      live.exec ? STATE_LABEL.running : ready ? "Ready" : STATE_LABEL[state],
+    );
+  };
   return (
     <div className={`wf${compact ? " wf-compact" : ""}`} role="group" aria-label="Athena's workflow">
       <div className="wf-col">{node("athena", opening, "Opening questions", "Your goals for the plan", onChat)}</div>
@@ -80,11 +87,51 @@ export function WorkflowDiagram({ team, live, onOpen, onChat, compact }: { team:
         <div key={i} className="wf-col">
           {col.map((s) =>
             s.id === "athena"
-              ? node("athena", nodeState(s, live), "Athena's plan", team.plan && s.state === "done" ? team.plan.headline : "Reads every subagent's work and writes the plan", () => onOpen("athena"))
+              ? last(s)
               : node(s.id, nodeState(s, live), `The ${nameOf(s.id)}`, sub(s), () => onOpen(s.id)),
           )}
         </div>
       ))}
+    </div>
+  );
+}
+
+/**
+ * Under the workflow (§23.5 q): the Executive plan's one line and its one button. Start the Executive once Athena's
+ * plan is in, and Open the Executive plan otherwise: once started, new items are looked up by themselves (§23.5 r).
+ */
+function ExecLine({ team, live, onExec, onOpen }: { team: TeamState; live: TeamLive; onExec: () => void; onOpen: () => void }) {
+  if (!team.plan) return null;
+  const plan = execPlan(team);
+  const x = team.exec;
+  const now = plan.items.filter((i) => i.now && !i.left);
+  const reach = plan.items.filter((i) => i.outreach && !i.left).length;
+  const strip = stripOf(plan, statesOf(team), x, Date.now());
+  let line: string;
+  let act: { label: string; primary?: boolean; on: () => void };
+  if (live.exec) {
+    line = live.exec.line;
+    act = { label: "Open the Executive plan", on: onOpen };
+  } else if (!x?.started) {
+    line = `Athena has put the team's work in order: ${plan.items.length} items, ${now.length} of them under Now. The Executive finds how to reach all ${reach} to contact, Now first, and writes an email, a DM and a call script for each.`;
+    act = { label: "Start the Executive", primary: true, on: onExec };
+  } else {
+    line = `Now: ${strip.nowDone} of ${strip.nowOf} done${strip.waiting ? `, ${strip.waiting} waiting on a reply` : ""}${strip.yes ? `, ${strip.yes} yes so far` : ""}.`;
+    act = { label: "Open the Executive plan", on: onOpen };
+  }
+  return (
+    <div className="wf-exec">
+      <p className={`small${live.exec ? " shimmer-text" : ""}`}>{line}</p>
+      <span className="wf-exec-acts">
+        <button type="button" className={act.primary ? "primary" : ""} onClick={act.on}>
+          {act.label}
+        </button>
+        {act.on !== onOpen && (
+          <button type="button" className="linkish small" onClick={onOpen}>
+            Open the Executive plan
+          </button>
+        )}
+      </span>
     </div>
   );
 }
@@ -157,17 +204,17 @@ function tileLine(id: SpecialistId, team: TeamState, live: TeamLive, step?: Work
 const DASH_TABS = [
   { id: "overview", label: "Overview" },
   { id: "knowledge", label: "Brand Knowledge Base" },
-  { id: "plan", label: "Athena's plan" },
   { id: "answers", label: "Your answers" },
   { id: "working", label: "What's working" },
-  { id: "executive", label: "The Executive" },
+  { id: "executive", label: "Executive plan" },
 ] as const;
 export type DashTab = (typeof DASH_TABS)[number]["id"];
 
 function tabFromUrl(): DashTab {
   try {
     const t = new URLSearchParams(window.location.search).get("tab");
-    return DASH_TABS.find((x) => x.id === t)?.id ?? "overview";
+    // Athena's plan is the Executive plan now (§23.5 q): an old link to it opens there.
+    return DASH_TABS.find((x) => x.id === (t === "plan" ? "executive" : t))?.id ?? "overview";
   } catch {
     return "overview";
   }
@@ -238,9 +285,9 @@ export function Dashboard(p: {
   onStart: () => void;
   onAdd: (id: SpecialistId) => void;
   onEditAnswer: (a: Answer, v: string) => void;
-  onUpdatePlan: () => void;
-  onRewritePlan: () => void;
-  /** The Executive's task board (§23.5 n), for its tab. */
+  /** Start the Executive (§23.5 r). */
+  onExec: () => void;
+  /** The Executive plan (§23.5 q), for its tab. */
   executive: ReactNode;
 }) {
   const { team, live } = p;
@@ -265,8 +312,8 @@ export function Dashboard(p: {
     : plan
       ? plan.headline
       : w
-        ? "Writes your growth plan once the team's steps are done."
-        : "Leads the team: your goals, the workflow, the final plan.";
+        ? "Puts the team's work in order once their steps are done; the Executive turns it into your plan."
+        : "Leads the team: your goals, the workflow, the order of the work.";
   const count: Partial<Record<DashTab, number>> = { answers: team.answered?.length || undefined };
   const overview = (
     <>
@@ -289,18 +336,19 @@ export function Dashboard(p: {
             {w && <small className="muted">{w.by === "agent" ? "Planned by Athena" : "Athena's standard order"} · {w.steps.filter((s) => s.state === "done").length} of {w.steps.length} steps done</small>}
           </div>
           <GoalsBar goals={team.goals} />
-          {w ? <WorkflowDiagram team={team} live={live} onOpen={p.onOpen} onChat={p.onChat} /> : <p className="small muted shimmer-text">Athena is planning the work for these goals</p>}
+          {w ? <WorkflowDiagram team={team} live={live} onOpen={(id) => (id === "executive" ? pick("executive") : p.onOpen(id))} onChat={p.onChat} /> : <p className="small muted shimmer-text">Athena is planning the work for these goals</p>}
+          {w && <ExecLine team={team} live={live} onExec={p.onExec} onOpen={() => pick("executive")} />}
         </section>
       )}
 
       <section className="dash-sec">
         <h3>Your team</h3>
-        <button type="button" className={`dash-lead${live.status.athena?.state === "working" ? " dash-working" : ""}`} onClick={() => (plan ? pick("plan") : p.onOpen("athena"))}>
+        <button type="button" className={`dash-lead${live.status.athena?.state === "working" ? " dash-working" : ""}`} onClick={() => (plan ? pick("executive") : p.onOpen("athena"))}>
           <span className="team-badge" aria-hidden>A</span>
           <span className="dash-lead-body">
             <strong>Athena</strong>
             <span className={live.status.athena?.state === "working" ? "small shimmer-text" : "small"}>{athenaLine}</span>
-            {athenaStep && <span className="dash-lead-go">{plan ? "Open Athena's plan" : "Open Athena"} →</span>}
+            {athenaStep && <span className="dash-lead-go">{plan ? "Open the Executive plan" : "Open Athena"} →</span>}
           </span>
         </button>
         <ul className="dash-team">
@@ -336,19 +384,19 @@ export function Dashboard(p: {
               </li>
             );
           })}
-          {/* The Executive (§23.5 n): no workflow step of its own; its board fills from Athena's plan. */}
+          {/* The Executive (§23.5 q): no research of its own; it turns Athena's order into the Executive plan. */}
           <li className="dash-agent">
             <span className="team-badge" aria-hidden>{EXECUTIVE.name.slice(0, 1)}</span>
             <div>
               <strong>The {EXECUTIVE.name}</strong>
               <p className="small">{EXECUTIVE.tile}</p>
               <div className="dash-acts">
-                {plan?.steps?.length ? (
+                {plan ? (
                   <button type="button" className="linkish small" onClick={() => pick("executive")}>
-                    Open the {EXECUTIVE.name}
+                    Open the Executive plan
                   </button>
                 ) : (
-                  <small className="muted">Ready once Athena&apos;s plan is written</small>
+                  <small className="muted">Ready once Athena has put the team&apos;s work in order</small>
                 )}
               </div>
             </div>
@@ -371,7 +419,6 @@ export function Dashboard(p: {
       <div className="dash-tab-body" key={tab} role="tabpanel">
         {tab === "overview" && overview}
         {tab === "knowledge" && <KnowledgeBase parts={p.kb} />}
-        {tab === "plan" && <GrowthPlanView plan={plan} team={team} running={busy} onOpen={(id) => (id === "dashboard" ? pick("overview") : p.onOpen(id))} onUpdate={p.onUpdatePlan} onRewrite={p.onRewritePlan} />}
         {tab === "answers" && (
           <section className="dash-sec">
             <div className="dash-sec-head">
@@ -393,111 +440,5 @@ export function Dashboard(p: {
         {tab === "executive" && p.executive}
       </div>
     </div>
-  );
-}
-
-/**
- * Athena's plan (§23.5 m): numbered steps, shared moves first, then each crowd in its order. Each step says what to do,
- * for which crowds, where, through what, the words, when and the cost, every line cited to the subagent it came from,
- * and which earlier steps it waits on; then what the sources disagree on and what's still open.
- */
-export function GrowthPlanView({ plan, team, running, onOpen, onUpdate, onRewrite }: { plan?: GrowthPlan; team: TeamState; running: boolean; onOpen: (id: View) => void; onUpdate: () => void; onRewrite: () => void }) {
-  if (!plan) {
-    // Before the plan is started, say what will be here and where it starts.
-    if (!team.workflow)
-      return (
-        <section className="gplan gplan-pending">
-          <span className="eyebrow">Athena&apos;s plan</span>
-          <p className="small muted">
-            Your goals and the plan she writes from the team&apos;s work come here once you{" "}
-            <button type="button" className="linkish" onClick={() => onOpen("dashboard")}>
-              build your growth plan
-            </button>{" "}
-            on the dashboard.
-          </p>
-        </section>
-      );
-    const left = team.workflow.steps.filter((s) => s.id !== "athena" && s.state !== "done").map((s) => `the ${nameOf(s.id)}`);
-    return (
-      <section className="gplan gplan-pending">
-        <span className="eyebrow">Athena&apos;s plan</span>
-        <p className="small muted">
-          {left.length ? `Written once ${left.length > 1 ? `${left.slice(0, -1).join(", ")} and ${left.at(-1)} finish` : `${left[0]} finishes`}, from their work alone.` : running ? "Writing it now." : "Written as the workflow's last step."}
-        </p>
-      </section>
-    );
-  }
-  // A plan saved before the numbered steps is written again from the same work.
-  // Newer work re-runs what's stale; a plan that only lacks its results is written again from the same work.
-  const newer = !plan.steps || planStale(plan, team.works);
-  const stale = newer || planUnitemised(plan, team.works);
-  return (
-    <section className="gplan" aria-label="Athena's plan">
-      <header className="gplan-head">
-        <span className="eyebrow">Athena&apos;s plan</span>
-        <h2>{plan.headline}</h2>
-        <p className="small muted">From {whose(Object.keys(plan.from) as SpecialistId[])} work. No new research: every line points to whose work it is.</p>
-      </header>
-      {stale && (
-        <div className="stale-flag gplan-stale">
-          <span className="small">{!plan.steps ? "This plan was written before the numbered steps." : planUnitemised(plan, team.works) ? "This plan was written before its steps named each shop, partner and event." : "A subagent has newer work than this plan."}</span>
-          <button type="button" className="linkish small" disabled={running} onClick={newer ? onUpdate : onRewrite}>
-            {running ? "Updating" : "Update the plan"}
-          </button>
-        </div>
-      )}
-      {plan.steps && plan.steps.length > 0 && (
-        <ol className="gplan-steps">
-          {plan.steps.map((st, i) => (
-            <li key={st.n} className="gplan-step">
-              {(i === 0 || plan.steps![i - 1].phase !== st.phase) && <span className="eyebrow gplan-phase">{st.phase === "shared" ? "Shared moves" : TIER_LABEL[st.phase]}</span>}
-              <div className="gplan-step-head">
-                <span className="gplan-n" aria-hidden="true">{st.n}</span>
-                <div>
-                  <h4>{st.what}</h4>
-                  <p className="small muted">
-                    For {st.crowds.join(", ")}
-                    {st.depends.length > 0 && ` · after step${st.depends.length > 1 ? "s" : ""} ${st.depends.join(", ")}`}
-                  </p>
-                </div>
-              </div>
-              <dl className="gplan-lines">
-                {st.lines.map((l, j) => (
-                  <div key={`${l.kind}${j}`}>
-                    <dt>{KIND_LABEL[l.kind]}</dt>
-                    <dd>
-                      {l.url ? (
-                        <a href={l.url} target="_blank" rel="noreferrer">
-                          {l.text}
-                        </a>
-                      ) : (
-                        l.text
-                      )}{" "}
-                      {l.agent && (
-                        <button type="button" className="cite gplan-cite" onClick={() => onOpen(l.agent!)} title={`Open the ${nameOf(l.agent)}'s work`}>
-                          the {nameOf(l.agent)}
-                        </button>
-                      )}
-                    </dd>
-                  </div>
-                ))}
-              </dl>
-            </li>
-          ))}
-        </ol>
-      )}
-      {plan.disagreements.length > 0 && (
-        <div className="gplan-more">
-          <h5>Where the sources disagree</h5>
-          <ul>{plan.disagreements.map((d) => <li key={d} className="small">{d}</li>)}</ul>
-        </div>
-      )}
-      {plan.open.length > 0 && (
-        <div className="gplan-more">
-          <h5>Still open</h5>
-          <ul>{plan.open.map((d) => <li key={d} className="small">{d}</li>)}</ul>
-        </div>
-      )}
-    </section>
   );
 }

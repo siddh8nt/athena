@@ -29,9 +29,9 @@ export function statusFromMark(m?: Mark): TaskStatus {
   return "todo";
 }
 
-const stepId = (s: PlanStep) => `step:${s.what}`;
+export const stepId = (s: PlanStep) => `step:${s.what}`;
 /** Who a step-only task is from: the subagent its first cited line names, else Athena. */
-const stepAgent = (s: PlanStep): SpecialistId | "athena" => s.lines.find((l) => l.kind !== "when" && l.kind !== "cost" && l.agent)?.agent ?? s.lines.find((l) => l.agent)?.agent ?? "athena";
+export const stepAgent = (s: PlanStep): SpecialistId | "athena" => s.lines.find((l) => l.kind !== "when" && l.kind !== "cost" && l.agent)?.agent ?? s.lines.find((l) => l.agent)?.agent ?? "athena";
 
 /**
  * The board's tasks, in the plan's order. `notes` is what the founder set on the board; a status set after the item's

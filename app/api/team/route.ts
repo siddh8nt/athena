@@ -8,7 +8,7 @@ import { buildCtx } from "@/lib/agent/team-ctx";
 import { readFacts } from "@/lib/agent/inputs";
 import { athenaAsk, customGoal, goalFacts, planWorkflow, proposeFor, runTeam, runWorkflow } from "@/lib/agent/team";
 import { interpret } from "@/lib/agent/interpret";
-import { briefFacts, chunks, routeMessage } from "@/lib/agent/router";
+import { briefFacts, chunks, readPlanView, routeMessage } from "@/lib/agent/router";
 import { addStep, dropStep } from "@/lib/agent/workflow";
 import { isSpecialist, type AgentId } from "@/lib/agent/specialists";
 import { goalQuestion } from "@/lib/agent/goals";
@@ -19,6 +19,7 @@ import { MAX_EXTRA } from "@/lib/taste/graph";
 import { readGoals, readTeam } from "@/lib/team/read";
 import type { Goal, TeamEvent } from "@/lib/team/types";
 import { dated } from "@/lib/time/now";
+import { readLookups, runExec } from "@/lib/exec/contacts";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -31,11 +32,12 @@ export const runtime = "nodejs";
 //   run:     the specialists behind the picked goals, 2–3 at once, streamed per specialist (handoffs, re-runs);
 //   interpret: a typed answer read against its question (§23.2 step 8.5h): an option, a fact, a workflow change;
 //   ask:     a small ask Athena answers herself, with every tool;
-//   analyst: "Ask the Analyst about this" from the Galaxy, which may probe, and re-runs what a changed crowd touches.
+//   analyst: "Ask the Analyst about this" from the Galaxy, which may probe, and re-runs what a changed crowd touches;
+//   exec:    the Executive's lookups (§23.5 q): contacts and drafts for the small groups the page sends, no Qloo.
 // The client holds the team's state and sends it back each time (outcome marks included). Past the run limit, or
 // without a model, the specialists decide by code's evidence rules: the same tools, never an error.
 
-const ACTIONS = ["propose", "custom", "plan", "run", "ask", "analyst", "interpret", "chat"] as const;
+const ACTIONS = ["propose", "custom", "plan", "run", "ask", "analyst", "interpret", "chat", "exec"] as const;
 type Action = (typeof ACTIONS)[number];
 
 const str = (v: unknown, n: number) => (typeof v === "string" ? v.trim().slice(0, n) : "");
@@ -59,8 +61,19 @@ export const POST = dated(async function post(req: Request) {
   const notes = readFacts(raw.facts);
   const qloo = getQloo();
   // Proposing and splitting goals are one small model call each; runs and asks count against the team's limit.
-  const cap = action === "propose" || action === "custom" || action === "interpret" ? { ok: true } : LIMITS.team(clientIp(req));
+  const cap = action === "propose" || action === "custom" || action === "interpret" ? { ok: true } : action === "exec" ? LIMITS.exec(clientIp(req)) : LIMITS.team(clientIp(req));
   const llm = cap.ok && qloo.mode === "live" && llmConfigured();
+
+  // The Executive's lookups use no Qloo and no team context: the page sends what each lookup needs.
+  if (action === "exec") {
+    const groups = readLookups(raw.groups);
+    const brand = { name: brief?.name?.value ?? seed.brand?.name ?? "your brand", sells: brief?.sells?.value };
+    return planStream<TeamEvent>(async (send) => {
+      const started = Date.now();
+      await runExec(groups, brand, send, cap.ok && llmConfigured());
+      send({ type: "done", qlooCalls: 0, ms: Date.now() - started });
+    }, qloo.mode);
+  }
 
   // A typed answer (§23.2 step 8.5h): no Qloo, no context to build; one small model call, checked by code.
   if (action === "interpret") {
@@ -87,6 +100,7 @@ export const POST = dated(async function post(req: Request) {
             answers: [...answers, ...(team.answered ?? [])],
             team,
             open: strs(raw.open, 6, 200),
+            plan: readPlanView(raw.planView),
           },
           llm,
         )

@@ -4,6 +4,8 @@ import { domainOf, generateStream } from "@/lib/llm/vertex";
 import type { Metro } from "@/lib/playbook/metros";
 import type { DateLookup } from "@/lib/blocks/moments";
 import { today as runToday } from "@/lib/time/now";
+import { safeUrl } from "@/lib/agent/intake";
+import { byOpened, readPages } from "./pages";
 
 // Festival dates (§9.18). Tested 8 Oct on Brightland's LA festivals:
 //   - Search alone: correct answers, but grounding sources came back on only 2 of 6, and never for bare JSON.
@@ -52,8 +54,8 @@ export function parseLooseDate(text: string, today: string): string | undefined 
   return delta >= 0 && delta <= 366 * DAY ? date : undefined;
 }
 
-/** Reads the model's "DATE: … | URL: …" line and checks it against the grounding sources. */
-export function verifyAnswer(text: string, sourceTitles: (string | undefined)[], today: string): { date: string; url: string; site: string } | undefined {
+/** Reads the model's "DATE: … | URL: …" line and checks it against the grounding sources, or the pages that opened. */
+export function verifyAnswer(text: string, sourceTitles: (string | undefined)[], today: string, opened: string[] = []): { date: string; url: string; site: string } | undefined {
   const line = /DATE:\s*(.+?)\s*\|\s*URL:\s*(\S+)/i.exec(text);
   if (!line) return undefined;
   const date = parseLooseDate(line[1], today);
@@ -61,7 +63,20 @@ export function verifyAnswer(text: string, sourceTitles: (string | undefined)[],
   const site = domainOf(url);
   if (!date || !site) return undefined;
   const grounded = sourceTitles.map((t) => (t ?? "").toLowerCase().replace(/^www\./, ""));
+  if (byOpened(opened)(url)) return { date, url, site };
   return grounded.some((g) => g && (site === g || site.endsWith(`.${g}`) || g.endsWith(`.${site}`))) ? { date, url, site } : undefined;
+}
+
+/** When the search cited nothing, the page its answer named is opened: the date stands only if that page states it. */
+async function readNamed(text: string, festival: string, today: string) {
+  const url = safeUrl(/URL:\s*(\S+)/i.exec(text)?.[1]?.replace(/[).,]+$/, "") ?? "");
+  if (!url) return undefined;
+  try {
+    const { j, opened } = await readPages<{ date?: string | null }>([url], `The next date of the "${festival}" event this page states, after ${today}. Reply: {"date": the date exactly as the page writes it, else null}.`);
+    return typeof j?.date === "string" ? verifyAnswer(`DATE: ${j.date} | URL: ${url}`, [], today, opened) : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 let usedToday = { day: "", count: 0 };
@@ -110,7 +125,7 @@ export function groundedFestivalDates(enabled: boolean, opts: { attempts?: numbe
         },
         (title) => onThought?.(title),
       );
-      const ok = res.complete ? verifyAnswer(res.text, res.sources.map((s) => s.title ?? domainOf(s.uri)), today) : undefined;
+      const ok = res.complete ? (verifyAnswer(res.text, res.sources.map((s) => s.title ?? domainOf(s.uri)), today, res.retrievedUrls) ?? (await readNamed(res.text, festival, today))) : undefined;
       if (ok) value = { date: ok.date, url: ok.url, site: ok.site, searchEntryPoint: res.searchEntryPoint };
     }
     // Don't overwrite a still-valid date with a miss from a flaky lookup.

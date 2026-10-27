@@ -16,11 +16,7 @@ export type Page = AgentId | "dashboard" | typeof EXECUTIVE.id;
  */
 export function DashboardPage({ nav, chat, paused, open, setOpen, children }: { nav: ReactNode; chat: ReactNode; paused?: string; open: boolean; setOpen: (o: boolean) => void; children: ReactNode }) {
   const drawer = useRef<HTMLDivElement>(null);
-  // The chat mounts as the drawer opens, so it opens on the latest line rather than the top of the history.
-  useEffect(() => {
-    const list = open ? drawer.current?.querySelector(".msgs") : null;
-    if (list) list.scrollTop = list.scrollHeight;
-  }, [open]);
+  useOpensOnLatest(open, drawer);
   return (
     <main className={`journey-main agent-stage page-stage dash-stage${open ? " drawer-on sheet-on" : ""}`}>
       {nav}
@@ -122,6 +118,8 @@ export function AthenaRoom(p: {
 /** A subagent's page: its work in the main area, with the same chat with Athena docked beside it. On a phone the chat
  *  is a sheet over the page, opened from the page's head or by the Paused banner's Answer. */
 export function SubagentPage({ id, nav, chat, bodyRef, sheet, setSheet, children }: { id: SubagentId; nav: ReactNode; chat: ReactNode; bodyRef: React.RefObject<HTMLDivElement | null>; sheet: boolean; setSheet: (o: boolean) => void; children: ReactNode }) {
+  const dock = useRef<HTMLDivElement>(null);
+  useOpensOnLatest(sheet, dock);
   return (
     <main className={`journey-main agent-stage page-stage sub-stage${sheet ? " sheet-on" : ""}`}>
       {nav}
@@ -136,12 +134,25 @@ export function SubagentPage({ id, nav, chat, bodyRef, sheet, setSheet, children
           {children}
         </div>
       </section>
-      <div className="chat-dock">
+      <div className="chat-dock" ref={dock}>
         <button type="button" className="linkish small chat-dock-back" onClick={() => setSheet(false)}>← Back to the {nameOf(id)}</button>
         {chat}
       </div>
     </main>
   );
+}
+
+/**
+ * A chat that opens over the page (the dashboard's drawer, a phone's sheet) opens on its latest line and on any open
+ * question, rather than the top of a long history where the question is out of reach.
+ */
+function useOpensOnLatest(open: boolean, box: React.RefObject<HTMLDivElement | null>) {
+  useEffect(() => {
+    if (!open) return;
+    const list = box.current?.querySelector(".msgs");
+    if (list) list.scrollTop = list.scrollHeight;
+    focusTray();
+  }, [open, box]);
 }
 
 /**

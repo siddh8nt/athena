@@ -9,6 +9,7 @@ import type { SeedInput } from "@/lib/taste/seed";
 import type { TeamState } from "@/lib/team/types";
 import type { LiveFact } from "@/lib/knowledge/types";
 import { resolveBrand } from "@/lib/methods/resolve";
+import { metroLevel } from "@/lib/playbook/metros";
 import { metroOf } from "./tools";
 import { heldCrowds } from "./evidence";
 import { restoreNav } from "./navigator";
@@ -53,9 +54,10 @@ export async function buildCtx(r: CtxInput): Promise<TeamCtx> {
   const competitors = (await Promise.all((b?.competitors ?? []).slice(0, 3).map((c) => inQloo(r.qloo, c.value)))).filter((x): x is { id: string; name: string } => !!x);
 
   const stockistCities = [...new Set((b?.stockists ?? []).map((s) => s.value.city).filter((c): c is string => !!c))].slice(0, 20);
-  const metros = await Promise.all(stockistCities.map((c) => metroOf(c).catch(() => undefined)));
+  // Metro-level: a stockist's town or the founder's typed home base counts as the named metro it sits in.
+  const metros = await Promise.all(stockistCities.map((c) => metroOf(c).then((m) => m && metroLevel(m)).catch(() => undefined)));
   const soldIn = [...new Set([...metros.filter((m) => !!m).map((m) => m!.id), ...(b?.cities ?? []).map((c) => c.value.id)])];
-  const home = b?.activeCity?.value && !/none/i.test(b.activeCity.value) ? await metroOf(b.activeCity.value).catch(() => undefined) : undefined;
+  const home = b?.activeCity?.value && !/none/i.test(b.activeCity.value) ? await metroOf(b.activeCity.value).then((m) => m && metroLevel(m)).catch(() => undefined) : undefined;
 
   const works = r.team.works;
   const city = works.navigator?.shared?.city;

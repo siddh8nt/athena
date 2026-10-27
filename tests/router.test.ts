@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { GOALS } from "@/lib/agent/goals";
 import { fallbackWorkflow } from "@/lib/agent/workflow";
-import { checkRoute, chunks, codeRoute, routeMessage, selfKnowledge, teamKnowledge, type RouteInput } from "@/lib/agent/router";
+import { checkRoute, chunks, codeRoute, readScope, routeMessage, selfKnowledge, teamKnowledge, type RouteInput } from "@/lib/agent/router";
 import { SPECIALISTS } from "@/lib/agent/specialists";
 import { emptyTeam, type Goal } from "@/lib/team/types";
 
@@ -15,6 +15,29 @@ const input = (over: Partial<RouteInput> = {}): RouteInput => ({
   team: { ...emptyTeam(), workflow: fallbackWorkflow([goal("step_up")], { fits: false, home: false }) },
   open: [],
   ...over,
+});
+
+describe("the Executive plan's chat moves (§23.5 q)", () => {
+  it("finds contacts for the items the founder's words cover, a few at most", () => {
+    const r = checkRoute({ do: "contacts", scope: { agents: ["rep", "lawyer"], cities: ["Brooklyn"], limit: 400 }, reply: "Finding the Brooklyn shops." }, input());
+    expect(r).toEqual({ do: "contacts", scope: { agents: ["rep"], cities: ["Brooklyn"], limit: 24 }, reply: "Finding the Brooklyn shops." });
+  });
+
+  it("keeps only the scope fields the model gave, held to what's real", () => {
+    expect(readScope({ agents: ["scout", 3], kinds: ["Podcast"], names: [""], crowds: "x" })).toEqual({ agents: ["scout"], kinds: ["podcast"] });
+    expect(readScope(undefined)).toEqual({});
+  });
+
+  it("sets the follow-up wait in whole days, with rules only for some items", () => {
+    expect(checkRoute({ do: "followup", days: 14, reply: "Two weeks it is." }, input())).toEqual({ do: "followup", days: 14, rules: [], reply: "Two weeks it is." });
+    const r = checkRoute({ do: "followup", rules: [{ days: 10, scope: { kinds: ["retailer"] }, text: "Retailers: 10 days" }, { days: 30, scope: {}, text: "Everything" }] }, input());
+    expect(r).toMatchObject({ do: "followup", rules: [{ days: 10, scope: { kinds: ["retailer"] }, text: "Retailers: 10 days" }] });
+    expect(r).not.toHaveProperty("days");
+  });
+
+  it("reads a wait it can't hold as no move at all", () => {
+    expect(checkRoute({ do: "followup", days: 400 }, input()).do).not.toBe("followup");
+  });
 });
 
 describe("router", () => {
@@ -77,6 +100,12 @@ describe("router", () => {
       throw new Error("down");
     };
     expect(await routeMessage(input({ page: "navigator" }), true, bad as never)).toMatchObject({ do: "handoff", to: "navigator" });
+    // Flash busy: the lighter model reads it before code's route does.
+    const busy = async (o: { model: string }) => {
+      if (o.model === "flash") throw new Error("Vertex 429");
+      return { text: JSON.stringify({ do: "reply", reply: "Read by the lighter model." }) };
+    };
+    expect(await routeMessage(input({ page: "navigator" }), true, busy as never)).toEqual({ do: "reply", reply: "Read by the lighter model." });
   });
 
   it("streams a reply in pieces that join back to it", () => {

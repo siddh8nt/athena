@@ -90,11 +90,14 @@ export type JourneySummary = {
   questions: number;
   plan: boolean;
   tasks: number;
+  /** The Executive plan (§23.5 q): started, and how many items the founder has marked. */
+  exec: boolean;
+  marks: number;
 };
 
 function summarize(raw: string): JourneySummary | undefined {
   try {
-    const s = JSON.parse(raw) as { brief?: { name?: { value?: string } }; journey?: { crowds?: unknown; team?: { proposed?: unknown[]; goals?: unknown[]; workflow?: { steps?: { id: string; state: string }[] }; works?: Record<string, unknown>; plan?: unknown; tasks?: Record<string, unknown> } } };
+    const s = JSON.parse(raw) as { brief?: { name?: { value?: string } }; journey?: { crowds?: unknown; team?: { proposed?: unknown[]; goals?: unknown[]; workflow?: { steps?: { id: string; state: string }[] }; works?: Record<string, unknown>; plan?: unknown; tasks?: Record<string, unknown>; exec?: { started?: number }; outcomes?: unknown[] } } };
     const team = s.journey?.team;
     const steps = team?.workflow?.steps ?? [];
     return {
@@ -107,6 +110,8 @@ function summarize(raw: string): JourneySummary | undefined {
       questions: steps.filter((x) => x.state === "paused").length,
       plan: !!team?.plan,
       tasks: Object.keys(team?.tasks ?? {}).length,
+      exec: !!team?.exec?.started,
+      marks: team?.outcomes?.length ?? 0,
     };
   } catch {
     return undefined;

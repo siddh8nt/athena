@@ -14,7 +14,7 @@ import { Onboard } from "./Onboard";
 import { Fits, When, tiersFor } from "./Fits";
 import { fromCity, fromCrowd, type Handoff } from "@/lib/agent/handoffs";
 import { GoalsBar, Handoffs, PausedForYou, RunTrail, SpecialistWorkspace, TeamPanel, WhatsWorking, WorkView, useTeam, type TeamLive } from "./Team";
-import { Dashboard, GrowthPlanView, WorkflowDiagram, type KbPart } from "./Dashboard";
+import { Dashboard, WorkflowDiagram, type KbPart } from "./Dashboard";
 import { INPUTS } from "@/lib/team/inputs";
 import type { Line as PageLine } from "@/lib/team/page";
 import type { StrategyView } from "./Strategy";
@@ -31,7 +31,8 @@ import type { GraphInput } from "@/lib/graph/types";
 import { keepFile, workspace } from "@/lib/knowledge/workspace";
 import { bySource, mergeNotes, themesOf, type Synth } from "@/lib/knowledge/notes";
 import { RunProgress, StepTimer } from "./Progress";
-import { ExecutiveBoard } from "./Executive";
+import { ExecutivePlan } from "./Executive";
+import type { ExecItem } from "@/lib/exec/plan";
 import { AthenaRoom, DashboardPage, PausedBanner, SubagentPage, focusTray, usePausedTab, type Page } from "./Views";
 import type { Channel } from "@/lib/journey/growth";
 import { NEAR_MISS_LABEL, crowdAfterFits, emptyJourney, loadedJourney, type CrowdCard, type CrowdMeeting, type Journey as JourneyState } from "@/lib/journey/types";
@@ -188,12 +189,17 @@ export function Journey() {
   // The seed the Analyst measures from: held by a Brand Graph edit, the brief the crowds were built from.
   const seedKey = JSON.stringify(seedOf(crowdsBrief));
   // The founder's channel answer is theirs; it stands over what the research guessed.
-  const teamBrief: BrandBrief = j.channel ? { ...brief, channel: { value: j.channel, source: { kind: "message" }, confirmed: true } } : brief;
+  const teamBrief = (channel: Channel | undefined): BrandBrief => (channel ? { ...brief, channel: { value: channel, source: { kind: "message" }, confirmed: true } } : brief);
+
+  // The journey as the team's next call reads it. A workflow resumed the moment a stream ends is sent from that stream's
+  // closure, before React draws what the stream brought: it reads the Analyst's crowds and fits from here, not from then.
+  const jNow = useRef(j);
+  jNow.current = j;
 
   // What the Analyst measured and ranked comes back here as the journey's crowds and fits (§23.2 step 8.1a): ranked
   // once, by the Analyst, for every goal after. A probe from "Ask Athena about this" lands the same way.
-  const onMemory = (m: Memory) =>
-    setJ((x) => {
+  const onMemory = (m: Memory) => {
+    const next = (x: JourneyState): JourneyState => {
       if (!m.crowds?.crowds.length) return x;
       const crowds = { ...m.crowds, probes: m.probes };
       const ids = new Set(crowds.crowds.map((c) => c.id));
@@ -209,7 +215,10 @@ export function Journey() {
         fits,
         crowdId: fits ? crowdAfterFits(fits.fits, x.crowdId && ids.has(x.crowdId) ? x.crowdId : main) : x.crowdId && ids.has(x.crowdId) ? x.crowdId : main,
       };
-    });
+    };
+    jNow.current = next(jNow.current);
+    setJ(next);
+  };
 
   // The Analyst's own questions while it ranks the fits, answered in its results.
   const [asks] = useState<Asked[]>([]);
@@ -241,20 +250,26 @@ export function Journey() {
     wasOnboarding.current = onboarding;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onboarding]);
+  // Read through a ref, so a call sent from an older render's closure still sends what stands now.
+  const bodyNow = useRef<() => Record<string, unknown>>(() => ({}));
+  bodyNow.current = () => {
+    const x = jNow.current;
+    return {
+      seed: x.crowdsSeed ?? (JSON.parse(x.crowdsFor ?? seedKey) as unknown),
+      probes: x.crowds?.probes ?? [],
+      brief: teamBrief(x.channel),
+      ...(x.fits ? { fits: x.fits.fits } : {}),
+      // The growth answer and the dashboard's inputs (§23.2 step 8.4h), read by every run as the founder's facts.
+      answers: [...(x.told ? [x.told] : []), ...INPUTS.filter((q) => x.inputs?.[q.id] !== undefined).map((q) => ({ question: q.question, answer: x.inputs![q.id] || q.assumed }))],
+      facts: x.facts ?? [],
+      // What the Brand Graph still asks the founder to settle, for Athena's plan to name.
+      disagreements: editQs.map((q) => q.question),
+    };
+  };
   const tm = useTeam({
     team,
     setTeam: (f) => setJ((x) => ({ ...x, team: f(x.team ?? emptyTeam()) })),
-    body: () => ({
-      seed: j.crowdsSeed ?? (JSON.parse(j.crowdsFor ?? seedKey) as unknown),
-      probes: j.crowds?.probes ?? [],
-      brief: teamBrief,
-      ...(j.fits ? { fits: j.fits.fits } : {}),
-      // The growth answer and the dashboard's inputs (§23.2 step 8.4h), read by every run as the founder's facts.
-      answers: [...(j.told ? [j.told] : []), ...INPUTS.filter((q) => j.inputs?.[q.id] !== undefined).map((q) => ({ question: q.question, answer: j.inputs![q.id] || q.assumed }))],
-      facts: j.facts ?? [],
-      // What the Brand Graph still asks the founder to settle, for Athena's plan to name.
-      disagreements: editQs.map((q) => q.question),
-    }),
+    body: () => bodyNow.current(),
     graphRev: g.log.length,
     onMemory,
     onGalaxy: setForming,
@@ -343,6 +358,16 @@ export function Journey() {
     tm.refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [!!team.workflow, tm.live.running]);
+  // The Executive's Start / Later (§23.5 r) isn't saved either: a journey reloaded with Athena's order in, the
+  // Executive neither started nor put off, asks it again. Once started, what's left runs by itself, and drafts opened
+  // before the reload, and pitches past their wait, ask.
+  const offered = useRef(false);
+  useEffect(() => {
+    if (offered.current || !team.plan || (!team.exec?.started && team.exec?.later) || tm.live.running || tm.live.asks.some((a) => a.id === "exec")) return;
+    offered.current = true;
+    tm.offerExec();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [!!team.plan, tm.live.running]);
   // The team's focus is a tab in the Athena tab's panel (§23.2 step 8.5): when the flow hands the work on, Athena
   // brings that subagent's tab forward; it never moves the founder off the page they're on. "See your dashboard" does.
   const tab: AgentId = tm.active === "dashboard" || tm.active === "executive" ? "athena" : tm.active;
@@ -661,20 +686,37 @@ export function Journey() {
     return s === "working" || s === "waiting" ? s : undefined;
   };
 
+  /** "Ask Athena about this" on an Executive plan item: the chat opens with the item named, for the founder to finish. */
+  const askItem = (it: ExecItem) => {
+    tm.setActive("athena");
+    setText(`About “${it.action}”: `);
+    if (page === "dashboard") setDrawer(true);
+    else setSubSheet(true);
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        const box = [...document.querySelectorAll<HTMLTextAreaElement>(".agent-chat textarea")].find((t) => t.offsetParent !== null);
+        box?.focus();
+        box?.setSelectionRange(box.value.length, box.value.length);
+      }),
+    );
+  };
+
   // The sidebar: Dashboard, Athena, then the subagents.
-  // The Executive's board (§23.5 n): on its own page and in the dashboard's tab. "Athena's plan" opens the plan tab.
+  // The Executive plan (§23.5 q), the founder's end output: on its own page and in the dashboard's tab.
   const execEl = (
-    <ExecutiveBoard
+    <ExecutivePlan
       team={team}
+      live={tm.live}
+      brand={alone.brand}
+      budget={j.inputs?.input_budget || undefined}
       running={tm.live.running > 0}
-      onUpdate={tm.rewritePlan}
-      onStatus={tm.setTask}
-      onMark={tm.markTask}
-      onOpen={(id) => {
-        if (id !== "plan") return go(id);
-        window.history.pushState(null, "", "/plan?tab=plan");
-        window.dispatchEvent(new PopStateEvent("popstate"));
-      }}
+      onStart={() => void tm.startExec()}
+      onOpened={tm.openedMail}
+      onStartAnyway={tm.startAnyway}
+      onAsk={askItem}
+      onOpen={(id) => (id === "athena" ? (tm.pickTab("athena"), go("athena")) : go(id))}
+      onUpdatePlan={tm.refresh}
+      onRewritePlan={tm.rewritePlan}
     />
   );
   const navEl = <TeamPanel live={tm.live} team={team} active={page} onOpen={(id) => (go(id), setAbout(undefined))} />;
@@ -791,7 +833,7 @@ export function Journey() {
         {/* The goals open Athena's tab (§23.2 step 8.5p); the Brand Graph lives on the dashboard alone (8.5b). */}
         <GoalsBar goals={team.goals} />
         {/* The workflow as on the dashboard (§23.5 a4), compact: a node opens its subagent's tab here. */}
-        <WorkflowDiagram compact team={team} live={tm.live} onOpen={(id) => (id === "dashboard" ? go(id) : (tm.pickTab(id as AgentId), setPanelOpen(true)))} onChat={() => (setSheet(false), focusTray())} />
+        <WorkflowDiagram compact team={team} live={tm.live} onOpen={(id) => (id === "dashboard" || id === "executive" ? go(id) : (tm.pickTab(id as AgentId), setPanelOpen(true)))} onChat={() => (setSheet(false), focusTray())} />
         <p className="small muted">
           What the team knows about the brand is in the{" "}
           <button type="button" className="linkish" onClick={() => go("dashboard")}>
@@ -799,7 +841,16 @@ export function Journey() {
           </button>
           .
         </p>
-        <GrowthPlanView plan={team.plan} team={team} running={tm.live.running > 0} onOpen={(id) => (isSpecialist(id) ? go(id) : id === "athena" ? tm.pickTab(id) : go(id))} onUpdate={tm.refresh} onRewrite={tm.rewritePlan} />
+        {/* Athena's order is the Executive plan's Now (§23.5 q): her panel links to it. */}
+        {team.plan && (
+          <div className="xp-link">
+            <span className="eyebrow">Executive plan</span>
+            <p className="small">{team.plan.headline}</p>
+            <button type="button" onClick={() => go("executive")}>
+              Open the Executive plan
+            </button>
+          </div>
+        )}
       </>
     ) : id === "analyst" ? (
       <div id="stop-analyst">
@@ -915,8 +966,7 @@ export function Journey() {
             onStart={startPlan}
             onAdd={(id) => (tm.addToPlan(id), setDrawer(true))}
             onEditAnswer={tm.editAnswer}
-            onUpdatePlan={tm.refresh}
-            onRewritePlan={tm.rewritePlan}
+            onExec={() => void tm.startExec()}
             executive={execEl}
           />
         </DashboardPage>

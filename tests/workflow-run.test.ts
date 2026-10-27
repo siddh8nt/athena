@@ -35,6 +35,8 @@ describe("the workflow run (§23.2 step 8.5f)", () => {
     // The Navigator's regions are asked before it starts; the Scout goes on beside it, and lane 3 waits for both (§23.5 i).
     const asks = events.flatMap((e) => (e.type === "ask" ? [`${e.agent}:${e.ask.id}`] : []));
     expect(asks).toContain("navigator:input_regions");
+    // The line before them names the questions it leads into, so the client says it only for those it still shows.
+    expect(events.find((e) => e.type === "reply" && e.asks?.agent === "navigator")).toMatchObject({ text: "The Navigator is next. First, one thing only you know.", asks: { ids: ["input_regions"] } });
     const started = events.flatMap((e) => (e.type === "status" && e.status.state === "working" && e.status.step === "Starting" ? [e.agent] : []));
     expect(started.slice(0, 1)).toEqual(["analyst"]);
     expect(started).toContain("scout");
@@ -63,6 +65,10 @@ describe("the workflow run (§23.2 step 8.5f)", () => {
     // The plan is the very last step: nothing runs after it.
     const at = again.findIndex((e) => e.type === "plan");
     expect(again.slice(at).some((e) => e.type === "status" && e.status.state === "working")).toBe(false);
+    // Athena's line comes before the plan, so the Start / Later card the plan brings follows it in the chat (§23.5 r).
+    const line = again.findIndex((e) => e.type === "reply" && e.text.startsWith("The team's work is in order"));
+    expect(line).toBeGreaterThanOrEqual(0);
+    expect(line).toBeLessThan(at);
 
     // A mark re-writes the plan only (§23.2 step 8.6m): the marked subagent is stale, but nothing re-runs.
     const shop = second.works.rep?.results[0];
@@ -131,6 +137,20 @@ describe("a subagent's own lookups stay in its trail", () => {
     await runWorkflow({ goals: g, team: t, state, graphRev: 0, qloo, env: {} as never, send: (e) => events.push(e), llm: false, model: (id) => (id === "analyst" ? looks : undefined), workflow: await planWorkflow(g, t, false), answered: [] });
     expect(events.some((e) => e.type === "step" && e.event.tool === "place_entity")).toBe(true);
     expect(events.filter((e) => e.type === "reply" && /DAEC51CD|measured map/.test(e.text))).toEqual([]);
+  }, 60_000);
+});
+
+describe("Athena's handoff lines", () => {
+  it("end in one full stop when the model's task already has one (seen live, 27 Oct)", async () => {
+    const { qloo, state, t } = await setup();
+    const g = goals("partners");
+    const planned = await planWorkflow(g, t, false);
+    const workflow = { ...planned, steps: planned.steps.map((s) => ({ ...s, task: `${s.task.replace(/\.$/, "")}.` })) };
+    const events: TeamEvent[] = [];
+    await runWorkflow({ goals: g, team: t, state, graphRev: 0, qloo, env: {} as never, send: (e) => events.push(e), llm: false, workflow, answered: [] });
+    const handoffs = events.flatMap((e) => (e.type === "reply" && e.run ? [e.text] : []));
+    expect(handoffs.length).toBeGreaterThan(0);
+    for (const h of handoffs) expect(h).toMatch(/[^.]\.$/);
   }, 60_000);
 });
 

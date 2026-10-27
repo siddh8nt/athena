@@ -37,7 +37,7 @@ function Chips({ items }: { items: Evidence[] }) {
   return (
     <ul className="chips">
       {items.map((r, i) => (
-        <li key={i} className={`chip chip-${r.kind}`} title={`From call ${r.callId}`}>
+        <li key={i} className={`chip chip-${r.kind}`}>
           {r.label}
         </li>
       ))}

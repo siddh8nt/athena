@@ -8,6 +8,7 @@
   --muted: #6f685c;
   --faint: #9a9283;
   --line: #e4dfd4;
+  --dash: #d9d2c4;
   --line-soft: #efeae0;
   --accent: #7e2b34;
   --accent-hover: #6e222b;
@@ -63,6 +64,7 @@
     --muted: #c2baab;
     --faint: #9a9283;
     --line: #2e2a24;
+    --dash: #4a443c;
     --line-soft: #26221d;
     --accent: #c25663;
     --accent-hover: #d06a76;
@@ -1267,7 +1269,7 @@ a:hover { color: var(--accent-hover); }
 /* The depth set: every dark region redefines the tokens, so what it holds follows. */
 .ob-team, .journey-main .team, .bg-head, .go-card, .journey-top, .agent-panel-bar, .agent-panel-body > .card-head:first-child, .ob-panel-tabs, .ob-cards button {
   --bg: #14120f; --surface: #1d1a16; --sunken: #221e19; --fg: #f3efe6; --ink: #f3efe6; --muted: #c2baab; --faint: #9a9283;
-  --line: #2e2a24; --line-soft: #26221d; --accent: #c25663; --accent-hover: #d06a76; --accent-soft: #3a2226; --accent-ink: #f0b7bd;
+  --dash: #4a443c; --line: #2e2a24; --line-soft: #26221d; --accent: #c25663; --accent-hover: #d06a76; --accent-soft: #3a2226; --accent-ink: #f0b7bd;
   --emph: #d9a441; --emph-soft: #352b18; --emph-ink: #d9a441; --pos: #7cc48f; --account: #7cc48f; --neg: #f08a72; --moment: #d9a441;
   background: #14120f; color: var(--fg); color-scheme: dark;
 }
@@ -1378,7 +1380,7 @@ input[type="checkbox"] { accent-color: var(--accent); }
 .ob-chip:hover:not(:disabled), .source-chip:hover { background: var(--sunken); color: var(--fg); border-color: var(--line); }
 .ob-chip.on, button.chip-on, .chip-contribution, .custom-chip { background: var(--accent-soft); border-color: transparent; color: var(--accent-ink); }
 .chip-growth, .chip-found { background: var(--pos-soft); border-color: transparent; color: var(--account); }
-.chip-closed, .chip-unverified, .bg-tier.watch, .bg-add > .linkish, .ob-file-adding { border-style: dashed; border-color: #d9d2c4; color: var(--faint); }
+.chip-closed, .chip-unverified, .bg-tier.watch, .bg-add > .linkish, .ob-file-adding { border-style: dashed; border-color: var(--dash); color: var(--faint); }
 .bg-tier { background: var(--emph-soft); border-color: transparent; color: var(--emph-ink); font-size: 10px; font-weight: 800; letter-spacing: 0.6px; text-transform: uppercase; min-height: 22px; }
 .bg-tier.watch { background: transparent; }
 .bg-when { color: var(--emph-ink); border-color: var(--emph-soft); min-height: 22px; font-size: 11px; }
@@ -1469,7 +1471,7 @@ input[type="checkbox"] { accent-color: var(--accent); }
 /* ── Run stepper: 20px marks. Done oxblood ✓ (label faint), running ochre (label ink, bold), pending outlined. ── */
 .ob-plan-list, .steps:not(.live-steps) { counter-reset: wvstep; }
 .ob-plan-list li, .steps:not(.live-steps) li { counter-increment: wvstep; }
-.ob-check { width: 20px; height: 20px; border-radius: 50%; font-family: var(--font-caps); font-weight: 800; font-size: 10px; border: 1px dashed #d9d2c4; color: var(--faint); background: transparent; }
+.ob-check { width: 20px; height: 20px; border-radius: 50%; font-family: var(--font-caps); font-weight: 800; font-size: 10px; border: 1px dashed var(--dash); color: var(--faint); background: transparent; }
 .ob-check:empty::before { content: counter(wvstep); }
 .ob-plan-list { gap: 9px; }
 .ob-plan-list li { align-items: center; gap: 10px; color: var(--faint); }
@@ -1487,7 +1489,7 @@ input[type="checkbox"] { accent-color: var(--accent); }
 }
 .steps li.step-running { font-weight: 700; }
 .steps li.step-running::before { content: counter(wvstep); background: var(--emph-soft); color: var(--emph-ink); box-shadow: inset 0 0 0 1px var(--emph); animation: wvpulse 1.2s ease-in-out infinite; }
-.steps li.step-needs_input::before { content: "?"; background: transparent; color: var(--faint); box-shadow: inset 0 0 0 1px #d9d2c4; }
+.steps li.step-needs_input::before { content: "?"; background: transparent; color: var(--faint); box-shadow: inset 0 0 0 1px var(--dash); }
 .live-steps li { padding: 9px 0; font-weight: 700; }
 .live-steps .step-done { font-weight: 400; color: var(--faint); }
 .spin { width: 14px; height: 14px; border-width: 2px; border-color: var(--emph-soft); border-top-color: var(--emph); }
@@ -1495,11 +1497,11 @@ input[type="checkbox"] { accent-color: var(--accent); }
 
 /* The transcript's marks follow the stepper. */
 .ob-dot { width: 16px; height: 16px; margin-top: 2px; }
-.ob-dot::before { width: 6px; height: 6px; background: #d9d2c4; }
+.ob-dot::before { width: 6px; height: 6px; background: var(--dash); }
 .ob-done > .ob-line-head .ob-dot::before { content: "✓"; width: 16px; height: 16px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: var(--on-accent); font-family: var(--font-caps); font-weight: 800; font-size: 9px; }
 .ob-live > .ob-line-head .ob-dot::before, .ob-live > .ob-dot::before { width: 8px; height: 8px; background: var(--emph); }
 .ob-live > .ob-line-head .ob-dot::after, .ob-think > .ob-dot::after { border-top-color: var(--emph); border-right-color: var(--emph); }
-.ob-quiet > .ob-line-head .ob-dot::before { box-shadow: inset 0 0 0 1px #d9d2c4; }
+.ob-quiet > .ob-line-head .ob-dot::before { box-shadow: inset 0 0 0 1px var(--dash); }
 .ob-think > .ob-dot::before { background: var(--emph); }
 .ob-live > .ob-line-head .ob-line-text { font-weight: 700; }
 .ob-live > .ob-line-head::after, .live-steps .step-active::after, .steps .step-running::after { background-image: linear-gradient(90deg, transparent, var(--emph), transparent); }
@@ -1769,7 +1771,7 @@ input[type="checkbox"] { accent-color: var(--accent); }
 .ob-plan { background: color-mix(in srgb, var(--surface) 72%, transparent); -webkit-backdrop-filter: blur(10px) saturate(1.2); backdrop-filter: blur(10px) saturate(1.2); border: 1px solid var(--line-soft); box-shadow: none; border-radius: 14px; padding: 12px 14px; }
 .ob-plan-list { gap: 6px; font-size: 13px; }
 .ob-plan-list li { gap: 9px; }
-.ob-check { width: 16px; height: 16px; font-size: 9px; border: 1px solid #d9d2c4; }
+.ob-check { width: 16px; height: 16px; font-size: 9px; border: 1px solid var(--dash); }
 .ob-plan-done .ob-check { background: none; border-color: transparent; color: var(--faint); font-size: 11px; }
 .ob-plan-now { font-weight: 400; color: var(--fg); }
 .ob-plan-now .ob-check { background: none; border-color: var(--emph); color: var(--emph-ink); }
@@ -1854,6 +1856,15 @@ input[type="checkbox"] { accent-color: var(--accent); }
      like glass and not like a lighter patch. The lens still bends it at the rim. */
   -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px);
   backdrop-filter: url(#athena-glass) blur(1.5px);
+}
+/* The same clear glass in the dark: a faint light catch and a dim rim, so the pane reads as glass over the dark field
+   and not as a grey patch. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .ob-work::before, :root:not([data-theme="light"]) .agent-stage .chat::before {
+    background: linear-gradient(160deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0) 45%, rgba(255, 255, 255, 0.02) 100%), rgba(29, 26, 22, 0.42);
+    border-color: rgba(255, 255, 255, 0.1);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 30px 70px -38px rgba(0, 0, 0, 0.6);
+  }
 }
 .agent-stage .agent-chat-head { padding-top: 28px; }
 .agent-stage .composer { margin-bottom: 28px; }
@@ -2363,8 +2374,8 @@ button.nav-item:hover:not(:disabled) { background: rgba(255, 255, 255, 0.045); c
 .dash-lead-go { margin-top: 4px; font-family: var(--font-caps); font-weight: 700; font-size: 12px; color: var(--accent); }
 .dash-agent.dash-running { border-color: color-mix(in srgb, var(--emph) 55%, var(--line)); }
 .dash-agent.dash-running .team-badge { background: var(--emph); color: #14120f; }
-.dash-agent.dash-paused { border-color: var(--accent); }
-.dash-agent.dash-paused .team-badge { background: var(--accent); color: var(--on-accent); }
+.dash-agent.dash-paused { border-color: var(--emph); }
+.dash-agent.dash-paused .team-badge { background: var(--emph); color: #14120f; }
 .dash-agent.dash-done .team-badge { background: var(--emph-soft); color: var(--emph-ink); }
 .dash-agent.dash-out { background: transparent; border-style: dashed; }
 .dash-agent.dash-out .team-badge { background: var(--sunken); color: var(--faint); }
@@ -2873,4 +2884,30 @@ a.xp-src { color: var(--muted); text-decoration: underline dotted; text-underlin
   /* A chip keeps its look; its tap area reaches 44 px. */
   .crowd-chips button.crowd-chip { position: relative; }
   .crowd-chips button.crowd-chip::after { content: ""; position: absolute; inset: -7px 0; }
+}
+
+/* One card radius (§23.7 f): every card on every page is 16 px. Chips stay round, and fields, menus and small marks keep
+   their own; the composer and the frosted sheet keep theirs (f2e106f, 868fef1). */
+.card, .crowd, .taste-card, .choice, .goals li, .ob-cards button, .ob-agent, .ob-plan, .gb, .bg-head, .bg-graph, .bg-working, .bg-veil,
+.journey-main .team, .ob-team, .dash-agent, .dash-lead, .dash-start, .wf-node, .wf-compact .wf-node, .kb-drop, .kb-fold, .kb-fold button.kb-fold-head,
+.ans, .run-trail, .crowd-line, .nav-heat-map, .nav-table-scroll, .nav-pipe-col, .xp-pending, .xp-banner, .xp-open, .xp-result, .xp-link, .go-card {
+  border-radius: 16px;
+}
+
+/* Every panel that slides or opens over the page (§23.7 f) is the same frosted sheet as the dashboard's (868fef1): the
+   onboarding panel, the chat drawer, the Athena MCP panel and a name's sheet. Each keeps its own shape and edge. */
+.agent-panel, .chat-drawer, .mcp-panel, .crowd-sheet {
+  background:
+    linear-gradient(160deg, rgba(255, 255, 255, 0.32) 0%, rgba(255, 255, 255, 0.06) 40%, rgba(255, 255, 255, 0) 65%, rgba(255, 255, 255, 0.1) 100%),
+    color-mix(in srgb, var(--surface) 90%, transparent);
+  -webkit-backdrop-filter: blur(14px) saturate(140%); backdrop-filter: blur(14px) saturate(140%);
+  border-color: rgba(255, 255, 255, 0.6);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85), inset 0 0 0 0.5px rgba(20, 18, 15, 0.05), 0 30px 70px -38px rgba(20, 18, 15, 0.32);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) :is(.agent-panel, .chat-drawer, .mcp-panel, .crowd-sheet) {
+    background: linear-gradient(160deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0) 45%), color-mix(in srgb, var(--surface) 92%, transparent);
+    border-color: rgba(255, 255, 255, 0.08);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 30px 70px -38px rgba(0, 0, 0, 0.6);
+  }
 }

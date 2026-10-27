@@ -1355,7 +1355,17 @@ export function WhatsWorking({ team, graphRev, busy, onRefresh, crowds = [] }: {
   const stale = staleRuns(team, graphRev);
   const marked = MARKS.reduce((n, m) => n + o.counts[m], 0);
   const sales = team.sales?.orders.length ? team.sales : undefined;
-  if (!marked && !stale.length && !sales) return null;
+  // Before anything is marked or any sales file is in, the tab says what will fill it, never a blank page (§23.7 e).
+  if (!marked && !stale.length && !sales)
+    return (
+      <section className="card working">
+        <h3>What&apos;s working</h3>
+        <p className="small muted">
+          Nothing here yet. As you mark items on Execute Plan as pitched, yes or no, or drop an orders export into the Brand Knowledge Base, I&apos;ll show
+          what&apos;s landing here: by city, by crowd and by subagent.
+        </p>
+      </section>
+    );
   return (
     <section className="card working">
       <h3>What&apos;s working</h3>

@@ -163,7 +163,8 @@ function BlockView({ b, section, ctx }: { b: Block; section: string; ctx: Ctx })
           <div key={g.label} className="crowd-group">
             <p className="small muted crowd-group-label">{g.label}</p>
             <ul className="crowd-chips">
-              {g.names.map((n) => {
+              {/* A name a crowd's lists hold twice shows once. */}
+              {g.names.filter((n, i, all) => all.findIndex((x) => x.name === n.name) === i).map((n) => {
                 const kind = n.kind ?? "name";
                 const m = n.item ? ctx.marks.get(n.item) : undefined;
                 return (
@@ -655,7 +656,7 @@ function Sheet({ p, agent, marks, mark, onHandoff, onClose }: { p: Picked; agent
             {l}
           </p>
         ))}
-        {src && <p className="small muted">From {src.label}{src.callId ? ` · call ${src.callId}` : ""}</p>}
+        {src && <p className="small muted">From {src.label}</p>}
         {detail?.draft && <Draft d={detail.draft} />}
         {!!detail?.links?.length && (
           <p className="small nav-sheet-links">

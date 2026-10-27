@@ -4,7 +4,7 @@
 
 Built for the [Qloo Agentic Hackathon](https://qloo.devpost.com/). The product spec is in [`ATHENA PRD.md`](ATHENA%20PRD.md).
 
-> Status: scaffold. The workspace, the agent and the Qloo methods aren't built yet.
+> Status: PRD v5.0 §23 is built through step 8.6 on the `complete-rework` branch. Steps 8.7 and 8.8 are specced but not built. See [`PROGRESS.md`](PROGRESS.md) and [`HANDOFF.md`](HANDOFF.md).
 
 ## Setup
 

@@ -5,7 +5,7 @@
 A compaction summary is a lossy copy of the plan. Before the first tool call that changes anything, rebuild the plan from its sources:
 
 1. **Re-read the plan.** The plan is **PRD v5.0**, nothing older: `PLAN v4.md` is a superseded draft, never build from it. Read `ATHENA PRD.md` §23 in full: §23.1 holds the founder's problems verbatim, and §23.2 holds the build order with each step's spec and "done when". Where §23 conflicts with earlier sections, §23 wins.
-2. **Re-read the memory index** (`MEMORY.md`) and the build-status memory (`build-status.md`; its last entry is the current state). They give the current step and the standing rules.
+2. **Re-read the memory index** (`MEMORY.md`) and the build-status memory (`build-status.md`; its last entry is the current state). They give the current step and the standing rules. If this account can't see them, `HANDOFF.md` §2–3 gives the same state and rules.
 3. **Locate yourself exactly.** Name:
    - the §23.2 step in progress;
    - which parts of its spec (a, b, c…) are built, tested, and verified live;

@@ -4,6 +4,7 @@ import path from "node:path";
 import type { TeamState } from "@/lib/team/types";
 import { contactKey, contactOf, execPlan, holds, inScope, nextOf, nowLookups, lookupsFor, statesOf, tabItems, templateDrafts, waitOf, waitingSteps, whose, type ExecItem, type ExecPlan, type NowStep } from "@/lib/exec/plan";
 import type { CrowdPage } from "@/lib/team/page";
+import { emptyJourney, loadedJourney, type CrowdsResult } from "@/lib/journey/types";
 
 // §23.5 (q): Execute Plan holds every item on every page once, Athena's picks under Now in her order, and looks
 // a contact up once however many items share it. The recorded run lives in the gitignored .cache/dev (no Qloo data in
@@ -203,5 +204,17 @@ describe("contacts and lookups", () => {
     expect(d.email.body).toContain("Fishwife");
     expect(d.dm).toContain("Book Soup");
     expect(d.call.opener).toContain("Fishwife");
+  });
+});
+
+describe("a plan saved before its crowds were named", () => {
+  it("names them as it loads, so Execute Plan rows never read \"For c0, c1 and c2\"", () => {
+    const step = (crowds: string[]) => ({ n: 1, what: "Open in Chicago", crowds, phase: "shared" as const, lines: [], depends: [] });
+    const crowds = { crowds: [{ id: "c0", name: "Modern Culinary Home" }, { id: "c1", name: "Weeknight Cooks" }] } as unknown as CrowdsResult;
+    const team = { plan: { summary: "", steps: [step(["c0", "c1"]), step(["Weeknight Cooks", "c1"])] } } as unknown as TeamState;
+    const j = loadedJourney({ ...emptyJourney(), crowds, team });
+    expect(j.team!.plan!.steps!.map((s) => s.crowds)).toEqual([["Modern Culinary Home", "Weeknight Cooks"], ["Weeknight Cooks"]]);
+    const named = { ...team, plan: { summary: "", steps: [step(["Weeknight Cooks"])] } } as unknown as TeamState;
+    expect(loadedJourney({ ...emptyJourney(), crowds, team: named }).team).toBe(named);
   });
 });

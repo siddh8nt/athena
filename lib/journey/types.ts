@@ -138,10 +138,20 @@ export function reachOf(g?: Geography): FitsRun["reach"] {
 /** The crowd the later stops follow once fits are ranked: the Win first crowd, whatever an older save chose (§23.2 step 6f). */
 export const crowdAfterFits = (fits: FitsResult, current?: string) => fits.fits[0]?.crowd ?? current;
 
-/** A saved journey as it loads: a crowd an older save chose by hand gives way to the Win first crowd. */
+/** A saved journey as it loads: a crowd an older save chose by hand gives way to the Win first crowd, and a plan saved
+ *  before its crowds were named ("For c0, c1 and c2" on Execute Plan) names them from the Analyst's crowds. */
 export function loadedJourney(j: Journey): Journey {
   const { crowdChosen: _retired, ...rest } = j;
-  return j.fits ? { ...rest, crowdId: crowdAfterFits(j.fits.fits, j.crowdId) } : rest;
+  const out = j.fits ? { ...rest, crowdId: crowdAfterFits(j.fits.fits, j.crowdId) } : rest;
+  return namedPlan(out);
+}
+
+function namedPlan(j: Journey): Journey {
+  const plan = j.team?.plan;
+  const names = new Map((j.crowds?.crowds ?? []).map((c) => [c.id, c.name]));
+  if (!plan || !names.size || !plan.steps?.some((s) => s.crowds.some((c) => names.has(c)))) return j;
+  const steps = plan.steps.map((s) => ({ ...s, crowds: [...new Set(s.crowds.map((c) => names.get(c) ?? c))] }));
+  return { ...j, team: { ...j.team!, plan: { ...plan, steps } } };
 }
 
 export const emptyJourney = (): Journey => ({ growth: [], stop: "product", done: [], reactions: {}, pins: {} });

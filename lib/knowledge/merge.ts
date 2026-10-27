@@ -60,7 +60,7 @@ async function compareGroup(live: Fact[], budgetMs: number): Promise<Found> {
   const conflicts = (Array.isArray(j.conflicts) ? j.conflicts : []).flatMap((raw, i): Conflict[] => {
     const c = raw as { about?: unknown; options?: unknown; recommended?: unknown; why?: unknown };
     const options = (Array.isArray(c.options) ? c.options : [])
-      .map((o) => ({ value: typeof (o as { value?: unknown }).value === "string" ? ((o as { value: string }).value.trim().slice(0, 200)) : "", facts: known((o as { facts?: unknown }).facts) }))
+      .map((o) => ({ value: typeof (o as { value?: unknown }).value === "string" ? optionValue((o as { value: string }).value) : "", facts: known((o as { facts?: unknown }).facts) }))
       .filter((o) => o.value && o.facts.length);
     if (options.length < 2 || typeof c.about !== "string") return [];
     const rec = Number(c.recommended);
@@ -69,11 +69,23 @@ async function compareGroup(live: Fact[], budgetMs: number): Promise<Found> {
   return { same, conflicts };
 }
 
+/** An option's value as the founder reads it: a long list (every store) is kept whole up to 600 characters, and one
+ *  longer ends at its last whole item with "and more", never mid-item or on a dangling comma. */
+export function optionValue(raw: string): string {
+  const v = raw.trim().replace(/[\s,;]+$/, "");
+  if (v.length <= 600) return v;
+  const cut = v.slice(0, 600);
+  const at = Math.max(cut.lastIndexOf(", "), cut.lastIndexOf("; "));
+  return `${(at > 0 ? cut.slice(0, at) : cut).replace(/[\s,;]+$/, "")} and more`;
+}
+
 /** The same facts compare the same way: kept a day, so a conflict the founder settled keeps its id. */
 export async function compareFacts(facts: Fact[], opts: { budgetMs?: number; progress?: (p: GroupProgress) => void } = {}): Promise<{ facts: Fact[]; conflicts: Conflict[] }> {
   const key = sha256(JSON.stringify(facts.map((f) => [f.id, f.text, f.topic, f.where, !!f.struck])));
   const hit = await getStore().get<Found>("compare-v1", key);
-  const found = hit?.value ?? (await compareNow(facts, opts.budgetMs ?? 60_000, opts.progress));
+  // A kept comparison may predate how options are worded now, so its options are worded again on the way out.
+  const kept = hit && { ...hit.value, conflicts: hit.value.conflicts.map((c) => ({ ...c, options: c.options.map((o) => ({ ...o, value: optionValue(o.value) })) })) };
+  const found = kept || (await compareNow(facts, opts.budgetMs ?? 60_000, opts.progress));
   if (!hit && (found.same.length || found.conflicts.length)) await getStore().set("compare-v1", key, found, 24 * 60 * 60 * 1000);
   return applyFound(facts, found);
 }

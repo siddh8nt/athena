@@ -202,7 +202,7 @@ export function siteDoc(c: Crawl): Doc {
 export function productFacts(c: Crawl): Fact[] {
   return c.products.map((p) => ({
     id: `p${sha256(p.url).slice(0, 8)}`,
-    text: [`${p.title}${p.type ? ` (${p.type})` : ""}`, p.price ? `sells for ${p.price} in the store's currency` : "", p.available === false ? "sold out" : ""].filter(Boolean).join(", "),
+    text: [`${p.title}${p.type ? ` (${p.type})` : ""}`, p.price ? `sells for ${p.price}${p.currency ? "" : " in the store's currency"}${p.options && p.price.includes("–") ? ` across its ${p.options} options` : ""}` : "", p.available === false ? "sold out" : ""].filter(Boolean).join(", "),
     topic: "product" as const,
     where: [{ kind: "website" as const, ref: p.url, at: "the store's product catalogue" }],
   }));

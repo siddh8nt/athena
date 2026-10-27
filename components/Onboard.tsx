@@ -5,7 +5,7 @@ import { flushSync } from "react-dom";
 import type { AgentEvent } from "@/lib/blocks/types";
 import type { AgentStreamEvent } from "@/lib/agent/loop";
 import type { BrandBrief } from "@/lib/brief/types";
-import { isResolution, keptOptions, liveFacts, whereLabel, type Conflict, type Knowledge, type LiveFact, type Settled, type Settlement } from "@/lib/knowledge/types";
+import { isResolution, keptOptions, liveFacts, placesOf, type Conflict, type Knowledge, type LiveFact, type Settled, type Settlement } from "@/lib/knowledge/types";
 import type { Upload } from "@/lib/knowledge/uploads";
 import { CONTEXT_PROMPT } from "@/lib/agent/context-prompt";
 import { checklistLine, type CheckItem } from "@/lib/agent/checklist";
@@ -1041,7 +1041,7 @@ function conflictLabels(c: Conflict): string[] {
 
 function conflictQuestion(c: Conflict, kb: Knowledge): Asked {
   const labels = conflictLabels(c);
-  const at = (ids: string[]) => ids.map((id) => kb.facts.find((f) => f.id === id)?.where.map(whereLabel).join("; ")).filter(Boolean).join("; ");
+  const at = (ids: string[]) => placesOf(ids, kb.facts);
   const order = c.options.map((_, i) => i).filter((i) => c.options[i].facts.length);
   order.sort((a, b) => (a === c.recommended ? -1 : b === c.recommended ? 1 : 0));
   return {

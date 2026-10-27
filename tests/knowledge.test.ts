@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { applyMerge, mergeTargets, whereLabel, type Fact } from "@/lib/knowledge/types";
+import { applyMerge, mergeTargets, placesOf, whereLabel, type Fact } from "@/lib/knowledge/types";
 import { readFileDoc } from "@/lib/knowledge/read";
 import type { AgentEvent } from "@/lib/blocks/types";
 
@@ -21,6 +21,24 @@ describe("merging duplicates", () => {
 
   it("labels a page by host and path", () => {
     expect(whereLabel({ kind: "website", ref: "https://www.eatfishwife.com/pages/about/" })).toBe("eatfishwife.com/pages/about");
+  });
+});
+
+describe("a disagreement as the founder reads it", () => {
+  it("names each place once, however many facts came from it", () => {
+    const facts = ["a", "b", "c"].map((id) => fact(id, `Store ${id}`, "website", "https://baggu.com/stores"));
+    expect(placesOf(["a", "b", "c"], [...facts, fact("d", "Store d", "pasted", "summary")])).toBe("baggu.com/stores");
+    expect(placesOf(["a", "d"], [...facts, fact("d", "Store d", "pasted", "summary")])).toBe("baggu.com/stores; summary");
+  });
+
+  it("keeps a long list whole, and a longer one ends at a whole item", async () => {
+    // The merge module is mocked below for the build tests; this reads the real one.
+    const { optionValue } = await vi.importActual<typeof import("@/lib/knowledge/merge")>("@/lib/knowledge/merge");
+    expect(optionValue("Portland (Northwest), Brooklyn (Williamsburg), ")).toBe("Portland (Northwest), Brooklyn (Williamsburg)");
+    const stores = Array.from({ length: 60 }, (_, i) => `Store number ${i}`).join(", ");
+    const v = optionValue(stores);
+    expect(v.length).toBeLessThanOrEqual(610);
+    expect(v).toMatch(/Store number \d+ and more$/);
   });
 });
 

@@ -167,6 +167,15 @@ export type GrowthPlan = {
   at: number;
 };
 
+/** What a plan says, as a short hash: the same plan written again after a mark has the same one, whenever it was written. */
+export function planSig(p?: GrowthPlan): string {
+  if (!p) return "";
+  const s = JSON.stringify([p.headline, p.steps ?? [], p.open, p.disagreements]);
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 0x01000193);
+  return `${s.length}:${(h >>> 0).toString(36)}`;
+}
+
 /** Where a contact detail came from (§23.5 q): the subagent or Qloo that already had it, a page read, a search, or the founder. */
 export type Src = { label: string; url?: string };
 export type Field = { value: string; src: Src };

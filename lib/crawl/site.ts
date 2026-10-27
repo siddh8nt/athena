@@ -9,7 +9,8 @@ import { readHtml, decodeEntities, type ReadPage } from "./html";
 // `pick`; without it, the shallowest pages go first. Caps on pages, bytes and time; every page keeps its URL.
 
 export type CrawlPage = { url: string } & Omit<ReadPage, "links">;
-export type ShopifyProduct = { title: string; url: string; type?: string; vendor?: string; tags: string[]; price?: string; available?: boolean; description?: string };
+/** price is in `currency` when the store names it, else in the store's own unnamed currency; options counts priced variants when more than one. */
+export type ShopifyProduct = { title: string; url: string; type?: string; vendor?: string; tags: string[]; price?: string; currency?: string; options?: number; available?: boolean; description?: string };
 export type Crawl = {
   site: string;
   pages: CrawlPage[];
@@ -106,7 +107,7 @@ export async function crawlSite(start: string, opts: CrawlOptions = {}): Promise
   if (/cdn\.shopify\.com|Shopify\.theme|shopify-section/i.test(home.text) && robots.allowed("/products.json")) {
     opts.status?.("Reading the product catalogue");
     const p = await fetchText(`${origin}/products.json?limit=250`, "application/json", 5 * 1024 * 1024);
-    if (p) products = shopifyProducts(p.text, origin);
+    if (p) products = shopifyProducts(p.text, origin, home.text.match(/Shopify\.currency\s*=\s*\{\s*"active"\s*:\s*"([A-Z]{3})"/)?.[1]);
   }
 
   // Candidate pages: the sitemap (following an index a little way) and the home page's links.
@@ -160,7 +161,20 @@ const htmlText = (s: string) =>
     .replace(/\s+/g, " ")
     .trim();
 
-export function shopifyProducts(json: string, origin: string): ShopifyProduct[] {
+/** 49 → "$49" in USD, 268.5 → "$268.50"; without a currency, the bare number the same way. */
+function money(n: number, currency?: string): string {
+  const digits = Number.isInteger(n) ? 0 : 2;
+  if (currency) {
+    try {
+      return new Intl.NumberFormat("en-US", { style: "currency", currency, minimumFractionDigits: digits, maximumFractionDigits: 2 }).format(n);
+    } catch {
+      // an unknown code falls through to the bare number
+    }
+  }
+  return n.toFixed(digits);
+}
+
+export function shopifyProducts(json: string, origin: string, currency?: string): ShopifyProduct[] {
   try {
     const j = JSON.parse(json) as { products?: unknown };
     if (!Array.isArray(j.products)) return [];
@@ -177,7 +191,9 @@ export function shopifyProducts(json: string, origin: string): ShopifyProduct[] 
           type: typeof p.product_type === "string" && p.product_type ? p.product_type : undefined,
           vendor: typeof p.vendor === "string" ? p.vendor : undefined,
           tags: (Array.isArray(p.tags) ? p.tags : typeof p.tags === "string" ? p.tags.split(",") : []).map((t) => String(t).trim()).filter(Boolean).slice(0, 12),
-          price: lo === undefined ? undefined : lo === hi ? lo.toFixed(2) : `${lo.toFixed(2)}–${hi!.toFixed(2)}`, // the store's currency
+          price: lo === undefined ? undefined : lo === hi ? money(lo, currency) : `${money(lo, currency)}–${money(hi!, currency)}`,
+          currency: lo === undefined ? undefined : currency,
+          options: prices.length > 1 ? prices.length : undefined,
           available: (p.variants ?? []).some((v) => v.available === true) || undefined,
           description: typeof p.body_html === "string" ? htmlText(p.body_html).slice(0, 400) || undefined : undefined,
         },

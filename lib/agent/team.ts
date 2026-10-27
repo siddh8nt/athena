@@ -6,7 +6,7 @@ import type { ConverseResult, FunctionDeclaration } from "@/lib/llm/vertex";
 import { converse, generate, parseJson } from "@/lib/llm/vertex";
 import { TIER_LABEL } from "@/lib/fits/types";
 import type { CrowdCard } from "@/lib/journey/types";
-import type { AgentStatus, Asked, Goal, GrowthPlan, TeamEvent, TeamState, Work, WorkItem, Workflow, WorkflowStep } from "@/lib/team/types";
+import { planSig, type AgentStatus, type Asked, type Goal, type GrowthPlan, type TeamEvent, type TeamState, type Work, type WorkItem, type Workflow, type WorkflowStep } from "@/lib/team/types";
 import type { SourceRef } from "@/lib/fits/types";
 import { checkClaims, type Claim } from "./cite";
 import { CLAIMS, PLAIN_NUMBERS, runAgent, type AgentBudget, type AgentRun, type Finisher, type Source } from "./loop";
@@ -681,6 +681,8 @@ export type WorkflowInput = TeamInput & {
   disagreements?: string[];
   /** An outcome mark came in: Athena writes her plan again from the same results, quietly (§23.5 m). */
   resynth?: boolean;
+  /** The founder's plan as they have it now (`planSig`), so a re-plan that changes nothing says nothing. */
+  planSig?: string;
 };
 
 /** A work with no results that handed back, where a step it needs has delivered since. */
@@ -760,7 +762,9 @@ export async function runWorkflow(r: WorkflowInput): Promise<{ works: Partial<Re
     // After a mark, the plan updates in place: one short line, not the announcement again. Her order is not yet the
     // founder's plan: the Executive turns it into that (§23.5 q), so the line says the work is in order. It comes
     // before the plan, so the Start / Later card the plan brings follows it in the chat (§23.5 r).
-    say(r.resynth && !ran.size ? "I updated the plan from your marks." : `The team's work is in order: ${plan.headline}`);
+    // A mark that leaves the plan as it was says nothing: the line is for a change, not for each mark.
+    if (!(r.resynth && !ran.size)) say(`The team's work is in order: ${plan.headline}`);
+    else if (planSig(plan) !== r.planSig) say("I updated the plan from your marks.");
     r.send({ type: "plan", plan });
     w = setStep(w, "athena", "done");
     emit();

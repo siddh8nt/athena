@@ -15,7 +15,7 @@ import { resetFrom } from "@/lib/agent/workflow";
 import { askLead } from "@/lib/team/inputs";
 import { latest, staleRuns, whatsWorking } from "@/lib/agent/outcomes";
 import { nodesAdded } from "@/lib/graph/types";
-import { MARKS, MARK_LABEL, markLabel, marksFor, type AgentStatus, type Answer, type Contact, type ExecState, type Goal, type Mark, type Route, type TaskStatus, type TeamEvent, type TeamState, type WaitRule, type Work, type WorkItem } from "@/lib/team/types";
+import { MARKS, MARK_LABEL, markLabel, marksFor, planSig, type AgentStatus, type Answer, type Contact, type ExecState, type Goal, type Mark, type Route, type TaskStatus, type TeamEvent, type TeamState, type WaitRule, type Work, type WorkItem } from "@/lib/team/types";
 import { contactKey, contactOf, execPlan, execQueue, followDue, inScope, lookupsFor, planView, stageOf, statesOf, taskOf, waitOf, waitingSteps, whose, type ExecItem, type Lookup } from "@/lib/exec/plan";
 import { followCard, handleOf, phoneCard, profileCard, sentCard, startCard, waitCard } from "@/lib/exec/asks";
 import { pacer } from "@/lib/stream/pace";
@@ -217,7 +217,7 @@ export function useTeam(p: {
       const res = await fetch("/api/team", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...body, action, team: latestTeam.current, graphRev: p.graphRev, answers: asked, ...extra }),
+        body: JSON.stringify({ ...body, action, team: latestTeam.current, planSig: planSig(latestTeam.current.plan), graphRev: p.graphRev, answers: asked, ...extra }),
         signal: AbortSignal.timeout(480_000),
       });
       if (!res.body) return;

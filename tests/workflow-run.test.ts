@@ -6,7 +6,7 @@ import { buildCtx } from "@/lib/agent/team-ctx";
 import { GOALS } from "@/lib/agent/goals";
 import { checkInterpret, codeInterpret, interpret } from "@/lib/agent/interpret";
 import { emptyBrief } from "@/lib/brief/types";
-import { emptyTeam, type TeamEvent, type Work, type Workflow } from "@/lib/team/types";
+import { emptyTeam, planSig, type TeamEvent, type Work, type Workflow } from "@/lib/team/types";
 
 // Step 8.5's workflow, end to end on fixtures with code's decider (no model): the run order, the inputs asked just
 // before the step that needs them, the resume after an answer, and the plan as the last step. Every name is fictional.
@@ -79,6 +79,12 @@ describe("the workflow run (§23.2 step 8.5f)", () => {
     expect(third.some((e) => e.type === "plan")).toBe(true);
     expect(third.some((e) => e.type === "reply" && e.text === "I updated the plan from your marks.")).toBe(true);
     expect(resynth.workflow.steps.every((s) => s.state === "done")).toBe(true);
+    // A mark that leaves the plan as it was says nothing.
+    const written = third.find((e) => e.type === "plan");
+    const same: TeamEvent[] = [];
+    await runWorkflow({ goals: g, team: t, state: marked, graphRev: 0, qloo, env: {} as never, send: (e) => same.push(e), llm: false, workflow: resynth.workflow, answered, resynth: true, planSig: planSig(written?.type === "plan" ? written.plan : undefined) });
+    expect(same.some((e) => e.type === "plan")).toBe(true);
+    expect(same.filter((e) => e.type === "reply")).toEqual([]);
 
     // Crowds lost on a resume: the Analyst measures again alone; the finished subagents are not started over.
     const lost: TeamEvent[] = [];

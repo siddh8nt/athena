@@ -109,8 +109,11 @@ function ExecLine({ team, live, onExec, onOpen }: { team: TeamState; live: TeamL
   const strip = stripOf(plan, statesOf(team), x, Date.now());
   let line: string;
   let act: { label: string; primary?: boolean; on: () => void };
+  // While it works, the node above says the step it's on ("Searching the web for…"); this line says where the run is.
   if (live.exec) {
-    line = live.exec.line;
+    line = x?.started
+      ? `Now: ${strip.nowDone} of ${strip.nowOf} done${strip.waiting ? `, ${strip.waiting} waiting on a reply` : ""}. The Executive is working through the rest, Now first.`
+      : `The Executive is finding how to reach the ${reach} to contact, Now first.`;
     act = { label: "Open the Executive plan", on: onOpen };
   } else if (!x?.started) {
     line = `Athena has put the team's work in order: ${plan.items.length} items, ${now.length} of them under Now. The Executive finds how to reach all ${reach} to contact, Now first, and writes an email, a DM and a call script for each.`;

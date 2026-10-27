@@ -64,6 +64,10 @@ export function whereLabel(w: Where): string {
   return w.at ? `${ref}, ${w.at}` : ref;
 }
 
+/** Where these facts were said, each place once: nine facts from one stores page name that page once. */
+export const placesOf = (ids: string[], facts: Fact[]): string =>
+  [...new Set(ids.flatMap((id) => facts.find((f) => f.id === id)?.where.map(whereLabel) ?? []))].join("; ");
+
 const key = (w: Where) => `${w.kind}|${w.ref}|${w.at ?? ""}`;
 
 /** Groups that share a fact are one group: [a, b] and [b, c] merge a, b and c. Maps each merged id to the one that stays. */

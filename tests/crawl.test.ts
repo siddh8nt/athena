@@ -83,7 +83,7 @@ describe("crawling a site", () => {
     const c = await crawlSite("moonrise.example", { fetcher });
     expect(c.pages.map((p) => p.url).sort()).toEqual(["https://moonrise.example/", "https://moonrise.example/about", "https://moonrise.example/pages/stockists"]);
     expect(c.skipped).toContainEqual({ url: "https://moonrise.example/cart", why: "robots" });
-    expect(c.products).toEqual([expect.objectContaining({ title: "Chili Crisp", url: "https://moonrise.example/products/chili-crisp", price: "14.00", available: true })]);
+    expect(c.products).toEqual([expect.objectContaining({ title: "Chili Crisp", url: "https://moonrise.example/products/chili-crisp", price: "14", available: true })]);
     expect(c.thin).toBe(false);
   });
 
@@ -106,6 +106,13 @@ describe("crawling a site", () => {
 
   it("parses price ranges from Shopify variants", () => {
     const p = shopifyProducts(JSON.stringify({ products: [{ title: "Trio", handle: "trio", variants: [{ price: "38.00" }, { price: "30" }] }] }), "https://m.example");
-    expect(p[0].price).toBe("30.00–38.00");
+    expect(p[0].price).toBe("30–38");
+    expect(p[0].options).toBe(2);
+  });
+
+  it("names the store's currency when its page gives one", () => {
+    const p = shopifyProducts(JSON.stringify({ products: [{ title: "Duo", handle: "duo", variants: [{ price: "49.00" }, { price: "268.50" }] }] }), "https://m.example", "USD");
+    expect(p[0].price).toBe("$49–$268.50");
+    expect(p[0].currency).toBe("USD");
   });
 });

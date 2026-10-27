@@ -65,10 +65,27 @@ export async function saveSnapshot(s: Snapshot) {
 
 export type SnapshotInfo = Omit<Snapshot, "store"> & { journey?: JourneySummary };
 
+/** Each snapshot's summary, kept beside them: snapshots never change once saved, and reading every one again for the
+ *  step map takes most of a minute once there are hundreds. A new summary shape (INDEX_V) reads them all once more. */
+const INDEX = join(ROOT, "snapshot-index.json");
+const INDEX_V = 2;
+
 export async function listSnapshots(): Promise<SnapshotInfo[]> {
   const files = await readdir(SNAPS).catch(() => [] as string[]);
-  const all = await Promise.all(files.map(async (f) => JSON.parse(await readFile(join(SNAPS, f), "utf8")) as Snapshot));
-  return all.sort((a, b) => a.at - b.at).map(({ store, ...rest }) => ({ ...rest, journey: store["athena:journey:v1"] ? summarize(store["athena:journey:v1"]) : undefined }));
+  const kept = JSON.parse(await readFile(INDEX, "utf8").catch(() => "null")) as { v: number; items: Record<string, SnapshotInfo> } | null;
+  const items = kept?.v === INDEX_V ? kept.items : {};
+  const missing = files.filter((f) => !items[f]);
+  await Promise.all(
+    missing.map(async (f) => {
+      const { store, ...rest } = JSON.parse(await readFile(join(SNAPS, f), "utf8")) as Snapshot;
+      items[f] = { ...rest, journey: store["athena:journey:v1"] ? summarize(store["athena:journey:v1"]) : undefined };
+    }),
+  );
+  const live = new Set(files);
+  const gone = Object.keys(items).filter((f) => !live.has(f));
+  for (const f of gone) delete items[f];
+  if (missing.length || gone.length) await writeFile(INDEX, JSON.stringify({ v: INDEX_V, items }));
+  return Object.values(items).sort((a, b) => a.at - b.at);
 }
 
 export async function getSnapshot(name: string): Promise<Snapshot | undefined> {
@@ -93,13 +110,28 @@ export type JourneySummary = {
   /** Execute Plan (§23.5 q): started, and how many items the founder has marked. */
   exec: boolean;
   marks: number;
+  /** Source conflicts the founder settled in onboarding, from its record. */
+  settled: number;
+  /** The Executive's mid-run questions asked, its "Did these go out?" (drafts opened), a follow-up wait set, contacts
+   *  with two or more profiles to choose from, and Later. */
+  asked: number;
+  opened: boolean;
+  wait: boolean;
+  profiles: number;
+  later: boolean;
 };
 
 function summarize(raw: string): JourneySummary | undefined {
   try {
-    const s = JSON.parse(raw) as { brief?: { name?: { value?: string } }; journey?: { crowds?: unknown; team?: { proposed?: unknown[]; goals?: unknown[]; workflow?: { steps?: { id: string; state: string }[] }; works?: Record<string, unknown>; plan?: unknown; tasks?: Record<string, unknown>; exec?: { started?: number }; outcomes?: unknown[] } } };
+    type Exec = { started?: number; later?: number; asked?: string[]; opened?: Record<string, number>; wait?: unknown; contacts?: Record<string, { ask?: unknown }> };
+    const s = JSON.parse(raw) as {
+      brief?: { name?: { value?: string } };
+      msgs?: { record?: { settled?: unknown[] } }[];
+      journey?: { crowds?: unknown; team?: { proposed?: unknown[]; goals?: unknown[]; workflow?: { steps?: { id: string; state: string }[] }; works?: Record<string, unknown>; plan?: unknown; tasks?: Record<string, unknown>; exec?: Exec; outcomes?: unknown[] } };
+    };
     const team = s.journey?.team;
     const steps = team?.workflow?.steps ?? [];
+    const exec = team?.exec;
     return {
       brand: s.brief?.name?.value,
       analyst: !!s.journey?.crowds,
@@ -110,8 +142,14 @@ function summarize(raw: string): JourneySummary | undefined {
       questions: steps.filter((x) => x.state === "paused").length,
       plan: !!team?.plan,
       tasks: Object.keys(team?.tasks ?? {}).length,
-      exec: !!team?.exec?.started,
+      exec: !!exec?.started,
       marks: team?.outcomes?.length ?? 0,
+      settled: Math.max(0, ...(s.msgs ?? []).map((m) => m.record?.settled?.length ?? 0)),
+      asked: exec?.asked?.length ?? 0,
+      opened: !!exec?.opened && Object.keys(exec.opened).length > 0,
+      wait: !!exec?.wait,
+      profiles: Object.values(exec?.contacts ?? {}).filter((c) => c.ask).length,
+      later: !!exec?.later && !exec.started,
     };
   } catch {
     return undefined;

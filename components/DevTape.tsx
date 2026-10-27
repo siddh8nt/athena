@@ -146,6 +146,45 @@ function endsAt(body: ReadableStream<Uint8Array>, onEnd: () => void): ReadableSt
 
 if (typeof window !== "undefined" && process.env.NODE_ENV !== "production") install();
 
+const THEN = "athena:dev:then";
+
+/** A step map card's clicks after its page loads, for a feature behind a click (a theme of the Brand Graph, a tab).
+ *  Each is a CSS selector, with `::text` to take the first match whose text or label starts with it. */
+export function setThen(clicks: string[] | undefined) {
+  if (clicks?.length) localStorage.setItem(THEN, JSON.stringify(clicks));
+  else localStorage.removeItem(THEN);
+}
+
+async function runThen() {
+  let clicks: string[];
+  try {
+    clicks = JSON.parse(localStorage.getItem(THEN) ?? "[]");
+  } catch {
+    clicks = [];
+  }
+  localStorage.removeItem(THEN);
+  for (const c of clicks) {
+    const [sel, text] = c.split("::");
+    const find = () =>
+      [...document.querySelectorAll<HTMLElement>(sel)].find((el) => !text || (el.textContent ?? "").trim().startsWith(text) || (el.getAttribute("aria-label") ?? "").startsWith(text));
+    let el = find();
+    // The page restores its state and draws in its own time: wait for the element, up to ten seconds.
+    for (let i = 0; !el && i < 40; i++) {
+      await new Promise((r) => setTimeout(r, 250));
+      el = find();
+    }
+    if (!el) return;
+    el.scrollIntoView({ block: "center" });
+    el.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    await new Promise((r) => setTimeout(r, 600));
+  }
+}
+
+if (typeof window !== "undefined" && process.env.NODE_ENV !== "production") {
+  if (document.readyState === "complete") void runThen();
+  else window.addEventListener("load", () => void runThen());
+}
+
 /** A small pill in the corner while Record or Replay is on, linking to the step map. */
 export function DevTape() {
   const [mode, setMode] = useState<DevMode>("live");

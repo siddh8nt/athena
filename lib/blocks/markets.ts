@@ -136,7 +136,7 @@ async function byBrands(qloo: QlooClient, brands: string[], home: Metro | undefi
         rank: i + 1,
         metroId: x.m.id,
         name: x.m.name,
-        reason: leans.length ? `Over-indexes on ${and(leans)}` : x.aff.size ? `Scored on ${x.aff.size} of your crowd's brands` : "Little of your crowd's taste shows here yet",
+        reason: leans.length ? `Loves ${and(leans)} more than most places` : x.aff.size ? `Scored on ${x.aff.size} of your crowd's brands` : "Little of your crowd's taste shows here yet",
         leans,
         score: x.aff.size ? Math.round(x.score * 1000) / 1000 : undefined,
         callId: x.callId,

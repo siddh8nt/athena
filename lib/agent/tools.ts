@@ -118,7 +118,7 @@ export type Tool = {
 
 const WHY = {
   type: "string",
-  description: "One short sentence for the founder: why this call, now, in plain words. Shown as the step's narration, so no scores, decimals or ids from the data (\"the crowd that's still soft\", not \"stability 0.52\").",
+  description: "One short sentence for the founder: why this call, now, in plain words. Shown to the founder as the step's live line while it runs, so it says what is being done for their brand, as a short phrase in their words (\"Measuring the crowds around brands like yours\"), addressed to the founder (\"your crowds\", never \"our\", \"we\" or \"Let's\") and not a plan written for a model, and no terms such as \"lookalike\", \"seed\" or \"taste graph\". No scores, decimals or ids from the data (\"the crowd that's still soft\", not \"stability 0.52\").",
 };
 
 /** Function declarations for Gemini, with `why` added to each tool. */

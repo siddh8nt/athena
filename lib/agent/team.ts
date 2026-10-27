@@ -72,7 +72,7 @@ const declaration: FunctionDeclaration = {
       headline: { type: "string" },
       results: { type: "array", items: { type: "object", properties: { name: { type: "string" }, why: { type: "string", description: "One short line, no numbers." } }, required: ["name"] } },
       claims: { type: "array", items: { type: "object", properties: { text: { type: "string" }, sources: { type: "array", items: { type: "string" } } }, required: ["text", "sources"] } },
-      handoff: { type: "string", description: "What you need first, and from whom, e.g. 'a city, from the Navigator'." },
+      handoff: { type: "string", description: "What you need first, and from whom, e.g. 'a city, from the Navigator'. The founder sees it as \"Handed back to Athena: …\", so leave it out entirely when you need nothing." },
       assumptions: { type: "array", items: { type: "string" } },
     },
     required: ["headline"],

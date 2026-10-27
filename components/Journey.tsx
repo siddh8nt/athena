@@ -534,7 +534,7 @@ export function Journey() {
       {
         who: "athena",
         text: ready
-          ? `I've read everything and written your brief: it's on the right, every fact with where it came from.${assumptions.length ? ` I went ahead assuming: ${assumptions.join("; ")}` : ""} Correct anything below, or move on.`
+          ? `I've read everything and written your brief, every fact with where it came from.${assumptions.length ? ` I went ahead assuming: ${assumptions.join("; ")}` : ""} Correct anything below, or move on.`
           : "I've read what you gave me. Tell me your brand's name and what it sells below, and I'll take it from there.",
       },
     ]);
@@ -970,7 +970,7 @@ export function Journey() {
         />
       </div>
     ) : (
-      <SpecialistPanel id={id} j={j} team={team} live={tm.live} alone={alone} onMark={tm.mark} onHandoff={tm.handoff} onHooks={tm.hooks} crowdId={crowdIdOf} />
+      <SpecialistPanel id={id} j={j} team={team} live={tm.live} alone={alone} onMark={tm.mark} onHandoff={tm.handoff} onHooks={tm.hooks} crowdId={crowdIdOf} onPage={onPage} />
     );
 
   // The Brand Knowledge Base on the dashboard (§23.2 step 8.5b): the Brand Graph with its stale flags, sources and
@@ -1127,7 +1127,7 @@ function Dock(props: { j: JourneyState; turn: Turn; busy: boolean; researching: 
  * One specialist's panel (§23.2 step 8.4f): only what it owns (the Navigator the crowds' cities, the Promoter the
  * calendar), its results with their handoffs, or the one-click start when it hasn't run.
  */
-function SpecialistPanel({ id, j, team, live, alone, onMark, onHandoff, onHooks, crowdId }: { id: SpecialistId; j: JourneyState; team: TeamState; live: TeamLive; alone: AloneRequest; onMark: (agent: SpecialistId, item: WorkItem, m: Mark) => void; onHandoff: (h: Handoff) => void; onHooks: (crowdId: string, lines: PageLine[]) => void; crowdId: (name: string) => string | undefined }) {
+function SpecialistPanel({ id, j, team, live, alone, onMark, onHandoff, onHooks, crowdId, onPage }: { id: SpecialistId; j: JourneyState; team: TeamState; live: TeamLive; alone: AloneRequest; onMark: (agent: SpecialistId, item: WorkItem, m: Mark) => void; onHandoff: (h: Handoff) => void; onHooks: (crowdId: string, lines: PageLine[]) => void; crowdId: (name: string) => string | undefined; onPage: boolean }) {
   const [lit, setLit] = useState<number | null>(null);
   const crowds = j.crowds?.crowds ?? [];
   const calendar = j.fits?.calendar;
@@ -1137,16 +1137,19 @@ function SpecialistPanel({ id, j, team, live, alone, onMark, onHandoff, onHooks,
   const start = startFor(id, j, team);
   return (
     <>
-      <header className="card-head">
-        <h3>The {nameOf(id)}</h3>
-        <p className="small muted">{specialist(id).role}</p>
-      </header>
+      {/* On its own page the head above already names it and gives its headline (PRD §23.7 h: nothing twice). */}
+      {!onPage && (
+        <header className="card-head">
+          <h3>The {nameOf(id)}</h3>
+          <p className="small muted">{specialist(id).role}</p>
+        </header>
+      )}
       {id === "navigator" && crowds.some((c) => c.cities.length) && <CrowdGeography crowds={crowds} lit={lit} onLight={setLit} />}
       {id === "promoter" && calendar && !w?.page && <When calendar={calendar} name={(cid) => crowds.find((c) => c.id === cid)?.name} />}
       {step && (
         <RunProgress who={`The ${nameOf(id)}`} current={step} steps={[]} />
       )}
-      {w && <WorkView work={w} team={team} updating={!!step} alone={alone} onMark={(item, m) => onMark(id, item, m)} onHandoff={onHandoff} crowdId={crowdId} onHooks={onHooks} />}
+      {w && <WorkView work={w} team={team} updating={!!step} alone={alone} onMark={(item, m) => onMark(id, item, m)} onHandoff={onHandoff} crowdId={crowdId} onHooks={onHooks} headed={!onPage} />}
       {!w && !step && start && <Handoffs list={[start]} onHandoff={onHandoff} />}
     </>
   );

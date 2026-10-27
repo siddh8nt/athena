@@ -53,7 +53,7 @@ describe("rankCities", () => {
     expect(a.cities.slice(0, 2).map((c) => c.metroId)).toEqual(["nyc", "la"]);
     expect(b.cities.slice(0, 2).map((c) => c.metroId)).toEqual(["nyc", "chicago"]);
     expect(a.cities[0].z).toBeGreaterThan(0.5);
-    expect(a.cities[0].reason).toMatch(/Over-indexes on Brand A[12] and Brand A[12]/);
+    expect(a.cities[0].reason).toMatch(/Loves Brand A[12] and Brand A[12] more than most places/);
   });
 });
 

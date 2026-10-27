@@ -32,7 +32,7 @@ export function graphWhen(s: AgentState): Decision | undefined {
   if (!b.ownId && !lookalikes.length) return { skip: `${b.name} isn't in Qloo and no similar brands are named, so there's nothing to measure from yet`, need: "brands like yours, from the founder" };
   return {
     args: { brand_id: b.ownId, brand_name: b.name, comparables, lookalikes: lookalikes.slice(0, 5), traits: b.traits.slice(0, 5) },
-    why: b.ownId ? `Measuring the taste around ${b.name}` : `${b.name} isn't in Qloo yet, so seeding from brands like it: ${lookalikes.slice(0, 3).join(", ")}`,
+    why: b.ownId ? `Measuring the taste around ${b.name}` : `${b.name} isn't in Qloo yet, so reading it through brands like it: ${lookalikes.slice(0, 3).join(", ")}`,
   };
 }
 

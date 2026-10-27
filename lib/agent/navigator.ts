@@ -142,7 +142,7 @@ export function rankCities(brandIds: string[], by: Map<string, Map<string, numbe
         score: x.score === undefined ? undefined : Math.round(x.score * 1000) / 1000,
         z: x.score === undefined || s <= 0 ? -9 : Math.round(((x.score - mu) / s) * 100) / 100,
         leans,
-        reason: leans.length ? `Over-indexes on ${and(leans)}` : x.n ? `Scored on ${x.n} of its brands` : "Little of its taste shows here yet",
+        reason: leans.length ? `Loves ${and(leans)} more than most places` : x.n ? `Scored on ${x.n} of its brands` : "Little of its taste shows here yet",
       };
     })
     .sort((a, b) => b.z - a.z);
@@ -236,7 +236,8 @@ export type BackFill = {
 
 const money = (n?: number) => (n ? `$${Math.round(n / 1000)}k` : "—");
 const people = (n?: number) => (!n ? "—" : n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M` : n >= 10_000 ? `${Math.round(n / 1000)}k` : n.toLocaleString("en-US"));
-const label = (h: Hood) => (h.around ? `around ${h.name}` : h.name);
+// A spot with no place name is named by its ZIP; then the ZIP isn't repeated beside it.
+const label = (h: Hood) => (h.around ? `around ${/^\d{5}$/.test(h.name) ? `ZIP ${h.name}` : h.name}` : h.name);
 
 /** How many crowds are strong in a city, and which. */
 const strongIn = (read: NavRead, metroId: string) => read.crowds.filter((c) => isStrong(c.cities.find((f) => f.metroId === metroId)));
@@ -477,7 +478,7 @@ export function crowdTab(read: NavRead, c: CrowdCities, yours: string[], outcome
       title: "Where it runs hot",
       summary: hot.length ? `${hot.length} hot ${hot.length === 1 ? "neighbourhood" : "neighbourhoods"} in its cities` : undefined,
       blocks: hot.length
-        ? [{ type: "names", groups: worked.map((city) => ({ label: city.name, names: hot.filter((x) => x.city === city).map((x) => ({ name: label(x.h), kind: "neighbourhood", note: x.h.area?.zip ? `ZIP ${x.h.area.zip.id}` : undefined })) })).filter((g) => g.names.length) }]
+        ? [{ type: "names", groups: worked.map((city) => ({ label: city.name, names: hot.filter((x) => x.city === city).map((x) => ({ name: label(x.h), kind: "neighbourhood", note: x.h.area?.zip && x.h.area.zip.id !== x.h.name ? `ZIP ${x.h.area.zip.id}` : undefined })) })).filter((g) => g.names.length) }]
         : [{ type: "note", text: "Its taste is spread evenly across its cities, with no neighbourhood standing out yet" }],
     },
   ];

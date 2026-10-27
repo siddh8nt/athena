@@ -46,7 +46,7 @@ describe("Markets, brands method (§9.3)", () => {
     const r = await markets({ pb: pb({ crowdBrands: brands }), qloo, names: new Map(), emit: () => undefined });
     const austin = r.data.metros.find((m) => m.metroId === "austin")!;
     expect(austin.leans?.[0]).toBe("B6");
-    expect(austin.reason).toMatch(/^Over-indexes on B6/);
+    expect(austin.reason).toMatch(/^Loves B6/);
   });
 
   it("with fewer than 5 brands it falls back to the venues method", async () => {

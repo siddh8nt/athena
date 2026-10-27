@@ -76,7 +76,7 @@ describe("the true-agent test (§23.2 step 8h)", () => {
     expect(known.step("analyst", "position_rivals")?.why).toMatch(/against Harbor Rival/);
     expect(known.step("analyst", "position_rivals")?.summary).toBeTruthy();
 
-    expect(unknown.step("analyst", "build_taste_graph")?.why).toMatch(/isn't in Qloo yet, so seeding from brands like it: Lookalike One, Lookalike Two/);
+    expect(unknown.step("analyst", "build_taste_graph")?.why).toMatch(/isn't in Qloo yet, so reading it through brands like it: Lookalike One, Lookalike Two/);
     expect(unknown.step("analyst", "position_rivals")?.why).toMatch(/[Nn]o rivals named/);
     for (const r of [known, unknown]) expect(r.work("analyst")?.headline).toMatch(/is the crowd to win first$/);
   }, 60_000);

@@ -602,7 +602,7 @@ export function checklist(e: PromoEvent): string[] {
         : "Apply: the deadline isn't published, so ask when you write",
     `Book your ${e.formats.includes("sponsorship") && !e.formats.includes("booth") ? "sponsorship" : e.formats.includes("booth") ? "booth" : "spot"} once accepted, ${by}`,
     `Ship stock to ${e.city} ${by}`,
-    `Tell your partners from the Matchmaker you'll be there, ${by}`,
+    `Tell the brands you partner with that you'll be there, ${by}`,
     `Post that you're going, ${by}`,
   ];
 }

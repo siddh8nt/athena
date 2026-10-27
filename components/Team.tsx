@@ -1150,7 +1150,7 @@ function Transcript({ lines }: { lines: Line[] }) {
 const secs = (ms: number) => (ms < 1000 ? "under a second" : `${Math.round(ms / 1000)} s`);
 
 /** A finished run (§23.2 step 8c): its headline, time, Qloo calls and nodes added; then each result with its marks. */
-export function WorkView({ work, team, updating, alone, onMark, onHandoff, crowdId, onHooks }: { work: Work; team: TeamState; updating: boolean; alone: AloneRequest; onMark: (item: WorkItem, m: Mark) => void; onHandoff?: (h: Handoff) => void; crowdId?: (name: string) => string | undefined; onHooks?: (crowdId: string, lines: PageLine[]) => void }) {
+export function WorkView({ work, team, updating, alone, onMark, onHandoff, crowdId, onHooks, headed = true }: { work: Work; team: TeamState; updating: boolean; alone: AloneRequest; onMark: (item: WorkItem, m: Mark) => void; onHandoff?: (h: Handoff) => void; crowdId?: (name: string) => string | undefined; onHooks?: (crowdId: string, lines: PageLine[]) => void; headed?: boolean }) {
   const next = onHandoff && work.agent !== "navigator" ? fromWork(work, crowdId ?? (() => undefined)) : [];
   const nodes = nodesAdded(work);
   const marks = new Map(latest(team.outcomes).filter((o) => o.agent === work.agent).map((o) => [o.item, o.mark]));
@@ -1158,7 +1158,7 @@ export function WorkView({ work, team, updating, alone, onMark, onHandoff, crowd
   return (
     <section className={`card spec-work ${updating ? "spec-updating" : ""}`} aria-busy={updating}>
       {updating && <p className="small muted spec-updating-line">Updating; these stay up until the new results land.</p>}
-      <h4>{work.headline}</h4>
+      {headed && <h4>{work.headline}</h4>}
       <p className="small muted">
         {secs(work.ms)} · {work.qlooCalls} Qloo call{work.qlooCalls === 1 ? "" : "s"}
         {nodes > 0 && ` · added ${nodes} node${nodes === 1 ? "" : "s"} to your Brand Graph`}

@@ -252,7 +252,7 @@ export function Galaxy({ galaxy, names, decisions, step, probes: yourProbes = []
         <h3>Taste Galaxy</h3>
         <p className="small muted galaxy-method">
           {galaxy.done
-            ? `${galaxy.nodes.length} things this crowd loves, placed by how ${probes} probe entities rank each one. ${galaxy.calls} Qloo calls. Solid: a crowd's core, placed more surely than shuffled data allows.`
+            ? `${galaxy.nodes.length} things this crowd loves, placed by how ${probes} names spread across it rank each one. ${galaxy.calls} Qloo calls. Solid: a crowd's core, placed more surely than shuffled data allows.`
             : galaxy.round === 0
               ? `${galaxy.nodes.length} things this crowd loves, nearer the middle the more it loves them. ${galaxy.calls} Qloo calls so far.`
               : `Round ${galaxy.round}: ${probes} probes, ${galaxy.calls} Qloo calls so far.`}

@@ -2467,6 +2467,8 @@ Written 14 Oct, after the founder's review of the v4 build. **§23.1 is `problem
 | 8.4 | 3, 5 | **One workspace per agent, over one playground; a first dashboard** (founder, 16 Oct; after 8.3). Today pressing Enter on the onboarding box drops into the old two-column page, and the right column grows longer with every agent. (a) **One playground throughout:** the onboarding workspace stays the base layer after the first message; the composer goes lean and sits at the bottom, still agentic (live step lines, question cards). (b) **The right panel is a floating overlay:** it slides in from the right, scrolls on its own, and shifts the chat left into a compact, still breathable column; on a phone it is a full-screen sheet with a way back to the chat. (c) **One workspace per agent:** Athena and each specialist have their own chat and their own panel, one interface per agent; the team rail switches between them. (d) **Separate chats, shared context:** each agent's chat shows only its own conversation, while every run still reads the Brand Graph, crowds, chosen city and outcome marks. (e) **Sequential panels:** each new step, decision or result is added below the last and the panel scrolls to it. (f) **Strict ownership:** a panel shows only its own agent's main output, never another's; where one is needed it is a one-line link to that agent's workspace. Athena: the Brand Graph, the goals and the plan. Analyst: Galaxy, fits, crowds. Navigator: where crowds live, cities, neighbourhoods. Scout: next crowd, bridges, words, mood board. Rep: venues, retailers, pitch. Matchmaker: partners, podcasts, ask. Promoter: calendar, events, creators, inquiry. Handoff buttons stay and open the next agent's workspace. (g) **Goals end the Analyst's workspace:** its last step, in its chat, is "What do you want to work on?" (Athena proposes and routes); a pick opens the first specialist's workspace. (h) **The dashboard (first version of §23.4 item 6), never "add a goal":** each run ends with "What next?" (concrete next actions from its results, plus "See your dashboard"). The dashboard shows the team (done with its headline and a link, running, or not started with what it would do now for this brand and a one-click Run), what Athena needs from the founder (budget, launch date, regions, existing stockists, asked one at a time through the question cards, each naming the agent it helps), and What's working. The new agent and goal-driven selection stay for later. | After the first message the playground stays; each agent opens its own chat and overlay panel with only its own outputs, appearing in order; the goals question is the Analyst's last step; every run ends with "What next?" and the dashboard runs any specialist and takes the founder's inputs, on desktop and at 375px. |
 | 8.5 | 3, 4, 5 | **Athena orchestrates: onboarding apart, a full-screen dashboard, one chat** (founder, 20 Oct; after 8.4; replaces 8.4 c, d, g and h where they differ). Only Athena is an agent; the six are **subagents** in every plan, label and reply. Today onboarding is "Athena", the Brand Graph lives in Athena's panel, each workspace has its own chat, the strategy runs early beside the fits, some questions sit silently on the dashboard, and "What next?" leaves the order to the founder. **Shape:** onboarding is its own workspace and ends on the dashboard; `/plan` is the dashboard, `/plan?agent=athena` the Athena tab, `/plan?agent=scout` (and so on) a subagent page; the sidebar reads Dashboard, Athena, then a "Subagents" section. (a) **Views:** Journey.tsx splits into Dashboard, AthenaRoom and SubagentPage (Onboard unchanged); the state stays in Journey. (b) **The Brand Knowledge Base on the dashboard:** the whole Brand Graph (graph and list, fact strip, themes and notes, edits, Undo, stale flags), the research sources, the Qloo match line, a file drop zone, the Conflicts record and the onboarding record; typed edits go through Athena's chat. (c) **"Build your growth plan with Athena":** a Start card before the plan; after it, a live workflow diagram (opening questions → Analyst → parallel lanes → Athena's synthesis) with node states todo, running, paused and done; a node opens its page; the goals sit above it. (d) **Tiles:** Athena's set apart as the lead, then six subagent tiles with live status, headline, Open and stale; a subagent outside the workflow says "Not needed for these goals" and can be added. What's working and "Your answers" sit on the dashboard too. (e) **A `plan` action:** the model builds the ordered steps {subagent, task, needs, why, inputs needed}; code checks them against the registry; without the model, the `teamFor` order is the fallback. (f) **runTeam runs the workflow** and streams `workflow` events; Athena narrates each handoff; "What next?" goes; handoff buttons still add steps. (g) **Every question is a highlighted chat card that pauses its step** (options plus a custom answer), with a pinned "Paused for you" bar and the node marked paused: the opening questions (what they sell, goals, city first, an ambiguous place), the subagents' `ask_founder`, the strategy questions, post-onboarding source conflicts, and the old dashboard inputs, now asked by Athena just before the step that needs them and only when not already known (regions for the Navigator; stockists and budget for the Rep; launch date and budget for the Promoter). The tray stays; answered cards stay as one-line records; no question lives only on the dashboard. "Your answers" is editable, and an edit re-runs only the step it affects. (h) **An `interpret` call** reads typed answers: it maps them to an option or keeps them as a fact, and may change the workflow ("skip events", "add Austin"). (i) **Parallel subagents, all visible:** in the right panel every working subagent is a live tab (spinner and current step); the panel follows the one started last, one click switches, the others keep streaming; a manual pick stops the following and shows a "Follow the run" chip; a question brings its tab forward. On the dashboard the lanes and tiles are live and clickable; subagent pages stream live during a run. (j) **One continuous chat:** one thread from the end of onboarding on, saved in full, with the onboarding record at its top; the same thread, draft and open questions on every page: docked beside the Athena tab and each subagent page, and on the dashboard a collapsed "Chat with Athena" button that opens it as a side drawer (full screen on a phone). While a question waits, the button shows a "Paused for you" badge naming the subagent, and one click opens the drawer at it. (k) **Only Athena speaks:** the subagents' questions come through her ("For the Navigator: …"); their activity shows as step trails under her messages; "Ask the Analyst about this" and "Ask the Scout" become "Ask Athena about this". (l) **One owner per output:** the calendar only in the Promoter (it leaves the Analyst's fits); the Analyst keeps the Galaxy, fits (tiers and reasons), crowd cards, meetings, skew, With / Without, rivals and fingerprint, with a short "Concentrates in" line (the map is the Navigator's); Athena owns the goals, the workflow and the final plan. (m) **The final plan:** `/api/strategy` becomes the last workflow step and reads every work. For each target crowd: who (Analyst), where (Navigator), through what (Rep, Matchmaker, Promoter), the words (Scout) and when (the Promoter's dates), each line cited to its subagent, plus the disagreements and open items; no new research. It shows in the Athena tab's "Athena's plan", on her tile and as its own page; a graph edit re-runs the affected steps and synthesises again. (n) **Conversation and self-awareness:** Athena's self-knowledge is built from the registry (each subagent's mission, tools and deliverables; the data sources Qloo, Census, Ticketmaster, Wikipedia and the web; what she can't do). Each turn carries the knowledge base, answers, goals, workflow state, works and open questions, the recent messages verbatim and a summary of older ones. One model router per message decides: reply, use tools, edit the graph, hand to a subagent behind the scenes, change the workflow, or ask a clarifying question (this replaces the graph / team split). Replies stream as natural prose that explains the reasoning and says which subagent found what. Subagents get the full context but don't speak. (o) **Five rough edges:** the doubled "pages read" count; onboarding going back a step after the location answer; "Synthesize findings" never ticked; internal numbers in step text (0.52, 0.9285…); the Rep's garbled pitch text. (p) **Nothing lost:** the knowledge base items move to the dashboard; every question to the chat; the goals bar to the plan section and the top of the Athena tab; each subagent's outputs to its tab and page; marks, "how we know", Bench lines, call counts and handoffs stay on every result; the inputs move to the chat plus "Your answers"; What's working and "Bring them up to date" to the dashboard; the strategy to the final plan; "What next?" is replaced by the workflow. **Out of scope:** several cities and all crowds at once (the workflow stays open to them), acting on the plan (the next rework), and per-subagent polish (the founder's second prompt). | tsc, lint and tests pass, with new tests for the workflow checker, `interpret` and the run order. A live Edge run on Brightland and on a brand not used before shows: onboarding ending on the dashboard with the full knowledge base; Start building a workflow that runs in order, with parallel lanes visible as live tabs and tiles; every question (opening, subagent, input, conflict) pausing its step as a chat card, none left only on the dashboard; one chat, the same on the dashboard drawer, the Athena tab and every subagent page, with only Athena speaking; each output in exactly one owner; the final plan citing every subagent; the five rough edges gone; and a live conversation check passing (her abilities, a follow-up that refers back, a subagent's work, a request outside what she does, an ambiguous request getting a clarifying question, a graph edit typed in the chat), on desktop and at 375px. |
 | 8.6 | 1, 3 G, 5 | **Every subagent works on all three crowds; Athena's plan stitches them; the Executive skeleton; a dashboard in tabs** (founder, 21 Oct; after 8.5's build, before its "done when" run). Supersedes in 8.5 the out-of-scope line "several cities and all crowds at once". It also supersedes creator ownership: 8.3 a, 8.4 f and the Promoter's mission move creators to the Matchmaker. Full spec in §23.5: (a) UI fixes and a tabbed dashboard; (b) one page shape for every subagent; (c) the Analyst always gives 3 crowds; (d) the Scout; (e) the Navigator; (f) the Rep; (g) the Matchmaker; (h) the Promoter; (i) ownership and run order; (j) data sources; (k) budgets; (l) outreach rules; (m) Athena's plan; (n) the Executive skeleton. | See §23.5 "Done when". |
+| 8.7 | — (founder, 27 Oct) | **Athena in the founder's own tools** (founder, 27 Oct; after 8.6, order against §23.5 (r) is the founder's call). The plan, tasks and brand context reach the tools a founder already works in, and what they do there comes back to Athena. No Google OAuth; judges can try it in about a minute. Full spec in §23.6: (a) the workspace saved on the server; (b) the Athena MCP server; (c) connect links, no OAuth; (d) the "Use Athena elsewhere" panel; (e) the judges' demo link; (f) the brand context file; (g) calendar; (h) Open in Gmail; (i) Shopify sales from an orders export; (j) This week and the Monday email; (k) a read-only share link; (l) design rules; (m) dev mode. | See §23.6 "Done when". |
+| 8.8 | — (founder, 27 Oct) | **Dev mode out of the founder's UI, and a polish pass for founders** (founder, 27 Oct; order against 8.7 and §23.5 (r) is the founder's call). Nothing a founder sees is there for the builder: no dev-mode link, no debug text. Every page reads as written to the founder, fits a phone, and never shows a blank screen while it loads. Full spec in §23.7: (a) dev mode out of the founder's UI; (b) every line written to the founder; (c) one place for each thing; (d) phones; (e) no blank first paint; (f) one look on every page; (g) design rules; (h) dev mode keeps up. | See §23.7 "Done when". |
 | 9 | 3 G | **The context test:** the same brand with only its website, then with the full knowledge base. The crowds, ranking and actions must change in ways that trace back to specific facts. A product check, separate from the Bench. | The diff is written up per brand; no change is treated as a bug. |
 | 10 | all | QA against the no-failure-state rules, the phone layout, the Cloud Run deploy, re-warming the demo packs, and the write-up and video. The write-up says plainly that Athena is now an agent (problem 0), for Stage 1 judging. | Rehearsed twice end to end, and the coverage table (§23.3) is all ticked. |
 
@@ -3110,6 +3112,272 @@ The 2 keys allow 20k calls a month, about 28–35 full new-brand runs before war
 
   All checked on desktop and at 375px.
 - **Qloo calls:** each subagent's count is recorded and its budget fixed from it.
+
+
+### 23.6 Step 8.7 in detail: Athena in the founder's own tools (founder, 27 Oct; not built)
+
+**Why:** Athena's plan, tasks and brand context live only inside Athena, in one browser. A founder works in Claude, Cursor, ChatGPT, their calendar and Gmail. This step takes the plan to those tools and brings what the founder does there back to Athena.
+
+**Constraints (founder, 27 Oct):**
+- **No Google OAuth.** Every connection works through a link the founder pastes.
+- **Easy to reach and show to judges:** a judge can connect Athena to their own AI tool in about a minute, without onboarding a brand.
+- **Consistent with the UI and UX already decided:** see (l). Nothing looks bolted on.
+
+**Build order:** (a), then (b)–(e) together, then (f) and (g), then (j) and (k), then (h), then (i). (f), (g)'s download and (h) don't need (a), so they can go first if time is short.
+
+#### (a) The workspace saved on the server (b, g's feed, j and k need it)
+
+- **Today:** the journey is held in the browser (`athena:journey:v1`), and the workspace id is a random UUID per browser (`lib/knowledge/workspace.ts`). The server has no copy, so nothing outside the browser can read the plan.
+- **Change:** every change to the journey is also saved to Firestore under the workspace id, a moment after it happens. The browser copy stays the working copy, so the app behaves exactly as today.
+- **Changes from outside Athena** (b's `mark_task`, `answer_question`, `add_fact`) are written to the server copy. The app picks them up when it loads or comes back into focus, merging item by item: the newer change to an item wins, and nothing overwrites the whole journey.
+- **Nothing visible.** A slow save shows nothing; a failed one is retried with the next change.
+
+#### (b) The Athena MCP server
+
+A founder asks Claude, Cursor or ChatGPT "what should I do next for Fishwife?" and gets Athena's real plan, not a guess.
+
+- **Where:** `/mcp/<secret>` on the same Cloud Run service, over MCP's Streamable HTTP transport, built with the official MCP TypeScript SDK [VERIFY: runs as a Next.js route on Cloud Run].
+- **Resources (read):**
+  - the brief and the Brand Knowledge Base, with each fact's source;
+  - the crowds;
+  - Athena's order, step by step;
+  - the Execute Plan rows with contacts and drafts;
+  - the founder's answers.
+- **Tools:**
+  - `next_tasks`: filter by crowd, subagent or status; Now first, in Athena's order;
+  - `get_draft(item)`: Email, DM or call script, as on the row;
+  - `mark_task(item, sent / replied / won / not a fit)`;
+  - `answer_question`: answers a paused subagent's question;
+  - `add_fact`: goes through the merge rules like a typed edit (your words beat files, which beat guesses);
+  - `ask_athena`: goes through the same router, tools and budgets as the chat.
+- **Prompts:** "write a post for crowd X"; "prep me for a call with this shop"; "what changed since last week".
+- **Why it matters:** the founder works in their own tools, and every `mark_task` goes back to Athena. The plan re-ranks from those marks just as it does from the dashboard: the Measure loop of §23.5 (q).
+- **Words, not ids:** every answer is plain words an assistant can pass on. Ids stay inside the JSON, as with the conflict why (fb163c4). Only Athena is an agent, the six are subagents, and the end output is Execute Plan.
+- **No failure states:** a tool that can't answer says what it can do instead, never a raw error.
+
+#### (c) Connect links, no OAuth
+
+- **Checked 27 Oct:**
+  - claude.ai and Claude Desktop: "Add custom connector" has a **No sign-in** option; custom connectors work on Free, Pro, Max, Team and Enterprise, and Free allows one. Sending a token in a request header is a beta that many accounts don't have, so a header can't be the only way in. ([Anthropic](https://claude.com/docs/connectors/custom/remote-mcp.md), [Claude Help](https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-MCP))
+  - ChatGPT developer mode supports servers with no authentication, on paid plans. ([OpenAI](https://developers.openai.com/api/docs/guides/developer-mode))
+  - Each client needs a public HTTPS URL; the Cloud Run URL is one.
+- **The link:** each workspace gets a long random secret inside its URL. Firestore stores only the secret's hash, with its workspace and its scope (read and write, or read only).
+- **New link** makes a new secret, and the old link stops working at once.
+- **Headers too:** the same secret also works as `Authorization: Bearer …`, for tools that set headers.
+- **An old link** answers every call with one line: "This link was replaced. Open Athena › Use Athena elsewhere for the current one."
+- **Trade-off, stated plainly:** a secret in a URL is weaker than OAuth, since anyone holding the link gets in. It's revocable in one click, and the public link is read only. OAuth can be added later on top of the same workspace mapping.
+
+#### (d) The "Use Athena elsewhere" panel
+
+- **One place:** a quiet sidebar row below Subagents opens one frosted side panel (a full-screen sheet at 375 px), with four sections:
+  1. **Your AI assistant:** the link in one field with Copy, a segmented control (Claude · Claude Code · Cursor · ChatGPT) with three short steps for the chosen tool, and New link. For Claude Code, the step is one command to copy: `claude mcp add --transport http athena <link>` [VERIFY Cursor's steps].
+  2. **As a file:** (f).
+  3. **Calendar:** (g).
+  4. **Share with your team:** (k).
+- **Founder words:** "link", never "token", "bearer" or "endpoint". One small line names it an MCP server, for anyone who looks for that.
+
+#### (e) The judges' demo link
+
+- On `/start`, the Fishwife sample card gets one quiet line, **Connect this plan to your AI**, which opens the same panel with a fixed, read-only link to the precomputed Fishwife workspace.
+- **Read only:** write tools aren't offered on it, so one judge can't change what the next one sees. `ask_athena` on it has a per-link rate cap [VERIFY the cap from live Gemini cost].
+- The write-up and video (step 10) give the link and the one-minute steps.
+- **[VERIFY] Qloo's terms** on passing Qloo-derived crowds and fits to third-party tools and public links. If they don't allow it, the demo link, the share link and the MCP carry only Athena's own output: facts, the plan's text and drafts.
+
+#### (f) The brand context file
+
+- One button downloads `athena-brand.md`: the brief, crowds, Athena's order and the open tasks, written for an AI assistant to read. It's the reverse of the "Copies a prompt for your AI assistant" button.
+- One line above the button says what's in it. It needs no server state.
+
+#### (g) Calendar
+
+- **Two options,** through the shared question component: **Subscribe** (recommended): a live feed at `/cal/<secret>.ics` that updates as the plan changes; or **Download** a one-off .ics file.
+- **What goes in:** the Promoter's events, their apply-by deadlines with lead times, follow-up waits on Execute Plan rows, and launch dates. Each event carries its source link and a link back to its row.
+- **Only sourced dates:** nothing is dated that the plan doesn't already date.
+- **No copies:** on the Promoter's calendar and on Execute Plan rows, a dated item gets a one-line "In your calendar" link, never a second listing.
+
+#### (h) Open in Gmail
+
+- In the Execute Plan detail panel, **Open in Gmail** sits beside Copy and Open in mail app, in the same button row. It opens Gmail's compose window with the recipient, subject and body filled in. It's a plain link, with no OAuth.
+- **Replies:** one tap marks the row Replied, or `mark_task` from the founder's AI tool. The "Did these go out?" card stays the prompt.
+- **Later:** automatic reply detection needs access to the inbox, which needs Google OAuth.
+
+#### (i) Shopify sales from an orders export
+
+- **Checked 27 Oct:** Shopify's Orders export (CSV) has a Shipping Zip column ([Shopify Help](https://help.shopify.com/en/manual/orders/export-orders)). Since 1 Jan 2026, no new custom app with a fixed token can be made in the Shopify admin; the replacement needs Shopify's own sign-in flow, plus approval to read customer data ([Shopify dev forum](https://community.shopify.dev/t/legacy-custom-apps-workaround/32032); [VERIFY on Shopify's own docs]). So the live API is later, and the export comes in now.
+- **In:** the founder drops the CSV into the Brand Knowledge Base's existing drop zone. Athena reads that it's an orders export (model context, not column-name rules) and says so in a live step.
+- **Privacy:** on reading, only each order's date, total and ZIP are kept. Names, emails, phone numbers and street addresses are dropped and never stored.
+- **Out:** code maps ZIPs to metros, and metros to crowds through each crowd's reach. Sales by metro and by crowd fill the **What's working** tab, and feed the Navigator's and Rep's Measure in Execute Plan, so what sells re-ranks cities.
+- **Judges:** we don't have Fishwife's sales, so the demo uses a sample orders file labelled **Sample data** wherever it shows, never presented as real.
+
+#### (j) This week and the Monday email
+
+- **This week:** a section at the top of the Overview tab: what's due, which rows have no reply after their wait, and the next events. Each line links to its row; nothing is listed twice.
+- **Monday email:** one toggle there, "Email me this every Monday", with the founder's address. It's sent from Athena's own sending account, its credentials in `.env` only [VERIFY daily limits and zero cost beyond the $300 credit].
+- **Judges:** on the demo, **Send me this** sends the Fishwife digest once to an address they type.
+- **The email** uses the same serif heading and cards as far as mail clients allow, and links back to the rows.
+- **In the founder's AI tool:** the "what changed since last week" prompt gives the same content.
+
+#### (k) A read-only share link
+
+- **Share with your team** makes a link to a view-only Execute Plan page for co-founders or advisors, in the same design with no editing controls. New link revokes it.
+
+#### (l) Design rules for all of 8.7
+
+- **Look and feel** (7f, 7.2): serif display headings, small uppercase labels, 16px-radius cards, soft grey borders, small icons, lots of space, one dark element per view.
+- **Surfaces** (868fef1, f2e106f): the existing frosted sheet with the chat's rim and light catch, its dark-mode variant included; choices on the glass question tray. No new card styles and no plain white boxes.
+- **One way to choose** (step 3c): the shared question component, recommended option first, Other for a custom answer, no forms.
+- **One place per thing** (§23.5 p): each feature listed in full in one place per view; elsewhere, a one-line link.
+- **Where things open** (§23.5 a, q): detail in the side panel, a full-screen sheet at 375 px; tabs kept in the URL; swipeable tabs on a phone.
+- **No failure states:** slow work narrated as live steps; a dead link or unreadable file becomes a plain line or a question; waiting is amber, never red.
+- **Copy:** Qloo stays in quiet method lines with call counts, no badges or slogans; Athena is the agent and the six are subagents; the end output is Execute Plan.
+
+#### (m) Dev mode
+
+- Each new view and state gets a card on the `/dev` step map (§23.5 o): the panel's four sections, a replaced link, the demo link, This week, the What's working sales view and the share page.
+
+#### Out of this step
+
+- Google OAuth and accounts, automatic Gmail reply detection, and the live Shopify API: later.
+
+#### Done when
+
+- **Checks pass:** tsc, lint and tests, with new tests for:
+  - a link's secret stored only as a hash, and New link revoking the old one;
+  - a read-only link refusing every write;
+  - a change from outside merging into the journey item by item;
+  - the orders reader keeping only date, total and ZIP;
+  - a valid .ics with only sourced dates;
+  - the context file's contents.
+- **Live, with a brand not used before:**
+  - The link connects from claude.ai (No sign-in) and from Claude Code. "What should I do next?" answers from Execute Plan in plain words, with no ids.
+  - A `mark_task` from Claude shows on the row in Athena, with "from your AI assistant" in its history; New link stops the old one.
+  - From a fresh browser, the Fishwife demo link works from `/start` with no onboarding, and offers no write tools.
+  - The calendar feed shows the events in Google Calendar; the download imports into Apple Calendar.
+  - Open in Gmail opens a filled-in compose window.
+  - The sample orders file fills What's working, labelled Sample data.
+  - This week shows on Overview, and the Monday email arrives.
+  - The share link opens a read-only Execute Plan.
+- **All checked** on desktop and at 375 px, light and dark, and every new view has its dev-mode card.
+- **Qloo's terms checked,** and what the demo and share links carry is set from the answer.
+
+
+### 23.7 Step 8.8 in detail: dev mode out of the founder's UI, and a polish pass (founder, 27 Oct; not built)
+
+**Why:** the founder asked to "remove dev mode button from user facing ui and polish ui for the founders that will be using it". The app is shown to judges and used by founders, so a builder's control or a line written for the builder costs trust. §23.5 (r) already named the complaint that text "speaks to the builder, not the founder". This step clears what is left of it across every page.
+
+**What a pass on the dev server found (27 Oct):**
+- **Dev mode:**
+  - "Open dev mode" sits under "Tell me about your brand". It was added in 4125dbd as temporary.
+  - The DevTape pills ("DEV · replaying", "Save snapshot") show only while Record or Replay is on, never in Live.
+  - The link, the pills and `/dev` are all dev-server only today (`NODE_ENV`), so a production build should already show none of them. That must be checked on the deployed preview, not assumed.
+- **Words written for the builder:**
+  - Overview's step cards show each subagent's brief, e.g. "Identify and rank the most valuable target crowds and taste profiles for Baggu."
+  - The team cards mix three voices on one screen: "We have identified…", "Establish multi-crowd partnerships…", and a plain summary.
+  - The words are jargon ("target crowds", "high-affinity", "double-fit").
+  - Execute Plan's card packs four counts into two sentences: "201 items, 22 of them under Now … all 90 to contact".
+- **Duplicates (§23.5 (p)):**
+  - Execute Plan's summary sentence appears twice on Overview: in the plan's step card and in Athena's team card.
+  - "Start the Executive" and "Open Execute Plan" sit side by side as two actions.
+- **At 375 px:**
+  - The "From your AI assistant" card on the first onboarding screen cuts off its last word.
+  - The "Bring your context from ChatGPT, Claude or Gemini" chip breaks onto two lines.
+- **First paint:**
+  - `/plan` showed a blank cream page for a few seconds before the journey loaded.
+  - The landing page on a phone showed only the code-texture background before the hero.
+  - Both were seen on the dev server, which compiles each page on its first visit. Check them on a production build before fixing.
+
+#### (a) Dev mode out of the founder's UI
+
+- **Remove the "Open dev mode" link** from the first onboarding screen (`components/Onboard.tsx`).
+- **Developers reach dev mode** by typing `/dev` on the dev server. Nothing in the founder's pages links to it.
+- **`/dev` stays a 404 in production.** The DevTape pills stay dev-server only, and only while Record or Replay is on: a developer must still see when tapes are answering instead of live calls.
+- **Every other dev-only hook keeps its guard:** offline mode, `stallAt`, `__athenaMap`, `ATHENA_NO_LIMITS`. Nothing new is added.
+- **A test guards it:**
+  - No founder page renders a link to `/dev` or the words "dev mode".
+  - `/dev` returns not-found when `NODE_ENV` is production.
+
+#### (b) Every line written to the founder
+
+- **One voice:**
+  - Athena speaks as "I".
+  - Subagents report what they found about the founder's brand, in plain past tense ("Found 14 shops in Brooklyn that stock brands like yours").
+  - Never a brief written for the model, an order, or a mix of "we" and imperatives.
+- **The fix is context, not rules** (agent reasoning, not keyword rules):
+  - The subagents' and Athena's prompts are told who reads each line, and that it is a founder, not the builder.
+  - They are told the voice above, and to use the founder's words rather than the system's ("crowd", not "target crowd" or "taste profile").
+  - No word lists or text filters.
+- **Overview's step cards** say what the step means for the brand, not the subagent's task brief. The brief stays in the subagent's page for anyone who opens it.
+- **Counts:** one count per sentence, the one that matters to the founder. The rest sits a click away in Execute Plan.
+- **Fixed text in the app:** every heading, label, empty state and button is read once and rewritten where it speaks to the builder. Examples: a step name, an internal stage, a technical term, an id. Words-not-ids (§23.6 (b)) applies here too.
+- **Out of this step:** how crowds are named. It stays a later topic for the founder.
+
+#### (c) One place for each thing (§23.5 (p), applied again)
+
+- Execute Plan's summary shows once on Overview. The second place points to it instead of repeating it.
+- One primary action per card: "Start the Executive" before it runs, "Open Execute Plan" after. Never both side by side.
+- The same check on every page: a sentence, number or action shown twice on one screen keeps one place.
+
+#### (d) Phones
+
+- **Every page at 375 px** has no clipped text and no sideways scroll. Tap targets are at least 44 px, and chips and buttons stay on one line or wrap deliberately.
+- **Pages to check:** the landing page, `/start`, each onboarding screen, every dashboard tab, a subagent page, Execute Plan with its detail sheet, and the chat.
+- **This closes** the 375 px check left open in §23.5 (q).
+
+#### (e) No blank first paint
+
+- **Checked first on a production build** (`next build` + `next start`, or the deployed preview), since the dev server compiles pages on first visit.
+- **Where a page still shows nothing** while it loads, it shows its own shape at once: the header, the tabs and quiet placeholder cards in the page's layout. No spinner, no "Loading…", and no flash of a different page (no failure states).
+- **The landing hero** paints with its first frame. The background texture never shows alone.
+
+#### (f) One look on every page
+
+- **Type, cards and borders:**
+  - one type scale: serif display, small uppercase labels;
+  - one card radius (16 px);
+  - soft grey borders;
+  - one dark element per view.
+- **Sheets and chat:**
+  - the frosted sheet with the chat's rim (868fef1) wherever a panel slides over the page;
+  - the glass chat and question tray (f2e106f) unchanged.
+- **States:** amber for paused or waiting; nothing red reaches the founder.
+- **Dark mode** on every page, with no light-only colour left in place.
+- **Focus rings and keyboard:** every action can be reached and seen by keyboard.
+- **Leftovers:** no temporary or debug text, no raw ids, nothing written to the console that reaches the screen.
+
+#### (g) Design rules
+
+The rules already decided, applied as they are; this step adds none:
+- 7f;
+- 7.2;
+- 868fef1;
+- f2e106f;
+- step 3c's shared question component;
+- §23.5 (a), (p), (q) and (r);
+- §23.6 (l).
+
+The subagents keep their letter badges until the founder adds logos.
+
+#### (h) Dev mode keeps up
+
+Every state this step changes still has its card in `/dev`'s step map, so the polished pages can be checked without live calls.
+
+#### Out of this step
+
+- Any new feature, including 8.7's.
+- Subagent logos (deferred until the founder adds them).
+- How crowds are named.
+- Changes to what the subagents find, as opposed to how they say it.
+
+#### Done when
+
+- **Checks pass:** tsc, lint and tests, including (a)'s guard test.
+- **The deployed preview, from a fresh browser:**
+  - no "dev mode" link anywhere;
+  - no DevTape pill;
+  - `/dev` is not found.
+- **A founder's read-through** of every page in (d) finds no line written for the builder, no id, and nothing shown twice on one screen. Checked with a brand not used before, so the new voice comes from the prompts rather than from cached text.
+- **Every page in (d)** is checked on desktop and at 375 px, light and dark: no clipped text, no sideways scroll, no blank first paint on the production build.
+- **Every changed state** has its dev-mode card.
 
 ---
 

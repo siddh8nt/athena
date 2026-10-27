@@ -2899,15 +2899,16 @@ The 2 keys allow 20k calls a month, about 28–35 full new-brand runs before war
 - **Checks pass:** tsc and the test suite.
 - **Seen live in Edge:** every subagent page and Athena's panel, on desktop and at 375 px, from the `/dev` snapshots in Replay (no calls), then one Record run on a brand to confirm a fresh run builds the new pages.
 
-#### (q) The Executive plan replaces Athena's plan as the end output (founder, 26 Oct; built 26 Oct, the 375 px check and a fresh Record run still open)
+#### (q) Execute Plan replaces Athena's plan as the end output (founder, 26 Oct; built 26 Oct, the 375 px check and a fresh Record run still open)
 
 - **Why:** Athena's written plan repeats what each subagent's tab already shows. The founder needs an end output they can act on, follow and measure.
-- **Athena still plans.** She reads every subagent's work and decides the order: shared moves first, then Win first → Win next → Watch, and what waits on what. She also decides the disagreements and open items. Only her output changes: **the Executive subagent turns her order into the Executive plan.** It adds no reasoning of its own about order. This replaces (m) and (n) where they differ.
-- **Workflow:** Analyst → (Scout ∥ Navigator) → (Rep ∥ Matchmaker ∥ Promoter) → back-fill → **Executive plan**. In the dashboard's workflow diagram, the "Athena's plan" node becomes "Executive plan" and is the last node. (i)'s run order changes to match.
+- **Name (founder, 27 Oct):** the page is **Execute Plan**, an action the founder takes, never "Executive plan". The subagent that builds it is still **The Executive**. Every label, link ("Open Execute Plan"), chat line and model prompt uses this name.
+- **Athena still plans.** She reads every subagent's work and decides the order: shared moves first, then Win first → Win next → Watch, and what waits on what. She also decides the disagreements and open items. Only her output changes: **the Executive subagent turns her order into Execute Plan.** It adds no reasoning of its own about order. This replaces (m) and (n) where they differ.
+- **Workflow:** Analyst → (Scout ∥ Navigator) → (Rep ∥ Matchmaker ∥ Promoter) → back-fill → **Execute Plan**. In the dashboard's workflow diagram, the "Athena's plan" node becomes "Execute Plan" and is the last node. (i)'s run order changes to match.
 - **Starting the Executive:** it does not start on its own, since its contact lookups spend searches.
-  - When the workflow reaches the Executive plan node, Athena pauses and asks in her chat, like the other subagents' questions: "The Executive can build your plan and find contacts for the N Now items. **Start** · **Later**".
+  - When the workflow reaches Execute Plan node, Athena pauses and asks in her chat, like the other subagents' questions: "The Executive can build your plan and find contacts for the N Now items. **Start** · **Later**".
   - **Later** leaves the node Ready (never a failure) and a **Start the Executive** button under the workflow diagram on the dashboard, with one line on what it will do.
-  - Once it runs, the node narrates like any other ("Finding contacts: 12 of 28"), and the button becomes **Open the Executive plan**.
+  - Once it runs, the node narrates like any other ("Finding contacts: 12 of 28"), and the button becomes **Open Execute Plan**.
   - When a subagent re-runs afterwards, the same question comes back as "Update the plan". Only changed items are rebuilt, and saved contacts are reused.
 - **Every item goes on the plan.** Each task shows:
   - **Do:** one action, with its contact and drafts;
@@ -2942,7 +2943,7 @@ The 2 keys allow 20k calls a month, about 28–35 full new-brand runs before war
   - The wait counts from the real time the founder marked Pitched, so no date is invented. The row says which rule set its wait.
 - **Sending:** Open in mail app only; nothing is sent from Athena. Sending from the founder's Gmail stays the later "acting" phase of (n), on approval: it needs Google OAuth with the `gmail.send` scope, which Google lists as sensitive. Unverified, that means an "unverified app" screen and a 100-user cap; in testing mode a user's consent lasts 7 days; review takes about 10 business days (Google's pages, checked 26 Oct). Each send would need its own confirm.
 - **Cost:** reading a site's contact page is a normal Gemini call. A web search is billed per search the model runs: for Gemini 3 models, the first 5,000 a month are free, then $14 per 1,000 (Google's Vertex pricing page, checked 26 Oct). All of it is within the $300 credit. Reading pages with URL context is billed as tokens only [VERIFY].
-- **The Executive plan page** (`/plan?agent=executive`, and the dashboard's Executive plan tab):
+- **Execute Plan page** (`/plan?agent=executive`, and the dashboard's Execute Plan tab):
   - **Top strip:** Now done (6 of 28), Waiting on a reply, Yes so far, and Spend against budget. Under them, one line on what needs the founder today ("3 pitches need a follow-up · 1 event deadline is close · 5 contacts are ready to send"); each part filters the list.
   - **Tabs:** **Now · Rep · Matchmaker · Promoter · Navigator · Scout · Results**, each with a count.
     - **Now** mixes every subagent in Athena's order, grouped under her steps. A step that waits on another is greyed with "Once step N holds" and a quiet **Start anyway**. When the Scout's "move on when" signal holds, the next crowd's steps open and Athena says so in chat.
@@ -2955,15 +2956,15 @@ The 2 keys allow 20k calls a month, about 28–35 full new-brand runs before war
   - **Chat and list stay in sync:** a chat request highlights the rows it fills; a mark made anywhere shows everywhere.
   - **Never a failure state:** a lookup narrates ("Reading their contact page…"); a missing field reads "not published" with the next way in.
   - **At 375 px:** rows become cards and the tabs scroll sideways.
-- **Views:** the dashboard's "Athena's plan" tab goes, and "The Executive" tab becomes "Executive plan". The Athena tab's right panel keeps the subagent tabs and links to the plan. Each subagent's results stay in its own tab.
-- **Pipelines:** this is the "later, after (p)" step. The Rep, Matchmaker and Promoter pipelines become links to the Executive plan filtered to that subagent; rows already share item ids and marks, so nothing is re-run.
+- **Views:** the dashboard's "Athena's plan" tab goes, and "The Executive" tab becomes "Execute Plan". The Athena tab's right panel keeps the subagent tabs and links to the plan. Each subagent's results stay in its own tab.
+- **Pipelines:** this is the "later, after (p)" step. The Rep, Matchmaker and Promoter pipelines become links to Execute Plan filtered to that subagent; rows already share item ids and marks, so nothing is re-run.
 - **Disagreements:** a one-line note on the task they affect (e.g. "the Rep found no fitting shop here yet" on "Open in Los Angeles"). **Open items:** questions in Athena's chat, as now.
 
 ##### (q) Done when
 
-- **Checks pass:** tsc and the test suite, with a test on the recorded run that every trackable item is on the Executive plan exactly once, Athena's picks under Now in her order, and no contact without a source.
+- **Checks pass:** tsc and the test suite, with a test on the recorded run that every trackable item is on Execute Plan exactly once, Athena's picks under Now in her order, and no contact without a source.
 - **Checks pass (contacts):** a test that a place shared by two subagents is looked up once, and that a re-run looks up only new items.
-- **Seen live in Edge:** from the `/dev` snapshots in Replay, on desktop and at 375 px: the workflow ending on the Executive plan node with Athena's Start / Later question, and the Start button under the workflow after Later; the tabs, top strip and next-action buttons; Now items with contact cards (address, website, phone, email where published) and three copyable drafts; Find contact on an item below Now; a chat request filling items in small groups; the follow-up wait question on the first Pitched mark. Then one Record run on a brand to confirm a fresh run ends on the Executive plan.
+- **Seen live in Edge:** from the `/dev` snapshots in Replay, on desktop and at 375 px: the workflow ending on Execute Plan node with Athena's Start / Later question, and the Start button under the workflow after Later; the tabs, top strip and next-action buttons; Now items with contact cards (address, website, phone, email where published) and three copyable drafts; Find contact on an item below Now; a chat request filling items in small groups; the follow-up wait question on the first Pitched mark. Then one Record run on a brand to confirm a fresh run ends on Execute Plan.
 
 #### (r) The Executive runs itself: a live task orchestrator (founder, 26 Oct; the penultimate rework; not built)
 

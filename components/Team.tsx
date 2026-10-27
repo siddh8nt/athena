@@ -24,6 +24,8 @@ import { CrowdTabs } from "./CrowdTabs";
 import { RunProgress, StepTimer, type ProgressStep } from "./Progress";
 import { NavIcon, RailToggle, useRail } from "./SideNav";
 import { McpConnect } from "./McpConnect";
+import type { CrowdCard } from "@/lib/journey/types";
+import { salesByCrowd, salesByPlace, spanOf, usd, type Sales } from "@/lib/sales/orders";
 
 // Athena and her six specialists in the journey (PRD §23.2 step 8): the goals on top, the team in the left panel with
 // live status, each specialist's workspace (its transcript, its results with their tool calls, the founder's outcome
@@ -1303,15 +1305,61 @@ function HowWeKnow({ work, item, cited, calls, team, alone }: { work: Work; item
   );
 }
 
+/** What already sells (§23.6 i): the founder's orders by city and by crowd, from each order's date, total and ZIP. */
+export function SalesView({ sales, crowds }: { sales: Sales; crowds: CrowdCard[] }) {
+  const places = salesByPlace(sales);
+  const byCrowd = salesByCrowd(sales, crowds).filter((c) => c.orders > 0);
+  const total = sales.orders.reduce((n, o) => n + o[1], 0);
+  const { from, to } = spanOf(sales);
+  const shared = byCrowd.length > 1 && byCrowd.reduce((n, c) => n + c.revenue, 0) > total + 0.5;
+  return (
+    <div className="sales">
+      <p className="small">
+        {sales.sample && <span className="sample-tag">Sample data</span>}
+        {sales.orders.length.toLocaleString("en-US")} orders worth {usd(total)}
+        {from && from !== to ? `, ${from} to ${to}` : ""}, from {sales.file}.
+      </p>
+      <ul className="sales-rows">
+        {places.slice(0, 6).map((p) => (
+          <li key={p.key} className="small">
+            <span>{p.name}</span>
+            <span className="muted">
+              {usd(p.revenue)} · {p.orders} {p.orders === 1 ? "order" : "orders"}
+            </span>
+          </li>
+        ))}
+      </ul>
+      {byCrowd.length > 0 && (
+        <>
+          <p className="small muted">By crowd, from the cities where each one clusters:</p>
+          <ul className="sales-rows">
+            {byCrowd.map((c) => (
+              <li key={c.crowd} className="small">
+                <span>{c.name}</span>
+                <span className="muted">
+                  {usd(c.revenue)} · {c.orders} {c.orders === 1 ? "order" : "orders"}
+                </span>
+              </li>
+            ))}
+          </ul>
+          {shared && <p className="small muted">A city two crowds share counts for both, so these add up to more than the total.</p>}
+        </>
+      )}
+    </div>
+  );
+}
+
 /** Athena's one "What's working" overview (§23.2 step 8g): the marks so far, what said yes, the patterns, and what's stale. */
-export function WhatsWorking({ team, graphRev, busy, onRefresh }: { team: TeamState; graphRev: number; busy: boolean; onRefresh: () => void }) {
+export function WhatsWorking({ team, graphRev, busy, onRefresh, crowds = [] }: { team: TeamState; graphRev: number; busy: boolean; onRefresh: () => void; crowds?: CrowdCard[] }) {
   const o = whatsWorking(team);
   const stale = staleRuns(team, graphRev);
   const marked = MARKS.reduce((n, m) => n + o.counts[m], 0);
-  if (!marked && !stale.length) return null;
+  const sales = team.sales?.orders.length ? team.sales : undefined;
+  if (!marked && !stale.length && !sales) return null;
   return (
     <section className="card working">
       <h3>What&apos;s working</h3>
+      {sales && <SalesView sales={sales} crowds={crowds} />}
       {marked > 0 && (
         <p className="small muted">
           {MARKS.filter((m) => o.counts[m]).map((m) => `${o.counts[m]} ${MARK_LABEL[m].toLowerCase()}`).join(" · ")}

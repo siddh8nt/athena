@@ -102,6 +102,8 @@ export type TeamEnrich = {
  */
 export type TeamCtx = {
   brand: TeamBrand;
+  /** What sells, by city, from the founder's orders export (§23.6 i): one line, read by the Navigator and the Rep. */
+  sales?: string;
   /** What the Brand Graph says, one line each: read before anyone asks the founder, so nothing it says is asked. */
   facts?: string[];
   /** The ids of the goals this run works for ("deepen_home", "step_up"…), so the evidence rules can read them. */

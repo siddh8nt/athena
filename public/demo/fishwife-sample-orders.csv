@@ -1,0 +1,685 @@
+Name,Email,Financial Status,Created at,Lineitem quantity,Lineitem name,Lineitem price,Subtotal,Shipping,Total,Shipping Name,Shipping Street,Shipping City,Shipping Zip,Shipping Province,Shipping Country,Shipping Phone
+#S1001,sample.customer001@example.com,paid,2026-02-17 08:53:00 -0400,1,Sample item: variety box,58.00,58.00,0.00,58.00,Sample Customer 001,238 Sample St,,'04101,,US,555-0100
+#S1002,sample.customer002@example.com,paid,2026-08-11 19:53:00 -0400,3,Sample item: variety box,58.00,216.00,0.00,216.00,Sample Customer 002,12 Sample St,,'10003,,US,555-0100
+#S1002,,,2026-08-11 19:53:00 -0400,3,Sample item: tinned sardines,14.00,,,,,,,,,,
+#S1003,sample.customer003@example.com,paid,2026-08-16 14:59:00 -0400,2,Sample item: tinned trout,12.00,24.00,6.00,30.00,Sample Customer 003,110 Sample St,,'33137,,US,555-0100
+#S1004,sample.customer004@example.com,paid,2026-06-17 17:08:00 -0400,2,Sample item: tinned sardines,14.00,28.00,6.00,34.00,Sample Customer 004,416 Sample St,,'10009,,US,555-0100
+#S1005,sample.customer005@example.com,paid,2026-04-06 13:45:00 -0400,3,Sample item: tinned tuna,13.00,39.00,6.00,45.00,Sample Customer 005,535 Sample St,,'97214,,US,555-0100
+#S1006,sample.customer006@example.com,paid,2026-08-25 04:27:00 -0400,1,Sample item: tinned tuna,13.00,13.00,6.00,19.00,Sample Customer 006,560 Sample St,,'19125,,US,555-0100
+#S1007,sample.customer007@example.com,paid,2026-04-21 08:35:00 -0400,1,Sample item: tinned sardines,14.00,14.00,6.00,20.00,Sample Customer 007,670 Sample St,,'59715,,US,555-0100
+#S1008,sample.customer008@example.com,paid,2026-09-18 07:25:00 -0400,2,Sample item: variety box,58.00,178.00,0.00,178.00,Sample Customer 008,102 Sample St,,'90291,,US,555-0100
+#S1008,,,2026-09-18 07:25:00 -0400,2,Sample item: tinned tuna,13.00,,,,,,,,,,
+#S1008,,,2026-09-18 07:25:00 -0400,3,Sample item: tinned trout,12.00,,,,,,,,,,
+#S1009,sample.customer009@example.com,paid,2026-05-30 04:32:00 -0400,1,Sample item: variety box,58.00,100.00,0.00,100.00,Sample Customer 009,831 Sample St,,'02130,,US,555-0100
+#S1009,,,2026-05-30 04:32:00 -0400,3,Sample item: tinned sardines,14.00,,,,,,,,,,
+#S1010,sample.customer010@example.com,paid,2026-10-05 02:52:00 -0400,2,Sample item: tinned sardines,14.00,202.00,0.00,202.00,Sample Customer 010,958 Sample St,,'19147,,US,555-0100
+#S1010,,,2026-10-05 02:52:00 -0400,3,Sample item: variety box,58.00,,,,,,,,,,
+#S1011,sample.customer011@example.com,paid,2026-06-28 11:13:00 -0400,1,Sample item: variety box,58.00,70.00,0.00,70.00,Sample Customer 011,60 Sample St,,'33137,,US,555-0100
+#S1011,,,2026-06-28 11:13:00 -0400,1,Sample item: tinned trout,12.00,,,,,,,,,,
+#S1012,sample.customer012@example.com,paid,2026-09-18 13:26:00 -0400,3,Sample item: tinned trout,12.00,50.00,0.00,50.00,Sample Customer 012,915 Sample St,,'02139,,US,555-0100
+#S1012,,,2026-09-18 13:26:00 -0400,1,Sample item: tinned sardines,14.00,,,,,,,,,,
+#S1013,sample.customer013@example.com,paid,2026-03-29 08:23:00 -0400,3,Sample item: tinned sardines,14.00,42.00,6.00,48.00,Sample Customer 013,961 Sample St,,'94110,,US,555-0100
+#S1014,sample.customer014@example.com,paid,2026-07-22 15:48:00 -0400,3,Sample item: variety box,58.00,174.00,0.00,174.00,Sample Customer 014,325 Sample St,,'98103,,US,555-0100
+#S1015,sample.customer015@example.com,paid,2026-07-23 13:47:00 -0400,3,Sample item: variety box,58.00,212.00,0.00,212.00,Sample Customer 015,285 Sample St,,'20009,,US,555-0100
+#S1015,,,2026-07-23 13:47:00 -0400,1,Sample item: tinned sardines,14.00,,,,,,,,,,
+#S1015,,,2026-07-23 13:47:00 -0400,2,Sample item: tinned salmon,12.00,,,,,,,,,,
+#S1016,sample.customer016@example.com,paid,2026-01-08 09:03:00 -0400,3,Sample item: tinned salmon,12.00,36.00,6.00,42.00,Sample Customer 016,545 Sample St,,'80206,,US,555-0100
+#S1017,sample.customer017@example.com,paid,2026-07-02 05:28:00 -0400,2,Sample item: tinned salmon,12.00,24.00,6.00,30.00,Sample Customer 017,507 Sample St,,'94110,,US,555-0100
+#S1018,sample.customer018@example.com,paid,2026-06-23 21:42:00 -0400,1,Sample item: tinned sardines,14.00,130.00,0.00,130.00,Sample Customer 018,478 Sample St,,'90026,,US,555-0100
+#S1018,,,2026-06-23 21:42:00 -0400,2,Sample item: variety box,58.00,,,,,,,,,,
+#S1019,sample.customer019@example.com,paid,2026-02-09 19:36:00 -0400,3,Sample item: variety box,58.00,187.00,0.00,187.00,Sample Customer 019,872 Sample St,,'90291,,US,555-0100
+#S1019,,,2026-02-09 19:36:00 -0400,1,Sample item: tinned tuna,13.00,,,,,,,,,,
+#S1020,sample.customer020@example.com,paid,2026-09-27 01:08:00 -0400,3,Sample item: tinned trout,12.00,62.00,0.00,62.00,Sample Customer 020,209 Sample St,,'11222,,US,555-0100
+#S1020,,,2026-09-27 01:08:00 -0400,2,Sample item: tinned tuna,13.00,,,,,,,,,,
+#S1021,sample.customer021@example.com,paid,2026-10-04 04:12:00 -0400,1,Sample item: tinned salmon,12.00,26.00,6.00,32.00,Sample Customer 021,472 Sample St,,'11211,,US,555-0100
+#S1021,,,2026-10-04 04:12:00 -0400,1,Sample item: tinned sardines,14.00,,,,,,,,,,
+#S1022,sample.customer022@example.com,paid,2026-08-04 09:42:00 -0400,1,Sample item: tinned trout,12.00,24.00,6.00,30.00,Sample Customer 022,55 Sample St,,'60614,,US,555-0100
+#S1022,,,2026-08-04 09:42:00 -0400,1,Sample item: tinned salmon,12.00,,,,,,,,,,
+#S1023,sample.customer023@example.com,paid,2026-10-05 17:48:00 -0400,1,Sample item: tinned tuna,13.00,71.00,0.00,71.00,Sample Customer 023,690 Sample St,,'90026,,US,555-0100
+#S1023,,,2026-10-05 17:48:00 -0400,1,Sample item: variety box,58.00,,,,,,,,,,
+#S1024,sample.customer024@example.com,paid,2026-08-05 06:54:00 -0400,1,Sample item: tinned sardines,14.00,50.00,0.00,50.00,Sample Customer 024,144 Sample St,,'60622,,US,555-0100
+#S1024,,,2026-08-05 06:54:00 -0400,3,Sample item: tinned salmon,12.00,,,,,,,,,,
+#S1025,sample.customer025@example.com,paid,2026-08-10 18:35:00 -0400,3,Sample item: variety box,58.00,199.00,0.00,199.00,Sample Customer 025,811 Sample St,,'55408,,US,555-0100
+#S1025,,,2026-08-10 18:35:00 -0400,1,Sample item: tinned tuna,13.00,,,,,,,,,,
+#S1025,,,2026-08-10 18:35:00 -0400,1,Sample item: tinned trout,12.00,,,,,,,,,,
+#S1026,sample.customer026@example.com,paid,2026-08-06 08:48:00 -0400,3,Sample item: variety box,58.00,174.00,0.00,174.00,Sample Customer 026,837 Sample St,,'90039,,US,555-0100
+#S1027,sample.customer027@example.com,paid,2026-02-28 01:55:00 -0400,1,Sample item: tinned salmon,12.00,26.00,6.00,32.00,Sample Customer 027,919 Sample St,,'90039,,US,555-0100
+#S1027,,,2026-02-28 01:55:00 -0400,1,Sample item: tinned sardines,14.00,,,,,,,,,,
+#S1028,sample.customer028@example.com,paid,2026-01-31 17:40:00 -0400,2,Sample item: tinned tuna,13.00,26.00,6.00,32.00,Sample Customer 028,977 Sample St,,'78704,,US,555-0100
+#S1029,sample.customer029@example.com,paid,2026-01-14 09:21:00 -0400,3,Sample item: variety box,58.00,174.00,0.00,174.00,Sample Customer 029,709 Sample St,,'90026,,US,555-0100
+#S1030,sample.customer030@example.com,paid,2026-04-25 13:31:00 -0400,3,Sample item: tinned tuna,13.00,75.00,0.00,75.00,Sample Customer 030,643 Sample St,,'19147,,US,555-0100
+#S1030,,,2026-04-25 13:31:00 -0400,3,Sample item: tinned trout,12.00,,,,,,,,,,
+#S1031,sample.customer031@example.com,paid,2026-03-08 03:53:00 -0400,1,Sample item: variety box,58.00,58.00,0.00,58.00,Sample Customer 031,648 Sample St,,'90027,,US,555-0100
+#S1032,sample.customer032@example.com,paid,2026-05-07 11:40:00 -0400,1,Sample item: variety box,58.00,94.00,0.00,94.00,Sample Customer 032,210 Sample St,,'11211,,US,555-0100
+#S1032,,,2026-05-07 11:40:00 -0400,3,Sample item: tinned salmon,12.00,,,,,,,,,,
+#S1033,sample.customer033@example.com,paid,2026-08-28 15:35:00 -0400,1,Sample item: tinned trout,12.00,12.00,6.00,18.00,Sample Customer 033,898 Sample St,,'90027,,US,555-0100
+#S1034,sample.customer034@example.com,paid,2026-10-06 18:45:00 -0400,1,Sample item: tinned salmon,12.00,39.00,6.00,45.00,Sample Customer 034,913 Sample St,,'55408,,US,555-0100
+#S1034,,,2026-10-06 18:45:00 -0400,1,Sample item: tinned sardines,14.00,,,,,,,,,,
+#S1034,,,2026-10-06 18:45:00 -0400,1,Sample item: tinned tuna,13.00,,,,,,,,,,
+#S1035,sample.customer035@example.com,paid,2026-07-12 04:19:00 -0400,1,Sample item: tinned salmon,12.00,12.00,6.00,18.00,Sample Customer 035,289 Sample St,,'90039,,US,555-0100
+#S1036,sample.customer036@example.com,paid,2026-06-08 20:48:00 -0400,3,Sample item: tinned sardines,14.00,66.00,0.00,66.00,Sample Customer 036,362 Sample St,,'10009,,US,555-0100
+#S1036,,,2026-06-08 20:48:00 -0400,2,Sample item: tinned trout,12.00,,,,,,,,,,
+#S1037,sample.customer037@example.com,paid,2026-03-09 14:30:00 -0400,3,Sample item: tinned sardines,14.00,42.00,6.00,48.00,Sample Customer 037,844 Sample St,,'78704,,US,555-0100
+#S1038,sample.customer038@example.com,paid,2026-06-05 08:46:00 -0400,1,Sample item: tinned sardines,14.00,14.00,6.00,20.00,Sample Customer 038,541 Sample St,,'90026,,US,555-0100
+#S1039,sample.customer039@example.com,paid,2026-06-29 12:14:00 -0400,1,Sample item: tinned trout,12.00,25.00,6.00,31.00,Sample Customer 039,15 Sample St,,'10003,,US,555-0100
+#S1039,,,2026-06-29 12:14:00 -0400,1,Sample item: tinned tuna,13.00,,,,,,,,,,
+#S1040,sample.customer040@example.com,paid,2026-02-07 21:41:00 -0400,1,Sample item: tinned tuna,13.00,27.00,6.00,33.00,Sample Customer 040,876 Sample St,,'90026,,US,555-0100
+#S1040,,,2026-02-07 21:41:00 -0400,1,Sample item: tinned sardines,14.00,,,,,,,,,,
+#S1041,sample.customer041@example.com,paid,2026-03-03 01:46:00 -0400,1,Sample item: variety box,58.00,58.00,0.00,58.00,Sample Customer 041,645 Sample St,,'11222,,US,555-0100
+#S1042,sample.customer042@example.com,paid,2026-09-22 16:36:00 -0400,1,Sample item: variety box,58.00,58.00,0.00,58.00,Sample Customer 042,311 Sample St,,'19147,,US,555-0100
+#S1043,sample.customer043@example.com,paid,2026-07-28 22:05:00 -0400,1,Sample item: variety box,58.00,58.00,0.00,58.00,Sample Customer 043,810 Sample St,,'11222,,US,555-0100
+#S1044,sample.customer044@example.com,paid,2026-04-11 00:21:00 -0400,1,Sample item: tinned sardines,14.00,14.00,6.00,20.00,Sample Customer 044,710 Sample St,,'11222,,US,555-0100
+#S1045,sample.customer045@example.com,paid,2026-01-27 00:00:00 -0400,1,Sample item: tinned salmon,12.00,12.00,6.00,18.00,Sample Customer 045,331 Sample St,,'02130,,US,555-0100
+#S1046,sample.customer046@example.com,paid,2026-04-15 18:35:00 -0400,2,Sample item: tinned trout,12.00,37.00,6.00,43.00,Sample Customer 046,272 Sample St,,'10025,,US,555-0100
+#S1046,,,2026-04-15 18:35:00 -0400,1,Sample item: tinned tuna,13.00,,,,,,,,,,
+#S1047,sample.customer047@example.com,paid,2026-01-27 21:26:00 -0400,2,Sample item: tinned sardines,14.00,28.00,6.00,34.00,Sample Customer 047,998 Sample St,,'90291,,US,555-0100
+#S1048,sample.customer048@example.com,paid,2026-01-10 14:49:00 -0400,1,Sample item: tinned trout,12.00,12.00,6.00,18.00,Sample Customer 048,327 Sample St,,'11211,,US,555-0100
+#S1049,sample.customer049@example.com,paid,2026-02-18 18:58:00 -0400,2,Sample item: variety box,58.00,116.00,0.00,116.00,Sample Customer 049,808 Sample St,,'90026,,US,555-0100
+#S1050,sample.customer050@example.com,paid,2026-06-20 00:58:00 -0400,3,Sample item: variety box,58.00,198.00,0.00,198.00,Sample Customer 050,230 Sample St,,'60622,,US,555-0100
+#S1050,,,2026-06-20 00:58:00 -0400,2,Sample item: tinned trout,12.00,,,,,,,,,,
+#S1051,sample.customer051@example.com,paid,2026-08-09 06:57:00 -0400,2,Sample item: tinned sardines,14.00,52.00,0.00,52.00,Sample Customer 051,308 Sample St,,'90039,,US,555-0100
+#S1051,,,2026-08-09 06:57:00 -0400,2,Sample item: tinned trout,12.00,,,,,,,,,,
+#S1052,sample.customer052@example.com,paid,2026-05-14 17:33:00 -0400,1,Sample item: tinned sardines,14.00,14.00,6.00,20.00,Sample Customer 052,721 Sample St,,'10025,,US,555-0100
+#S1053,sample.customer053@example.com,paid,2026-05-05 08:22:00 -0400,2,Sample item: tinned trout,12.00,24.00,6.00,30.00,Sample Customer 053,436 Sample St,,'78704,,US,555-0100
+#S1054,sample.customer054@example.com,paid,2026-05-01 02:26:00 -0400,1,Sample item: tinned trout,12.00,25.00,6.00,31.00,Sample Customer 054,125 Sample St,,'94117,,US,555-0100
+#S1054,,,2026-05-01 02:26:00 -0400,1,Sample item: tinned tuna,13.00,,,,,,,,,,
+#S1055,sample.customer055@example.com,paid,2026-03-05 00:39:00 -0400,1,Sample item: tinned trout,12.00,70.00,0.00,70.00,Sample Customer 055,372 Sample St,,'02116,,US,555-0100
+#S1055,,,2026-03-05 00:39:00 -0400,1,Sample item: variety box,58.00,,,,,,,,,,
+#S1056,sample.customer056@example.com,paid,2026-08-10 08:15:00 -0400,1,Sample item: tinned tuna,13.00,73.00,0.00,73.00,Sample Customer 056,396 Sample St,,'90039,,US,555-0100
+#S1056,,,2026-08-10 08:15:00 -0400,2,Sample item: tinned trout,12.00,,,,,,,,,,
+#S1056,,,2026-08-10 08:15:00 -0400,3,Sample item: tinned salmon,12.00,,,,,,,,,,
+#S1057,sample.customer057@example.com,paid,2026-04-02 03:05:00 -0400,1,Sample item: tinned salmon,12.00,70.00,0.00,70.00,Sample Customer 057,744 Sample St,,'98122,,US,555-0100
+#S1057,,,2026-04-02 03:05:00 -0400,1,Sample item: variety box,58.00,,,,,,,,,,
+#S1058,sample.customer058@example.com,paid,2026-07-21 02:13:00 -0400,1,Sample item: variety box,58.00,84.00,0.00,84.00,Sample Customer 058,293 Sample St,,'11211,,US,555-0100
+#S1058,,,2026-07-21 02:13:00 -0400,1,Sample item: tinned sardines,14.00,,,,,,,,,,
+#S1058,,,2026-07-21 02:13:00 -0400,1,Sample item: tinned salmon,12.00,,,,,,,,,,
+#S1059,sample.customer059@example.com,paid,2026-07-21 00:38:00 -0400,2,Sample item: tinned sardines,14.00,41.00,6.00,47.00,Sample Customer 059,617 Sample St,,'60614,,US,555-0100
+#S1059,,,2026-07-21 00:38:00 -0400,1,Sample item: tinned tuna,13.00,,,,,,,,,,
+#S1060,sample.customer060@example.com,paid,2026-02-06 13:35:00 -0400,1,Sample item: variety box,58.00,58.00,0.00,58.00,Sample Customer 060,896 Sample St,,'98122,,US,555-0100
+#S1061,sample.customer061@example.com,paid,2026-07-11 03:48:00 -0400,2,Sample item: tinned tuna,13.00,26.00,6.00,32.00,Sample Customer 061,683 Sample St,,'11211,,US,555-0100
+#S1062,sample.customer062@example.com,paid,2026-01-09 03:41:00 -0400,1,Sample item: tinned salmon,12.00,62.00,0.00,62.00,Sample Customer 062,378 Sample St,,'94110,,US,555-0100
+#S1062,,,2026-01-09 03:41:00 -0400,1,Sample item: tinned sardines,14.00,,,,,,,,,,
+#S1062,,,2026-01-09 03:41:00 -0400,3,Sample item: tinned trout,12.00,,,,,,,,,,
+#S1063,sample.customer063@example.com,paid,2026-10-19 16:33:00 -0400,2,Sample item: variety box,58.00,116.00,0.00,116.00,Sample Customer 063,891 Sample St,,'90026,,US,555-0100
+#S1064,sample.customer064@example.com,paid,2026-03-19 04:11:00 -0400,3,Sample item: tinned tuna,13.00,39.00,6.00,45.00,Sample Customer 064,478 Sample St,,'60614,,US,555-0100
+#S1065,sample.customer065@example.com,paid,2026-07-23 19:26:00 -0400,1,Sample item: variety box,58.00,71.00,0.00,71.00,Sample Customer 065,430 Sample St,,'60614,,US,555-0100
+#S1065,,,2026-07-23 19:26:00 -0400,1,Sample item: tinned tuna,13.00,,,,,,,,,,
+#S1066,sample.customer066@example.com,paid,2026-03-01 23:44:00 -0400,3,Sample item: tinned trout,12.00,49.00,6.00,55.00,Sample Customer 066,186 Sample St,,'60614,,US,555-0100
+#S1066,,,2026-03-01 23:44:00 -0400,1,Sample item: tinned tuna,13.00,,,,,,,,,,
+#S1067,sample.customer067@example.com,paid,2026-02-04 15:48:00 -0400,2,Sample item: tinned tuna,13.00,26.00,6.00,32.00,Sample Customer 067,741 Sample St,,'11238,,US,555-0100
+#S1068,sample.customer068@example.com,paid,2026-10-01 06:01:00 -0400,1,Sample item: tinned trout,12.00,12.00,6.00,18.00,Sample Customer 068,879 Sample St,,'20009,,US,555-0100
+#S1069,sample.customer069@example.com,paid,2026-09-15 06:14:00 -0400,3,Sample item: tinned tuna,13.00,75.00,0.00,75.00,Sample Customer 069,996 Sample St,,'02116,,US,555-0100
+#S1069,,,2026-09-15 06:14:00 -0400,3,Sample item: tinned trout,12.00,,,,,,,,,,
+#S1070,sample.customer070@example.com,paid,2026-07-12 02:05:00 -0400,1,Sample item: tinned salmon,12.00,76.00,0.00,76.00,Sample Customer 070,277 Sample St,,'19125,,US,555-0100
+#S1070,,,2026-07-12 02:05:00 -0400,3,Sample item: tinned trout,12.00,,,,,,,,,,
+#S1070,,,2026-07-12 02:05:00 -0400,2,Sample item: tinned sardines,14.00,,,,,,,,,,
+#S1071,sample.customer071@example.com,paid,2026-04-28 00:29:00 -0400,1,Sample item: variety box,58.00,58.00,0.00,58.00,Sample Customer 071,930 Sample St,,'11238,,US,555-0100
+#S1072,sample.customer072@example.com,paid,2026-04-21 15:30:00 -0400,2,Sample item: variety box,58.00,116.00,0.00,116.00,Sample Customer 072,147 Sample St,,'90026,,US,555-0100
+#S1073,sample.customer073@example.com,paid,2026-05-26 11:44:00 -0400,3,Sample item: tinned trout,12.00,36.00,6.00,42.00,Sample Customer 073,374 Sample St,,'90291,,US,555-0100
+#S1074,sample.customer074@example.com,paid,2026-10-13 05:04:00 -0400,1,Sample item: tinned salmon,12.00,36.00,6.00,42.00,Sample Customer 074,158 Sample St,,'19125,,US,555-0100
+#S1074,,,2026-10-13 05:04:00 -0400,2,Sample item: tinned trout,12.00,,,,,,,,,,
+#S1075,sample.customer075@example.com,paid,2026-03-05 16:30:00 -0400,1,Sample item: tinned trout,12.00,12.00,6.00,18.00,Sample Customer 075,393 Sample St,,'20009,,US,555-0100
+#S1076,sample.customer076@example.com,paid,2026-01-28 03:44:00 -0400,1,Sample item: tinned tuna,13.00,13.00,6.00,19.00,Sample Customer 076,167 Sample St,,'02116,,US,555-0100
+#S1077,sample.customer077@example.com,paid,2026-08-11 06:28:00 -0400,1,Sample item: tinned salmon,12.00,128.00,0.00,128.00,Sample Customer 077,119 Sample St,,'02139,,US,555-0100
+#S1077,,,2026-08-11 06:28:00 -0400,2,Sample item: variety box,58.00,,,,,,,,,,
+#S1078,sample.customer078@example.com,paid,2026-09-26 13:20:00 -0400,2,Sample item: tinned sardines,14.00,28.00,6.00,34.00,Sample Customer 078,318 Sample St,,'60622,,US,555-0100
+#S1079,sample.customer079@example.com,paid,2026-08-28 18:20:00 -0400,3,Sample item: tinned tuna,13.00,39.00,6.00,45.00,Sample Customer 079,133 Sample St,,'02130,,US,555-0100
+#S1080,sample.customer080@example.com,paid,2026-07-26 06:50:00 -0400,3,Sample item: tinned salmon,12.00,62.00,0.00,62.00,Sample Customer 080,80 Sample St,,'11222,,US,555-0100
+#S1080,,,2026-07-26 06:50:00 -0400,2,Sample item: tinned tuna,13.00,,,,,,,,,,
+#S1081,sample.customer081@example.com,paid,2026-10-15 15:24:00 -0400,2,Sample item: tinned sardines,14.00,28.00,6.00,34.00,Sample Customer 081,781 Sample St,,'10025,,US,555-0100
+#S1082,sample.customer082@example.com,paid,2026-09-03 01:35:00 -0400,2,Sample item: tinned salmon,12.00,24.00,6.00,30.00,Sample Customer 082,528 Sample St,,'90027,,US,555-0100
+#S1083,sample.customer083@example.com,paid,2026-07-28 11:07:00 -0400,3,Sample item: tinned tuna,13.00,39.00,6.00,45.00,Sample Customer 083,331 Sample St,,'90291,,US,555-0100
+#S1084,sample.customer084@example.com,paid,2026-03-10 08:24:00 -0400,1,Sample item: tinned sardines,14.00,14.00,6.00,20.00,Sample Customer 084,715 Sample St,,'12401,,US,555-0100
+#S1085,sample.customer085@example.com,paid,2026-05-11 21:38:00 -0400,3,Sample item: tinned sardines,14.00,42.00,6.00,48.00,Sample Customer 085,168 Sample St,,'10009,,US,555-0100
+#S1086,sample.customer086@example.com,paid,2026-06-14 19:23:00 -0400,2,Sample item: variety box,58.00,154.00,0.00,154.00,Sample Customer 086,282 Sample St,,'90026,,US,555-0100
+#S1086,,,2026-06-14 19:23:00 -0400,2,Sample item: tinned salmon,12.00,,,,,,,,,,
+#S1086,,,2026-06-14 19:23:00 -0400,1,Sample item: tinned sardines,14.00,,,,,,,,,,
+#S1087,sample.customer087@example.com,paid,2026-06-15 19:39:00 -0400,2,Sample item: tinned salmon,12.00,24.00,6.00,30.00,Sample Customer 087,349 Sample St,,'10003,,US,555-0100
+#S1088,sample.customer088@example.com,paid,2026-02-26 05:36:00 -0400,2,Sample item: tinned trout,12.00,63.00,0.00,63.00,Sample Customer 088,420 Sample St,,'60614,,US,555-0100
+#S1088,,,2026-02-26 05:36:00 -0400,3,Sample item: tinned tuna,13.00,,,,,,,,,,
+#S1089,sample.customer089@example.com,paid,2026-05-30 10:27:00 -0400,2,Sample item: variety box,58.00,116.00,0.00,116.00,Sample Customer 089,429 Sample St,,'98103,,US,555-0100
+#S1090,sample.customer090@example.com,paid,2026-05-07 15:19:00 -0400,1,Sample item: tinned sardines,14.00,14.00,6.00,20.00,Sample Customer 090,370 Sample St,,'90291,,US,555-0100
+#S1091,sample.customer091@example.com,paid,2026-08-29 00:16:00 -0400,3,Sample item: tinned trout,12.00,36.00,6.00,42.00,Sample Customer 091,187 Sample St,,'94117,,US,555-0100
+#S1092,sample.customer092@example.com,paid,2026-01-08 19:53:00 -0400,2,Sample item: variety box,58.00,116.00,0.00,116.00,Sample Customer 092,352 Sample St,,'11238,,US,555-0100
+#S1093,sample.customer093@example.com,paid,2026-08-03 18:57:00 -0400,3,Sample item: variety box,58.00,214.00,0.00,214.00,Sample Customer 093,785 Sample St,,'11211,,US,555-0100
+#S1093,,,2026-08-03 18:57:00 -0400,2,Sample item: tinned sardines,14.00,,,,,,,,,,
+#S1093,,,2026-08-03 18:57:00 -0400,1,Sample item: tinned salmon,12.00,,,,,,,,,,
+#S1094,sample.customer094@example.com,paid,2026-03-26 01:15:00 -0400,1,Sample item: tinned trout,12.00,61.00,0.00,61.00,Sample Customer 094,293 Sample St,,'02130,,US,555-0100
+#S1094,,,2026-03-26 01:15:00 -0400,1,Sample item: tinned tuna,13.00,,,,,,,,,,
+#S1094,,,2026-03-26 01:15:00 -0400,3,Sample item: tinned salmon,12.00,,,,,,,,,,
+#S1095,sample.customer095@example.com,paid,2026-08-19 18:20:00 -0400,1,Sample item: tinned tuna,13.00,83.00,0.00,83.00,Sample Customer 095,347 Sample St,,'11238,,US,555-0100
+#S1095,,,2026-08-19 18:20:00 -0400,1,Sample item: tinned trout,12.00,,,,,,,,,,
+#S1095,,,2026-08-19 18:20:00 -0400,1,Sample item: variety box,58.00,,,,,,,,,,
+#S1096,sample.customer096@example.com,paid,2026-03-25 21:11:00 -0400,2,Sample item: tinned salmon,12.00,82.00,0.00,82.00,Sample Customer 096,437 Sample St,,'19147,,US,555-0100
+#S1096,,,2026-03-25 21:11:00 -0400,1,Sample item: variety box,58.00,,,,,,,,,,
+#S1097,sample.customer097@example.com,paid,2026-09-21 04:03:00 -0400,1,Sample item: variety box,58.00,70.00,0.00,70.00,Sample Customer 097,971 Sample St,,'10025,,US,555-0100
+#S1097,,,2026-09-21 04:03:00 -0400,1,Sample item: tinned salmon,12.00,,,,,,,,,,
+#S1098,sample.customer098@example.com,paid,2026-06-06 17:57:00 -0400,1,Sample item: tinned salmon,12.00,12.00,6.00,18.00,Sample Customer 098,683 Sample St,,'02139,,US,555-0100
+#S1099,sample.customer099@example.com,paid,2026-09-03 09:49:00 -0400,2,Sample item: tinned tuna,13.00,26.00,6.00,32.00,Sample Customer 099,631 Sample St,,'90026,,US,555-0100
+#S1100,sample.customer100@example.com,paid,2026-06-28 15:36:00 -0400,2,Sample item: tinned sardines,14.00,28.00,6.00,34.00,Sample Customer 100,266 Sample St,,'20009,,US,555-0100
+#S1101,sample.customer101@example.com,paid,2026-01-18 08:49:00 -0400,3,Sample item: tinned sardines,14.00,90.00,0.00,90.00,Sample Customer 101,783 Sample St,,'20009,,US,555-0100
+#S1101,,,2026-01-18 08:49:00 -0400,2,Sample item: tinned salmon,12.00,,,,,,,,,,
+#S1101,,,2026-01-18 08:49:00 -0400,2,Sample item: tinned trout,12.00,,,,,,,,,,
+#S1102,sample.customer102@example.com,paid,2026-06-23 16:59:00 -0400,2,Sample item: tinned tuna,13.00,26.00,6.00,32.00,Sample Customer 102,872 Sample St,,'02130,,US,555-0100
+#S1103,sample.customer103@example.com,paid,2026-09-28 13:35:00 -0400,1,Sample item: tinned tuna,13.00,49.00,6.00,55.00,Sample Customer 103,76 Sample St,,'12401,,US,555-0100
+#S1103,,,2026-09-28 13:35:00 -0400,3,Sample item: tinned salmon,12.00,,,,,,,,,,
+#S1104,sample.customer104@example.com,paid,2026-09-26 06:55:00 -0400,1,Sample item: variety box,58.00,120.00,0.00,120.00,Sample Customer 104,686 Sample St,,'90026,,US,555-0100
+#S1104,,,2026-09-26 06:55:00 -0400,2,Sample item: tinned tuna,13.00,,,,,,,,,,
+#S1104,,,2026-09-26 06:55:00 -0400,3,Sample item: tinned salmon,12.00,,,,,,,,,,
+#S1105,sample.customer105@example.com,paid,2026-05-08 15:33:00 -0400,1,Sample item: tinned salmon,12.00,12.00,6.00,18.00,Sample Customer 105,894 Sample St,,'19125,,US,555-0100
+#S1106,sample.customer106@example.com,paid,2026-03-09 11:28:00 -0400,3,Sample item: variety box,58.00,174.00,0.00,174.00,Sample Customer 106,118 Sample St,,'60614,,US,555-0100
+#S1107,sample.customer107@example.com,paid,2026-08-14 20:37:00 -0400,3,Sample item: tinned trout,12.00,36.00,6.00,42.00,Sample Customer 107,224 Sample St,,'10003,,US,555-0100
+#S1108,sample.customer108@example.com,paid,2026-06-10 04:33:00 -0400,1,Sample item: variety box,58.00,82.00,0.00,82.00,Sample Customer 108,904 Sample St,,'78704,,US,555-0100
+#S1108,,,2026-06-10 04:33:00 -0400,2,Sample item: tinned salmon,12.00,,,,,,,,,,
+#S1109,sample.customer109@example.com,paid,2026-09-22 19:53:00 -0400,2,Sample item: tinned salmon,12.00,63.00,0.00,63.00,Sample Customer 109,640 Sample St,,'02116,,US,555-0100
+#S1109,,,2026-09-22 19:53:00 -0400,3,Sample item: tinned tuna,13.00,,,,,,,,,,
+#S1110,sample.customer110@example.com,paid,2026-09-26 09:12:00 -0400,1,Sample item: tinned salmon,12.00,70.00,0.00,70.00,Sample Customer 110,826 Sample St,,'11238,,US,555-0100
+#S1110,,,2026-09-26 09:12:00 -0400,1,Sample item: variety box,58.00,,,,,,,,,,
+#S1111,sample.customer111@example.com,paid,2026-09-01 04:47:00 -0400,2,Sample item: tinned trout,12.00,140.00,0.00,140.00,Sample Customer 111,193 Sample St,,'33137,,US,555-0100
+#S1111,,,2026-09-01 04:47:00 -0400,2,Sample item: variety box,58.00,,,,,,,,,,
+#S1112,sample.customer112@example.com,paid,2026-02-24 16:14:00 -0400,2,Sample item: variety box,58.00,116.00,0.00,116.00,Sample Customer 112,478 Sample St,,'11238,,US,555-0100
+#S1113,sample.customer113@example.com,paid,2026-03-07 06:34:00 -0400,1,Sample item: tinned trout,12.00,12.00,6.00,18.00,Sample Customer 113,167 Sample St,,'98103,,US,555-0100
+#S1114,sample.customer114@example.com,paid,2026-06-04 16:51:00 -0400,1,Sample item: variety box,58.00,99.00,0.00,99.00,Sample Customer 114,382 Sample St,,'02130,,US,555-0100
+#S1114,,,2026-06-04 16:51:00 -0400,2,Sample item: tinned sardines,14.00,,,,,,,,,,
+#S1114,,,2026-06-04 16:51:00 -0400,1,Sample item: tinned tuna,13.00,,,,,,,,,,
+#S1115,sample.customer115@example.com,paid,2026-07-21 14:35:00 -0400,3,Sample item: tinned sardines,14.00,42.00,6.00,48.00,Sample Customer 115,931 Sample St,,'11238,,US,555-0100
+#S1116,sample.customer116@example.com,paid,2026-05-03 03:33:00 -0400,1,Sample item: variety box,58.00,58.00,0.00,58.00,Sample Customer 116,17 Sample St,,'02139,,US,555-0100
+#S1117,sample.customer117@example.com,paid,2026-01-26 04:17:00 -0400,2,Sample item: tinned tuna,13.00,26.00,6.00,32.00,Sample Customer 117,784 Sample St,,'90026,,US,555-0100
+#S1118,sample.customer118@example.com,paid,2026-01-15 05:26:00 -0400,1,Sample item: variety box,58.00,58.00,0.00,58.00,Sample Customer 118,846 Sample St,,'28801,,US,555-0100
+#S1119,sample.customer119@example.com,paid,2026-02-06 18:54:00 -0400,1,Sample item: tinned sardines,14.00,26.00,6.00,32.00,Sample Customer 119,687 Sample St,,'10003,,US,555-0100
+#S1119,,,2026-02-06 18:54:00 -0400,1,Sample item: tinned salmon,12.00,,,,,,,,,,
+#S1120,sample.customer120@example.com,paid,2026-07-04 01:30:00 -0400,1,Sample item: tinned tuna,13.00,13.00,6.00,19.00,Sample Customer 120,901 Sample St,,'02116,,US,555-0100
+#S1121,sample.customer121@example.com,paid,2026-06-07 15:15:00 -0400,1,Sample item: tinned sardines,14.00,166.00,0.00,166.00,Sample Customer 121,631 Sample St,,'19125,,US,555-0100
+#S1121,,,2026-06-07 15:15:00 -0400,2,Sample item: variety box,58.00,,,,,,,,,,
+#S1121,,,2026-06-07 15:15:00 -0400,3,Sample item: tinned salmon,12.00,,,,,,,,,,
+#S1122,sample.customer122@example.com,paid,2026-06-29 10:05:00 -0400,1,Sample item: tinned salmon,12.00,12.00,6.00,18.00,Sample Customer 122,784 Sample St,,'11222,,US,555-0100
+#S1123,sample.customer123@example.com,paid,2026-02-02 16:43:00 -0400,1,Sample item: variety box,58.00,58.00,0.00,58.00,Sample Customer 123,186 Sample St,,'11222,,US,555-0100
+#S1124,sample.customer124@example.com,paid,2026-03-20 02:48:00 -0400,1,Sample item: tinned sardines,14.00,142.00,0.00,142.00,Sample Customer 124,766 Sample St,,'10025,,US,555-0100
+#S1124,,,2026-03-20 02:48:00 -0400,1,Sample item: tinned salmon,12.00,,,,,,,,,,
+#S1124,,,2026-03-20 02:48:00 -0400,2,Sample item: variety box,58.00,,,,,,,,,,
+#S1125,sample.customer125@example.com,paid,2026-05-17 23:24:00 -0400,3,Sample item: tinned trout,12.00,64.00,0.00,64.00,Sample Customer 125,372 Sample St,,'20009,,US,555-0100
+#S1125,,,2026-05-17 23:24:00 -0400,2,Sample item: tinned sardines,14.00,,,,,,,,,,
+#S1126,sample.customer126@example.com,paid,2026-07-01 17:42:00 -0400,1,Sample item: tinned trout,12.00,12.00,6.00,18.00,Sample Customer 126,237 Sample St,,'19125,,US,555-0100
+#S1127,sample.customer127@example.com,paid,2026-05-15 16:56:00 -0400,2,Sample item: tinned sardines,14.00,52.00,0.00,52.00,Sample Customer 127,90 Sample St,,'98103,,US,555-0100
+#S1127,,,2026-05-15 16:56:00 -0400,2,Sample item: tinned trout,12.00,,,,,,,,,,
+#S1128,sample.customer128@example.com,paid,2026-06-21 20:10:00 -0400,2,Sample item: tinned tuna,13.00,50.00,0.00,50.00,Sample Customer 128,92 Sample St,,'11211,,US,555-0100
+#S1128,,,2026-06-21 20:10:00 -0400,2,Sample item: tinned trout,12.00,,,,,,,,,,
+#S1129,sample.customer129@example.com,paid,2026-08-07 21:19:00 -0400,3,Sample item: tinned trout,12.00,36.00,6.00,42.00,Sample Customer 129,121 Sample St,,'19147,,US,555-0100
+#S1130,sample.customer130@example.com,paid,2026-05-25 14:57:00 -0400,3,Sample item: variety box,58.00,201.00,0.00,201.00,Sample Customer 130,147 Sample St,,'90026,,US,555-0100
+#S1130,,,2026-05-25 14:57:00 -0400,1,Sample item: tinned sardines,14.00,,,,,,,,,,
+#S1130,,,2026-05-25 14:57:00 -0400,1,Sample item: tinned tuna,13.00,,,,,,,,,,
+#S1131,sample.customer131@example.com,paid,2026-01-14 16:17:00 -0400,1,Sample item: tinned sardines,14.00,14.00,6.00,20.00,Sample Customer 131,557 Sample St,,'11238,,US,555-0100
+#S1132,sample.customer132@example.com,paid,2026-04-07 19:46:00 -0400,1,Sample item: tinned trout,12.00,12.00,6.00,18.00,Sample Customer 132,626 Sample St,,'97214,,US,555-0100
+#S1133,sample.customer133@example.com,paid,2026-07-13 14:56:00 -0400,1,Sample item: tinned tuna,13.00,13.00,6.00,19.00,Sample Customer 133,991 Sample St,,'07302,,US,555-0100
+#S1134,sample.customer134@example.com,paid,2026-06-25 09:44:00 -0400,3,Sample item: tinned tuna,13.00,39.00,6.00,45.00,Sample Customer 134,258 Sample St,,'94110,,US,555-0100
+#S1135,sample.customer135@example.com,paid,2026-05-30 15:35:00 -0400,2,Sample item: variety box,58.00,116.00,0.00,116.00,Sample Customer 135,52 Sample St,,'90291,,US,555-0100
+#S1136,sample.customer136@example.com,paid,2026-07-02 00:32:00 -0400,1,Sample item: variety box,58.00,58.00,0.00,58.00,Sample Customer 136,203 Sample St,,'90027,,US,555-0100
+#S1137,sample.customer137@example.com,paid,2026-10-11 21:46:00 -0400,3,Sample item: variety box,58.00,174.00,0.00,174.00,Sample Customer 137,400 Sample St,,'60622,,US,555-0100
+#S1138,sample.customer138@example.com,paid,2026-06-29 19:05:00 -0400,1,Sample item: tinned trout,12.00,54.00,0.00,54.00,Sample Customer 138,44 Sample St,,'94117,,US,555-0100
+#S1138,,,2026-06-29 19:05:00 -0400,3,Sample item: tinned sardines,14.00,,,,,,,,,,
+#S1139,sample.customer139@example.com,paid,2026-07-16 19:10:00 -0400,1,Sample item: tinned salmon,12.00,38.00,6.00,44.00,Sample Customer 139,795 Sample St,,'10025,,US,555-0100
+#S1139,,,2026-07-16 19:10:00 -0400,2,Sample item: tinned tuna,13.00,,,,,,,,,,
+#S1140,sample.customer140@example.com,paid,2026-06-11 04:20:00 -0400,1,Sample item: variety box,58.00,94.00,0.00,94.00,Sample Customer 140,232 Sample St,,'80206,,US,555-0100
+#S1140,,,2026-06-11 04:20:00 -0400,1,Sample item: tinned trout,12.00,,,,,,,,,,
+#S1140,,,2026-06-11 04:20:00 -0400,2,Sample item: tinned salmon,12.00,,,,,,,,,,
+#S1141,sample.customer141@example.com,paid,2026-08-06 13:28:00 -0400,1,Sample item: variety box,58.00,58.00,0.00,58.00,Sample Customer 141,425 Sample St,,'90027,,US,555-0100
+#S1142,sample.customer142@example.com,paid,2026-02-14 10:26:00 -0400,3,Sample item: tinned sardines,14.00,42.00,6.00,48.00,Sample Customer 142,260 Sample St,,'11211,,US,555-0100
+#S1143,sample.customer143@example.com,paid,2026-03-17 14:17:00 -0400,1,Sample item: tinned tuna,13.00,13.00,6.00,19.00,Sample Customer 143,282 Sample St,,'02116,,US,555-0100
+#S1144,sample.customer144@example.com,paid,2026-05-21 06:08:00 -0400,1,Sample item: tinned tuna,13.00,13.00,6.00,19.00,Sample Customer 144,233 Sample St,,'11211,,US,555-0100
+#S1145,sample.customer145@example.com,paid,2026-09-19 06:45:00 -0400,1,Sample item: variety box,58.00,118.00,0.00,118.00,Sample Customer 145,982 Sample St,,'20009,,US,555-0100
+#S1145,,,2026-09-19 06:45:00 -0400,2,Sample item: tinned trout,12.00,,,,,,,,,,
+#S1145,,,2026-09-19 06:45:00 -0400,3,Sample item: tinned salmon,12.00,,,,,,,,,,
+#S1146,sample.customer146@example.com,paid,2026-07-11 16:24:00 -0400,3,Sample item: tinned trout,12.00,74.00,0.00,74.00,Sample Customer 146,182 Sample St,,'11222,,US,555-0100
+#S1146,,,2026-07-11 16:24:00 -0400,1,Sample item: tinned salmon,12.00,,,,,,,,,,
+#S1146,,,2026-07-11 16:24:00 -0400,2,Sample item: tinned tuna,13.00,,,,,,,,,,
+#S1147,sample.customer147@example.com,paid,2026-08-30 08:06:00 -0400,1,Sample item: tinned tuna,13.00,13.00,6.00,19.00,Sample Customer 147,303 Sample St,,'11211,,US,555-0100
+#S1148,sample.customer148@example.com,paid,2026-08-17 21:57:00 -0400,1,Sample item: tinned trout,12.00,38.00,6.00,44.00,Sample Customer 148,849 Sample St,,'02130,,US,555-0100
+#S1148,,,2026-08-17 21:57:00 -0400,1,Sample item: tinned sardines,14.00,,,,,,,,,,
+#S1148,,,2026-08-17 21:57:00 -0400,1,Sample item: tinned salmon,12.00,,,,,,,,,,
+#S1149,sample.customer149@example.com,paid,2026-01-24 09:04:00 -0400,3,Sample item: tinned tuna,13.00,75.00,0.00,75.00,Sample Customer 149,258 Sample St,,'11222,,US,555-0100
+#S1149,,,2026-01-24 09:04:00 -0400,3,Sample item: tinned salmon,12.00,,,,,,,,,,
+#S1150,sample.customer150@example.com,paid,2026-01-16 10:45:00 -0400,3,Sample item: tinned sardines,14.00,42.00,6.00,48.00,Sample Customer 150,101 Sample St,,'19125,,US,555-0100
+#S1151,sample.customer151@example.com,paid,2026-06-14 14:40:00 -0400,1,Sample item: variety box,58.00,82.00,0.00,82.00,Sample Customer 151,784 Sample St,,'02130,,US,555-0100
+#S1151,,,2026-06-14 14:40:00 -0400,1,Sample item: tinned salmon,12.00,,,,,,,,,,
+#S1151,,,2026-06-14 14:40:00 -0400,1,Sample item: tinned trout,12.00,,,,,,,,,,
+#S1152,sample.customer152@example.com,paid,2026-05-07 17:33:00 -0400,3,Sample item: tinned tuna,13.00,51.00,0.00,51.00,Sample Customer 152,362 Sample St,,'11211,,US,555-0100
+#S1152,,,2026-05-07 17:33:00 -0400,1,Sample item: tinned salmon,12.00,,,,,,,,,,
+#S1153,sample.customer153@example.com,paid,2026-02-01 01:22:00 -0400,1,Sample item: tinned salmon,12.00,142.00,0.00,142.00,Sample Customer 153,573 Sample St,,'02130,,US,555-0100
+#S1153,,,2026-02-01 01:22:00 -0400,2,Sample item: variety box,58.00,,,,,,,,,,
+#S1153,,,2026-02-01 01:22:00 -0400,1,Sample item: tinned sardines,14.00,,,,,,,,,,
+#S1154,sample.customer154@example.com,paid,2026-02-16 00:07:00 -0400,3,Sample item: tinned trout,12.00,36.00,6.00,42.00,Sample Customer 154,998 Sample St,,'11222,,US,555-0100
+#S1155,sample.customer155@example.com,paid,2026-09-16 03:01:00 -0400,2,Sample item: tinned sardines,14.00,41.00,6.00,47.00,Sample Customer 155,708 Sample St,,'97214,,US,555-0100
+#S1155,,,2026-09-16 03:01:00 -0400,1,Sample item: tinned tuna,13.00,,,,,,,,,,
+#S1156,sample.customer156@example.com,paid,2026-08-08 06:30:00 -0400,1,Sample item: tinned tuna,13.00,13.00,6.00,19.00,Sample Customer 156,396 Sample St,,'11222,,US,555-0100
+#S1157,sample.customer157@example.com,paid,2026-04-04 02:43:00 -0400,1,Sample item: variety box,58.00,58.00,0.00,58.00,Sample Customer 157,774 Sample St,,'07302,,US,555-0100
+#S1158,sample.customer158@example.com,paid,2026-07-17 10:08:00 -0400,2,Sample item: tinned trout,12.00,24.00,6.00,30.00,Sample Customer 158,189 Sample St,,'94117,,US,555-0100
+#S1159,sample.customer159@example.com,paid,2026-09-22 02:51:00 -0400,1,Sample item: variety box,58.00,94.00,0.00,94.00,Sample Customer 159,974 Sample St,,'97214,,US,555-0100
+#S1159,,,2026-09-22 02:51:00 -0400,3,Sample item: tinned trout,12.00,,,,,,,,,,
+#S1160,sample.customer160@example.com,paid,2026-03-03 22:34:00 -0400,1,Sample item: variety box,58.00,72.00,0.00,72.00,Sample Customer 160,14 Sample St,,'11238,,US,555-0100
+#S1160,,,2026-03-03 22:34:00 -0400,1,Sample item: tinned sardines,14.00,,,,,,,,,,
+#S1161,sample.customer161@example.com,paid,2026-08-16 04:26:00 -0400,3,Sample item: tinned tuna,13.00,63.00,0.00,63.00,Sample Customer 161,464 Sample St,,'11211,,US,555-0100
+#S1161,,,2026-08-16 04:26:00 -0400,2,Sample item: tinned salmon,12.00,,,,,,,,,,
+#S1162,sample.customer162@example.com,paid,2026-08-14 13:18:00 -0400,3,Sample item: tinned salmon,12.00,36.00,6.00,42.00,Sample Customer 162,650 Sample St,,'60614,,US,555-0100
+#S1163,sample.customer163@example.com,paid,2026-01-06 19:46:00 -0400,1,Sample item: variety box,58.00,70.00,0.00,70.00,Sample Customer 163,342 Sample St,,'20009,,US,555-0100
+#S1163,,,2026-01-06 19:46:00 -0400,1,Sample item: tinned trout,12.00,,,,,,,,,,
+#S1164,sample.customer164@example.com,paid,2026-06-15 14:20:00 -0400,2,Sample item: tinned sardines,14.00,28.00,6.00,34.00,Sample Customer 164,797 Sample St,,'90027,,US,555-0100
+#S1165,sample.customer165@example.com,paid,2026-06-15 15:47:00 -0400,3,Sample item: tinned tuna,13.00,237.00,0.00,237.00,Sample Customer 165,330 Sample St,,'12401,,US,555-0100
+#S1165,,,2026-06-15 15:47:00 -0400,3,Sample item: variety box,58.00,,,,,,,,,,
+#S1165,,,2026-06-15 15:47:00 -0400,2,Sample item: tinned salmon,12.00,,,,,,,,,,
+#S1166,sample.customer166@example.com,paid,2026-03-07 05:20:00 -0400,1,Sample item: variety box,58.00,58.00,0.00,58.00,Sample Customer 166,228 Sample St,,'10009,,US,555-0100
+#S1167,sample.customer167@example.com,paid,2026-09-16 12:25:00 -0400,1,Sample item: tinned sardines,14.00,14.00,6.00,20.00,Sample Customer 167,718 Sample St,,'28801,,US,555-0100
+#S1168,sample.customer168@example.com,paid,2026-09-04 00:09:00 -0400,1,Sample item: tinned salmon,12.00,12.00,6.00,18.00,Sample Customer 168,404 Sample St,,'10003,,US,555-0100
+#S1169,sample.customer169@example.com,paid,2026-02-20 18:24:00 -0400,1,Sample item: tinned tuna,13.00,41.00,6.00,47.00,Sample Customer 169,561 Sample St,,'19125,,US,555-0100
+#S1169,,,2026-02-20 18:24:00 -0400,2,Sample item: tinned sardines,14.00,,,,,,,,,,
+#S1170,sample.customer170@example.com,paid,2026-05-22 15:20:00 -0400,1,Sample item: tinned tuna,13.00,95.00,0.00,95.00,Sample Customer 170,762 Sample St,,'11211,,US,555-0100
+#S1170,,,2026-05-22 15:20:00 -0400,1,Sample item: variety box,58.00,,,,,,,,,,
+#S1170,,,2026-05-22 15:20:00 -0400,2,Sample item: tinned salmon,12.00,,,,,,,,,,
+#S1171,sample.customer171@example.com,paid,2026-08-19 04:03:00 -0400,1,Sample item: tinned tuna,13.00,13.00,6.00,19.00,Sample Customer 171,450 Sample St,,'20009,,US,555-0100
+#S1172,sample.customer172@example.com,paid,2026-09-05 23:46:00 -0400,3,Sample item: tinned salmon,12.00,78.00,0.00,78.00,Sample Customer 172,70 Sample St,,'98103,,US,555-0100
+#S1172,,,2026-09-05 23:46:00 -0400,3,Sample item: tinned sardines,14.00,,,,,,,,,,
+#S1173,sample.customer173@example.com,paid,2026-08-15 18:18:00 -0400,2,Sample item: tinned trout,12.00,24.00,6.00,30.00,Sample Customer 173,315 Sample St,,'19125,,US,555-0100
+#S1174,sample.customer174@example.com,paid,2026-06-04 17:47:00 -0400,2,Sample item: variety box,58.00,116.00,0.00,116.00,Sample Customer 174,690 Sample St,,'80206,,US,555-0100
+#S1175,sample.customer175@example.com,paid,2026-08-16 15:34:00 -0400,3,Sample item: tinned tuna,13.00,97.00,0.00,97.00,Sample Customer 175,441 Sample St,,'11211,,US,555-0100
+#S1175,,,2026-08-16 15:34:00 -0400,1,Sample item: variety box,58.00,,,,,,,,,,
+#S1176,sample.customer176@example.com,paid,2026-07-15 09:28:00 -0400,1,Sample item: tinned sardines,14.00,53.00,0.00,53.00,Sample Customer 176,894 Sample St,,'90026,,US,555-0100
+#S1176,,,2026-07-15 09:28:00 -0400,3,Sample item: tinned tuna,13.00,,,,,,,,,,
+#S1177,sample.customer177@example.com,paid,2026-10-02 13:14:00 -0400,1,Sample item: tinned trout,12.00,12.00,6.00,18.00,Sample Customer 177,189 Sample St,,'10009,,US,555-0100
+#S1178,sample.customer178@example.com,paid,2026-07-02 14:18:00 -0400,1,Sample item: tinned sardines,14.00,188.00,0.00,188.00,Sample Customer 178,204 Sample St,,'02130,,US,555-0100
+#S1178,,,2026-07-02 14:18:00 -0400,3,Sample item: variety box,58.00,,,,,,,,,,
+#S1179,sample.customer179@example.com,paid,2026-05-21 04:00:00 -0400,1,Sample item: variety box,58.00,58.00,0.00,58.00,Sample Customer 179,129 Sample St,,'11222,,US,555-0100
+#S1180,sample.customer180@example.com,paid,2026-03-25 03:12:00 -0400,2,Sample item: tinned trout,12.00,38.00,6.00,44.00,Sample Customer 180,250 Sample St,,'90291,,US,555-0100
+#S1180,,,2026-03-25 03:12:00 -0400,1,Sample item: tinned sardines,14.00,,,,,,,,,,
+#S1181,sample.customer181@example.com,paid,2026-05-01 22:39:00 -0400,1,Sample item: tinned trout,12.00,12.00,6.00,18.00,Sample Customer 181,77 Sample St,,'04101,,US,555-0100
+#S1182,sample.customer182@example.com,paid,2026-10-09 08:23:00 -0400,3,Sample item: tinned salmon,12.00,36.00,6.00,42.00,Sample Customer 182,433 Sample St,,'60614,,US,555-0100
+#S1183,sample.customer183@example.com,paid,2026-02-10 05:49:00 -0400,3,Sample item: tinned trout,12.00,73.00,0.00,73.00,Sample Customer 183,98 Sample St,,'11222,,US,555-0100
+#S1183,,,2026-02-10 05:49:00 -0400,2,Sample item: tinned salmon,12.00,,,,,,,,,,
+#S1183,,,2026-02-10 05:49:00 -0400,1,Sample item: tinned tuna,13.00,,,,,,,,,,
+#S1184,sample.customer184@example.com,paid,2026-05-11 03:09:00 -0400,3,Sample item: tinned salmon,12.00,36.00,6.00,42.00,Sample Customer 184,983 Sample St,,'02139,,US,555-0100
+#S1185,sample.customer185@example.com,paid,2026-02-10 05:55:00 -0400,1,Sample item: tinned sardines,14.00,26.00,6.00,32.00,Sample Customer 185,484 Sample St,,'98103,,US,555-0100
+#S1185,,,2026-02-10 05:55:00 -0400,1,Sample item: tinned salmon,12.00,,,,,,,,,,
+#S1186,sample.customer186@example.com,paid,2026-06-08 00:36:00 -0400,3,Sample item: tinned sardines,14.00,42.00,6.00,48.00,Sample Customer 186,469 Sample St,,'11211,,US,555-0100
+#S1187,sample.customer187@example.com,paid,2026-06-27 03:37:00 -0400,1,Sample item: tinned trout,12.00,12.00,6.00,18.00,Sample Customer 187,195 Sample St,,'90291,,US,555-0100
+#S1188,sample.customer188@example.com,paid,2026-06-09 21:13:00 -0400,1,Sample item: tinned trout,12.00,65.00,0.00,65.00,Sample Customer 188,984 Sample St,,'90026,,US,555-0100
+#S1188,,,2026-06-09 21:13:00 -0400,3,Sample item: tinned tuna,13.00,,,,,,,,,,
+#S1188,,,2026-06-09 21:13:00 -0400,1,Sample item: tinned sardines,14.00,,,,,,,,,,
+#S1189,sample.customer189@example.com,paid,2026-03-07 11:44:00 -0400,2,Sample item: tinned salmon,12.00,24.00,6.00,30.00,Sample Customer 189,804 Sample St,,'10025,,US,555-0100
+#S1190,sample.customer190@example.com,paid,2026-06-12 06:03:00 -0400,2,Sample item: tinned salmon,12.00,24.00,6.00,30.00,Sample Customer 190,87 Sample St,,'97214,,US,555-0100
+#S1191,sample.customer191@example.com,paid,2026-06-03 10:55:00 -0400,3,Sample item: tinned trout,12.00,74.00,0.00,74.00,Sample Customer 191,854 Sample St,,'94117,,US,555-0100
+#S1191,,,2026-06-03 10:55:00 -0400,2,Sample item: tinned tuna,13.00,,,,,,,,,,
+#S1191,,,2026-06-03 10:55:00 -0400,1,Sample item: tinned salmon,12.00,,,,,,,,,,
+#S1192,sample.customer192@example.com,paid,2026-08-13 05:10:00 -0400,2,Sample item: tinned salmon,12.00,38.00,6.00,44.00,Sample Customer 192,634 Sample St,,'19125,,US,555-0100
+#S1192,,,2026-08-13 05:10:00 -0400,1,Sample item: tinned sardines,14.00,,,,,,,,,,
+#S1193,sample.customer193@example.com,paid,2026-04-06 15:46:00 -0400,3,Sample item: tinned sardines,14.00,68.00,0.00,68.00,Sample Customer 193,734 Sample St,,'10009,,US,555-0100
+#S1193,,,2026-04-06 15:46:00 -0400,2,Sample item: tinned tuna,13.00,,,,,,,,,,
+#S1194,sample.customer194@example.com,paid,2026-10-13 12:37:00 -0400,2,Sample item: variety box,58.00,168.00,0.00,168.00,Sample Customer 194,122 Sample St,,'07302,,US,555-0100
+#S1194,,,2026-10-13 12:37:00 -0400,2,Sample item: tinned sardines,14.00,,,,,,,,,,
+#S1194,,,2026-10-13 12:37:00 -0400,2,Sample item: tinned trout,12.00,,,,,,,,,,
+#S1195,sample.customer195@example.com,paid,2026-08-13 18:53:00 -0400,1,Sample item: tinned trout,12.00,12.00,6.00,18.00,Sample Customer 195,619 Sample St,,'60622,,US,555-0100
+#S1196,sample.customer196@example.com,paid,2026-05-07 22:18:00 -0400,2,Sample item: tinned tuna,13.00,236.00,0.00,236.00,Sample Customer 196,482 Sample St,,'60622,,US,555-0100
+#S1196,,,2026-05-07 22:18:00 -0400,3,Sample item: tinned trout,12.00,,,,,,,,,,
+#S1196,,,2026-05-07 22:18:00 -0400,3,Sample item: variety box,58.00,,,,,,,,,,
+#S1197,sample.customer197@example.com,paid,2026-08-14 15:08:00 -0400,3,Sample item: tinned trout,12.00,75.00,0.00,75.00,Sample Customer 197,342 Sample St,,'19147,,US,555-0100
+#S1197,,,2026-08-14 15:08:00 -0400,3,Sample item: tinned tuna,13.00,,,,,,,,,,
+#S1198,sample.customer198@example.com,paid,2026-07-31 07:28:00 -0400,2,Sample item: tinned tuna,13.00,62.00,0.00,62.00,Sample Customer 198,369 Sample St,,'94117,,US,555-0100
+#S1198,,,2026-07-31 07:28:00 -0400,3,Sample item: tinned trout,12.00,,,,,,,,,,
+#S1199,sample.customer199@example.com,paid,2026-04-06 10:02:00 -0400,3,Sample item: tinned trout,12.00,75.00,0.00,75.00,Sample Customer 199,627 Sample St,,'11211,,US,555-0100
+#S1199,,,2026-04-06 10:02:00 -0400,3,Sample item: tinned tuna,13.00,,,,,,,,,,
+#S1200,sample.customer200@example.com,paid,2026-01-13 10:11:00 -0400,2,Sample item: tinned tuna,13.00,90.00,0.00,90.00,Sample Customer 200,317 Sample St,,'90039,,US,555-0100
+#S1200,,,2026-01-13 10:11:00 -0400,3,Sample item: tinned trout,12.00,,,,,,,,,,
+#S1200,,,2026-01-13 10:11:00 -0400,2,Sample item: tinned sardines,14.00,,,,,,,,,,
+#S1201,sample.customer201@example.com,paid,2026-09-20 08:57:00 -0400,1,Sample item: tinned trout,12.00,12.00,6.00,18.00,Sample Customer 201,69 Sample St,,'10009,,US,555-0100
+#S1202,sample.customer202@example.com,paid,2026-02-02 08:45:00 -0400,1,Sample item: tinned salmon,12.00,12.00,6.00,18.00,Sample Customer 202,385 Sample St,,'94110,,US,555-0100
+#S1203,sample.customer203@example.com,paid,2026-08-18 07:19:00 -0400,1,Sample item: tinned sardines,14.00,38.00,6.00,44.00,Sample Customer 203,120 Sample St,,'11238,,US,555-0100
+#S1203,,,2026-08-18 07:19:00 -0400,2,Sample item: tinned trout,12.00,,,,,,,,,,
+#S1204,sample.customer204@example.com,paid,2026-06-06 07:45:00 -0400,1,Sample item: tinned trout,12.00,12.00,6.00,18.00,Sample Customer 204,823 Sample St,,'11222,,US,555-0100
+#S1205,sample.customer205@example.com,paid,2026-01-31 03:37:00 -0400,1,Sample item: tinned sardines,14.00,50.00,0.00,50.00,Sample Customer 205,585 Sample St,,'20009,,US,555-0100
+#S1205,,,2026-01-31 03:37:00 -0400,3,Sample item: tinned trout,12.00,,,,,,,,,,
+#S1206,sample.customer206@example.com,paid,2026-09-29 21:09:00 -0400,3,Sample item: tinned tuna,13.00,39.00,6.00,45.00,Sample Customer 206,580 Sample St,,'90039,,US,555-0100
+#S1207,sample.customer207@example.com,paid,2026-09-08 06:36:00 -0400,3,Sample item: tinned salmon,12.00,60.00,0.00,60.00,Sample Customer 207,283 Sample St,,'11238,,US,555-0100
+#S1207,,,2026-09-08 06:36:00 -0400,2,Sample item: tinned trout,12.00,,,,,,,,,,
+#S1208,sample.customer208@example.com,paid,2026-08-25 20:41:00 -0400,1,Sample item: tinned salmon,12.00,26.00,6.00,32.00,Sample Customer 208,998 Sample St,,'90027,,US,555-0100
+#S1208,,,2026-08-25 20:41:00 -0400,1,Sample item: tinned sardines,14.00,,,,,,,,,,
+#S1209,sample.customer209@example.com,paid,2026-08-02 00:52:00 -0400,1,Sample item: tinned sardines,14.00,72.00,0.00,72.00,Sample Customer 209,806 Sample St,,'10025,,US,555-0100
+#S1209,,,2026-08-02 00:52:00 -0400,1,Sample item: variety box,58.00,,,,,,,,,,
+#S1210,sample.customer210@example.com,paid,2026-10-16 07:47:00 -0400,3,Sample item: tinned salmon,12.00,36.00,6.00,42.00,Sample Customer 210,286 Sample St,,'10009,,US,555-0100
+#S1211,sample.customer211@example.com,paid,2026-10-01 13:24:00 -0400,1,Sample item: variety box,58.00,82.00,0.00,82.00,Sample Customer 211,791 Sample St,,'11238,,US,555-0100
+#S1211,,,2026-10-01 13:24:00 -0400,2,Sample item: tinned salmon,12.00,,,,,,,,,,
+#S1212,sample.customer212@example.com,paid,2026-09-13 02:54:00 -0400,1,Sample item: tinned trout,12.00,12.00,6.00,18.00,Sample Customer 212,487 Sample St,,'10009,,US,555-0100
+#S1213,sample.customer213@example.com,paid,2026-05-25 14:04:00 -0400,3,Sample item: tinned tuna,13.00,39.00,6.00,45.00,Sample Customer 213,888 Sample St,,'11222,,US,555-0100
+#S1214,sample.customer214@example.com,paid,2026-01-08 15:41:00 -0400,1,Sample item: variety box,58.00,58.00,0.00,58.00,Sample Customer 214,575 Sample St,,'10025,,US,555-0100
+#S1215,sample.customer215@example.com,paid,2026-03-25 16:21:00 -0400,2,Sample item: tinned tuna,13.00,26.00,6.00,32.00,Sample Customer 215,320 Sample St,,'11222,,US,555-0100
+#S1216,sample.customer216@example.com,paid,2026-07-20 06:22:00 -0400,1,Sample item: tinned trout,12.00,186.00,0.00,186.00,Sample Customer 216,366 Sample St,,'19125,,US,555-0100
+#S1216,,,2026-07-20 06:22:00 -0400,3,Sample item: variety box,58.00,,,,,,,,,,
+#S1217,sample.customer217@example.com,paid,2026-10-18 08:52:00 -0400,1,Sample item: tinned salmon,12.00,12.00,6.00,18.00,Sample Customer 217,575 Sample St,,'10009,,US,555-0100
+#S1218,sample.customer218@example.com,paid,2026-04-06 18:21:00 -0400,3,Sample item: tinned trout,12.00,76.00,0.00,76.00,Sample Customer 218,788 Sample St,,'10009,,US,555-0100
+#S1218,,,2026-04-06 18:21:00 -0400,2,Sample item: tinned sardines,14.00,,,,,,,,,,
+#S1218,,,2026-04-06 18:21:00 -0400,1,Sample item: tinned salmon,12.00,,,,,,,,,,
+#S1219,sample.customer219@example.com,paid,2026-03-10 19:13:00 -0400,1,Sample item: tinned sardines,14.00,14.00,6.00,20.00,Sample Customer 219,619 Sample St,,'60614,,US,555-0100
+#S1220,sample.customer220@example.com,paid,2026-02-23 06:15:00 -0400,2,Sample item: tinned tuna,13.00,38.00,6.00,44.00,Sample Customer 220,292 Sample St,,'94117,,US,555-0100
+#S1220,,,2026-02-23 06:15:00 -0400,1,Sample item: tinned trout,12.00,,,,,,,,,,
+#S1221,sample.customer221@example.com,paid,2026-06-26 11:39:00 -0400,2,Sample item: tinned trout,12.00,237.00,0.00,237.00,Sample Customer 221,818 Sample St,,'04101,,US,555-0100
+#S1221,,,2026-06-26 11:39:00 -0400,3,Sample item: tinned tuna,13.00,,,,,,,,,,
+#S1221,,,2026-06-26 11:39:00 -0400,3,Sample item: variety box,58.00,,,,,,,,,,
+#S1222,sample.customer222@example.com,paid,2026-09-21 20:30:00 -0400,2,Sample item: tinned salmon,12.00,24.00,6.00,30.00,Sample Customer 222,274 Sample St,,'11222,,US,555-0100
+#S1223,sample.customer223@example.com,paid,2026-09-08 19:17:00 -0400,2,Sample item: tinned trout,12.00,52.00,0.00,52.00,Sample Customer 223,144 Sample St,,'07302,,US,555-0100
+#S1223,,,2026-09-08 19:17:00 -0400,2,Sample item: tinned sardines,14.00,,,,,,,,,,
+#S1224,sample.customer224@example.com,paid,2026-09-17 14:44:00 -0400,2,Sample item: tinned trout,12.00,24.00,6.00,30.00,Sample Customer 224,455 Sample St,,'97214,,US,555-0100
+#S1225,sample.customer225@example.com,paid,2026-02-06 19:06:00 -0400,1,Sample item: tinned salmon,12.00,12.00,6.00,18.00,Sample Customer 225,332 Sample St,,'11211,,US,555-0100
+#S1226,sample.customer226@example.com,paid,2026-03-19 13:38:00 -0400,1,Sample item: tinned tuna,13.00,13.00,6.00,19.00,Sample Customer 226,520 Sample St,,'10003,,US,555-0100
+#S1227,sample.customer227@example.com,paid,2026-07-13 15:09:00 -0400,1,Sample item: tinned tuna,13.00,37.00,6.00,43.00,Sample Customer 227,702 Sample St,,'20009,,US,555-0100
+#S1227,,,2026-07-13 15:09:00 -0400,2,Sample item: tinned salmon,12.00,,,,,,,,,,
+#S1228,sample.customer228@example.com,paid,2026-08-02 15:29:00 -0400,3,Sample item: tinned sardines,14.00,126.00,0.00,126.00,Sample Customer 228,381 Sample St,,'28801,,US,555-0100
+#S1228,,,2026-08-02 15:29:00 -0400,1,Sample item: variety box,58.00,,,,,,,,,,
+#S1228,,,2026-08-02 15:29:00 -0400,2,Sample item: tinned tuna,13.00,,,,,,,,,,
+#S1229,sample.customer229@example.com,paid,2026-03-19 11:48:00 -0400,3,Sample item: tinned tuna,13.00,97.00,0.00,97.00,Sample Customer 229,673 Sample St,,'60614,,US,555-0100
+#S1229,,,2026-03-19 11:48:00 -0400,1,Sample item: variety box,58.00,,,,,,,,,,
+#S1230,sample.customer230@example.com,paid,2026-10-07 23:10:00 -0400,3,Sample item: tinned sardines,14.00,42.00,6.00,48.00,Sample Customer 230,63 Sample St,,'98103,,US,555-0100
+#S1231,sample.customer231@example.com,paid,2026-08-27 01:54:00 -0400,1,Sample item: tinned trout,12.00,54.00,0.00,54.00,Sample Customer 231,133 Sample St,,'90291,,US,555-0100
+#S1231,,,2026-08-27 01:54:00 -0400,3,Sample item: tinned sardines,14.00,,,,,,,,,,
+#S1232,sample.customer232@example.com,paid,2026-09-21 20:58:00 -0400,1,Sample item: tinned tuna,13.00,61.00,0.00,61.00,Sample Customer 232,670 Sample St,,'10003,,US,555-0100
+#S1232,,,2026-09-21 20:58:00 -0400,1,Sample item: tinned trout,12.00,,,,,,,,,,
+#S1232,,,2026-09-21 20:58:00 -0400,3,Sample item: tinned salmon,12.00,,,,,,,,,,
+#S1233,sample.customer233@example.com,paid,2026-03-21 14:04:00 -0400,3,Sample item: tinned salmon,12.00,36.00,6.00,42.00,Sample Customer 233,19 Sample St,,'98103,,US,555-0100
+#S1234,sample.customer234@example.com,paid,2026-02-18 03:34:00 -0400,3,Sample item: variety box,58.00,174.00,0.00,174.00,Sample Customer 234,186 Sample St,,'90026,,US,555-0100
+#S1235,sample.customer235@example.com,paid,2026-05-28 08:43:00 -0400,2,Sample item: tinned salmon,12.00,108.00,0.00,108.00,Sample Customer 235,451 Sample St,,'97214,,US,555-0100
+#S1235,,,2026-05-28 08:43:00 -0400,1,Sample item: variety box,58.00,,,,,,,,,,
+#S1235,,,2026-05-28 08:43:00 -0400,2,Sample item: tinned tuna,13.00,,,,,,,,,,
+#S1236,sample.customer236@example.com,paid,2026-04-19 04:24:00 -0400,1,Sample item: tinned sardines,14.00,72.00,0.00,72.00,Sample Customer 236,394 Sample St,,'90039,,US,555-0100
+#S1236,,,2026-04-19 04:24:00 -0400,1,Sample item: variety box,58.00,,,,,,,,,,
+#S1237,sample.customer237@example.com,paid,2026-05-18 23:44:00 -0400,3,Sample item: variety box,58.00,174.00,0.00,174.00,Sample Customer 237,800 Sample St,,'10025,,US,555-0100
+#S1238,sample.customer238@example.com,paid,2026-04-30 12:51:00 -0400,1,Sample item: tinned salmon,12.00,53.00,0.00,53.00,Sample Customer 238,91 Sample St,,'10009,,US,555-0100
+#S1238,,,2026-04-30 12:51:00 -0400,1,Sample item: tinned tuna,13.00,,,,,,,,,,
+#S1238,,,2026-04-30 12:51:00 -0400,2,Sample item: tinned sardines,14.00,,,,,,,,,,
+#S1239,sample.customer239@example.com,paid,2026-06-21 11:21:00 -0400,1,Sample item: tinned salmon,12.00,12.00,6.00,18.00,Sample Customer 239,647 Sample St,,'07302,,US,555-0100
+#S1240,sample.customer240@example.com,paid,2026-06-01 21:53:00 -0400,2,Sample item: tinned sardines,14.00,52.00,0.00,52.00,Sample Customer 240,103 Sample St,,'94110,,US,555-0100
+#S1240,,,2026-06-01 21:53:00 -0400,2,Sample item: tinned trout,12.00,,,,,,,,,,
+#S1241,sample.customer241@example.com,paid,2026-08-22 16:00:00 -0400,3,Sample item: tinned tuna,13.00,39.00,6.00,45.00,Sample Customer 241,722 Sample St,,'90026,,US,555-0100
+#S1242,sample.customer242@example.com,paid,2026-01-29 12:08:00 -0400,2,Sample item: variety box,58.00,158.00,0.00,158.00,Sample Customer 242,132 Sample St,,'11222,,US,555-0100
+#S1242,,,2026-01-29 12:08:00 -0400,3,Sample item: tinned sardines,14.00,,,,,,,,,,
+#S1243,sample.customer243@example.com,paid,2026-09-16 11:59:00 -0400,1,Sample item: tinned tuna,13.00,83.00,0.00,83.00,Sample Customer 243,839 Sample St,,'90026,,US,555-0100
+#S1243,,,2026-09-16 11:59:00 -0400,1,Sample item: tinned trout,12.00,,,,,,,,,,
+#S1243,,,2026-09-16 11:59:00 -0400,1,Sample item: variety box,58.00,,,,,,,,,,
+#S1244,sample.customer244@example.com,paid,2026-08-03 02:57:00 -0400,2,Sample item: tinned salmon,12.00,24.00,6.00,30.00,Sample Customer 244,699 Sample St,,'60622,,US,555-0100
+#S1245,sample.customer245@example.com,paid,2026-04-13 09:00:00 -0400,1,Sample item: tinned tuna,13.00,13.00,6.00,19.00,Sample Customer 245,962 Sample St,,'19147,,US,555-0100
+#S1246,sample.customer246@example.com,paid,2026-04-14 16:25:00 -0400,1,Sample item: tinned tuna,13.00,27.00,6.00,33.00,Sample Customer 246,833 Sample St,,'10025,,US,555-0100
+#S1246,,,2026-04-14 16:25:00 -0400,1,Sample item: tinned sardines,14.00,,,,,,,,,,
+#S1247,sample.customer247@example.com,paid,2026-04-11 23:46:00 -0400,3,Sample item: tinned trout,12.00,48.00,6.00,54.00,Sample Customer 247,389 Sample St,,'60614,,US,555-0100
+#S1247,,,2026-04-11 23:46:00 -0400,1,Sample item: tinned salmon,12.00,,,,,,,,,,
+#S1248,sample.customer248@example.com,paid,2026-06-01 01:05:00 -0400,1,Sample item: tinned trout,12.00,70.00,0.00,70.00,Sample Customer 248,26 Sample St,,'04101,,US,555-0100
+#S1248,,,2026-06-01 01:05:00 -0400,1,Sample item: variety box,58.00,,,,,,,,,,
+#S1249,sample.customer249@example.com,paid,2026-09-22 17:38:00 -0400,1,Sample item: tinned tuna,13.00,13.00,6.00,19.00,Sample Customer 249,31 Sample St,,'11211,,US,555-0100
+#S1250,sample.customer250@example.com,paid,2026-07-02 05:41:00 -0400,1,Sample item: tinned trout,12.00,12.00,6.00,18.00,Sample Customer 250,796 Sample St,,'90027,,US,555-0100
+#S1251,sample.customer251@example.com,paid,2026-01-23 12:32:00 -0400,1,Sample item: variety box,58.00,58.00,0.00,58.00,Sample Customer 251,215 Sample St,,'02130,,US,555-0100
+#S1252,sample.customer252@example.com,paid,2026-03-25 16:22:00 -0400,3,Sample item: tinned tuna,13.00,39.00,6.00,45.00,Sample Customer 252,214 Sample St,,'11211,,US,555-0100
+#S1253,sample.customer253@example.com,paid,2026-01-18 04:14:00 -0400,3,Sample item: variety box,58.00,174.00,0.00,174.00,Sample Customer 253,720 Sample St,,'90027,,US,555-0100
+#S1254,sample.customer254@example.com,paid,2026-07-16 15:03:00 -0400,3,Sample item: tinned trout,12.00,63.00,0.00,63.00,Sample Customer 254,420 Sample St,,'07302,,US,555-0100
+#S1254,,,2026-07-16 15:03:00 -0400,1,Sample item: tinned sardines,14.00,,,,,,,,,,
+#S1254,,,2026-07-16 15:03:00 -0400,1,Sample item: tinned tuna,13.00,,,,,,,,,,
+#S1255,sample.customer255@example.com,paid,2026-04-01 18:15:00 -0400,1,Sample item: tinned trout,12.00,12.00,6.00,18.00,Sample Customer 255,200 Sample St,,'11211,,US,555-0100
+#S1256,sample.customer256@example.com,paid,2026-01-15 08:31:00 -0400,1,Sample item: variety box,58.00,58.00,0.00,58.00,Sample Customer 256,60 Sample St,,'11211,,US,555-0100
+#S1257,sample.customer257@example.com,paid,2026-04-26 04:43:00 -0400,1,Sample item: tinned salmon,12.00,12.00,6.00,18.00,Sample Customer 257,326 Sample St,,'11211,,US,555-0100
+#S1258,sample.customer258@example.com,paid,2026-03-06 16:18:00 -0400,1,Sample item: tinned salmon,12.00,54.00,0.00,54.00,Sample Customer 258,110 Sample St,,'02130,,US,555-0100
+#S1258,,,2026-03-06 16:18:00 -0400,3,Sample item: tinned sardines,14.00,,,,,,,,,,
+#S1259,sample.customer259@example.com,paid,2026-05-07 18:33:00 -0400,1,Sample item: tinned salmon,12.00,12.00,6.00,18.00,Sample Customer 259,93 Sample St,,'11211,,US,555-0100
+#S1260,sample.customer260@example.com,paid,2026-02-24 08:28:00 -0400,1,Sample item: tinned sardines,14.00,26.00,6.00,32.00,Sample Customer 260,626 Sample St,,'78704,,US,555-0100
+#S1260,,,2026-02-24 08:28:00 -0400,1,Sample item: tinned trout,12.00,,,,,,,,,,
+#S1261,sample.customer261@example.com,paid,2026-06-17 13:38:00 -0400,3,Sample item: tinned trout,12.00,49.00,6.00,55.00,Sample Customer 261,737 Sample St,,'19147,,US,555-0100
+#S1261,,,2026-06-17 13:38:00 -0400,1,Sample item: tinned tuna,13.00,,,,,,,,,,
+#S1262,sample.customer262@example.com,paid,2026-08-18 08:53:00 -0400,1,Sample item: tinned salmon,12.00,12.00,6.00,18.00,Sample Customer 262,908 Sample St,,'94117,,US,555-0100
+#S1263,sample.customer263@example.com,paid,2026-03-15 06:39:00 -0400,1,Sample item: tinned sardines,14.00,14.00,6.00,20.00,Sample Customer 263,141 Sample St,,'20009,,US,555-0100
+#S1264,sample.customer264@example.com,paid,2026-07-01 04:38:00 -0400,2,Sample item: tinned trout,12.00,96.00,0.00,96.00,Sample Customer 264,607 Sample St,,'33137,,US,555-0100
+#S1264,,,2026-07-01 04:38:00 -0400,1,Sample item: tinned sardines,14.00,,,,,,,,,,
+#S1264,,,2026-07-01 04:38:00 -0400,1,Sample item: variety box,58.00,,,,,,,,,,
+#S1265,sample.customer265@example.com,paid,2026-08-09 09:45:00 -0400,3,Sample item: tinned trout,12.00,49.00,6.00,55.00,Sample Customer 265,422 Sample St,,'98103,,US,555-0100
+#S1265,,,2026-08-09 09:45:00 -0400,1,Sample item: tinned tuna,13.00,,,,,,,,,,
+#S1266,sample.customer266@example.com,paid,2026-06-25 09:55:00 -0400,2,Sample item: tinned tuna,13.00,26.00,6.00,32.00,Sample Customer 266,935 Sample St,,'19125,,US,555-0100
+#S1267,sample.customer267@example.com,paid,2026-04-29 08:24:00 -0400,3,Sample item: tinned sardines,14.00,42.00,6.00,48.00,Sample Customer 267,845 Sample St,,'10003,,US,555-0100
+#S1268,sample.customer268@example.com,paid,2026-05-05 01:37:00 -0400,3,Sample item: tinned sardines,14.00,42.00,6.00,48.00,Sample Customer 268,815 Sample St,,'90291,,US,555-0100
+#S1269,sample.customer269@example.com,paid,2026-07-12 16:10:00 -0400,3,Sample item: tinned tuna,13.00,39.00,6.00,45.00,Sample Customer 269,270 Sample St,,'10009,,US,555-0100
+#S1270,sample.customer270@example.com,paid,2026-07-23 19:41:00 -0400,1,Sample item: tinned trout,12.00,62.00,0.00,62.00,Sample Customer 270,281 Sample St,,'90039,,US,555-0100
+#S1270,,,2026-07-23 19:41:00 -0400,3,Sample item: tinned salmon,12.00,,,,,,,,,,
+#S1270,,,2026-07-23 19:41:00 -0400,1,Sample item: tinned sardines,14.00,,,,,,,,,,
+#S1271,sample.customer271@example.com,paid,2026-03-27 14:57:00 -0400,1,Sample item: tinned sardines,14.00,84.00,0.00,84.00,Sample Customer 271,550 Sample St,,'11211,,US,555-0100
+#S1271,,,2026-03-27 14:57:00 -0400,1,Sample item: variety box,58.00,,,,,,,,,,
+#S1271,,,2026-03-27 14:57:00 -0400,1,Sample item: tinned trout,12.00,,,,,,,,,,
+#S1272,sample.customer272@example.com,paid,2026-09-28 01:18:00 -0400,1,Sample item: tinned salmon,12.00,49.00,6.00,55.00,Sample Customer 272,423 Sample St,,'11238,,US,555-0100
+#S1272,,,2026-09-28 01:18:00 -0400,1,Sample item: tinned tuna,13.00,,,,,,,,,,
+#S1272,,,2026-09-28 01:18:00 -0400,2,Sample item: tinned trout,12.00,,,,,,,,,,
+#S1273,sample.customer273@example.com,paid,2026-03-05 09:31:00 -0400,1,Sample item: tinned salmon,12.00,40.00,6.00,46.00,Sample Customer 273,401 Sample St,,'11211,,US,555-0100
+#S1273,,,2026-03-05 09:31:00 -0400,2,Sample item: tinned sardines,14.00,,,,,,,,,,
+#S1274,sample.customer274@example.com,paid,2026-01-26 22:11:00 -0400,2,Sample item: tinned trout,12.00,154.00,0.00,154.00,Sample Customer 274,483 Sample St,,'11222,,US,555-0100
+#S1274,,,2026-01-26 22:11:00 -0400,1,Sample item: tinned sardines,14.00,,,,,,,,,,
+#S1274,,,2026-01-26 22:11:00 -0400,2,Sample item: variety box,58.00,,,,,,,,,,
+#S1275,sample.customer275@example.com,paid,2026-07-19 03:21:00 -0400,1,Sample item: tinned trout,12.00,12.00,6.00,18.00,Sample Customer 275,777 Sample St,,'10003,,US,555-0100
+#S1276,sample.customer276@example.com,paid,2026-08-20 15:10:00 -0400,1,Sample item: tinned tuna,13.00,13.00,6.00,19.00,Sample Customer 276,615 Sample St,,'90039,,US,555-0100
+#S1277,sample.customer277@example.com,paid,2026-05-17 16:50:00 -0400,3,Sample item: tinned sardines,14.00,93.00,0.00,93.00,Sample Customer 277,721 Sample St,,'90039,,US,555-0100
+#S1277,,,2026-05-17 16:50:00 -0400,1,Sample item: tinned salmon,12.00,,,,,,,,,,
+#S1277,,,2026-05-17 16:50:00 -0400,3,Sample item: tinned tuna,13.00,,,,,,,,,,
+#S1278,sample.customer278@example.com,paid,2026-01-16 23:01:00 -0400,3,Sample item: variety box,58.00,198.00,0.00,198.00,Sample Customer 278,204 Sample St,,'11222,,US,555-0100
+#S1278,,,2026-01-16 23:01:00 -0400,1,Sample item: tinned salmon,12.00,,,,,,,,,,
+#S1278,,,2026-01-16 23:01:00 -0400,1,Sample item: tinned trout,12.00,,,,,,,,,,
+#S1279,sample.customer279@example.com,paid,2026-07-16 11:03:00 -0400,1,Sample item: tinned sardines,14.00,14.00,6.00,20.00,Sample Customer 279,52 Sample St,,'90027,,US,555-0100
+#S1280,sample.customer280@example.com,paid,2026-01-12 05:44:00 -0400,1,Sample item: tinned salmon,12.00,12.00,6.00,18.00,Sample Customer 280,424 Sample St,,'19125,,US,555-0100
+#S1281,sample.customer281@example.com,paid,2026-10-09 09:22:00 -0400,2,Sample item: variety box,58.00,156.00,0.00,156.00,Sample Customer 281,139 Sample St,,'10003,,US,555-0100
+#S1281,,,2026-10-09 09:22:00 -0400,1,Sample item: tinned sardines,14.00,,,,,,,,,,
+#S1281,,,2026-10-09 09:22:00 -0400,2,Sample item: tinned tuna,13.00,,,,,,,,,,
+#S1282,sample.customer282@example.com,paid,2026-07-02 15:57:00 -0400,2,Sample item: tinned sardines,14.00,28.00,6.00,34.00,Sample Customer 282,338 Sample St,,'12401,,US,555-0100
+#S1283,sample.customer283@example.com,paid,2026-01-17 09:08:00 -0400,2,Sample item: tinned salmon,12.00,24.00,6.00,30.00,Sample Customer 283,63 Sample St,,'11222,,US,555-0100
+#S1284,sample.customer284@example.com,paid,2026-09-27 23:33:00 -0400,3,Sample item: tinned trout,12.00,224.00,0.00,224.00,Sample Customer 284,992 Sample St,,'11222,,US,555-0100
+#S1284,,,2026-09-27 23:33:00 -0400,1,Sample item: tinned sardines,14.00,,,,,,,,,,
+#S1284,,,2026-09-27 23:33:00 -0400,3,Sample item: variety box,58.00,,,,,,,,,,
+#S1285,sample.customer285@example.com,paid,2026-08-27 17:18:00 -0400,2,Sample item: tinned salmon,12.00,24.00,6.00,30.00,Sample Customer 285,251 Sample St,,'10003,,US,555-0100
+#S1286,sample.customer286@example.com,paid,2026-08-22 08:00:00 -0400,3,Sample item: tinned trout,12.00,36.00,6.00,42.00,Sample Customer 286,577 Sample St,,'90026,,US,555-0100
+#S1287,sample.customer287@example.com,paid,2026-05-18 16:18:00 -0400,3,Sample item: variety box,58.00,174.00,0.00,174.00,Sample Customer 287,26 Sample St,,'19125,,US,555-0100
+#S1288,sample.customer288@example.com,paid,2026-10-13 04:26:00 -0400,2,Sample item: tinned tuna,13.00,26.00,6.00,32.00,Sample Customer 288,120 Sample St,,'10009,,US,555-0100
+#S1289,sample.customer289@example.com,paid,2026-05-25 20:52:00 -0400,1,Sample item: tinned trout,12.00,12.00,6.00,18.00,Sample Customer 289,965 Sample St,,'60614,,US,555-0100
+#S1290,sample.customer290@example.com,paid,2026-01-14 02:46:00 -0400,2,Sample item: tinned salmon,12.00,24.00,6.00,30.00,Sample Customer 290,170 Sample St,,'11211,,US,555-0100
+#S1291,sample.customer291@example.com,paid,2026-02-13 14:20:00 -0400,1,Sample item: tinned salmon,12.00,12.00,6.00,18.00,Sample Customer 291,745 Sample St,,'90039,,US,555-0100
+#S1292,sample.customer292@example.com,paid,2026-02-16 21:34:00 -0400,1,Sample item: tinned tuna,13.00,13.00,6.00,19.00,Sample Customer 292,677 Sample St,,'60622,,US,555-0100
+#S1293,sample.customer293@example.com,paid,2026-04-06 06:00:00 -0400,1,Sample item: variety box,58.00,58.00,0.00,58.00,Sample Customer 293,128 Sample St,,'10025,,US,555-0100
+#S1294,sample.customer294@example.com,paid,2026-07-30 14:01:00 -0400,1,Sample item: variety box,58.00,58.00,0.00,58.00,Sample Customer 294,229 Sample St,,'80206,,US,555-0100
+#S1295,sample.customer295@example.com,paid,2026-07-09 08:36:00 -0400,2,Sample item: tinned trout,12.00,36.00,6.00,42.00,Sample Customer 295,126 Sample St,,'94117,,US,555-0100
+#S1295,,,2026-07-09 08:36:00 -0400,1,Sample item: tinned salmon,12.00,,,,,,,,,,
+#S1296,sample.customer296@example.com,paid,2026-09-24 02:40:00 -0400,1,Sample item: tinned salmon,12.00,12.00,6.00,18.00,Sample Customer 296,728 Sample St,,'10009,,US,555-0100
+#S1297,sample.customer297@example.com,paid,2026-07-14 02:26:00 -0400,3,Sample item: tinned sardines,14.00,252.00,0.00,252.00,Sample Customer 297,306 Sample St,,'11211,,US,555-0100
+#S1297,,,2026-07-14 02:26:00 -0400,3,Sample item: tinned salmon,12.00,,,,,,,,,,
+#S1297,,,2026-07-14 02:26:00 -0400,3,Sample item: variety box,58.00,,,,,,,,,,
+#S1298,sample.customer298@example.com,paid,2026-09-21 15:42:00 -0400,2,Sample item: tinned tuna,13.00,26.00,6.00,32.00,Sample Customer 298,303 Sample St,,'11238,,US,555-0100
+#S1299,sample.customer299@example.com,paid,2026-05-26 01:39:00 -0400,1,Sample item: tinned tuna,13.00,129.00,0.00,129.00,Sample Customer 299,784 Sample St,,'11238,,US,555-0100
+#S1299,,,2026-05-26 01:39:00 -0400,2,Sample item: variety box,58.00,,,,,,,,,,
+#S1300,sample.customer300@example.com,paid,2026-06-16 20:08:00 -0400,1,Sample item: tinned tuna,13.00,49.00,6.00,55.00,Sample Customer 300,271 Sample St,,'07302,,US,555-0100
+#S1300,,,2026-06-16 20:08:00 -0400,3,Sample item: tinned trout,12.00,,,,,,,,,,
+#S1301,sample.customer301@example.com,paid,2026-09-28 11:55:00 -0400,1,Sample item: tinned sardines,14.00,166.00,0.00,166.00,Sample Customer 301,239 Sample St,,'11222,,US,555-0100
+#S1301,,,2026-09-28 11:55:00 -0400,2,Sample item: variety box,58.00,,,,,,,,,,
+#S1301,,,2026-09-28 11:55:00 -0400,3,Sample item: tinned salmon,12.00,,,,,,,,,,
+#S1302,sample.customer302@example.com,paid,2026-08-16 06:02:00 -0400,1,Sample item: tinned sardines,14.00,14.00,6.00,20.00,Sample Customer 302,380 Sample St,,'98122,,US,555-0100
+#S1303,sample.customer303@example.com,paid,2026-05-08 23:36:00 -0400,3,Sample item: tinned tuna,13.00,39.00,6.00,45.00,Sample Customer 303,981 Sample St,,'90039,,US,555-0100
+#S1304,sample.customer304@example.com,paid,2026-06-19 01:37:00 -0400,3,Sample item: variety box,58.00,174.00,0.00,174.00,Sample Customer 304,355 Sample St,,'11211,,US,555-0100
+#S1305,sample.customer305@example.com,paid,2026-06-09 12:24:00 -0400,1,Sample item: tinned salmon,12.00,12.00,6.00,18.00,Sample Customer 305,531 Sample St,,'10009,,US,555-0100
+#S1306,sample.customer306@example.com,paid,2026-06-23 12:33:00 -0400,3,Sample item: variety box,58.00,224.00,0.00,224.00,Sample Customer 306,648 Sample St,,'11211,,US,555-0100
+#S1306,,,2026-06-23 12:33:00 -0400,3,Sample item: tinned salmon,12.00,,,,,,,,,,
+#S1306,,,2026-06-23 12:33:00 -0400,1,Sample item: tinned sardines,14.00,,,,,,,,,,
+#S1307,sample.customer307@example.com,paid,2026-10-07 12:44:00 -0400,2,Sample item: tinned sardines,14.00,54.00,0.00,54.00,Sample Customer 307,858 Sample St,,'90291,,US,555-0100
+#S1307,,,2026-10-07 12:44:00 -0400,2,Sample item: tinned tuna,13.00,,,,,,,,,,
+#S1308,sample.customer308@example.com,paid,2026-08-10 16:04:00 -0400,1,Sample item: tinned trout,12.00,12.00,6.00,18.00,Sample Customer 308,192 Sample St,,'90027,,US,555-0100
+#S1309,sample.customer309@example.com,paid,2026-01-14 16:35:00 -0400,1,Sample item: tinned sardines,14.00,14.00,6.00,20.00,Sample Customer 309,885 Sample St,,'33137,,US,555-0100
+#S1310,sample.customer310@example.com,paid,2026-02-20 09:52:00 -0400,3,Sample item: tinned sardines,14.00,66.00,0.00,66.00,Sample Customer 310,525 Sample St,,'90039,,US,555-0100
+#S1310,,,2026-02-20 09:52:00 -0400,2,Sample item: tinned trout,12.00,,,,,,,,,,
+#S1311,sample.customer311@example.com,paid,2026-08-08 18:59:00 -0400,3,Sample item: tinned tuna,13.00,63.00,0.00,63.00,Sample Customer 311,69 Sample St,,'19125,,US,555-0100
+#S1311,,,2026-08-08 18:59:00 -0400,2,Sample item: tinned trout,12.00,,,,,,,,,,
+#S1312,sample.customer312@example.com,paid,2026-07-05 21:14:00 -0400,1,Sample item: variety box,58.00,70.00,0.00,70.00,Sample Customer 312,451 Sample St,,'19147,,US,555-0100
+#S1312,,,2026-07-05 21:14:00 -0400,1,Sample item: tinned salmon,12.00,,,,,,,,,,
+#S1313,sample.customer313@example.com,paid,2026-03-08 05:32:00 -0400,3,Sample item: tinned trout,12.00,36.00,6.00,42.00,Sample Customer 313,597 Sample St,,'90291,,US,555-0100
+#S1314,sample.customer314@example.com,paid,2026-05-05 23:05:00 -0400,3,Sample item: variety box,58.00,174.00,0.00,174.00,Sample Customer 314,125 Sample St,,'11222,,US,555-0100
+#S1315,sample.customer315@example.com,paid,2026-01-07 10:34:00 -0400,3,Sample item: variety box,58.00,174.00,0.00,174.00,Sample Customer 315,695 Sample St,,'90291,,US,555-0100
+#S1316,sample.customer316@example.com,paid,2026-01-13 03:42:00 -0400,1,Sample item: tinned salmon,12.00,12.00,6.00,18.00,Sample Customer 316,886 Sample St,,'11238,,US,555-0100
+#S1317,sample.customer317@example.com,paid,2026-01-09 12:53:00 -0400,3,Sample item: tinned trout,12.00,94.00,0.00,94.00,Sample Customer 317,543 Sample St,,'60614,,US,555-0100
+#S1317,,,2026-01-09 12:53:00 -0400,1,Sample item: variety box,58.00,,,,,,,,,,
+#S1318,sample.customer318@example.com,paid,2026-04-10 01:53:00 -0400,3,Sample item: tinned salmon,12.00,36.00,6.00,42.00,Sample Customer 318,156 Sample St,,'02116,,US,555-0100
+#S1319,sample.customer319@example.com,paid,2026-01-23 15:17:00 -0400,2,Sample item: tinned sardines,14.00,98.00,0.00,98.00,Sample Customer 319,488 Sample St,,'20009,,US,555-0100
+#S1319,,,2026-01-23 15:17:00 -0400,1,Sample item: tinned salmon,12.00,,,,,,,,,,
+#S1319,,,2026-01-23 15:17:00 -0400,1,Sample item: variety box,58.00,,,,,,,,,,
+#S1320,sample.customer320@example.com,paid,2026-10-14 14:43:00 -0400,3,Sample item: tinned tuna,13.00,67.00,0.00,67.00,Sample Customer 320,179 Sample St,,'10009,,US,555-0100
+#S1320,,,2026-10-14 14:43:00 -0400,2,Sample item: tinned sardines,14.00,,,,,,,,,,
+#S1321,sample.customer321@example.com,paid,2026-08-21 15:58:00 -0400,3,Sample item: tinned trout,12.00,36.00,6.00,42.00,Sample Customer 321,495 Sample St,,'94110,,US,555-0100
+#S1322,sample.customer322@example.com,paid,2026-06-14 00:01:00 -0400,1,Sample item: variety box,58.00,82.00,0.00,82.00,Sample Customer 322,725 Sample St,,'11222,,US,555-0100
+#S1322,,,2026-06-14 00:01:00 -0400,2,Sample item: tinned salmon,12.00,,,,,,,,,,
+#S1323,sample.customer323@example.com,paid,2026-05-20 13:39:00 -0400,2,Sample item: tinned tuna,13.00,26.00,6.00,32.00,Sample Customer 323,667 Sample St,,'90027,,US,555-0100
+#S1324,sample.customer324@example.com,paid,2026-10-19 14:47:00 -0400,1,Sample item: tinned sardines,14.00,130.00,0.00,130.00,Sample Customer 324,186 Sample St,,'12401,,US,555-0100
+#S1324,,,2026-10-19 14:47:00 -0400,2,Sample item: variety box,58.00,,,,,,,,,,
+#S1325,sample.customer325@example.com,paid,2026-01-27 23:27:00 -0400,1,Sample item: variety box,58.00,70.00,0.00,70.00,Sample Customer 325,84 Sample St,,'11238,,US,555-0100
+#S1325,,,2026-01-27 23:27:00 -0400,1,Sample item: tinned trout,12.00,,,,,,,,,,
+#S1326,sample.customer326@example.com,paid,2026-02-20 07:50:00 -0400,3,Sample item: tinned sardines,14.00,113.00,0.00,113.00,Sample Customer 326,865 Sample St,,'02139,,US,555-0100
+#S1326,,,2026-02-20 07:50:00 -0400,1,Sample item: variety box,58.00,,,,,,,,,,
+#S1326,,,2026-02-20 07:50:00 -0400,1,Sample item: tinned tuna,13.00,,,,,,,,,,
+#S1327,sample.customer327@example.com,paid,2026-02-06 15:22:00 -0400,1,Sample item: variety box,58.00,58.00,0.00,58.00,Sample Customer 327,131 Sample St,,'78704,,US,555-0100
+#S1328,sample.customer328@example.com,paid,2026-03-08 13:59:00 -0400,1,Sample item: tinned tuna,13.00,41.00,6.00,47.00,Sample Customer 328,38 Sample St,,'98103,,US,555-0100
+#S1328,,,2026-03-08 13:59:00 -0400,2,Sample item: tinned sardines,14.00,,,,,,,,,,
+#S1329,sample.customer329@example.com,paid,2026-09-05 22:55:00 -0400,2,Sample item: variety box,58.00,116.00,0.00,116.00,Sample Customer 329,640 Sample St,,'11238,,US,555-0100
+#S1330,sample.customer330@example.com,paid,2026-03-11 21:51:00 -0400,2,Sample item: tinned sardines,14.00,28.00,6.00,34.00,Sample Customer 330,354 Sample St,,'11238,,US,555-0100
+#S1331,sample.customer331@example.com,paid,2026-05-25 06:37:00 -0400,1,Sample item: tinned sardines,14.00,14.00,6.00,20.00,Sample Customer 331,109 Sample St,,'02139,,US,555-0100
+#S1332,sample.customer332@example.com,paid,2026-07-01 12:03:00 -0400,2,Sample item: tinned sardines,14.00,214.00,0.00,214.00,Sample Customer 332,825 Sample St,,'12401,,US,555-0100
+#S1332,,,2026-07-01 12:03:00 -0400,1,Sample item: tinned salmon,12.00,,,,,,,,,,
+#S1332,,,2026-07-01 12:03:00 -0400,3,Sample item: variety box,58.00,,,,,,,,,,
+#S1333,sample.customer333@example.com,paid,2026-01-17 14:05:00 -0400,1,Sample item: tinned sardines,14.00,39.00,6.00,45.00,Sample Customer 333,393 Sample St,,'07302,,US,555-0100
+#S1333,,,2026-01-17 14:05:00 -0400,1,Sample item: tinned tuna,13.00,,,,,,,,,,
+#S1333,,,2026-01-17 14:05:00 -0400,1,Sample item: tinned salmon,12.00,,,,,,,,,,
+#S1334,sample.customer334@example.com,paid,2026-08-15 18:53:00 -0400,1,Sample item: tinned sardines,14.00,14.00,6.00,20.00,Sample Customer 334,935 Sample St,,'33137,,US,555-0100
+#S1335,sample.customer335@example.com,paid,2026-08-01 12:23:00 -0400,2,Sample item: tinned tuna,13.00,84.00,0.00,84.00,Sample Customer 335,479 Sample St,,'11211,,US,555-0100
+#S1335,,,2026-08-01 12:23:00 -0400,1,Sample item: variety box,58.00,,,,,,,,,,
+#S1336,sample.customer336@example.com,paid,2026-08-22 21:46:00 -0400,2,Sample item: variety box,58.00,116.00,0.00,116.00,Sample Customer 336,936 Sample St,,'11222,,US,555-0100
+#S1337,sample.customer337@example.com,paid,2026-04-18 12:10:00 -0400,1,Sample item: tinned trout,12.00,70.00,0.00,70.00,Sample Customer 337,253 Sample St,,'80206,,US,555-0100
+#S1337,,,2026-04-18 12:10:00 -0400,1,Sample item: variety box,58.00,,,,,,,,,,
+#S1338,sample.customer338@example.com,paid,2026-01-28 07:04:00 -0400,1,Sample item: tinned sardines,14.00,14.00,6.00,20.00,Sample Customer 338,793 Sample St,,'10025,,US,555-0100
+#S1339,sample.customer339@example.com,paid,2026-09-10 12:43:00 -0400,1,Sample item: variety box,58.00,58.00,0.00,58.00,Sample Customer 339,533 Sample St,,'02139,,US,555-0100
+#S1340,sample.customer340@example.com,paid,2026-09-27 09:34:00 -0400,2,Sample item: variety box,58.00,116.00,0.00,116.00,Sample Customer 340,668 Sample St,,'20009,,US,555-0100
+#S1341,sample.customer341@example.com,paid,2026-10-15 09:13:00 -0400,1,Sample item: variety box,58.00,84.00,0.00,84.00,Sample Customer 341,599 Sample St,,'11222,,US,555-0100
+#S1341,,,2026-10-15 09:13:00 -0400,1,Sample item: tinned sardines,14.00,,,,,,,,,,
+#S1341,,,2026-10-15 09:13:00 -0400,1,Sample item: tinned trout,12.00,,,,,,,,,,
+#S1342,sample.customer342@example.com,paid,2026-09-19 19:38:00 -0400,2,Sample item: tinned tuna,13.00,26.00,6.00,32.00,Sample Customer 342,397 Sample St,,'07302,,US,555-0100
+#S1343,sample.customer343@example.com,paid,2026-01-28 12:21:00 -0400,2,Sample item: tinned trout,12.00,24.00,6.00,30.00,Sample Customer 343,366 Sample St,,'02139,,US,555-0100
+#S1344,sample.customer344@example.com,paid,2026-10-02 07:11:00 -0400,1,Sample item: tinned salmon,12.00,94.00,0.00,94.00,Sample Customer 344,595 Sample St,,'07302,,US,555-0100
+#S1344,,,2026-10-02 07:11:00 -0400,1,Sample item: variety box,58.00,,,,,,,,,,
+#S1344,,,2026-10-02 07:11:00 -0400,2,Sample item: tinned trout,12.00,,,,,,,,,,
+#S1345,sample.customer345@example.com,paid,2026-10-03 14:13:00 -0400,1,Sample item: variety box,58.00,58.00,0.00,58.00,Sample Customer 345,872 Sample St,,'98122,,US,555-0100
+#S1346,sample.customer346@example.com,paid,2026-01-29 03:02:00 -0400,2,Sample item: variety box,58.00,140.00,0.00,140.00,Sample Customer 346,912 Sample St,,'10003,,US,555-0100
+#S1346,,,2026-01-29 03:02:00 -0400,2,Sample item: tinned trout,12.00,,,,,,,,,,
+#S1347,sample.customer347@example.com,paid,2026-02-01 13:27:00 -0400,1,Sample item: tinned salmon,12.00,12.00,6.00,18.00,Sample Customer 347,651 Sample St,,'02139,,US,555-0100
+#S1348,sample.customer348@example.com,paid,2026-03-29 20:07:00 -0400,3,Sample item: tinned sardines,14.00,42.00,6.00,48.00,Sample Customer 348,336 Sample St,,'19147,,US,555-0100
+#S1349,sample.customer349@example.com,paid,2026-02-08 23:42:00 -0400,2,Sample item: variety box,58.00,129.00,0.00,129.00,Sample Customer 349,482 Sample St,,'10025,,US,555-0100
+#S1349,,,2026-02-08 23:42:00 -0400,1,Sample item: tinned tuna,13.00,,,,,,,,,,
+#S1350,sample.customer350@example.com,paid,2026-04-25 11:52:00 -0400,1,Sample item: variety box,58.00,58.00,0.00,58.00,Sample Customer 350,606 Sample St,,'90026,,US,555-0100
+#S1351,sample.customer351@example.com,paid,2026-04-12 05:49:00 -0400,3,Sample item: variety box,58.00,198.00,0.00,198.00,Sample Customer 351,544 Sample St,,'90039,,US,555-0100
+#S1351,,,2026-04-12 05:49:00 -0400,2,Sample item: tinned trout,12.00,,,,,,,,,,
+#S1352,sample.customer352@example.com,paid,2026-05-13 19:22:00 -0400,1,Sample item: tinned salmon,12.00,38.00,6.00,44.00,Sample Customer 352,801 Sample St,,'90026,,US,555-0100
+#S1352,,,2026-05-13 19:22:00 -0400,2,Sample item: tinned tuna,13.00,,,,,,,,,,
+#S1353,sample.customer353@example.com,paid,2026-06-12 08:46:00 -0400,3,Sample item: variety box,58.00,174.00,0.00,174.00,Sample Customer 353,229 Sample St,,'94110,,US,555-0100
+#S1354,sample.customer354@example.com,paid,2026-04-10 06:47:00 -0400,3,Sample item: tinned tuna,13.00,39.00,6.00,45.00,Sample Customer 354,231 Sample St,,'11222,,US,555-0100
+#S1355,sample.customer355@example.com,paid,2026-05-20 03:49:00 -0400,3,Sample item: tinned tuna,13.00,63.00,0.00,63.00,Sample Customer 355,434 Sample St,,'11238,,US,555-0100
+#S1355,,,2026-05-20 03:49:00 -0400,2,Sample item: tinned trout,12.00,,,,,,,,,,
+#S1356,sample.customer356@example.com,paid,2026-08-29 03:05:00 -0400,2,Sample item: variety box,58.00,128.00,0.00,128.00,Sample Customer 356,86 Sample St,,'10003,,US,555-0100
+#S1356,,,2026-08-29 03:05:00 -0400,1,Sample item: tinned trout,12.00,,,,,,,,,,
+#S1357,sample.customer357@example.com,paid,2026-06-23 17:58:00 -0400,1,Sample item: tinned trout,12.00,25.00,6.00,31.00,Sample Customer 357,290 Sample St,,'02139,,US,555-0100
+#S1357,,,2026-06-23 17:58:00 -0400,1,Sample item: tinned tuna,13.00,,,,,,,,,,
+#S1358,sample.customer358@example.com,paid,2026-06-21 13:25:00 -0400,1,Sample item: tinned sardines,14.00,188.00,0.00,188.00,Sample Customer 358,590 Sample St,,'98122,,US,555-0100
+#S1358,,,2026-06-21 13:25:00 -0400,3,Sample item: variety box,58.00,,,,,,,,,,
+#S1359,sample.customer359@example.com,paid,2026-01-31 07:53:00 -0400,2,Sample item: tinned trout,12.00,37.00,6.00,43.00,Sample Customer 359,451 Sample St,,'02116,,US,555-0100
+#S1359,,,2026-01-31 07:53:00 -0400,1,Sample item: tinned tuna,13.00,,,,,,,,,,
+#S1360,sample.customer360@example.com,paid,2026-01-29 14:09:00 -0400,1,Sample item: tinned tuna,13.00,13.00,6.00,19.00,Sample Customer 360,446 Sample St,,'20009,,US,555-0100
+#S1361,sample.customer361@example.com,paid,2026-08-16 18:06:00 -0400,1,Sample item: tinned tuna,13.00,53.00,0.00,53.00,Sample Customer 361,607 Sample St,,'33137,,US,555-0100
+#S1361,,,2026-08-16 18:06:00 -0400,2,Sample item: tinned sardines,14.00,,,,,,,,,,
+#S1361,,,2026-08-16 18:06:00 -0400,1,Sample item: tinned trout,12.00,,,,,,,,,,
+#S1362,sample.customer362@example.com,paid,2026-09-11 17:05:00 -0400,3,Sample item: tinned tuna,13.00,39.00,6.00,45.00,Sample Customer 362,123 Sample St,,'97214,,US,555-0100
+#S1363,sample.customer363@example.com,paid,2026-07-10 02:35:00 -0400,2,Sample item: tinned sardines,14.00,28.00,6.00,34.00,Sample Customer 363,458 Sample St,,'90039,,US,555-0100
+#S1364,sample.customer364@example.com,paid,2026-07-17 12:03:00 -0400,1,Sample item: tinned sardines,14.00,14.00,6.00,20.00,Sample Customer 364,296 Sample St,,'94110,,US,555-0100
+#S1365,sample.customer365@example.com,paid,2026-09-15 21:14:00 -0400,1,Sample item: tinned sardines,14.00,27.00,6.00,33.00,Sample Customer 365,160 Sample St,,'12401,,US,555-0100
+#S1365,,,2026-09-15 21:14:00 -0400,1,Sample item: tinned tuna,13.00,,,,,,,,,,
+#S1366,sample.customer366@example.com,paid,2026-01-09 15:10:00 -0400,2,Sample item: variety box,58.00,116.00,0.00,116.00,Sample Customer 366,355 Sample St,,'19125,,US,555-0100
+#S1367,sample.customer367@example.com,paid,2026-02-20 17:15:00 -0400,2,Sample item: tinned tuna,13.00,104.00,0.00,104.00,Sample Customer 367,75 Sample St,,'02116,,US,555-0100
+#S1367,,,2026-02-20 17:15:00 -0400,3,Sample item: tinned trout,12.00,,,,,,,,,,
+#S1367,,,2026-02-20 17:15:00 -0400,3,Sample item: tinned sardines,14.00,,,,,,,,,,
+#S1368,sample.customer368@example.com,paid,2026-07-01 01:31:00 -0400,2,Sample item: variety box,58.00,158.00,0.00,158.00,Sample Customer 368,692 Sample St,,'78704,,US,555-0100
+#S1368,,,2026-07-01 01:31:00 -0400,3,Sample item: tinned sardines,14.00,,,,,,,,,,
+#S1369,sample.customer369@example.com,paid,2026-02-17 17:06:00 -0400,2,Sample item: variety box,58.00,144.00,0.00,144.00,Sample Customer 369,357 Sample St,,'02139,,US,555-0100
+#S1369,,,2026-02-17 17:06:00 -0400,2,Sample item: tinned sardines,14.00,,,,,,,,,,
+#S1370,sample.customer370@example.com,paid,2026-06-03 18:17:00 -0400,2,Sample item: tinned trout,12.00,50.00,0.00,50.00,Sample Customer 370,551 Sample St,,'98122,,US,555-0100
+#S1370,,,2026-06-03 18:17:00 -0400,2,Sample item: tinned tuna,13.00,,,,,,,,,,
+#S1371,sample.customer371@example.com,paid,2026-03-15 12:38:00 -0400,3,Sample item: tinned sardines,14.00,170.00,0.00,170.00,Sample Customer 371,411 Sample St,,'11211,,US,555-0100
+#S1371,,,2026-03-15 12:38:00 -0400,2,Sample item: variety box,58.00,,,,,,,,,,
+#S1371,,,2026-03-15 12:38:00 -0400,1,Sample item: tinned trout,12.00,,,,,,,,,,
+#S1372,sample.customer372@example.com,paid,2026-03-14 04:23:00 -0400,3,Sample item: tinned tuna,13.00,39.00,6.00,45.00,Sample Customer 372,510 Sample St,,'11211,,US,555-0100
+#S1373,sample.customer373@example.com,paid,2026-06-18 20:09:00 -0400,1,Sample item: variety box,58.00,58.00,0.00,58.00,Sample Customer 373,658 Sample St,,'90291,,US,555-0100
+#S1374,sample.customer374@example.com,paid,2026-04-16 09:09:00 -0400,1,Sample item: tinned salmon,12.00,12.00,6.00,18.00,Sample Customer 374,83 Sample St,,'11211,,US,555-0100
+#S1375,sample.customer375@example.com,paid,2026-07-30 08:41:00 -0400,1,Sample item: tinned sardines,14.00,14.00,6.00,20.00,Sample Customer 375,151 Sample St,,'20009,,US,555-0100
+#S1376,sample.customer376@example.com,paid,2026-08-17 16:03:00 -0400,2,Sample item: tinned salmon,12.00,24.00,6.00,30.00,Sample Customer 376,358 Sample St,,'90027,,US,555-0100
+#S1377,sample.customer377@example.com,paid,2026-01-16 09:38:00 -0400,1,Sample item: variety box,58.00,58.00,0.00,58.00,Sample Customer 377,844 Sample St,,'02139,,US,555-0100
+#S1378,sample.customer378@example.com,paid,2026-07-03 00:03:00 -0400,2,Sample item: variety box,58.00,142.00,0.00,142.00,Sample Customer 378,610 Sample St,,'02139,,US,555-0100
+#S1378,,,2026-07-03 00:03:00 -0400,2,Sample item: tinned tuna,13.00,,,,,,,,,,
+#S1379,sample.customer379@example.com,paid,2026-02-05 19:43:00 -0400,3,Sample item: tinned trout,12.00,36.00,6.00,42.00,Sample Customer 379,925 Sample St,,'19147,,US,555-0100
+#S1380,sample.customer380@example.com,paid,2026-08-02 16:49:00 -0400,1,Sample item: variety box,58.00,58.00,0.00,58.00,Sample Customer 380,763 Sample St,,'94117,,US,555-0100
+#S1381,sample.customer381@example.com,paid,2026-07-17 06:33:00 -0400,3,Sample item: tinned salmon,12.00,36.00,6.00,42.00,Sample Customer 381,987 Sample St,,'11222,,US,555-0100
+#S1382,sample.customer382@example.com,paid,2026-06-29 11:47:00 -0400,1,Sample item: tinned tuna,13.00,13.00,6.00,19.00,Sample Customer 382,291 Sample St,,'94117,,US,555-0100
+#S1383,sample.customer383@example.com,paid,2026-03-23 00:59:00 -0400,1,Sample item: tinned trout,12.00,12.00,6.00,18.00,Sample Customer 383,598 Sample St,,'90026,,US,555-0100
+#S1384,sample.customer384@example.com,paid,2026-03-21 19:32:00 -0400,1,Sample item: variety box,58.00,100.00,0.00,100.00,Sample Customer 384,502 Sample St,,'90291,,US,555-0100
+#S1384,,,2026-03-21 19:32:00 -0400,3,Sample item: tinned sardines,14.00,,,,,,,,,,
+#S1385,sample.customer385@example.com,paid,2026-10-13 02:50:00 -0400,2,Sample item: tinned tuna,13.00,80.00,0.00,80.00,Sample Customer 385,239 Sample St,,'11238,,US,555-0100
+#S1385,,,2026-10-13 02:50:00 -0400,3,Sample item: tinned sardines,14.00,,,,,,,,,,
+#S1385,,,2026-10-13 02:50:00 -0400,1,Sample item: tinned trout,12.00,,,,,,,,,,
+#S1386,sample.customer386@example.com,paid,2026-02-07 04:46:00 -0400,2,Sample item: tinned tuna,13.00,26.00,6.00,32.00,Sample Customer 386,974 Sample St,,'11238,,US,555-0100
+#S1387,sample.customer387@example.com,paid,2026-10-11 10:01:00 -0400,1,Sample item: tinned sardines,14.00,72.00,0.00,72.00,Sample Customer 387,755 Sample St,,'10009,,US,555-0100
+#S1387,,,2026-10-11 10:01:00 -0400,1,Sample item: variety box,58.00,,,,,,,,,,
+#S1388,sample.customer388@example.com,paid,2026-06-16 23:48:00 -0400,1,Sample item: tinned tuna,13.00,13.00,6.00,19.00,Sample Customer 388,238 Sample St,,'07302,,US,555-0100
+#S1389,sample.customer389@example.com,paid,2026-01-19 09:50:00 -0400,1,Sample item: tinned sardines,14.00,27.00,6.00,33.00,Sample Customer 389,963 Sample St,,'07302,,US,555-0100
+#S1389,,,2026-01-19 09:50:00 -0400,1,Sample item: tinned tuna,13.00,,,,,,,,,,
+#S1390,sample.customer390@example.com,paid,2026-03-20 18:35:00 -0400,1,Sample item: tinned tuna,13.00,13.00,6.00,19.00,Sample Customer 390,354 Sample St,,'10009,,US,555-0100
+#S1391,sample.customer391@example.com,paid,2026-08-02 21:03:00 -0400,1,Sample item: variety box,58.00,58.00,0.00,58.00,Sample Customer 391,113 Sample St,,'02130,,US,555-0100
+#S1392,sample.customer392@example.com,paid,2026-08-25 02:01:00 -0400,2,Sample item: variety box,58.00,116.00,0.00,116.00,Sample Customer 392,495 Sample St,,'80206,,US,555-0100
+#S1393,sample.customer393@example.com,paid,2026-04-17 20:04:00 -0400,2,Sample item: tinned trout,12.00,24.00,6.00,30.00,Sample Customer 393,401 Sample St,,'02116,,US,555-0100
+#S1394,sample.customer394@example.com,paid,2026-05-28 16:51:00 -0400,1,Sample item: tinned sardines,14.00,14.00,6.00,20.00,Sample Customer 394,382 Sample St,,'11238,,US,555-0100
+#S1395,sample.customer395@example.com,paid,2026-09-14 07:56:00 -0400,2,Sample item: tinned trout,12.00,24.00,6.00,30.00,Sample Customer 395,156 Sample St,,'60614,,US,555-0100
+#S1396,sample.customer396@example.com,paid,2026-05-28 23:27:00 -0400,1,Sample item: tinned trout,12.00,12.00,6.00,18.00,Sample Customer 396,704 Sample St,,'33137,,US,555-0100
+#S1397,sample.customer397@example.com,paid,2026-09-10 01:22:00 -0400,2,Sample item: tinned sardines,14.00,156.00,0.00,156.00,Sample Customer 397,636 Sample St,,'97214,,US,555-0100
+#S1397,,,2026-09-10 01:22:00 -0400,1,Sample item: tinned salmon,12.00,,,,,,,,,,
+#S1397,,,2026-09-10 01:22:00 -0400,2,Sample item: variety box,58.00,,,,,,,,,,
+#S1398,sample.customer398@example.com,paid,2026-01-26 14:22:00 -0400,1,Sample item: tinned sardines,14.00,14.00,6.00,20.00,Sample Customer 398,739 Sample St,,'11211,,US,555-0100
+#S1399,sample.customer399@example.com,paid,2026-05-16 09:18:00 -0400,3,Sample item: variety box,58.00,174.00,0.00,174.00,Sample Customer 399,768 Sample St,,'90026,,US,555-0100
+#S1400,sample.customer400@example.com,paid,2026-08-04 07:13:00 -0400,1,Sample item: tinned sardines,14.00,14.00,6.00,20.00,Sample Customer 400,364 Sample St,,'90026,,US,555-0100
+#S1401,sample.customer401@example.com,paid,2026-02-07 23:26:00 -0400,1,Sample item: variety box,58.00,106.00,0.00,106.00,Sample Customer 401,329 Sample St,,'11211,,US,555-0100
+#S1401,,,2026-02-07 23:26:00 -0400,1,Sample item: tinned salmon,12.00,,,,,,,,,,
+#S1401,,,2026-02-07 23:26:00 -0400,3,Sample item: tinned trout,12.00,,,,,,,,,,
+#S1402,sample.customer402@example.com,paid,2026-05-25 03:30:00 -0400,2,Sample item: tinned tuna,13.00,26.00,6.00,32.00,Sample Customer 402,794 Sample St,,'90027,,US,555-0100
+#S1403,sample.customer403@example.com,paid,2026-03-11 00:28:00 -0400,1,Sample item: tinned salmon,12.00,84.00,0.00,84.00,Sample Customer 403,419 Sample St,,'11238,,US,555-0100
+#S1403,,,2026-03-11 00:28:00 -0400,1,Sample item: variety box,58.00,,,,,,,,,,
+#S1403,,,2026-03-11 00:28:00 -0400,1,Sample item: tinned sardines,14.00,,,,,,,,,,
+#S1404,sample.customer404@example.com,paid,2026-09-23 07:34:00 -0400,1,Sample item: tinned tuna,13.00,13.00,6.00,19.00,Sample Customer 404,612 Sample St,,'02116,,US,555-0100
+#S1405,sample.customer405@example.com,paid,2026-07-14 02:32:00 -0400,1,Sample item: tinned salmon,12.00,12.00,6.00,18.00,Sample Customer 405,832 Sample St,,'02130,,US,555-0100
+#S1406,sample.customer406@example.com,paid,2026-04-12 09:28:00 -0400,2,Sample item: tinned trout,12.00,24.00,6.00,30.00,Sample Customer 406,839 Sample St,,'20009,,US,555-0100
+#S1407,sample.customer407@example.com,paid,2026-08-08 14:54:00 -0400,1,Sample item: tinned trout,12.00,200.00,0.00,200.00,Sample Customer 407,342 Sample St,,'90039,,US,555-0100
+#S1407,,,2026-08-08 14:54:00 -0400,1,Sample item: tinned sardines,14.00,,,,,,,,,,
+#S1407,,,2026-08-08 14:54:00 -0400,3,Sample item: variety box,58.00,,,,,,,,,,
+#S1408,sample.customer408@example.com,paid,2026-03-30 23:21:00 -0400,1,Sample item: tinned tuna,13.00,13.00,6.00,19.00,Sample Customer 408,279 Sample St,,'55408,,US,555-0100
+#S1409,sample.customer409@example.com,paid,2026-04-18 04:15:00 -0400,2,Sample item: tinned tuna,13.00,84.00,0.00,84.00,Sample Customer 409,992 Sample St,,'60622,,US,555-0100
+#S1409,,,2026-04-18 04:15:00 -0400,1,Sample item: variety box,58.00,,,,,,,,,,
+#S1410,sample.customer410@example.com,paid,2026-07-29 13:39:00 -0400,1,Sample item: tinned tuna,13.00,13.00,6.00,19.00,Sample Customer 410,633 Sample St,,'94117,,US,555-0100
+#S1411,sample.customer411@example.com,paid,2026-03-06 09:07:00 -0400,3,Sample item: variety box,58.00,186.00,0.00,186.00,Sample Customer 411,769 Sample St,,'97214,,US,555-0100
+#S1411,,,2026-03-06 09:07:00 -0400,1,Sample item: tinned trout,12.00,,,,,,,,,,
+#S1412,sample.customer412@example.com,paid,2026-03-16 13:01:00 -0400,1,Sample item: tinned sardines,14.00,63.00,0.00,63.00,Sample Customer 412,680 Sample St,,'11211,,US,555-0100
+#S1412,,,2026-03-16 13:01:00 -0400,3,Sample item: tinned trout,12.00,,,,,,,,,,
+#S1412,,,2026-03-16 13:01:00 -0400,1,Sample item: tinned tuna,13.00,,,,,,,,,,
+#S1413,sample.customer413@example.com,paid,2026-04-04 16:14:00 -0400,3,Sample item: tinned tuna,13.00,51.00,0.00,51.00,Sample Customer 413,515 Sample St,,'90026,,US,555-0100
+#S1413,,,2026-04-04 16:14:00 -0400,1,Sample item: tinned salmon,12.00,,,,,,,,,,
+#S1414,sample.customer414@example.com,paid,2026-07-13 23:24:00 -0400,1,Sample item: tinned trout,12.00,25.00,6.00,31.00,Sample Customer 414,776 Sample St,,'78704,,US,555-0100
+#S1414,,,2026-07-13 23:24:00 -0400,1,Sample item: tinned tuna,13.00,,,,,,,,,,
+#S1415,sample.customer415@example.com,paid,2026-09-02 20:08:00 -0400,1,Sample item: tinned sardines,14.00,38.00,6.00,44.00,Sample Customer 415,605 Sample St,,'10003,,US,555-0100
+#S1415,,,2026-09-02 20:08:00 -0400,2,Sample item: tinned trout,12.00,,,,,,,,,,
+#S1416,sample.customer416@example.com,paid,2026-07-26 23:30:00 -0400,2,Sample item: tinned salmon,12.00,211.00,0.00,211.00,Sample Customer 416,754 Sample St,,'11211,,US,555-0100
+#S1416,,,2026-07-26 23:30:00 -0400,1,Sample item: tinned tuna,13.00,,,,,,,,,,
+#S1416,,,2026-07-26 23:30:00 -0400,3,Sample item: variety box,58.00,,,,,,,,,,
+#S1417,sample.customer417@example.com,paid,2026-09-30 19:00:00 -0400,1,Sample item: tinned salmon,12.00,24.00,6.00,30.00,Sample Customer 417,403 Sample St,,'02116,,US,555-0100
+#S1417,,,2026-09-30 19:00:00 -0400,1,Sample item: tinned trout,12.00,,,,,,,,,,
+#S1418,sample.customer418@example.com,paid,2026-03-03 00:38:00 -0400,1,Sample item: tinned sardines,14.00,50.00,0.00,50.00,Sample Customer 418,849 Sample St,,'10025,,US,555-0100
+#S1418,,,2026-03-03 00:38:00 -0400,3,Sample item: tinned salmon,12.00,,,,,,,,,,
+#S1419,sample.customer419@example.com,paid,2026-04-16 02:55:00 -0400,3,Sample item: tinned salmon,12.00,36.00,6.00,42.00,Sample Customer 419,241 Sample St,,'07302,,US,555-0100
+#S1420,sample.customer420@example.com,paid,2026-06-07 08:33:00 -0400,1,Sample item: variety box,58.00,82.00,0.00,82.00,Sample Customer 420,720 Sample St,,'07302,,US,555-0100
+#S1420,,,2026-06-07 08:33:00 -0400,1,Sample item: tinned trout,12.00,,,,,,,,,,
+#S1420,,,2026-06-07 08:33:00 -0400,1,Sample item: tinned salmon,12.00,,,,,,,,,,

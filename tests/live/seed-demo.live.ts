@@ -34,6 +34,7 @@ it("seed the Fishwife demo workspace", async () => {
   const { brandFit } = await import("@/lib/agent/brand-fit");
   const { athenaPlan } = await import("@/lib/agent/athena-plan");
   const { leftOutOf } = await import("@/lib/exec/plan");
+  const { metroIdFor } = await import("@/lib/playbook/metros");
   type V = { value?: string };
   const brief = saved!.brief as { name?: V; sells?: V; channel?: V; tierHint?: V; traits?: string[] };
   const j = saved!.journey as { facts?: { text: string }[]; fits?: { fits?: { fits?: { crowd: string; name: string; tier: string; reasons: string[] }[] } }; team: import("@/lib/team/types").TeamState };
@@ -52,6 +53,18 @@ it("seed the Fishwife demo workspace", async () => {
   for (const v of outs) process.stdout.write(`  out: ${v.name} (${v.kind}): ${v.why}
 `);
   for (const v of Object.values(fit).filter((v) => v.fit === "note")) process.stdout.write(`  note: ${v.name} (${v.kind}): ${v.why}
+`);
+
+  // The sample orders file (§23.6 i): made-up data, labelled Sample data wherever it shows. Its columns are known, so no
+  // model call reads its header; only each order's date, total and ZIP are kept, as for a founder's own file.
+  const { parseCsv, readOrders } = await import("@/lib/sales/orders");
+  const { placeZips } = await import("@/lib/sales/places");
+  const file = "fishwife-sample-orders.csv";
+  const rows = parseCsv(readFileSync(join(process.cwd(), "public", "demo", file), "utf-8"));
+  const { orders } = readOrders(rows, { date: rows[0].indexOf("Created at"), total: rows[0].indexOf("Total"), zip: rows[0].indexOf("Shipping Zip"), id: rows[0].indexOf("Name") });
+  const metros = [...new Set(((j as { crowds?: { crowds?: { cities: { metro: string }[] }[] } }).crowds?.crowds ?? []).flatMap((c) => c.cities.map((x) => metroIdFor(x.metro))))];
+  t.sales = { file, at: Date.now(), sample: true, orders, places: await placeZips(orders.map((o) => o[2]), metros) };
+  process.stdout.write(`Sample sales: ${orders.length} orders from ${file}.
 `);
 
   await saveSnapshot(DEMO_WS, saved);

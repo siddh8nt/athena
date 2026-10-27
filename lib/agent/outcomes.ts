@@ -96,6 +96,7 @@ export function staleRuns(team: TeamState, graphRev: number): { agent: Specialis
     if (!w) return [];
     const fresh = team.outcomes.filter((o) => o.agent === id && o.at > w.at && o.mark !== "pitched");
     if (fresh.length) return [{ agent: id, why: `${fresh.length} new outcome${fresh.length > 1 ? "s" : ""} since it last ran` }];
+    if ((id === "navigator" || id === "rep") && team.sales && team.sales.at > w.at) return [{ agent: id, why: "new sales figures since it last ran" }];
     // The Analyst's own runs go stale through the crowds and fits flags the founder re-runs; the team's notes don't
     // re-measure them.
     if (id !== "analyst" && (team.rev?.[id] ?? 0) < graphRev) return [{ agent: id, why: "the Brand Graph changed since it last ran" }];

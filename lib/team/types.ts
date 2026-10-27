@@ -8,6 +8,7 @@ import type { FounderQuestion } from "@/lib/agent/tools";
 import type { AgentId, SpecialistId } from "@/lib/agent/specialists";
 import type { CrowdPage } from "./page";
 import type { SavedNav } from "@/lib/agent/navigator";
+import type { Sales } from "@/lib/sales/orders";
 import type { RepRead } from "@/lib/agent/rep";
 import type { MatchRead } from "@/lib/agent/matchmaker";
 import type { PromoRead } from "@/lib/agent/promoter";
@@ -334,6 +335,8 @@ export type TeamState = {
   tasks?: Record<string, TaskNote>;
   /** The Executive's contacts, drafts and follow-up waits (§23.5 q). */
   exec?: ExecState;
+  /** Sales from the founder's orders export (§23.6 i): each order's date, total and ZIP only. */
+  sales?: Sales;
 };
 
 export const emptyTeam = (): TeamState => ({ goals: [], works: {}, outcomes: [] });

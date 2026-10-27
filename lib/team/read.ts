@@ -6,6 +6,7 @@ import type { Band, Creator, LeftOut, MatchRead, Partner, Rate, Size } from "@/l
 import type { PromoEvent, PromoRead } from "@/lib/agent/promoter";
 import type { Evidence, Source } from "@/lib/blocks/types";
 import type { AreaFigures } from "@/lib/enrich/census";
+import { MAX_ORDERS, type Order, type Sales, type SalesPlace } from "@/lib/sales/orders";
 import { MARKS, emptyTeam, type Answer, type FitVerdict, type Goal, type Mark, type Outcome, type TeamState, type Work, type WorkItem } from "./types";
 
 // The team as the client sends it back (a stateless server: the journey holds its own state). Everything is
@@ -573,7 +574,24 @@ export function readTeam(raw: unknown): TeamState {
     rev: Object.fromEntries(SPECIALIST_IDS.filter((id) => typeof rev[id] === "number").map((id) => [id, num(rev[id])])),
     ...(readWorkflow(t.workflow) ? { workflow: readWorkflow(t.workflow) } : {}),
     ...(Array.isArray(t.answered) ? { answered: readAnswers(t.answered) } : {}),
+    ...(readSales(t.sales) ? { sales: readSales(t.sales) } : {}),
   };
+}
+
+/** The orders export's sales (§23.6 i), kept to date, total and ZIP per order whatever the browser sent. */
+export function readSales(raw: unknown): Sales | undefined {
+  const s = rec(raw);
+  const orders = (Array.isArray(s.orders) ? s.orders : []).slice(0, MAX_ORDERS).flatMap((o): Order[] =>
+    Array.isArray(o) && typeof o[0] === "string" && /^\d{4}-\d{2}-\d{2}$/.test(o[0]) && typeof o[1] === "number" && Number.isFinite(o[1]) && typeof o[2] === "string" && /^\d{5}$/.test(o[2]) ? [[o[0], o[1], o[2]]] : [],
+  );
+  if (!orders.length) return undefined;
+  const places: Record<string, SalesPlace> = {};
+  for (const [z, v] of Object.entries(rec(s.places)).slice(0, 20_000)) {
+    const p = rec(v);
+    const name = str(p.name, 120);
+    if (/^\d{5}$/.test(z) && name) places[z] = { name, ...(str(p.metro, 400) ? { metro: str(p.metro, 400) } : {}) };
+  }
+  return { file: str(s.file, 160) || "orders.csv", at: num(s.at), ...(s.sample === true ? { sample: true } : {}), orders, places };
 }
 
 /**

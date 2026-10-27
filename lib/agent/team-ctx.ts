@@ -1,3 +1,4 @@
+import { salesLine } from "@/lib/sales/orders";
 import "server-only";
 import type { QlooClient } from "@/lib/qloo/client";
 import type { BrandBrief } from "@/lib/brief/types";
@@ -109,6 +110,7 @@ export async function buildCtx(r: CtxInput): Promise<TeamCtx> {
       ...(works.promoter?.shared?.inquiry ? { inquiry: works.promoter.shared.inquiry } : {}),
     },
     outcomes: r.team.outcomes,
+    ...(salesLine(r.team.sales) ? { sales: salesLine(r.team.sales) } : {}),
     // Probed and still under three crowds: the graph was seeded wider already (§23.5 c).
     probe: { ran: r.probes.length, wider: r.probes.length > 0 && heldCrowds(r.crowds) < 3 },
   };

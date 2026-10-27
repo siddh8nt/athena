@@ -302,7 +302,7 @@ You're done when: ${s.doneWhen}
 
 How you decide (from evidence, never a fixed order):
 ${s.rules.map((r) => `- ${r}`).join("\n")}
-${heard ? `\nWhat the founder heard back on your earlier results: ${heard}. Read the outcomes before deciding again, and say what they changed.\n` : ""}
+${heard ? `\nWhat the founder heard back on your earlier results: ${heard}. Read the outcomes before deciding again, and say what they changed.\n` : ""}${t.sales && (id === "navigator" || id === "rep") ? `\nWhat already sells, by city: ${t.sales} A city that already sells is proof the brand's buyers are there: weigh it beside the taste data when you rank, and say what it changed.\n` : ""}
 How to work:
 - Call tools, choosing each next step from what the last ones returned. Every tool takes a short why, shown to the founder.
 - Taste is Qloo's job, never the founder's. ask_founder is only for what only the founder knows (budget, capacity, where they sell) and only when the answer would change your results. Ask before you search, so your results are built on the answer: your run pauses until the founder answers, then starts again with it in founder_answers. Never ask what founder_answers or the Brand Graph already says.

@@ -7,6 +7,7 @@ import { nameOf, type SpecialistId } from "@/lib/agent/specialists";
 import { strengthWord } from "@/lib/agent/fit";
 import { TIER_LABEL } from "@/lib/team/page";
 import { InYourCalendar } from "./McpConnect";
+import { salesByPlace } from "@/lib/sales/orders";
 import { markLabel, type Drafts, type Mark, type Src, type TeamState } from "@/lib/team/types";
 import {
   EXEC_TABS,
@@ -1272,8 +1273,11 @@ function History({ it, ctx, c }: { it: ExecItem; ctx: Ctx; c?: ContactView }) {
 function Results({ plan, team }: { plan: ExecPlan; team: TeamState }) {
   const lines = resultsOf(plan, team);
   const spend = Object.entries(team.exec?.spend ?? {});
-  if (!lines.length && !spend.length) return <p className="small muted">Results come in as you tell Athena what happened. Each Sent, Yes and No goes back to the subagent that found it, which re-ranks from it.</p>;
-  const agents = [...new Set(lines.map((l) => l.agent))];
+  // What already sells (§23.6 i) is the Navigator's and the Rep's measure too: a city that sells re-ranks cities and shops.
+  const sales = team.sales?.orders.length ? salesByPlace(team.sales).slice(0, 5) : [];
+  const SELLS: SpecialistId[] = ["navigator", "rep"];
+  if (!lines.length && !spend.length && !sales.length) return <p className="small muted">Results come in as you tell Athena what happened. Each Sent, Yes and No goes back to the subagent that found it, which re-ranks from it.</p>;
+  const agents = [...new Set([...lines.map((l) => l.agent), ...(sales.length ? SELLS : [])])];
   const spent = (a: SpecialistId) => spend.filter(([id]) => plan.byId.get(id)?.agent === a).reduce((s, [, v]) => s + v.usd, 0);
   return (
     <div className="xp-results">
@@ -1293,6 +1297,21 @@ function Results({ plan, team }: { plan: ExecPlan; team: TeamState }) {
                 );
               })}
           </ul>
+          {sales.length > 0 && SELLS.includes(a) && (
+            <>
+              <p className="small muted">
+                {team.sales?.sample && <span className="sample-tag">Sample data</span>}
+                What already sells, from {team.sales?.file}:
+              </p>
+              <ul>
+                {sales.map((p) => (
+                  <li key={p.key} className="small">
+                    <strong>{p.name}</strong> · {usd(Math.round(p.revenue))} <span className="muted">from {p.orders} {p.orders === 1 ? "order" : "orders"}</span>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
           {spent(a) > 0 && <p className="small">Spent {usd(spent(a))}</p>}
           <p className="small muted">The {nameOf(a)} re-ranks from these on its next run.</p>
         </section>

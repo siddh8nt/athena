@@ -3,6 +3,7 @@ import type { Journey } from "@/lib/journey/types";
 import { briefFacts } from "@/lib/brief/facts";
 import { execPlan, planView, type Stage } from "@/lib/exec/plan";
 import { emptyTeam, type PlanStep } from "@/lib/team/types";
+import { salesLine } from "@/lib/sales/orders";
 
 // The brand context file (PRD §23.6 f): `athena-brand.md`, the brief, crowds, Athena's order and the open tasks,
 // written for an AI assistant to read. It's the reverse of onboarding's "Copies a prompt for your AI assistant": that
@@ -73,6 +74,10 @@ export function brandFile(saved: { brief?: BrandBrief; journey?: Journey }, now 
       out.push("");
     }
   }
+
+  // What already sells (§23.6 i), from the orders export: each order's date, total and ZIP, never a customer.
+  const sells = salesLine(team.sales);
+  if (sells) out.push("## What already sells", "", sells, "");
 
   const plan = team.plan;
   if (plan) {

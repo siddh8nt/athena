@@ -38,6 +38,8 @@ import type { Channel } from "@/lib/journey/growth";
 import { NEAR_MISS_LABEL, crowdAfterFits, emptyJourney, loadedJourney, type CrowdCard, type CrowdMeeting, type Journey as JourneyState } from "@/lib/journey/types";
 import type { Galaxy as GalaxyData } from "@/lib/taste/galaxy";
 import { packBySlug } from "@/lib/journey/packs";
+import { parseCsv, readOrders, salesByPlace, usd, type OrderCols, type Sales } from "@/lib/sales/orders";
+import { metroIdFor } from "@/lib/playbook/metros";
 import { emptyTeam, type Mark, type TeamEvent, type TeamState, type WorkItem } from "@/lib/team/types";
 import { isSpecialist, isSubagent, nameOf, panelIds, specialist, type AgentId, type SpecialistId } from "@/lib/agent/specialists";
 import { growthQuestion, seedOf, type GrowthQuestion } from "@/lib/journey/flow";
@@ -635,8 +637,44 @@ export function Journey() {
     if (u) commit(u.brief, u.facts, u.state);
   };
   const onRerun = (run: RunId) => setJ((x) => ({ ...x, graph: rerun(graphState(x.graph), run) }));
+  /**
+   * An orders export (§23.6 i), told apart from other files by one model call on its header row alone. It's read here in
+   * the browser and never uploads: each order keeps only its date, total and ZIP, and only the ZIPs go to the server
+   * for their cities. The newest export replaces the one before.
+   */
+  const readSales = async (f: File): Promise<boolean> => {
+    const rows = parseCsv(await f.text().catch(() => ""));
+    if (rows.length < 2) return false;
+    const seen = (await fetch("/api/orders/columns", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ header: rows[0], file: f.name }), signal: AbortSignal.timeout(25_000) })
+      .then((r) => r.json())
+      .catch(() => ({ orders: false }))) as { orders: boolean; cols?: OrderCols };
+    if (!seen.orders || !seen.cols) return false;
+    setGraphChips((c) => [...c.filter((x) => x.name !== f.name), { name: f.name, status: "Reading your orders…", busy: true }]);
+    setWorking({ text: `${f.name} is an orders export. I keep each order's date, total and ZIP; names, emails, phones and addresses stay out.`, by: "chat" });
+    const { orders } = readOrders(rows, seen.cols);
+    const metros = [...new Set((j.crowds?.crowds ?? []).flatMap((c) => c.cities.map((x) => metroIdFor(x.metro))))];
+    const places = orders.length
+      ? ((await fetch("/api/orders/places", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ zips: [...new Set(orders.map((o) => o[2]))], metros }), signal: AbortSignal.timeout(30_000) })
+          .then((r) => r.json())
+          .then((r: { places?: Sales["places"] }) => r.places ?? {})
+          .catch(() => ({}))) as Sales["places"])
+      : {};
+    if (orders.length) setJ((x) => ({ ...x, team: { ...(x.team ?? emptyTeam()), sales: { file: f.name, at: Date.now(), orders, places } } }));
+    setGraphChips((c) => c.map((x) => (x.name === f.name ? { ...x, busy: false, status: orders.length ? "Orders read" : "Read" } : x)));
+    const top = salesByPlace({ file: f.name, at: 0, orders, places }).slice(0, 3).map((p) => p.name);
+    const total = orders.reduce((n, o) => n + o[1], 0);
+    say(
+      orders.length
+        ? `Read ${orders.length.toLocaleString("en-US")} orders from ${f.name}, worth ${usd(total)}${top.length ? `, most in ${top.length > 1 ? `${top.slice(0, -1).join(", ")} and ${top[top.length - 1]}` : top[0]}` : ""}. They're on What's working, and the Navigator and the Rep weigh them next time they run.`
+        : `${f.name} is an orders export, but none of its rows has a date, a total and a ZIP together, so there's nothing to add from it yet.`,
+    );
+    return true;
+  };
   /** A file added after onboarding (§23.2 step 7d): read through the knowledge reader into the graph, as one edit. */
-  const readFiles = async (fs: File[]) => {
+  const readFiles = async (all: File[]) => {
+    const isOrders = await Promise.all(all.map((f) => (/\.csv$/i.test(f.name) || f.type === "text/csv" ? readSales(f) : Promise.resolve(false))));
+    const fs = all.filter((_, i) => !isOrders[i]);
+    if (!fs.length) return;
     const names = fs.map((f) => f.name);
     setGraphChips((c) => [...c.filter((x) => !names.includes(x.name)), ...fs.map((f) => ({ name: f.name, status: "Reading…", busy: true }))]);
     const ws = workspace();
@@ -943,11 +981,11 @@ export function Journey() {
     {
       id: "files",
       title: "Add to what Athena knows",
-      sub: "Decks, stockist sheets, photos, PDFs",
+      sub: "Decks, stockist sheets, orders exports, photos, PDFs",
       body: (
         <label className="kb-drop" onDragOver={(e) => e.preventDefault()} onDrop={(e) => (e.preventDefault(), e.stopPropagation(), e.dataTransfer.files.length && void readFiles([...e.dataTransfer.files]))}>
           <strong>Drop files here</strong>
-          <span className="small muted">Drop a deck, a stockist sheet, photos or a PDF, or click to pick. It goes on the Brand Graph, and the subagents it changes are flagged to bring up to date.</span>
+          <span className="small muted">Drop a deck, a stockist sheet, photos or a PDF, or click to pick. It goes on the Brand Graph, and the subagents it changes are flagged to bring up to date. A store's orders export (CSV) fills What's working instead: only each order's date, total and ZIP are kept.</span>
           <input type="file" multiple accept={ACCEPT} hidden onChange={(e) => e.target.files?.length && void readFiles([...e.target.files])} />
         </label>
       ),
@@ -1024,7 +1062,7 @@ export function Journey() {
             graphRev={g.log.length}
             kb={kbParts}
             paused={pausedFor}
-            working={<WhatsWorking team={team} graphRev={g.log.length} busy={tm.live.running > 0} onRefresh={tm.refresh} />}
+            working={<WhatsWorking team={team} graphRev={g.log.length} busy={tm.live.running > 0} onRefresh={tm.refresh} crowds={j.crowds?.crowds} />}
             onOpen={(id) => go(id)}
             onChat={() => setDrawer(true)}
             onStart={startPlan}

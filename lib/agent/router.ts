@@ -1,6 +1,7 @@
 import "server-only";
 import { generate, parseJson } from "@/lib/llm/vertex";
 import { TOOLS } from "./tools";
+import { briefFacts } from "@/lib/brief/facts";
 import { ATHENA, EXECUTIVE, SPECIALISTS, isSpecialist, nameOf, type AgentId, type SpecialistId } from "./specialists";
 import { checkChange } from "./interpret";
 import type { BrandBrief } from "@/lib/brief/types";
@@ -52,22 +53,7 @@ const CANNOT = [
   "work on several cities or every crowd at once: one city and the crowd to win first, then the next",
 ];
 
-/** The Brand Knowledge Base as short facts: what the brief holds, then the notes the founder kept. */
-export function briefFacts(b: BrandBrief | undefined, notes: string[]): string[] {
-  if (!b) return notes.slice(0, 30);
-  const list = (label: string, xs: string[]) => (xs.length ? [`${label}: ${xs.slice(0, 12).join(", ")}`] : []);
-  return [
-    ...(b.channels ? [`How it sells: ${b.channels.value}`] : []),
-    ...list("Websites", b.websites.map((w) => w.value)),
-    ...list("Stockists", b.stockists.map((s) => (s.value.city ? `${s.value.name} (${s.value.city})` : s.value.name))),
-    ...list("Comparable brands", b.comparables.map((c) => c.value)),
-    ...list("Competitors", b.competitors.map((c) => c.value)),
-    ...list("Cities", (b.cities ?? []).map((c) => c.value.name)),
-    ...(b.traits?.length ? [`Traits: ${b.traits.join(", ")}`] : []),
-    ...b.notes.slice(0, 12).map((n) => n.value),
-    ...notes.slice(0, 20),
-  ];
-}
+export { briefFacts };
 
 /** What Athena knows she is and can do, from the registry: it changes when a subagent or a tool does. */
 export function selfKnowledge(): string {

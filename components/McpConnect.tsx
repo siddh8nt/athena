@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { workspace } from "@/lib/knowledge/workspace";
 import { NavIcon } from "./SideNav";
+import { BRAND_FILE, brandFile } from "@/lib/workspace/brand-file";
 
 // "Athena MCP" (PRD §23.6 d): a quiet sidebar row opens one frosted side panel (a full-screen sheet on a phone).
 // Section 1, "Your AI assistant", gives the founder a link to paste into Claude, Claude Code, Cursor or ChatGPT,
@@ -10,9 +11,11 @@ import { NavIcon } from "./SideNav";
 // (§23.6 c): the server keeps only its hash, so the browser remembers the secret it was shown and only New link
 // changes it. The same panel opens from /plan's first screen on the judges' demo (§23.6 e): the fixed, read-only
 // link to the precomputed Fishwife plan, with no New link (rotating a shared link would break it for everyone).
-// Sections 2–4 (As a file, Calendar, Share with your team) arrive with (f), (g) and (k).
+// Section 2, "As a file" (f), downloads athena-brand.md, built in the browser from its own journey (the demo's comes
+// from the seeded sample). Sections 3–4 (Calendar, Share with your team) arrive with (g) and (k).
 
-const SECRET_KEY = "athena:link:full"; // the secret this browser was shown, so the panel shows the same link each time
+const SECRET_KEY = "athena:link:full";
+const JOURNEY_KEY = "athena:journey:v1"; // the journey as components/Journey.tsx saves it: { brief, journey, … } // the secret this browser was shown, so the panel shows the same link each time
 
 type Tool = "claude" | "claude-code" | "cursor" | "chatgpt";
 const TOOLS: { id: Tool; name: string }[] = [
@@ -192,8 +195,51 @@ export function McpPanel({ onClose, demo }: { onClose: () => void; demo?: string
             </>
           )}
         </section>
+
+        <AsAFile demo={!!demo} />
       </aside>
     </div>
+  );
+}
+
+/** Section 2 (§23.6 f): one line on what's in the file, and one button that downloads it. */
+function AsAFile({ demo }: { demo: boolean }) {
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
+  const save = async () => {
+    setBusy(true);
+    let text = "";
+    try {
+      if (demo) {
+        const res = await fetch("/api/workspace/demo?file=1");
+        if (res.headers.get("Content-Type")?.startsWith("text/markdown")) text = await res.text();
+      } else {
+        text = brandFile(JSON.parse(localStorage.getItem(JOURNEY_KEY) ?? "{}"));
+      }
+    } catch {
+      // Unreadable save or no network: the file below still says what Athena has (nothing yet).
+    }
+    if (!text) text = brandFile({});
+    const url = URL.createObjectURL(new Blob([text], { type: "text/markdown;charset=utf-8" }));
+    const a = Object.assign(document.createElement("a"), { href: url, download: BRAND_FILE });
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    setBusy(false);
+    setDone(true);
+  };
+  return (
+    <section className="mcp-section">
+      <h3>As a file</h3>
+      <p className="small muted">
+        {demo ? "The Fishwife sample" : "Your brand"}, its crowds, Athena&apos;s plan in order and the open tasks, in one file any AI assistant can read. Drop it into a chat or a project.
+      </p>
+      <div className="mcp-link-foot">
+        <button type="button" className="mcp-new" onClick={save} disabled={busy}>
+          Download {BRAND_FILE}
+        </button>
+        {done && <span className="small muted">Saved to your downloads.</span>}
+      </div>
+    </section>
   );
 }
 

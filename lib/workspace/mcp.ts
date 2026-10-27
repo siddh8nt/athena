@@ -5,11 +5,12 @@ import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/
 import type { BrandBrief } from "@/lib/brief/types";
 import type { Journey } from "@/lib/journey/types";
 import { emptyTeam, type TaskStatus, type TeamState } from "@/lib/team/types";
-import { planView, type PlanView, type Stage } from "@/lib/exec/plan";
+import { planView, type PlanView } from "@/lib/exec/plan";
 import { briefFacts, routeMessage, type RouteInput } from "@/lib/agent/router";
 import { readSnapshot, markTask, answerQuestion, addFact } from "./server";
 import { type LinkMeta } from "./links";
 import { reserved } from "./demo";
+import { ACTIONABLE, BRAND_FILE, STAGE_NOTE, brandFile } from "./brand-file";
 
 // The Athena MCP server (PRD §23.6 b). A founder's own AI tool connects through a link (links.ts) and reads the
 // same brief, crowds, plan and Execute Plan the app shows, and writes back the founder's marks, answers and facts —
@@ -43,22 +44,6 @@ async function readView(ws: string): Promise<View> {
 
 const text = (s: string) => ({ content: [{ type: "text" as const, text: s }] });
 const json = (v: unknown) => text(JSON.stringify(v, null, 2));
-
-/** What a plan row's stage means in plain words, so an outside tool reads it without knowing Athena's internals. */
-const STAGE_NOTE: Record<Stage, string> = {
-  queued: "waiting to find a contact",
-  reading: "Athena is reading pages for a contact",
-  drafting: "Athena is drafting the outreach",
-  ready: "draft ready to send",
-  needs: "needs a way to reach them",
-  sent: "pitched, waiting for a reply",
-  waiting: "pitched, waiting for a reply",
-  follow: "time to follow up",
-  yes: "they said yes",
-  no: "they said no",
-};
-/** The rows the founder can act on next: not already sent-and-waiting, not closed. */
-const ACTIONABLE: Stage[] = ["queued", "reading", "drafting", "ready", "needs", "follow"];
 
 /** Build the stateless MCP server for one workspace and link scope. */
 export function buildServer(meta: LinkMeta): McpServer {
@@ -110,6 +95,11 @@ export function buildServer(meta: LinkMeta): McpServer {
   server.registerResource("questions", "athena://questions", { title: "Open questions", description: "What Athena is still waiting to hear from the founder.", mimeType: "application/json" }, async () => {
     const v = await readView(ws);
     return { contents: [{ uri: "athena://questions", mimeType: "application/json", text: JSON.stringify(v.team.plan?.open ?? [], null, 2) }] };
+  });
+
+  server.registerResource("brand-file", "athena://brand-file", { title: BRAND_FILE, description: "Everything above in one page to read first: the brand, crowds, Athena's plan in order and the open tasks.", mimeType: "text/markdown" }, async () => {
+    const v = await readView(ws);
+    return { contents: [{ uri: "athena://brand-file", mimeType: "text/markdown", text: brandFile({ brief: v.brief, journey: v.journey }) }] };
   });
 
   // ---- Tools: reads anyone may call; writes only on a full link; ask_athena spends, full link only.

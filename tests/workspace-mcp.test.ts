@@ -46,7 +46,7 @@ describe("Athena MCP server (§23.6 b)", () => {
     const tools = (await rpc(secret, "tools/list")).result?.tools?.map((t: any) => t.name) ?? [];
     expect(tools).toEqual(expect.arrayContaining(["next_tasks", "get_draft", "mark_task", "answer_question", "add_fact", "ask_athena"]));
     const resources = (await rpc(secret, "resources/list")).result?.resources?.map((r: any) => r.uri) ?? [];
-    expect(resources).toEqual(expect.arrayContaining(["athena://brief", "athena://crowds", "athena://plan", "athena://tasks", "athena://questions"]));
+    expect(resources).toEqual(expect.arrayContaining(["athena://brief", "athena://crowds", "athena://plan", "athena://tasks", "athena://questions", "athena://brand-file"]));
   });
 
   it("reads the brief resource from the mirrored snapshot", async () => {

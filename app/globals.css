@@ -2112,6 +2112,7 @@ button.nav-item:hover:not(:disabled) { background: rgba(255, 255, 255, 0.045); c
 .mcp-close { flex: none; width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--muted); font-size: 20px; line-height: 1; cursor: pointer; }
 .mcp-close:hover { color: var(--fg); border-color: var(--muted); }
 .mcp-section { display: flex; flex-direction: column; gap: 12px; }
+.mcp-section + .mcp-section { border-top: 1px solid var(--line); padding-top: 18px; }
 .mcp-section h3 { margin: 0; font-size: 14px; font-weight: 600; }
 .mcp-seg { flex-wrap: wrap; }
 .mcp-steps { margin: 2px 0 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--fg); }

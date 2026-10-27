@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { isResolution, keptOptions, placesOf, whereLabel, type Conflict, type Fact, type Knowledge, type Settlement } from "@/lib/knowledge/types";
+import { isResolution, keptOptions, namedWhy, placesOf, whereLabel, type Conflict, type Fact, type Knowledge, type Settlement } from "@/lib/knowledge/types";
 
 // What Athena kept from everything the founder gave (PRD §23.2 step 4d): each source's facts with where each one is,
 // struck in one tap; and where the sources disagree, a one-click choice with Athena's pick marked. Choices and strikes
@@ -48,7 +48,7 @@ export function Settle({ c, facts, pick, onPick }: { c: Conflict; facts: Fact[];
           ) : null,
         )}
       </ol>
-      {isResolution(pick) ? <p className="small kb-why">You said: {pick.fact}</p> : c.why && <p className="muted small kb-why">{c.why}</p>}
+      {isResolution(pick) ? <p className="small kb-why">You said: {pick.fact}</p> : c.why && <p className="muted small kb-why">{namedWhy(c.why, facts)}</p>}
     </div>
   );
 }

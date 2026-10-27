@@ -5,7 +5,7 @@ import { flushSync } from "react-dom";
 import type { AgentEvent } from "@/lib/blocks/types";
 import type { AgentStreamEvent } from "@/lib/agent/loop";
 import type { BrandBrief } from "@/lib/brief/types";
-import { isResolution, keptOptions, liveFacts, placesOf, type Conflict, type Knowledge, type LiveFact, type Settled, type Settlement } from "@/lib/knowledge/types";
+import { isResolution, keptOptions, liveFacts, namedWhy, placesOf, type Conflict, type Knowledge, type LiveFact, type Settled, type Settlement } from "@/lib/knowledge/types";
 import type { Upload } from "@/lib/knowledge/uploads";
 import { CONTEXT_PROMPT } from "@/lib/agent/context-prompt";
 import { checklistLine, type CheckItem } from "@/lib/agent/checklist";
@@ -1047,7 +1047,7 @@ function conflictQuestion(c: Conflict, kb: Knowledge): Asked {
   return {
     id: `conflict_${c.id}`,
     question: `Your sources disagree: ${c.about}`,
-    why: c.why,
+    why: namedWhy(c.why, kb.facts),
     options: order.slice(0, 4).map((i) => ({ label: labels[i], hint: at(c.options[i].facts) })),
     multi: true,
     assumed: labels[c.recommended],

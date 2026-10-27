@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { applyMerge, mergeTargets, placesOf, whereLabel, type Fact } from "@/lib/knowledge/types";
+import { applyMerge, mergeTargets, namedWhy, placesOf, whereLabel, type Fact } from "@/lib/knowledge/types";
 import { readFileDoc } from "@/lib/knowledge/read";
 import type { AgentEvent } from "@/lib/blocks/types";
 
@@ -29,6 +29,13 @@ describe("a disagreement as the founder reads it", () => {
     const facts = ["a", "b", "c"].map((id) => fact(id, `Store ${id}`, "website", "https://baggu.com/stores"));
     expect(placesOf(["a", "b", "c"], [...facts, fact("d", "Store d", "pasted", "summary")])).toBe("baggu.com/stores");
     expect(placesOf(["a", "d"], [...facts, fact("d", "Store d", "pasted", "summary")])).toBe("baggu.com/stores; summary");
+  });
+
+  it("its why names places, never a fact id", () => {
+    const facts = [fact("01407c9", "Tins $52", "website", "https://eatfishwife.com/products/tins"), fact("871b0c5", "Five years", "pasted", "summary")];
+    expect(namedWhy("The product-specific page (01407c9) is more specific than 871b0c5, because it is newer.", facts)).toBe(
+      "The product-specific page (eatfishwife.com/products/tins) is more specific than summary, because it is newer.",
+    );
   });
 
   it("keeps a long list whole, and a longer one ends at a whole item", async () => {

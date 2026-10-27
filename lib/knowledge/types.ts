@@ -68,6 +68,13 @@ export function whereLabel(w: Where): string {
 export const placesOf = (ids: string[], facts: Fact[]): string =>
   [...new Set(ids.flatMap((id) => facts.find((f) => f.id === id)?.where.map(whereLabel) ?? []))].join("; ");
 
+/** A conflict's why as the founder reads it: a fact id Gemini named anyway ("The product page (01407c9)"), or one in a
+ *  why saved before it was told not to, is the place that fact came from. */
+export function namedWhy(why: string, facts: Fact[]): string {
+  const ids = new Set(facts.map((f) => f.id));
+  return why.replace(/\b[a-z0-9]{6,}\b/g, (w) => (ids.has(w) ? placesOf([w], facts) || "another source" : w));
+}
+
 const key = (w: Where) => `${w.kind}|${w.ref}|${w.at ?? ""}`;
 
 /** Groups that share a fact are one group: [a, b] and [b, c] merge a, b and c. Maps each merged id to the one that stays. */

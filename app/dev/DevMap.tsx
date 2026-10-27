@@ -67,6 +67,20 @@ const FLOWS: Flow[] = [
       { label: "What's working", find: (s) => !!s.journey?.marks, url: "/plan?tab=working" },
       { label: "Execute Plan tab", find: (s) => !!s.journey?.exec, url: "/plan?tab=executive" },
       { label: "Chat drawer open", find: full, url: "/plan", then: ["button::Chat with Athena"] },
+      { label: "This week", note: "At the top of Overview: pitches waiting, what falls due, the next events.", find: (s) => !!s.journey?.exec, url: "/plan?tab=overview" },
+      { label: "What's working: sales from an orders file", note: "The made-up sample file, labelled Sample data.", find: (s) => !!s.journey?.sales, url: "/plan?tab=working" },
+    ],
+  },
+  {
+    title: "Athena MCP and sharing",
+    steps: [
+      { label: "Panel: your AI assistant", find: full, url: "/plan", then: [".nav-mcp"] },
+      { label: "Panel: as a file", find: full, url: "/plan", then: [".nav-mcp", "#mcp-file h3"] },
+      { label: "Panel: calendar", find: full, url: "/plan", then: [".nav-mcp", "#mcp-calendar h3"] },
+      { label: "Panel: share with your team", find: full, url: "/plan", then: [".nav-mcp", "#mcp-share h3"] },
+      { label: "Demo link on the first screen", note: "Connect the Fishwife plan to your AI, with the Monday email.", find: none, url: "/plan?new=1", fresh: true, then: [".ob-mcp button"] },
+      { label: "Team share page", note: "The demo's view-only Execute Plan.", find: none, url: "/share/fishwife-sample-plan", fresh: true },
+      { label: "Share link replaced", find: none, url: "/share/replaced-link", fresh: true },
     ],
   },
   {

@@ -182,7 +182,7 @@ export function McpPanel({ onClose, demo, at }: { onClose: () => void; demo?: st
           </button>
         </header>
 
-        <section className="mcp-section">
+        <section className="mcp-section" id="mcp-connect">
           <h3>Your AI assistant</h3>
           <p className="small muted">
             {demo
@@ -265,7 +265,7 @@ function AsAFile({ demo }: { demo: boolean }) {
     setDone(true);
   };
   return (
-    <section className="mcp-section">
+    <section className="mcp-section" id="mcp-file">
       <h3>As a file</h3>
       <p className="small muted">
         {demo ? "The Fishwife sample" : "Your brand"}, its crowds, Athena&apos;s plan in order and the open tasks, in one file any AI assistant can read. Drop it into a chat or a project.

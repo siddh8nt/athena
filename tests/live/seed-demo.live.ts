@@ -63,7 +63,10 @@ it("seed the Fishwife demo workspace", async () => {
   const rows = parseCsv(readFileSync(join(process.cwd(), "public", "demo", file), "utf-8"));
   const { orders } = readOrders(rows, { date: rows[0].indexOf("Created at"), total: rows[0].indexOf("Total"), zip: rows[0].indexOf("Shipping Zip"), id: rows[0].indexOf("Name") });
   const metros = [...new Set(((j as { crowds?: { crowds?: { cities: { metro: string }[] }[] } }).crowds?.crowds ?? []).flatMap((c) => c.cities.map((x) => metroIdFor(x.metro))))];
-  t.sales = { file, at: Date.now(), sample: true, orders, places: await placeZips(orders.map((o) => o[2]), metros) };
+  // Dated before the team's runs, as a file already among the founder's files would be: a later date would mark the
+  // Navigator and the Rep stale, and the demo would offer a paid re-run of each.
+  const ran = Math.min(...Object.values(t.works ?? {}).map((w) => w.at));
+  t.sales = { file, at: Number.isFinite(ran) ? ran - 1 : Date.now(), sample: true, orders, places: await placeZips(orders.map((o) => o[2]), metros) };
   process.stdout.write(`Sample sales: ${orders.length} orders from ${file}.
 `);
 

@@ -610,12 +610,6 @@ export function Onboard({
         <div className="ob-hero">
           <h1>Tell me about your brand</h1>
           <p className="muted">Type, paste or drop anything. I&apos;ll read it all, look you up, and only ask what I can&apos;t find.</p>
-          {/* Temporary way into developer mode; /dev itself 404s in production. */}
-          {process.env.NODE_ENV !== "production" && (
-            <a href="/dev" className="muted" style={{ display: "inline-block", marginBottom: 12, fontSize: 13, textDecoration: "underline" }}>
-              Open dev mode
-            </a>
-          )}
           {composer}
           <ul className="ob-cards">
             <li>

@@ -323,7 +323,7 @@ export type TeamState = {
   answered?: Answer[];
   /** Athena's growth plan, once the workflow's last step has run. */
   plan?: GrowthPlan;
-  /** What the founder set on each task of the Executive plan, by item id (§23.5 n, q). */
+  /** What the founder set on each task of Execute Plan, by item id (§23.5 n, q). */
   tasks?: Record<string, TaskNote>;
   /** The Executive's contacts, drafts and follow-up waits (§23.5 q). */
   exec?: ExecState;

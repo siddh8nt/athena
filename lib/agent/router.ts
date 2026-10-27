@@ -32,7 +32,7 @@ export type RouteInput = {
   team: TeamState;
   /** Questions still waiting on the founder. */
   open: string[];
-  /** The Executive plan as the page shows it (§23.5 r); without it, read from the team. */
+  /** Execute Plan as the page shows it (§23.5 r); without it, read from the team. */
   plan?: PlanView;
 };
 
@@ -100,7 +100,7 @@ const STAGE_WORDS: Record<Stage, string> = {
   no: "said no",
 };
 
-/** The Executive plan as the page sent it, else as the team holds it (a caller with the whole team). */
+/** Execute Plan as the page sent it, else as the team holds it (a caller with the whole team). */
 const viewOf = (i: RouteInput) => i.plan ?? planView(i.team, Date.now());
 
 /** The plan view the page sent, shape-checked and cut to size; anything malformed is left out. */
@@ -133,14 +133,14 @@ export function teamKnowledge(i: RouteInput): string {
   const works = Object.values(t.works).flatMap((w) =>
     w ? [`- The ${nameOf(w.agent)}: ${w.headline}${w.results.length ? ` (${w.results.slice(0, 6).map((r) => `${r.kind}: ${r.name}, because ${r.why.slice(0, 140)}`).join("; ")})` : ""}${w.handoff ? `. Waiting on: ${w.handoff.need}` : ""}`] : [],
   );
-  const steps = t.workflow?.steps.map((s) => `${s.id === "athena" ? "the Executive plan" : `the ${nameOf(s.id)}`}: ${s.state}`) ?? [];
+  const steps = t.workflow?.steps.map((s) => `${s.id === "athena" ? "Execute Plan" : `the ${nameOf(s.id)}`}: ${s.state}`) ?? [];
   const v = viewOf(i);
   const rules = v?.rules.map((r) => `${r.text} (${r.days} days)`) ?? [];
   const items = v?.items.slice(0, 60).map((it) => `${it.name} (${it.kind}, ${STAGE_WORDS[it.stage]})`) ?? [];
   // The rest by name only, so "emailed Amorino Gelato in Atlanta" can name any item on the plan as it's listed.
   const rest = v?.items.slice(60).map((it) => it.name) ?? [];
   const exec = v
-    ? `The Executive plan: ${v.started ? "started" : v.later ? "left for later by the founder" : "not started"}; ${v.found} contact${v.found === 1 ? "" : "s"} found so far; a pitch with no reply comes up again after ${v.wait} days${rules.length ? `, except: ${rules.join("; ")}` : ""}${v.spent ? `; $${v.spent} spent so far` : ""}.` +
+    ? `Execute Plan: ${v.started ? "started" : v.later ? "left for later by the founder" : "not started"}; ${v.found} contact${v.found === 1 ? "" : "s"} found so far; a pitch with no reply comes up again after ${v.wait} days${rules.length ? `, except: ${rules.join("; ")}` : ""}${v.spent ? `; $${v.spent} spent so far` : ""}.` +
       (items.length ? `\nIts outreach items (name, kind, where it stands): ${items.join("; ")}` : "") +
       (rest.length ? `\nIts other outreach items, by name: ${rest.join("; ")}` : "")
     : "";
@@ -331,7 +331,7 @@ export function givenContact(o: Record<string, unknown>, said: string): GivenCon
   return out;
 }
 
-/** The kinds of item on the Executive plan, as the router names them in a scope. */
+/** The kinds of item on Execute Plan, as the router names them in a scope. */
 const KINDS = `"venue" (bars, cafés, restaurants, galleries, places that host), "retailer" (shops, stores, stockists), "partner" (brands to team up with), "creator", "podcast", "event", "moment", "audience" (an online audience), "show", "message" (the Scout's hooks), "neighbourhood"`;
 
 const PROMPT = `Decide your one move for the founder's latest message, and write what you say.
@@ -340,9 +340,9 @@ const PROMPT = `Decide your one move for the founder's latest message, and write
 - "graph": the founder is telling you something about the brand to add, change or remove in the Brand Graph (a stockist, a city, a competitor, a price, a fact).
 - "handoff": the founder wants a subagent's work done again, done differently or taken further ("find more shops", "make the words more playful"). Writing something for the founder to send (a pitch, an email, an ask, a note to a shop or a partner) is always a handoff: the subagent who found the recipient writes it, checked against the evidence and with the contact it found; you never draft it yourself in a reply. Give to (its id), task (what it should do, in a sentence) and reply (one line saying who you've asked and why).
 - "workflow": the founder wants the plan's steps changed: a subagent skipped or brought in, or a US city to work on. "add" is only for a subagent not in the plan yet; one already in it that should read or work again is a "handoff". Give change: {"skip"?: [ids], "add"?: [ids], "city"?: "City name"} and a one-line reply.
-- "contacts": the founder wants contact details (address, website, phone, email, a DM link) found for some items on the Executive plan: "find emails for the Brooklyn shops", "get me contacts for the podcasts", "how do I reach Paper Source?". The Executive finds them a few at a time, top-ranked first, so don't ask first. Give scope with only the fields their words set, read by meaning: agents (subagent ids), kinds (${KINDS}), groups, crowds (a crowd's name), cities, names (a place, person or show they named); and limit when they say how many. Reply with one line on what the Executive will look up.
+- "contacts": the founder wants contact details (address, website, phone, email, a DM link) found for some items on Execute Plan: "find emails for the Brooklyn shops", "get me contacts for the podcasts", "how do I reach Paper Source?". The Executive finds them a few at a time, top-ranked first, so don't ask first. Give scope with only the fields their words set, read by meaning: agents (subagent ids), kinds (${KINDS}), groups, crowds (a crowd's name), cities, names (a place, person or show they named); and limit when they say how many. Reply with one line on what the Executive will look up.
 - "followup": the founder says how long to wait for a reply to a pitch before you bring it up again, for every pitch or for some: "wait two weeks", "give retailers 10 days", "podcasts take a month". Give days (whole days: two weeks is 14) for every pitch, and rules [{"days", "scope", "text"}] for some: scope as for "contacts", text the rule in a few words ("Retailers: two weeks"). Reply with one line saying what you'll do.
-- "outcome": the founder tells you what happened with items on the Executive plan: they sent something ("emailed Museum of Sex", "DMed the three podcasts", "applied to the market"), heard back ("they said yes", "Paper Source passed"), got no answer, went to an event, or spent money on one ("spent $200 on the booth"); or they give a way to reach one ("Paper Cove's email is hello@papercove.com", "here's their Instagram: instagram.com/papercove"). Give marks [{"name": the item's name as the plan lists it, "mark": "pitched" (sent, applied, called) | "yes" (said yes, booked) | "no" (said no, passed) | "no_reply" | "went" (went to the event)}], spend [{"name", "usd": the amount in dollars}] and contacts [{"name", "email"?, "phone"?, "address"?, "website"?, "dm"?: a profile link}], copying each detail exactly as the founder wrote it, reading "they", "them" and "the booth" from the latest messages. Reply with one line saying what you've moved or added.
+- "outcome": the founder tells you what happened with items on Execute Plan: they sent something ("emailed Museum of Sex", "DMed the three podcasts", "applied to the market"), heard back ("they said yes", "Paper Source passed"), got no answer, went to an event, or spent money on one ("spent $200 on the booth"); or they give a way to reach one ("Paper Cove's email is hello@papercove.com", "here's their Instagram: instagram.com/papercove"). Give marks [{"name": the item's name as the plan lists it, "mark": "pitched" (sent, applied, called) | "yes" (said yes, booked) | "no" (said no, passed) | "no_reply" | "went" (went to the event)}], spend [{"name", "usd": the amount in dollars}] and contacts [{"name", "email"?, "phone"?, "address"?, "website"?, "dm"?: a profile link}], copying each detail exactly as the founder wrote it, reading "they", "them" and "the booth" from the latest messages. Reply with one line saying what you've moved or added.
 - "clarify": the message could mean two or more quite different things, and guessing wrong would waste the team's work. This includes a message that points back ("that one", "the bigger one", "do it") when more than one earlier thing fits: ask before starting a subagent on a guess. Ask one short question with 2 to 4 options, each a plain reading of what they might mean, naming the things it could refer to.
 Return JSON only: {"do": "reply"|"tools"|"graph"|"handoff"|"workflow"|"clarify"|"contacts"|"followup"|"outcome", "reply"?: string, "to"?: string, "task"?: string, "change"?: {...}, "question"?: string, "options"?: [string], "scope"?: {...}, "days"?: number, "rules"?: [{...}], "marks"?: [{...}], "spend"?: [{...}], "contacts"?: [{...}]}`;
 

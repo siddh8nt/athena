@@ -17,7 +17,7 @@ const input = (over: Partial<RouteInput> = {}): RouteInput => ({
   ...over,
 });
 
-describe("the Executive plan's chat moves (§23.5 q)", () => {
+describe("Execute Plan's chat moves (§23.5 q)", () => {
   it("finds contacts for the items the founder's words cover, a few at most", () => {
     const r = checkRoute({ do: "contacts", scope: { agents: ["rep", "lawyer"], cities: ["Brooklyn"], limit: 400 }, reply: "Finding the Brooklyn shops." }, input());
     expect(r).toEqual({ do: "contacts", scope: { agents: ["rep"], cities: ["Brooklyn"], limit: 24 }, reply: "Finding the Brooklyn shops." });

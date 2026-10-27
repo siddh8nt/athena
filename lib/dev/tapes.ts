@@ -90,7 +90,7 @@ export type JourneySummary = {
   questions: number;
   plan: boolean;
   tasks: number;
-  /** The Executive plan (§23.5 q): started, and how many items the founder has marked. */
+  /** Execute Plan (§23.5 q): started, and how many items the founder has marked. */
   exec: boolean;
   marks: number;
 };

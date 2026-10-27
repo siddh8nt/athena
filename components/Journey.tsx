@@ -686,7 +686,7 @@ export function Journey() {
     return s === "working" || s === "waiting" ? s : undefined;
   };
 
-  /** "Ask Athena about this" on an Executive plan item: the chat opens with the item named, for the founder to finish. */
+  /** "Ask Athena about this" on an Execute Plan item: the chat opens with the item named, for the founder to finish. */
   const askItem = (it: ExecItem) => {
     tm.setActive("athena");
     setText(`About “${it.action}”: `);
@@ -702,7 +702,7 @@ export function Journey() {
   };
 
   // The sidebar: Dashboard, Athena, then the subagents.
-  // The Executive plan (§23.5 q), the founder's end output: on its own page and in the dashboard's tab.
+  // Execute Plan (§23.5 q), the founder's end output: on its own page and in the dashboard's tab.
   const execEl = (
     <ExecutivePlan
       team={team}
@@ -841,13 +841,13 @@ export function Journey() {
           </button>
           .
         </p>
-        {/* Athena's order is the Executive plan's Now (§23.5 q): her panel links to it. */}
+        {/* Athena's order is Execute Plan's Now (§23.5 q): her panel links to it. */}
         {team.plan && (
           <div className="xp-link">
-            <span className="eyebrow">Executive plan</span>
+            <span className="eyebrow">Execute Plan</span>
             <p className="small">{team.plan.headline}</p>
             <button type="button" onClick={() => go("executive")}>
-              Open the Executive plan
+              Open Execute Plan
             </button>
           </div>
         )}

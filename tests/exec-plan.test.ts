@@ -5,7 +5,7 @@ import type { TeamState } from "@/lib/team/types";
 import { contactKey, contactOf, execPlan, holds, inScope, nextOf, nowLookups, lookupsFor, statesOf, tabItems, templateDrafts, waitOf, waitingSteps, whose, type ExecItem, type ExecPlan, type NowStep } from "@/lib/exec/plan";
 import type { CrowdPage } from "@/lib/team/page";
 
-// §23.5 (q): the Executive plan holds every item on every page once, Athena's picks under Now in her order, and looks
+// §23.5 (q): Execute Plan holds every item on every page once, Athena's picks under Now in her order, and looks
 // a contact up once however many items share it. The recorded run lives in the gitignored .cache/dev (no Qloo data in
 // the repo), so that part skips where it isn't.
 
@@ -37,7 +37,7 @@ function pageIds(page: CrowdPage): string[] {
   return out;
 }
 
-describe.skipIf(!recorded())("the Executive plan of the recorded run", () => {
+describe.skipIf(!recorded())("Execute Plan of the recorded run", () => {
   const team = recorded()!;
   const plan = team ? execPlan(team) : undefined!;
 

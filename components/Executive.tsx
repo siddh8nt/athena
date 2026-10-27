@@ -32,7 +32,7 @@ import {
   type Stage,
 } from "@/lib/exec/plan";
 
-// The Executive plan (PRD §23.5 r): a live task orchestrator. After Start it works through every target by itself, Now
+// Execute Plan (PRD §23.5 r): a live task orchestrator. After Start it works through every target by itself, Now
 // first: each row goes Queued → Reading → Drafting → Ready (or Needs a contact) as it works, then Sent → Waiting →
 // Replied, or Follow-up, as the founder tells Athena in chat. A row opens in place to show why it's on the plan, how it
 // was found, the ways to reach them, the drafts and its history. Nothing is sent from here: drafts are copied, or opened
@@ -328,9 +328,9 @@ export function ExecutivePlan(p: Props) {
   };
 
   return (
-    <section className="xp" aria-label="Your Executive plan">
+    <section className="xp" aria-label="Execute Plan">
       <header className="xp-head">
-        <span className="eyebrow">Executive plan</span>
+        <span className="eyebrow">Execute Plan</span>
         <h2>{team.plan.headline}</h2>
         <p className="xp-counts small" aria-live="polite">
           {counts.map(([n, one, many], i) => (
@@ -410,7 +410,7 @@ export function ExecutivePlan(p: Props) {
           </button>
         </p>
       ) : (
-        <div className="xp-tabs" role="tablist" aria-label="Executive plan">
+        <div className="xp-tabs" role="tablist" aria-label="Execute Plan">
           {tabs.map((t) => (
             <button key={t} type="button" role="tab" aria-selected={tab === t} className={tab === t ? "on" : ""} onClick={() => pick(t)}>
               {tabLabel(t)} <span className="xp-n">{tabN[t]}</span>
@@ -508,11 +508,11 @@ function Pending({ team, running, onOpen }: { team: TeamState; running: boolean;
   const left = team.workflow?.steps.filter((s) => s.id !== "athena" && s.state !== "done").map((s) => `the ${nameOf(s.id)}`) ?? [];
   return (
     <section className="xp xp-pending">
-      <span className="eyebrow">Executive plan</span>
+      <span className="eyebrow">Execute Plan</span>
       <p className="small muted">
         {!team.workflow ? (
           <>
-            Your Executive plan comes here once you{" "}
+            Execute Plan comes here once you{" "}
             <button type="button" className="linkish" onClick={() => onOpen("dashboard")}>
               build your growth plan
             </button>{" "}

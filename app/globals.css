@@ -2613,7 +2613,7 @@ button.nav-item:hover:not(:disabled) { background: rgba(255, 255, 255, 0.045); c
   .promo-months ol { grid-template-columns: repeat(6, 1fr); }
 }
 
-/* The Executive plan (§23.5 r): a live task orchestrator. Live counts and the pipeline on top, a tab per subagent, rows
+/* Execute Plan (§23.5 r): a live task orchestrator. Live counts and the pipeline on top, a tab per subagent, rows
    that fill in as the run works and open in place. Rows stack when the plan is narrow (a panel or a phone). */
 .xp { display: flex; flex-direction: column; gap: 14px; min-width: 0; container-type: inline-size; }
 .xp-head { display: flex; flex-direction: column; gap: 8px; }
@@ -2768,7 +2768,7 @@ a.xp-src { color: var(--muted); text-decoration: underline dotted; text-underlin
 @media (prefers-reduced-motion: reduce) { .xp-pulse, .xp-row.xp-live, .xp-tick { animation: none; } }
 
 /* No agent's output sits straight on the character field (founder, 27 Oct): the dashboard and every subagent page, the
-   Executive plan's included, sit on one frosted sheet with the chat's rim and light catch. It is more opaque than the
+   Execute Plan's included, sit on one frosted sheet with the chat's rim and light catch. It is more opaque than the
    chat's, since these pages hold dense lists, and its blur turns the characters behind into soft texture. The field
    shows only in the margins around it. */
 .dash-page, .sub-page {

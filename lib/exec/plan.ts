@@ -5,7 +5,7 @@ import { needsOf, statusFromMark, stepAgent, stepId } from "@/lib/agent/executiv
 import { latest } from "@/lib/agent/outcomes";
 import { founderLine } from "@/lib/agent/founder-line";
 
-// The Executive plan (PRD §23.5 q): Athena's order turned into the founder's end output. Every trackable item on every
+// Execute Plan (PRD §23.5 q): Athena's order turned into the founder's end output. Every trackable item on every
 // subagent's page is on it exactly once, under the subagent that owns it; Athena's picks are also under Now, in her
 // order. The Executive adds no reasoning about order: Now is her plan's steps as they stand. Contacts are saved per
 // place, organisation or person, so an item two subagents list, or a chain with several items, is looked up once.
@@ -126,7 +126,7 @@ function visits(page: CrowdPage): Visit[] {
 type Acc = { id: string; name: string; weak: boolean; group?: string; first: Map<SpecialistId, number>; crowds: Set<string>; cities: Set<string>; facets: Map<string, Set<string>>; details: Map<SpecialistId, Detail>; note?: string; date?: string; parent?: string };
 
 /**
- * The Executive plan from the team as it stands: every item on every page once, owned by one subagent; Athena's steps
+ * Execute Plan from the team as it stands: every item on every page once, owned by one subagent; Athena's steps
  * as Now; and what the founder worked on that has since left the pages.
  */
 export function execPlan(team: TeamState): ExecPlan {
@@ -453,7 +453,7 @@ export function stageOf(it: ExecItem, st: ItemState, exec: ExecState | undefined
   return wayIn(contactOf(it, exec)) ? "ready" : "needs";
 }
 
-/** What Athena's chat reads of the Executive plan (§23.5 r). The page builds it and sends it with each message: the
+/** What Athena's chat reads of Execute Plan (§23.5 r). The page builds it and sends it with each message: the
  *  server keeps neither the subagents' pages nor the plan, so without it "emailed Amorino Gelato" names no row.
  *  `items`: the outreach rows, Now first, each where its row stands. */
 export type PlanView = {

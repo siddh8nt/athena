@@ -89,7 +89,7 @@ export const followCard = (its: ExecItem[], days: number): ExecAsk => ({
 export const waitCard: ExecAsk = {
   id: "exec-wait",
   question: "When should I bring up a pitch with no reply?",
-  why: "Until then it shows as waiting on a reply; after that, its row on the Executive plan offers a follow-up.",
+  why: "Until then it shows as waiting on a reply; after that, its row on Execute Plan offers a follow-up.",
   options: [{ label: "1 week" }, { label: "Choose", hint: "A length, or a rule for some items" }],
   multi: false,
   assumed: "1 week",

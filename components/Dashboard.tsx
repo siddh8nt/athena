@@ -8,7 +8,7 @@ import { execPlan, statesOf, stripOf } from "@/lib/exec/plan";
 import type { Answer, StepState, TeamState, Work, Workflow, WorkflowStep } from "@/lib/team/types";
 
 // The founder's dashboard after onboarding (PRD §23.2 step 8.5 b–d): the growth plan's workflow as a live diagram
-// under the goals, ending on the Executive plan, Athena's lead tile and the subagents' tiles, the founder's answers
+// under the goals, ending on Execute Plan, Athena's lead tile and the subagents' tiles, the founder's answers
 // (editable), what's working, and the Brand Knowledge Base. Only a view: the journey holds the state and hands in the pieces.
 
 const goalsOf = (team: TeamState) => team.goals.filter((g) => g.id !== "know_crowd");
@@ -66,7 +66,7 @@ export function WorkflowDiagram({ team, live, onOpen, onChat, compact }: { team:
     if (st?.state === "working") return st.step;
     return s.task;
   };
-  // The last node is the Executive plan (§23.5 q): Athena orders the team's work, the Executive turns it into the
+  // The last node is Execute Plan (§23.5 q): Athena orders the team's work, the Executive turns it into the
   // founder's plan. Her plan written and the Executive not yet started, it waits Ready for the founder's Start.
   const last = (s: WorkflowStep) => {
     const state = nodeState(s, live);
@@ -74,7 +74,7 @@ export function WorkflowDiagram({ team, live, onOpen, onChat, compact }: { team:
     return node(
       "athena",
       live.exec ? "running" : ready ? "todo" : state,
-      "Executive plan",
+      "Execute Plan",
       live.exec?.line ?? (state === "running" && live.status.athena?.state === "working" ? live.status.athena.step : team.plan && state === "done" ? team.plan.headline : "Athena orders the team's work; the Executive turns it into your plan"),
       () => onOpen(team.plan ? "executive" : "athena"),
       live.exec ? STATE_LABEL.running : ready ? "Ready" : STATE_LABEL[state],
@@ -97,8 +97,8 @@ export function WorkflowDiagram({ team, live, onOpen, onChat, compact }: { team:
 }
 
 /**
- * Under the workflow (§23.5 q): the Executive plan's one line and its one button. Start the Executive once Athena's
- * plan is in, and Open the Executive plan otherwise: once started, new items are looked up by themselves (§23.5 r).
+ * Under the workflow (§23.5 q): Execute Plan's one line and its one button. Start the Executive once Athena's
+ * plan is in, and Open Execute Plan otherwise: once started, new items are looked up by themselves (§23.5 r).
  */
 function ExecLine({ team, live, onExec, onOpen }: { team: TeamState; live: TeamLive; onExec: () => void; onOpen: () => void }) {
   if (!team.plan) return null;
@@ -114,13 +114,13 @@ function ExecLine({ team, live, onExec, onOpen }: { team: TeamState; live: TeamL
     line = x?.started
       ? `Now: ${strip.nowDone} of ${strip.nowOf} done${strip.waiting ? `, ${strip.waiting} waiting on a reply` : ""}. The Executive is working through the rest, Now first.`
       : `The Executive is finding how to reach the ${reach} to contact, Now first.`;
-    act = { label: "Open the Executive plan", on: onOpen };
+    act = { label: "Open Execute Plan", on: onOpen };
   } else if (!x?.started) {
     line = `Athena has put the team's work in order: ${plan.items.length} items, ${now.length} of them under Now. The Executive finds how to reach all ${reach} to contact, Now first, and writes an email, a DM and a call script for each.`;
     act = { label: "Start the Executive", primary: true, on: onExec };
   } else {
     line = `Now: ${strip.nowDone} of ${strip.nowOf} done${strip.waiting ? `, ${strip.waiting} waiting on a reply` : ""}${strip.yes ? `, ${strip.yes} yes so far` : ""}.`;
-    act = { label: "Open the Executive plan", on: onOpen };
+    act = { label: "Open Execute Plan", on: onOpen };
   }
   return (
     <div className="wf-exec">
@@ -131,7 +131,7 @@ function ExecLine({ team, live, onExec, onOpen }: { team: TeamState; live: TeamL
         </button>
         {act.on !== onOpen && (
           <button type="button" className="linkish small" onClick={onOpen}>
-            Open the Executive plan
+            Open Execute Plan
           </button>
         )}
       </span>
@@ -209,14 +209,14 @@ const DASH_TABS = [
   { id: "knowledge", label: "Brand Knowledge Base" },
   { id: "answers", label: "Your answers" },
   { id: "working", label: "What's working" },
-  { id: "executive", label: "Executive plan" },
+  { id: "executive", label: "Execute Plan" },
 ] as const;
 export type DashTab = (typeof DASH_TABS)[number]["id"];
 
 function tabFromUrl(): DashTab {
   try {
     const t = new URLSearchParams(window.location.search).get("tab");
-    // Athena's plan is the Executive plan now (§23.5 q): an old link to it opens there.
+    // Athena's plan is Execute Plan now (§23.5 q): an old link to it opens there.
     return DASH_TABS.find((x) => x.id === (t === "plan" ? "executive" : t))?.id ?? "overview";
   } catch {
     return "overview";
@@ -290,7 +290,7 @@ export function Dashboard(p: {
   onEditAnswer: (a: Answer, v: string) => void;
   /** Start the Executive (§23.5 r). */
   onExec: () => void;
-  /** The Executive plan (§23.5 q), for its tab. */
+  /** Execute Plan (§23.5 q), for its tab. */
   executive: ReactNode;
 }) {
   const { team, live } = p;
@@ -351,7 +351,7 @@ export function Dashboard(p: {
           <span className="dash-lead-body">
             <strong>Athena</strong>
             <span className={live.status.athena?.state === "working" ? "small shimmer-text" : "small"}>{athenaLine}</span>
-            {athenaStep && <span className="dash-lead-go">{plan ? "Open the Executive plan" : "Open Athena"} →</span>}
+            {athenaStep && <span className="dash-lead-go">{plan ? "Open Execute Plan" : "Open Athena"} →</span>}
           </span>
         </button>
         <ul className="dash-team">
@@ -387,7 +387,7 @@ export function Dashboard(p: {
               </li>
             );
           })}
-          {/* The Executive (§23.5 q): no research of its own; it turns Athena's order into the Executive plan. */}
+          {/* The Executive (§23.5 q): no research of its own; it turns Athena's order into Execute Plan. */}
           <li className="dash-agent">
             <span className="team-badge" aria-hidden>{EXECUTIVE.name.slice(0, 1)}</span>
             <div>
@@ -396,7 +396,7 @@ export function Dashboard(p: {
               <div className="dash-acts">
                 {plan ? (
                   <button type="button" className="linkish small" onClick={() => pick("executive")}>
-                    Open the Executive plan
+                    Open Execute Plan
                   </button>
                 ) : (
                   <small className="muted">Ready once Athena has put the team&apos;s work in order</small>

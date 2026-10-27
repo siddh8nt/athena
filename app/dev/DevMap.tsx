@@ -48,7 +48,7 @@ const FLOWS: Flow[] = [
     ],
   })),
   {
-    title: "The Executive plan",
+    title: "Execute Plan",
     steps: [
       { label: "Ready: Start / Later", find: (s) => !!s.journey?.plan && !s.journey.exec, url: "/plan" },
       { label: "Started: contacts and drafts", find: (s) => !!s.journey?.exec, url: "/plan?agent=executive" },

@@ -433,9 +433,9 @@ export function useTeam(p: {
       // The items the founder's words cover, top-ranked first, looked up a few at a time (§23.5 q).
       const t = latestTeam.current;
       const its = execPlan(t).items.filter((i) => i.outreach && !i.left && inScope(r.scope, i)).sort((a, b) => a.rank - b.rank).slice(0, r.scope.limit ?? 12);
-      if (!its.length) return p.say("Nothing on the Executive plan matches that yet, so there's nothing to look up. Once the team lists some, ask again.");
+      if (!its.length) return p.say("Nothing on Execute Plan matches that yet, so there's nothing to look up. Once the team lists some, ask again.");
       const groups = lookupsFor(its, t.exec);
-      if (!groups.length) return p.say(its.length > 1 ? "Those items already have their contacts on the Executive plan." : "That item already has its contact on the Executive plan.");
+      if (!groups.length) return p.say(its.length > 1 ? "Those items already have their contacts on Execute Plan." : "That item already has its contact on Execute Plan.");
       p.say(r.reply);
       return void runLookups(groups);
     }
@@ -504,7 +504,7 @@ export function useTeam(p: {
 
   /** Athena's plan written again from the same results, nothing re-run (as after a mark): a plan saved before its steps named their results. */
   const rewritePlan = () => replan({ resynth: true });
-  // ---- The Executive plan (§23.5 q)
+  // ---- Execute Plan (§23.5 q)
 
   const setExec = (f: (x: ExecState) => ExecState) => setTeam((t) => ({ ...t, exec: f(t.exec ?? { contacts: {}, drafts: {} }) }));
   /** Athena's own question, in the tray with the rest; asked again, it replaces the one before, and an unanswered one
@@ -592,7 +592,7 @@ export function useTeam(p: {
     } finally {
       autoRunning.current = false;
     }
-    if (!ran) return first ? p.say("The Executive plan is up to date: every item has its contact and drafts.") : undefined;
+    if (!ran) return first ? p.say("Execute Plan is up to date: every item has its contact and drafts.") : undefined;
     const now = latestTeam.current;
     const st = statesOf(now);
     const stages = execPlan(now)
@@ -601,7 +601,7 @@ export function useTeam(p: {
     const ready = stages.filter((s) => s === "ready").length;
     const needs = stages.filter((s) => s === "needs").length;
     p.say(
-      `${first || resumed ? "Your Executive plan is ready" : "That's looked up"}: ${ready} item${ready === 1 ? " has" : "s have"} drafts to send${needs ? `, and ${needs} ${needs === 1 ? "is" : "are"} under Needs a contact. If you have one for any of them, tell me` : ""}.`,
+      `${first || resumed ? "Execute Plan is ready" : "That's looked up"}: ${ready} item${ready === 1 ? " has" : "s have"} drafts to send${needs ? `, and ${needs} ${needs === 1 ? "is" : "are"} under Needs a contact. If you have one for any of them, tell me` : ""}.`,
     );
     askFollow();
   };
@@ -788,7 +788,7 @@ export function useTeam(p: {
   const logSpend = (id: string, usd: number) => setExec((x) => ({ ...x, spend: usd > 0 ? { ...x.spend, [id]: { usd, at: Date.now() } } : omitKey(x.spend ?? {}, id) }));
   /** A step that waits on another, started anyway. */
   const startAnyway = (n: number) => setExec((x) => ({ ...x, early: [...new Set([...(x.early ?? []), n])] }));
-  /** A mark from the Executive plan is the owning subagent's mark: it shows on that subagent's page too. */
+  /** A mark from Execute Plan is the owning subagent's mark: it shows on that subagent's page too. */
   const markItem = (it: ExecItem, m: Mark) => {
     if (it.agent !== "athena") mark(it.agent, { id: it.id, kind: it.kind, name: it.name, ...(it.group ? { group: it.group } : {}), why: "", sources: [], callIds: [] }, m);
   };

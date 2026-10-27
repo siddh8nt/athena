@@ -454,6 +454,13 @@ a.button.big { padding: 11px 20px; font-size: 15px; font-weight: 600; }
 .journey { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr; grid-template-areas: "top" "main"; height: 100vh; height: 100dvh; overflow: hidden; background: var(--bg); }
 .journey.dragging { outline: 2px dashed var(--accent); outline-offset: -6px; }
 .journey-loading { background: var(--bg); }
+.journey-shape-main { grid-area: main; display: grid; grid-template-columns: minmax(0, 1fr); min-height: 0; }
+.journey-shape { overflow: hidden; }
+.shape-bar { display: block; width: 92px; height: 30px; border-radius: 999px; background: color-mix(in srgb, var(--line) 70%, transparent); }
+.shape-bar.shape-title { width: min(320px, 60%); height: 26px; border-radius: 8px; }
+.shape-tabs { display: flex; gap: 10px; flex-wrap: wrap; }
+.shape-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+.shape-card { display: block; height: 150px; border-radius: 16px; border: 1px solid var(--line); background: color-mix(in srgb, var(--surface) 70%, transparent); }
 .journey-top { gap: 14px; }
 .journey-top .top-actions { margin-left: auto; display: flex; gap: 10px; align-items: center; }
 .progress[hidden] { display: none; }

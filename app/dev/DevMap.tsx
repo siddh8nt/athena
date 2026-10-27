@@ -32,7 +32,7 @@ const done = (id: string) => (s: SnapshotInfo) => !!s.journey?.works.includes(id
 const FLOWS: Flow[] = [
   {
     title: "Pages",
-    note: "As a new visitor sees them: no snapshot.",
+    note: "As a new visitor sees them: no snapshot. Every page follows the system's light or dark setting; switch it to check both.",
     steps: [
       { label: "Landing page", find: none, url: "/", fresh: true },
       ...PACKS.map((p) => ({ label: `Sample brand: ${p.name}`, note: "Starts fresh with its first message; replays a recorded run where there is one.", find: none, url: `/plan?pack=${p.slug}`, fresh: true })),
@@ -65,6 +65,7 @@ const FLOWS: Flow[] = [
       { label: "Brand Graph: expanded", find: full, url: "/plan?tab=knowledge", then: [".bg-expand"] },
       { label: "Your answers", find: full, url: "/plan?tab=answers" },
       { label: "What's working", find: (s) => !!s.journey?.marks, url: "/plan?tab=working" },
+      { label: "What's working: nothing yet", note: "Nothing marked and no orders file: one line on what will fill it.", find: (s) => full(s) && !s.journey?.marks && !s.journey?.sales, url: "/plan?tab=working" },
       { label: "Execute Plan tab", find: (s) => !!s.journey?.exec, url: "/plan?tab=executive" },
       { label: "Chat drawer open", find: full, url: "/plan", then: ["button::Chat with Athena"] },
       { label: "This week", note: "At the top of Overview: pitches waiting, what falls due, the next events.", find: (s) => !!s.journey?.exec, url: "/plan?tab=overview" },

@@ -63,13 +63,14 @@ const synthesis = (ids: SpecialistId[]): WorkflowStep => ({
 /** The run order's lanes (§23.5 i): the steps in an earlier lane, which go first. */
 const lanesBefore = (id: SpecialistId, ids: StepId[]) => ids.filter((x): x is SpecialistId => isSpecialist(x) && specialist(x).lane < specialist(id).lane);
 
-function step(id: SpecialistId, have: Have, earlier: SpecialistId[], over: { task?: string; why?: string; needs?: StepId[] } = {}, crew: StepId[] = earlier): WorkflowStep {
+function step(id: SpecialistId, have: Have, earlier: SpecialistId[], over: { task?: string; means?: string; why?: string; needs?: StepId[] } = {}, crew: StepId[] = earlier): WorkflowStep {
   const needs = new Set<SpecialistId>(deps(id, have, crew));
   for (const n of over.needs ?? []) if (isSpecialist(n) && earlier.includes(n)) needs.add(n);
   const after = lanesBefore(id, earlier).filter((e) => !needs.has(e));
   return {
     id,
     task: over.task || "",
+    ...(over.means ? { means: over.means } : {}),
     needs: earlier.filter((e) => needs.has(e)),
     ...(after.length ? { after } : {}),
     why: over.why || "",
@@ -89,16 +90,16 @@ export function fallbackWorkflow(goals: Goal[], have: Have): Workflow {
 /**
  * The model's plan, checked: only known subagents, once each; the Analyst first; every goal's subagents and what they
  * depend on included; each step needs only earlier ones, and the registry's needs always; Athena's synthesis last.
- * The model's words for the task and the why are kept. Undefined when nothing in it is usable.
+ * The model's words for the task, what it means for the brand and the why are kept. Undefined when nothing in it is usable.
  */
 export function checkWorkflow(raw: unknown, goals: Goal[], have: Have): Workflow | undefined {
   const list = Array.isArray((raw as { steps?: unknown })?.steps) ? ((raw as { steps: unknown[] }).steps as unknown[]) : [];
-  const told = new Map<SpecialistId, { task: string; why: string; needs: StepId[]; at: number }>();
+  const told = new Map<SpecialistId, { task: string; means: string; why: string; needs: StepId[]; at: number }>();
   list.forEach((s, at) => {
     const r = (s && typeof s === "object" ? s : {}) as Record<string, unknown>;
     if (!isSpecialist(r.id) || told.has(r.id)) return;
     const needs = (Array.isArray(r.needs) ? r.needs : []).filter((n): n is StepId => isSpecialist(n));
-    told.set(r.id, { task: str(r.task, 160), why: str(r.why, 240), needs, at });
+    told.set(r.id, { task: str(r.task, 160), means: str(r.means, 200), why: str(r.why, 240), needs, at });
   });
   if (!told.size) return undefined;
   const extra = [...told.keys()];
@@ -116,7 +117,7 @@ export function checkWorkflow(raw: unknown, goals: Goal[], have: Have): Workflow
   }
   const steps = placed.map((id, i) => {
     const t = told.get(id);
-    return step(id, have, placed.slice(0, i), { task: t?.task || defaultTask(id, goals), why: t?.why || defaultWhy(id, goals), needs: t?.needs }, placed);
+    return step(id, have, placed.slice(0, i), { task: t?.task || defaultTask(id, goals), means: t?.means, why: t?.why || defaultWhy(id, goals), needs: t?.needs }, placed);
   });
   return { goals: goals.map((g) => g.id), steps: [...steps, synthesis(placed)], by: "agent" };
 }
@@ -166,6 +167,7 @@ export function readWorkflow(raw: unknown): Workflow | undefined {
       (s): WorkflowStep => ({
         id: s.id as StepId,
         task: str(s.task, 160),
+        ...(str(s.means) ? { means: str(s.means) } : {}),
         needs: (Array.isArray(s.needs) ? s.needs : []).filter((n): n is StepId => n === "athena" || isSpecialist(n)),
         ...(Array.isArray(s.after) ? { after: s.after.filter((n): n is StepId => isSpecialist(n)) } : {}),
         why: str(s.why, 240),

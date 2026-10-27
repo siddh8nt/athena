@@ -67,7 +67,8 @@ export function WorkflowDiagram({ team, live, onOpen, onChat, compact }: { team:
   const sub = (s: WorkflowStep) => {
     const st = live.status[s.id];
     if (st?.state === "working") return st.step;
-    return s.task;
+    // What the step gives the brand (§23.7 b); the brief stays on the subagent's page.
+    return s.means || (s.id === "athena" ? s.task : specialist(s.id).gives);
   };
   // The last node is Execute Plan (§23.5 q): Athena orders the team's work, the Executive turns it into the
   // founder's plan. Her plan written and the Executive not yet started, it waits Ready for the founder's Start.
@@ -102,27 +103,27 @@ export function WorkflowDiagram({ team, live, onOpen, onChat, compact }: { team:
 /**
  * Under the workflow (§23.5 q): Execute Plan's one line and its one button. Start the Executive once Athena's
  * plan is in, and Open Execute Plan otherwise: once started, new items are looked up by themselves (§23.5 r).
+ * One count to a sentence, the one that matters to the founder (§23.7 b); the rest is in Execute Plan.
  */
 function ExecLine({ team, live, onExec, onOpen }: { team: TeamState; live: TeamLive; onExec: () => void; onOpen: () => void }) {
   if (!team.plan) return null;
   const plan = execPlan(team);
   const x = team.exec;
   const now = plan.items.filter((i) => i.now && !i.left);
-  const reach = plan.items.filter((i) => i.outreach && !i.left).length;
   const strip = stripOf(plan, statesOf(team), x, Date.now());
   let line: string;
   let act: { label: string; primary?: boolean; on: () => void };
   // While it works, the node above says the step it's on ("Searching the web for…"); this line says where the run is.
   if (live.exec) {
     line = x?.started
-      ? `Now: ${strip.nowDone} of ${strip.nowOf} done${strip.waiting ? `, ${strip.waiting} waiting on a reply` : ""}. The Executive is working through the rest, Now first.`
-      : `The Executive is finding how to reach the ${reach} to contact, Now first.`;
+      ? `${strip.nowDone} of ${strip.nowOf} things to do now are done. The Executive is working through the rest.`
+      : "The Executive is finding how to reach everyone in your plan, starting with what to do now.";
     act = { label: "Open Execute Plan", on: onOpen };
   } else if (!x?.started) {
-    line = `Athena has put the team's work in order: ${plan.items.length} items, ${now.length} of them under Now. The Executive finds how to reach all ${reach} to contact, Now first, and writes an email, a DM and a call script for each.`;
+    line = `Athena has put the team's work in order, with ${now.length} ${now.length === 1 ? "thing" : "things"} to do now. The Executive finds how to reach everyone in it, those first, and writes an email, a DM and a call script for each.`;
     act = { label: "Start the Executive", primary: true, on: onExec };
   } else {
-    line = `Now: ${strip.nowDone} of ${strip.nowOf} done${strip.waiting ? `, ${strip.waiting} waiting on a reply` : ""}${strip.yes ? `, ${strip.yes} yes so far` : ""}.`;
+    line = `${strip.nowDone} of ${strip.nowOf} things to do now are done.`;
     act = { label: "Open Execute Plan", on: onOpen };
   }
   return (
@@ -132,11 +133,6 @@ function ExecLine({ team, live, onExec, onOpen }: { team: TeamState; live: TeamL
         <button type="button" className={act.primary ? "primary" : ""} onClick={act.on}>
           {act.label}
         </button>
-        {act.on !== onOpen && (
-          <button type="button" className="linkish small" onClick={onOpen}>
-            Open Execute Plan
-          </button>
-        )}
       </span>
     </div>
   );
@@ -198,12 +194,19 @@ function AnswerRow({ a, onEdit, busy }: { a: Answer; onEdit: (v: string) => void
 /** A tile's line: what the subagent is doing, waiting on, or found. */
 function tileLine(id: SpecialistId, team: TeamState, live: TeamLive, step?: WorkflowStep): { text: string; tone?: "live" | "wait" | "muted" } {
   const s = statusOf(id, live, team);
+  const w0 = team.workflow;
   if (s.state === "working") return { text: s.step, tone: "live" };
   if (step && nodeState(step, live) === "paused") return { text: "Paused for you: its question is in the chat", tone: "wait" };
   const w: Work | undefined = team.works[id];
   if (w) return { text: w.headline };
-  if (step) return { text: step.task, tone: "muted" };
-  return { text: specialist(id).mission, tone: "muted" };
+  if (step && w0) {
+    // Where the step stands; the step's card above says what it gives (§23.7 c: one place for each thing).
+    const done = new Set(w0.steps.filter((x) => x.state === "done").map((x) => x.id));
+    const inPlan = new Set(w0.steps.map((x) => x.id));
+    const wait = [...step.needs, ...(step.after ?? [])].filter((n) => n !== "athena" && inPlan.has(n) && !done.has(n));
+    return { text: wait.length ? `After ${[...new Set(wait)].map((n) => `the ${nameOf(n)}`).join(" and ")}` : "Up next", tone: "muted" };
+  }
+  return { text: specialist(id).gives, tone: "muted" };
 }
 
 /** This week (§23.6 j), at the top of Overview: the pitches with no reply after their wait, what falls due in the next
@@ -409,9 +412,9 @@ export function Dashboard(p: {
   const athenaLine = live.status.athena?.state === "working"
     ? live.status.athena.step
     : plan
-      ? plan.headline
+      ? "Put the team's results in order: your plan is in Execute Plan, above."
       : w
-        ? "Puts the team's work in order once their steps are done; the Executive turns it into your plan."
+        ? "Asks you only what only you know, and hands each step to the subagent it needs."
         : "Leads the team: your goals, the workflow, the order of the work.";
   const count: Partial<Record<DashTab, number>> = { answers: team.answered?.length || undefined };
   // A This week line opens its row: Execute Plan reads `?item` when it mounts (§23.6 g).
@@ -448,12 +451,12 @@ export function Dashboard(p: {
 
       <section className="dash-sec">
         <h3>Your team</h3>
-        <button type="button" className={`dash-lead${live.status.athena?.state === "working" ? " dash-working" : ""}`} onClick={() => (plan ? pick("executive") : p.onOpen("athena"))}>
+        <button type="button" className={`dash-lead${live.status.athena?.state === "working" ? " dash-working" : ""}`} onClick={() => p.onOpen("athena")}>
           <span className="team-badge" aria-hidden>A</span>
           <span className="dash-lead-body">
             <strong>Athena</strong>
             <span className={live.status.athena?.state === "working" ? "small shimmer-text" : "small"}>{athenaLine}</span>
-            {athenaStep && <span className="dash-lead-go">{plan ? "Open Execute Plan" : "Open Athena"} →</span>}
+            {athenaStep && <span className="dash-lead-go">Open Athena →</span>}
           </span>
         </button>
         <ul className="dash-team">
@@ -496,13 +499,9 @@ export function Dashboard(p: {
               <strong>The {EXECUTIVE.name}</strong>
               <p className="small">{EXECUTIVE.tile}</p>
               <div className="dash-acts">
-                {plan ? (
-                  <button type="button" className="linkish small" onClick={() => pick("executive")}>
-                    Open Execute Plan
-                  </button>
-                ) : (
-                  <small className="muted">Ready once Athena has put the team&apos;s work in order</small>
-                )}
+                <small className="muted">
+                  {!plan ? "Ready once Athena has put the team's work in order" : team.exec?.started ? "At work in Execute Plan, above" : "Waits for your Start, above"}
+                </small>
               </div>
             </div>
           </li>
@@ -528,7 +527,7 @@ export function Dashboard(p: {
           <section className="dash-sec">
             <div className="dash-sec-head">
               <h3>Your answers</h3>
-              <small className="muted">Change one and only the steps that read it run again.</small>
+              <small className="muted">Change an answer and only the work that depends on it is done again.</small>
             </div>
             {team.answered?.length ? (
               <ul className="ans-list">

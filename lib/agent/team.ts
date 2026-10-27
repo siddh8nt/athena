@@ -32,6 +32,7 @@ import { athenaPlan } from "./athena-plan";
 import { brandFit } from "./brand-fit";
 import { leftOutOf } from "@/lib/exec/plan";
 import { askLead, missingInputs } from "@/lib/team/inputs";
+import { FOUNDER_VOICE } from "./voice";
 
 // The team runner (PRD §23.2 step 8): Athena turns the founder's goals into work for the specialists and runs them,
 // 2–3 at once, each a real agent on the step 2 loop with its own instructions, tools, budget and transcript. The
@@ -296,6 +297,8 @@ function systemFor(id: SpecialistId, t: TeamCtx): string {
   const s = specialist(id);
   const heard = outcomeLine(t.outcomes, id);
   return `You are the ${s.name} on Athena's team, working for the founder of ${t.brand.name}. Athena leads; you do your part of the founder's goals and hand back what you can't.
+
+${FOUNDER_VOICE}
 
 Your mission: ${s.mission}
 You're done when: ${s.doneWhen}
@@ -657,14 +660,18 @@ export async function planWorkflow(goals: Goal[], t: TeamCtx, llm: boolean, gen:
         thinking: "LOW",
         temperature: 0.3,
         maxOutputTokens: 1500,
-        system: "You are Athena, leading six subagents for a small consumer brand. Plan the work that delivers the founder's goals. Reply with JSON only.",
+        system: `You are Athena, leading six subagents for a small consumer brand. Plan the work that delivers the founder's goals.
+
+${FOUNDER_VOICE}
+
+Reply with JSON only.`,
         prompt:
           `The goals: ${JSON.stringify(goals.map((g) => ({ label: g.label, team: g.team })))}\n` +
           `The brand: ${JSON.stringify({ name: t.brand.name, sells: t.brand.product, channel: t.brand.channel, home_city: t.brand.homeMetro ? metroById(t.brand.homeMetro).name : "not known", stockists: t.brand.stockists.length, crowds_measured: have.fits })}\n` +
           `The subagents: ${JSON.stringify(SPECIALISTS.map((s) => ({ id: s.id, mission: s.mission, delivers: s.delivers, needs: s.needs.map((n) => `${n.key} from ${n.from}${n.home ? " (a home city will do when the Navigator isn't in the plan)" : ""}`), lane: s.lane })))}\n` +
           (t.answers?.length ? `The founder's answers so far: ${JSON.stringify(t.answers)}\n` : "") +
-          "List the steps in the order they should run: the Analyst first (it measures the crowds everyone works from), then only the subagents these goals need, each after what it needs and after every subagent in an earlier lane (lane 2: Scout and Navigator side by side; lane 3: Rep, Matchmaker and Promoter side by side). For each: task (what it does for these goals, one short line, no numbers), why (one sentence, plain words), needs (ids of earlier steps). Your own synthesis comes last on its own; don't list it.\n" +
-          'Return {"steps":[{"id","task","why","needs":[ids]}]}',
+          "List the steps in the order they should run: the Analyst first (it measures the crowds everyone works from), then only the subagents these goals need, each after what it needs and after every subagent in an earlier lane (lane 2: Scout and Navigator side by side; lane 3: Rep, Matchmaker and Promoter side by side). For each: task (your handoff to the subagent, what it does for these goals, one short line starting with a verb, no numbers; the founder sees it in chat after \"Handing to the Scout:\"), means (one short sentence to the founder on what this step gives their brand, e.g. \"Which shops near you to pitch, and what to say\": it's the step's card on their dashboard), why (one sentence, plain words), needs (ids of earlier steps). Your own synthesis comes last on its own; don't list it.\n" +
+          'Return {"steps":[{"id","task","means","why","needs":[ids]}]}',
       });
       const w = checkWorkflow(parseJson(res.text), goals, have);
       if (w) return w;
@@ -851,7 +858,11 @@ export async function fromGraph<Q extends Question>(qs: Q[], facts: string[], ll
       thinking: "LOW",
       temperature: 0,
       maxOutputTokens: 1024,
-      system: "You are Athena, about to ask a brand's founder some questions. The founder never wants to be asked what their Brand Graph already says. Reply with JSON only.",
+      system: `You are Athena, about to ask a brand's founder some questions. The founder never wants to be asked what their Brand Graph already says.
+
+${FOUNDER_VOICE}
+
+Reply with JSON only.`,
       prompt:
         `The Brand Graph, one line each:\n${lines.map((f, i) => `[${i}] ${f}`).join("\n")}\n` +
         `The questions: ${JSON.stringify(qs.map((q) => ({ id: q.id, question: q.question, why: q.why, options: q.options.map((o) => o.label) })))}\n` +
@@ -903,7 +914,11 @@ export async function proposeFor(t: TeamCtx, facts: GoalFacts, llm: boolean, gen
       thinking: "LOW",
       temperature: 0.4,
       maxOutputTokens: 2048,
-      system: "You are Athena, leading six subagents for a small consumer brand. Propose goals the team can deliver, from the brand's facts. Reply with JSON only.",
+      system: `You are Athena, leading six subagents for a small consumer brand. Propose goals the team can deliver, from the brand's facts.
+
+${FOUNDER_VOICE}
+
+Reply with JSON only.`,
       prompt:
         (t.answers?.length ? `The founder's answers so far: ${JSON.stringify(t.answers)}\n` : "") +
         `The brand: ${JSON.stringify({ name: t.brand.name, sells: t.brand.product, channel: t.brand.channel, home_city: facts.city ?? "not known yet", stockists: t.brand.stockists.length, in_qloo: !!t.brand.ownId, crowds: t.crowds?.crowds.map((c) => c.name), fits: t.fits?.fits.map((f) => `${f.name} (${f.tier})`) })}\n` +

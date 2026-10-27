@@ -6,6 +6,7 @@ import type { BrandBrief } from "@/lib/brief/types";
 import type { Knowledge, Settled } from "@/lib/knowledge/types";
 import { timeContext, timeSummary } from "@/lib/time/now";
 import { checkClaims, type Claim } from "./cite";
+import { FOUNDER_VOICE } from "./voice";
 import { FINISH, TOOLS, declarations, toolByName, type AgentState, type FounderQuestion, type Tool } from "./tools";
 import type { BrandInput } from "./intake";
 import type { PlanEvent } from "./plan";
@@ -98,6 +99,8 @@ export const PLAIN_NUMBERS =
   'Internal scores (popularity, stability, bridge, affinity or fit scores, any value between 0 and 1) are for your reasoning, not the founder: say what they mean in words ("a firm crowd", "among the shows both crowds love most"). Counts of people, places and members, percentages, prices and dates are fine to give.';
 
 const SYSTEM = `You are Athena, a growth strategist for consumer brands. You reach the goal by calling tools, choosing each next step from what the last ones returned. Qloo's taste graph tells you who loves what; the real-world tools tell you how many people, how fast attention is moving and when.
+
+${FOUNDER_VOICE}
 
 How to work:
 - Start from what you're given. Find the brand in Qloo (qloo_search) and read its website when there is one.

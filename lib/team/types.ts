@@ -100,7 +100,10 @@ export type StepState = "todo" | "running" | "paused" | "done";
 export type WorkflowStep = {
   /** The subagent's id, or "athena" for her synthesis: one step each. */
   id: SpecialistId | "athena";
+  /** Athena's handoff to the subagent: its brief, on its own page and in her chat line. */
   task: string;
+  /** What the step gives the founder's brand, in their words (§23.7 b): the step's card on Overview. */
+  means?: string;
   /** Steps that must be done first, by id. */
   needs: (SpecialistId | "athena")[];
   /** Steps in the plan that run first for the run order alone (§23.5 i): nothing of theirs is used, so re-running one

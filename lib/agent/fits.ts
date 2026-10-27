@@ -8,6 +8,7 @@ import type { Calendar, FitsAnswer, FitsResult, SourceRef } from "@/lib/fits/typ
 import { buildCalendar } from "@/lib/fits/calendar";
 import { timeContext } from "@/lib/time/now";
 import { checkClaims } from "./cite";
+import { FOUNDER_VOICE } from "./voice";
 import { crowdsOut, TOOLS, type AgentState } from "./tools";
 import type { AgentBudget, Finisher, Source } from "./loop";
 
@@ -31,6 +32,8 @@ export const FITS_BUDGET: AgentBudget = { qloo: 150, ms: 150_000, turns: 9 };
 export type FitsEvent = { type: "fits"; fits: FitsResult; calendar: Calendar; crowds: CrowdsResult; geography?: Geography; answer: FitsAnswer; sources: SourceRef[] };
 
 export const FITS_SYSTEM = `You are Athena, deciding which crowds are a consumer brand's most valuable fits: who to win first, who next, who to watch, and when. Code computes the score; you give it the right context and explain the result.
+
+${FOUNDER_VOICE}
 
 How to work:
 - The crowds around the brand are already measured (the crowds source). Read the brand's context first: the brief and the founder's facts. They are the only place you learn where it already sells, who already buys, its margins, capacity, budget, goals and constraints.

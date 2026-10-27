@@ -37,7 +37,7 @@ describe("workflow", () => {
   it("checks the model's plan: unknown and repeated ids dropped, missing goal subagents and needs added, nothing before what it needs", () => {
     const raw = {
       steps: [
-        { id: "rep", task: "Find shops that match", why: "The goal is shops.", needs: ["promoter"] },
+        { id: "rep", task: "Find shops that match", means: "Which shops near you to pitch, and what to say", why: "The goal is shops.", needs: ["promoter"] },
         { id: "wizard", task: "Magic" },
         { id: "rep", task: "Again" },
         { id: "analyst", task: "Measure the crowds" },
@@ -47,6 +47,9 @@ describe("workflow", () => {
     expect(ids(w)).toEqual(["analyst", "navigator", "rep", "athena"]);
     const rep = w.steps.find((s) => s.id === "rep")!;
     expect(rep.task).toBe("Find shops that match");
+    expect(rep.means).toBe("Which shops near you to pitch, and what to say");
+    expect(readWorkflow(JSON.parse(JSON.stringify(w)))!.steps.find((s) => s.id === "rep")!.means).toBe(rep.means);
+    expect(w.steps.find((s) => s.id === "navigator")!.means).toBeUndefined();
     expect(rep.needs).toEqual(["analyst", "navigator"]);
     expect(w.by).toBe("agent");
   });

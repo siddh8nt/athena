@@ -4,6 +4,7 @@ import { TOOLS } from "./tools";
 import { briefFacts } from "@/lib/brief/facts";
 import { ATHENA, EXECUTIVE, SPECIALISTS, isSpecialist, nameOf, type AgentId, type SpecialistId } from "./specialists";
 import { checkChange } from "./interpret";
+import { FOUNDER_VOICE } from "./voice";
 import type { BrandBrief } from "@/lib/brief/types";
 import { MARKS, MARK_LABEL, type Answer, type GivenContact, type Route, type TeamState, type WaitScope } from "@/lib/team/types";
 import { DEFAULT_WAIT, norm, planView, profileOf, type PlanView, type Stage } from "@/lib/exec/plan";
@@ -69,6 +70,7 @@ export function selfKnowledge(): string {
     `Your data sources: ${DATA.join("; ")}.`,
     `You can't: ${CANNOT.join("; ")}.`,
     "You also keep the Brand Graph, what the team knows about the brand, which the founder can edit by telling you.",
+    FOUNDER_VOICE,
   ].join("\n");
 }
 

@@ -25,6 +25,8 @@ export type Specialist = {
   rules: string[];
   /** What goals it can deliver, so Athena only suggests goals the team can do. */
   delivers: string[];
+  /** What it gives the founder's brand, in their words (§23.7 b): its step's card on Overview when Athena's plan doesn't say. */
+  gives: string;
   needs: Need[];
   /** Its place in the run order (§23.5 i): Analyst → (Scout ∥ Navigator) → (Rep ∥ Matchmaker ∥ Promoter). A subagent
    *  starts after every earlier lane in the plan, even one it takes nothing from. */
@@ -52,6 +54,7 @@ export const SPECIALISTS: Specialist[] = [
       "Asked about one entity, answer from what's measured; probe it only when that would change the crowds or the ranking.",
     ],
     delivers: ["know who your customers are", "find your strongest crowd", "see where you stand against rivals"],
+    gives: "Who your customers are, and the crowds most like them, ranked.",
     needs: [],
     lane: 1,
     budget: { qloo: 150, ms: 150_000, turns: 8 },
@@ -71,6 +74,7 @@ export const SPECIALISTS: Specialist[] = [
       "Read all three crowds in one read_crowds call; when the founder asks for a tone (more playful, shorter), read again with that tone. The order to win them is a sequence, never a schedule.",
     ],
     delivers: ["reach a new crowd", "find the words for your crowd", "set a look and feel"],
+    gives: "The words, the look and the products to lead with for each crowd.",
     needs: [CROWDS],
     lane: 2,
     budget: { qloo: 80, ms: 160_000, turns: 6 },
@@ -91,6 +95,7 @@ export const SPECIALISTS: Specialist[] = [
       "A crowd size is an estimate (the residents of the ZIPs where it runs hot): say it is one.",
     ],
     delivers: ["launch in a city", "choose where to grow next"],
+    gives: "The cities and neighbourhoods where your crowds are.",
     needs: [CROWDS],
     lane: 2,
     budget: { qloo: 60, ms: 120_000, turns: 6 },
@@ -111,6 +116,7 @@ export const SPECIALISTS: Specialist[] = [
       "Contacts come only from a shop's own pages, each with the page it was on; never guess an email. Drafts are for the founder to copy or open in mail, never sent.",
     ],
     delivers: ["get into shops", "step up to bigger retailers"],
+    gives: "The shops to pitch, and what to say to each.",
     needs: [CROWDS, { key: "city", from: "navigator", why: "needs a city first" }],
     lane: 3,
     budget: { qloo: 130, ms: 150_000, turns: 6 },
@@ -134,6 +140,7 @@ export const SPECIALISTS: Specialist[] = [
       "Contacts come only from public pages, each with its source; never guess an email or use a personal address. Asks are for the founder to copy or open in mail, never sent.",
     ],
     delivers: ["find partners", "get on podcasts", "work with creators"],
+    gives: "Creators, brands and podcasts to work with, and the ask for each.",
     needs: [CROWDS],
     lane: 3,
     budget: { qloo: 150, ms: 180_000, turns: 6 },
@@ -154,6 +161,7 @@ export const SPECIALISTS: Specialist[] = [
       "Creators are the Matchmaker's work, not the Promoter's.",
     ],
     delivers: ["show up at events", "reach people online"],
+    gives: "Events to be at, and the places your crowds read online.",
     // Events need a city: the Navigator's when it's on the goal, else the home city; online audiences need none.
     needs: [CROWDS, { key: "city", from: "navigator", why: "needs a city for events first", home: true }],
     lane: 3,

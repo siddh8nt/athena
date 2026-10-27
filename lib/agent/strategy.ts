@@ -5,6 +5,7 @@ import type { StrategyAnswer, StrategyResult } from "@/lib/strategy/types";
 import { CHANNEL_LABEL } from "@/lib/strategy/types";
 import { buildStrategies, topFits, type CrowdPicks, type StrategyBase, type StrategyIn } from "@/lib/strategy/build";
 import { checkClaims } from "./cite";
+import { FOUNDER_VOICE } from "./voice";
 import { briefData, knowledgeParts, type FitsInput } from "./fits";
 import { PLAN_STRATEGY, TOOLS, type AgentState } from "./tools";
 import type { AgentBudget, Finisher, Source } from "./loop";
@@ -33,6 +34,8 @@ export const STRATEGY_BUDGET: AgentBudget = { qloo: 20, ms: 120_000, turns: 6 };
 export type StrategyEvent = { type: "strategy"; result: StrategyResult; answer: StrategyAnswer; sources: SourceRef[] };
 
 export const STRATEGY_SYSTEM = `You are Athena, turning a consumer brand's most valuable fits into a strategy for each: who, where, through what and when. Code builds the strategies; you give it the founder's context and explain the result.
+
+${FOUNDER_VOICE}
 
 How to work:
 - The ranking, the calendar, each crowd's metros, retailers, creators and podcasts are already measured (the fits, crowds and picks sources). Read the brief and every knowledge source (the founder's own files first: plans, decks, sales sheets) for four facts:

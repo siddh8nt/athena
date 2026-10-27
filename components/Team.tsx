@@ -23,6 +23,7 @@ import { withHooks, type Line as PageLine } from "@/lib/team/page";
 import { CrowdTabs } from "./CrowdTabs";
 import { RunProgress, StepTimer, type ProgressStep } from "./Progress";
 import { NavIcon, RailToggle, useRail } from "./SideNav";
+import { McpConnect } from "./McpConnect";
 
 // Athena and her six specialists in the journey (PRD §23.2 step 8): the goals on top, the team in the left panel with
 // live status, each specialist's workspace (its transcript, its results with their tool calls, the founder's outcome
@@ -967,6 +968,7 @@ export function TeamPanel({ live, team, active, onOpen, athena }: { live: TeamLi
           {ids.filter((id) => id !== "athena").map((id) => <li key={id}>{row(id)}</li>)}
           <li>{item(EXECUTIVE.id, EXECUTIVE.name, undefined, undefined, `${EXECUTIVE.name}: ${EXECUTIVE.tile}`)}</li>
         </ul>
+        <McpConnect />
       </div>
     </aside>
   );

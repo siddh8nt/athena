@@ -16,10 +16,12 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "live": "vitest run -c vitest.live.config.ts",
-    "warm": "vitest run -c vitest.live.config.ts tests/live/warm.live.ts"
+    "warm": "vitest run -c vitest.live.config.ts tests/live/warm.live.ts",
+    "seed:demo": "vitest run -c vitest.live.config.ts tests/live/seed-demo.live.ts"
   },
   "dependencies": {
     "@google-cloud/firestore": "9.2.0",
+    "@modelcontextprotocol/sdk": "^1.32.2",
     "d3-force": "3.0.0",
     "d3-selection": "3.0.0",
     "d3-zoom": "3.0.0",
@@ -29,7 +31,8 @@
     "next": "16.4.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",
-    "server-only": "0.0.1"
+    "server-only": "0.0.1",
+    "zod": "4.6.7"
   },
   "devDependencies": {
     "@types/d3-force": "3.0.10",

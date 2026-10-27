@@ -20,6 +20,7 @@ import { pacer } from "@/lib/stream/pace";
 import { RunProgress, StepTimer, type ProgressStep } from "./Progress";
 import { PanelGrip } from "./Resize";
 import { NavIcon, RailToggle, useRail } from "./SideNav";
+import { McpPanel } from "./McpConnect";
 
 // Onboarding as a workspace (PRD §23.2 step 7.2). First, one box: the founder types, pastes or drops anything, and
 // the model sorts it (a website, files, notes or an AI summary). On send the box docks at the bottom as the steering
@@ -132,6 +133,19 @@ export function Onboard({
   const [text, setText] = useState("");
   const [hint, setHint] = useState<Hint>();
   const [copied, setCopied] = useState(false);
+  // §23.6 e: the judges' demo link, the fixed read-only MCP link to the precomputed Fishwife plan, once it's seeded.
+  const [demo, setDemo] = useState("");
+  const [demoOpen, setDemoOpen] = useState(false);
+  useEffect(() => {
+    let live = true;
+    fetch("/api/workspace/demo")
+      .then((r) => r.json() as Promise<{ ok?: boolean; path?: string }>)
+      .then((j) => live && j.ok && j.path && setDemo(j.path))
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, []);
   const [showPrompt, setShowPrompt] = useState(false);
   const [lines, setLines] = useState<Line[]>([]);
   const [thinking, setThinking] = useState<string>();
@@ -645,6 +659,14 @@ export function Onboard({
               ))}
             </ul>
           </div>
+          {demo && (
+            <div className="ob-mcp">
+              <button type="button" onClick={() => setDemoOpen(true)} title="Read-only Athena MCP link to the precomputed Fishwife plan">
+                Connect the Fishwife plan to your AI
+              </button>
+            </div>
+          )}
+          {demoOpen && <McpPanel demo={demo} onClose={() => setDemoOpen(false)} />}
         </div>
       </div>
     );

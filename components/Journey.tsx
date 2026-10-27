@@ -41,6 +41,7 @@ import { packBySlug } from "@/lib/journey/packs";
 import { emptyTeam, type Mark, type TeamEvent, type TeamState, type WorkItem } from "@/lib/team/types";
 import { isSpecialist, isSubagent, nameOf, panelIds, specialist, type AgentId, type SpecialistId } from "@/lib/agent/specialists";
 import { growthQuestion, seedOf, type GrowthQuestion } from "@/lib/journey/flow";
+import { applyExternal, type External } from "@/lib/workspace/merge";
 
 // The journey (PRD §23.2 step 8.1): one path. Onboarding writes the Brand Graph; one growth question in the
 // transcript; the Analyst measures the crowds and ranks them, once, with the Taste Galaxy forming in its results; then
@@ -166,6 +167,67 @@ export function Journey() {
     }
     end.current?.scrollIntoView({ block: "end", behavior: "smooth" });
   }, [brief, msgs, turn, j]);
+
+  // Mirror the working copy to the server a moment after each change (§23.6 a), so the founder's AI tool and the
+  // judges' demo link can read the plan. Best-effort and debounced; the browser copy stays the source of truth.
+  const mirror = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => {
+    if (msgs.length <= 1) return;
+    const saved: Saved = { brief, msgs: msgs.slice(-40), turn, journey: j };
+    clearTimeout(mirror.current);
+    mirror.current = setTimeout(() => {
+      try {
+        void fetch("/api/workspace", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ws: workspace(), saved }), keepalive: true }).catch(() => {});
+      } catch {
+        // Offline or blocked: the next change retries.
+      }
+    }, 1500);
+    return () => clearTimeout(mirror.current);
+  }, [brief, msgs, turn, j]);
+
+  // Fold in changes made from outside Athena (§23.6 b): on load and whenever the tab comes back into focus. Item by
+  // item, the newer change winning (§23.6 a), so nothing a founder's AI tool did is lost and nothing overwrites the
+  // whole journey. Marks and answers apply here; facts added from outside are folded in with add_fact (§23.6 b).
+  const cursor = useRef(0);
+  useEffect(() => {
+    let live = true;
+    const CKEY = "athena:ws-cursor";
+    try {
+      cursor.current = Number(localStorage.getItem(CKEY)) || 0;
+    } catch {
+      // No storage: start the cursor fresh for this visit.
+    }
+    const pull = async () => {
+      let external: External | undefined;
+      try {
+        external = ((await (await fetch(`/api/workspace?ws=${encodeURIComponent(workspace())}`)).json()) as { external?: External }).external;
+      } catch {
+        return; // Offline or blocked: nothing to fold in this time.
+      }
+      if (!live) return;
+      setJ((x) => {
+        const res = applyExternal(x, external, cursor.current);
+        cursor.current = res.cursor;
+        try {
+          localStorage.setItem(CKEY, String(res.cursor));
+        } catch {
+          // No storage: the cursor stays in memory for this visit.
+        }
+        return res.changed ? res.journey : x;
+      });
+    };
+    void pull();
+    const onFocus = () => {
+      if (document.visibilityState === "visible") void pull();
+    };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onFocus);
+    return () => {
+      live = false;
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onFocus);
+    };
+  }, [setJ]);
 
   // A reply that streamed in (§23.2 step 8.5n) is replaced by the whole of it; anything else is a new line. A handoff
   // to a subagent that already has one (a resumed or re-run step) updates that line where it is (§23.5 p).

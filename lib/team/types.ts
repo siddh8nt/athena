@@ -165,7 +165,12 @@ export type GrowthPlan = {
   /** The subagents' works it was read from, by when each finished, so a newer run shows the plan as out of date. */
   from: Partial<Record<SpecialistId, number>>;
   at: number;
+  /** The brand-fit check (§23.6 n): Athena's verdict on each place, partner, creator, podcast and event, by item id. */
+  fit?: Record<string, FitVerdict>;
 };
+
+/** One item's brand-fit verdict (§23.6 n): kept, kept with a note for the founder, or left out with one line why. */
+export type FitVerdict = { fit: "keep" | "note" | "out"; why?: string; name: string; kind: string; agent: SpecialistId };
 
 /** What a plan says, as a short hash: the same plan written again after a mark has the same one, whenever it was written. */
 export function planSig(p?: GrowthPlan): string {
@@ -244,6 +249,8 @@ export type ExecState = {
   asked?: string[];
   /** Now's steps the founder started before the steps they wait on held ("Start anyway"). */
   early?: number[];
+  /** Items the brand-fit check left out that the founder brought back (§23.6 n). */
+  kept?: string[];
 };
 
 /**

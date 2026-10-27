@@ -1,5 +1,5 @@
 import type { CrowdPage, Detail } from "@/lib/team/page";
-import type { Contact, Drafts, ExecState, Field, Mark, PlanStep, Src, Task, TaskStatus, TeamState, WaitScope } from "@/lib/team/types";
+import type { Contact, Drafts, ExecState, Field, FitVerdict, Mark, PlanStep, Src, Task, TaskStatus, TeamState, WaitScope } from "@/lib/team/types";
 import { nameOf, type SpecialistId } from "@/lib/agent/specialists";
 import { needsOf, statusFromMark, stepAgent, stepId } from "@/lib/agent/executive";
 import { latest } from "@/lib/agent/outcomes";
@@ -56,9 +56,20 @@ export type ExecItem = {
   left?: boolean;
   /** Its place under Now: the step it's first named in, and its order across Now. */
   now?: { step: number; order: number };
+  /** The brand-fit check's note for the founder (§23.6 n): "Adults-only venue: lead with the gift shop". */
+  caution?: string;
 };
 
-export type ExecPlan = { items: ExecItem[]; steps: NowStep[]; byId: Map<string, ExecItem> };
+/** An item the brand-fit check left out (§23.6 n), with its reason, for the "Left out" line. */
+export type LeftOut = { id: string; name: string; kind: string; agent: SpecialistId; why: string };
+
+export type ExecPlan = { items: ExecItem[]; steps: NowStep[]; byId: Map<string, ExecItem>; leftOut: LeftOut[] };
+
+/** The items the brand-fit check left out, less the ones the founder brought back. */
+export function leftOutOf(fit: Record<string, FitVerdict> | undefined, kept: string[] = []): Set<string> {
+  const back = new Set(kept);
+  return new Set(Object.entries(fit ?? {}).flatMap(([id, v]) => (v.fit === "out" && !back.has(id) ? [id] : [])));
+}
 
 const kindOf = (id: string) => id.slice(0, Math.max(0, id.indexOf(":")));
 /** "Los Angeles, CA" and "Los Angeles" are one city on the plan. */
@@ -154,6 +165,13 @@ export function execPlan(team: TeamState): ExecPlan {
     });
   }
 
+  // What the brand-fit check left out isn't a row, unless the founder already worked on it (§23.6 n).
+  const fit = team.plan?.fit;
+  const marked = new Set([...(team.outcomes ?? []).map((o) => o.item), ...Object.keys(team.tasks ?? {})]);
+  const out = new Set([...leftOutOf(fit, team.exec?.kept)].filter((id) => !marked.has(id)));
+  const leftOut: LeftOut[] = [...out].flatMap((id) => (acc.has(id) ? [{ id, name: fit![id].name, kind: fit![id].kind, agent: fit![id].agent, why: fit![id].why ?? "" }] : []));
+  for (const id of out) acc.delete(id);
+
   const planned = new Map<string, SpecialistId>();
   for (const s of team.plan?.steps ?? []) for (const pi of s.items ?? []) if (!planned.has(pi.id)) planned.set(pi.id, pi.agent);
 
@@ -184,6 +202,7 @@ export function execPlan(team: TeamState): ExecPlan {
       ...(a.date ? { date: a.date } : {}),
       ...(a.note ? { note: a.note } : {}),
       ...(a.parent ? { parent: a.parent } : {}),
+      ...(fit?.[a.id]?.fit === "note" && fit[a.id].why ? { caution: fit[a.id].why } : {}),
     });
   }
   // A checklist step belongs to its event: the "Plan for …" section names it.
@@ -195,15 +214,17 @@ export function execPlan(team: TeamState): ExecPlan {
   const steps: NowStep[] = [];
   let order = 0;
   for (const s of team.plan?.steps ?? []) {
-    steps.push({ n: s.n, what: s.what, phase: s.phase, crowds: s.crowds, needs: needsOf(s), depends: s.depends, items: s.items?.length ? s.items.map((i) => i.id) : [stepId(s)], ...(s.notes?.length ? { notes: s.notes } : {}) });
+    steps.push({ n: s.n, what: s.what, phase: s.phase, crowds: s.crowds, needs: needsOf(s), depends: s.depends, items: s.items?.length ? s.items.filter((i) => !out.has(i.id)).map((i) => i.id) : [stepId(s)], ...(s.notes?.length ? { notes: s.notes } : {}) });
     const place = (it: ExecItem) => void (it.now ??= { step: s.n, order: order++ });
     if (!s.items?.length) {
       const id = stepId(s);
       place(byId.get(id) ?? add({ id, kind: "step", name: s.what, agent: stepAgent(s), agents: [], rank: s.n, crowds: s.crowds, cities: [], facets: {}, action: s.what, outreach: false }));
       continue;
     }
-    for (const pi of s.items)
+    for (const pi of s.items) {
+      if (out.has(pi.id)) continue;
       place(byId.get(pi.id) ?? add({ id: pi.id, kind: pi.kind, name: pi.name, ...(pi.group ? { group: pi.group } : {}), agent: pi.agent, agents: [pi.agent], rank: 0, crowds: s.crowds, cities: [], facets: {}, action: actionOf(pi.kind, pi.name), outreach: OUTREACH.has(pi.kind) }));
+    }
   }
 
   // What the founder marked or set that's no longer on any page stays, so Skipped and Results still show it.
@@ -214,7 +235,7 @@ export function execPlan(team: TeamState): ExecPlan {
     const kind = n.task.item?.kind ?? "step";
     add({ id, kind, name: n.task.item?.name ?? n.task.action, agent: n.task.agent, agents: n.task.agent === "athena" ? [] : [n.task.agent], rank: Number.MAX_SAFE_INTEGER, crowds: n.task.crowds, cities: [], facets: {}, action: n.task.action, outreach: OUTREACH.has(kind), left: true });
   }
-  return { items, steps, byId };
+  return { items, steps, byId, leftOut };
 }
 
 /** A tab's items: Now in Athena's order, a subagent's in its own ranking. */

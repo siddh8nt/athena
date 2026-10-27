@@ -505,6 +505,14 @@ export function useTeam(p: {
 
   /** Athena's plan written again from the same results, nothing re-run (as after a mark): a plan saved before its steps named their results. */
   const rewritePlan = () => replan({ resynth: true });
+  /** The founder brought back an item the brand-fit check left out (§23.6 n): it's on Execute Plan at once, and
+   *  Athena writes her plan again with it, as after a mark. */
+  const bringBack = (id: string) => {
+    setExec((x) => ({ ...x, kept: [...new Set([...(x.kept ?? []), id])].slice(-500) }));
+    clearTimeout(resynth.current);
+    const again = () => (liveRef.current.running ? (resynth.current = setTimeout(again, 3000)) : replan({ resynth: true }));
+    resynth.current = setTimeout(again, 1500);
+  };
   // ---- Execute Plan (§23.5 q)
 
   const setExec = (f: (x: ExecState) => ExecState) => setTeam((t) => ({ ...t, exec: f(t.exec ?? { contacts: {}, drafts: {} }) }));
@@ -848,6 +856,7 @@ export function useTeam(p: {
     chat,
     refresh,
     rewritePlan,
+    bringBack,
     mark,
     hooks,
     start,

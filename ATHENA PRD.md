@@ -3235,6 +3235,20 @@ A founder asks Claude, Cursor or ChatGPT "what should I do next for Fishwife?" a
 
 - Each new view and state gets a card on the `/dev` step map (§23.5 o): the panel's four sections, a replaced link, the demo link, This week, the What's working sales view and the share page.
 
+#### (n) The brand-fit check (founder, 27 Oct)
+
+- **Why:** the Fishwife plan pitched the Museum of Sex, put a tinned-fish brand on the shelves of Tiffany & Co., and named Dan Schneider as a partner, each because a Qloo crowd match said so ("Loved by fans of The Annoying Orange"). Nothing checked whether a place or a name makes sense for the brand.
+- **One judgment, not a filter:** after the subagents finish and before Athena writes her plan, one batched Flash call reads the brand (what it sells, who buys it, its tone, and the Brand Graph's facts) and every place, partner, creator, podcast and event on the subagents' pages. For each one it decides:
+  - **keep**;
+  - **keep with a note** for the founder ("adults-only venue: lead with the gift shop");
+  - **leave out**, with one plain line why (off-brand, adults-only for a family brand, a public figure in a scandal, a shop that can't stock the product).
+  No word lists and no category rules (agent reasoning, not keyword rules): what's explicit or off-brand depends on the brand, so the same museum can be kept for one brand and left out for another.
+- **Athena's plan skips what's left out,** the way it skips an item the founder marked No, so her steps name the next-best place instead.
+- **Execute Plan:** a left-out item isn't a row. One quiet line at the end, "Left out (n)", opens the list with each one's reason and **Bring it back**, which the plan honours from then on. Nothing disappears silently, and nothing reads as an error.
+- **The founder corrects it in their own words:** "we're fine with adult venues" in chat becomes a Brand Graph fact, and the next check reads it. No settings screen and no toggle.
+- **Kept with the plan,** so a re-synthesis after a mark re-checks only items it hasn't seen.
+- **The judges' demo** is re-seeded from a checked plan.
+
 #### Out of this step
 
 - Google OAuth and accounts, automatic Gmail reply detection, and the live Shopify API: later.
@@ -3247,7 +3261,9 @@ A founder asks Claude, Cursor or ChatGPT "what should I do next for Fishwife?" a
   - a change from outside merging into the journey item by item;
   - the orders reader keeping only date, total and ZIP;
   - a valid .ics with only sourced dates;
-  - the context file's contents.
+  - the context file's contents;
+  - a left-out item missing from Athena's plan and Execute Plan, and back once brought back.
+- **The brand-fit check, on the recorded Fishwife and Graza runs:** Dan Schneider and Tiffany & Co. are left out of Fishwife's plan with a reason each, the Museum of Sex is left out or kept with a note that says why, and nothing a founder of that brand would expect is lost.
 - **Live, with a brand not used before:**
   - The link connects from claude.ai (No sign-in) and from Claude Code. "What should I do next?" answers from Execute Plan in plain words, with no ids.
   - A `mark_task` from Claude shows on the row in Athena, with "from your AI assistant" in its history; New link stops the old one.

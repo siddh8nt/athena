@@ -25,6 +25,8 @@ export type AthenaPlanInput = {
   disagreements?: string[];
   /** The questions the founder answered, so an input the team went ahead without is listed as open. */
   answers?: { question: string }[];
+  /** What the brand-fit check left out (§23.6 n): skipped like an item the founder marked No. */
+  out?: Set<string>;
   now?: number;
 };
 
@@ -67,7 +69,7 @@ export function athenaPlan(p: AthenaPlanInput): GrowthPlan {
   const outcomes = p.outcomes ?? [];
   const last = new Map<string, Mark>();
   for (const o of [...outcomes].sort((a, b) => a.at - b.at)) last.set(o.item, o.mark);
-  const live = (item: string) => last.get(item) !== "no";
+  const live = (item: string) => last.get(item) !== "no" && !p.out?.has(item);
   const noted = (name: string, item: string) => (MARK_NOTE[last.get(item)!] ? `${name} (${MARK_NOTE[last.get(item)!]})` : name);
 
   const saved = w.navigator?.shared?.nav;

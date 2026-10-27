@@ -29,6 +29,7 @@ import {
   type ExecTab,
   type Icon,
   type ItemState,
+  type LeftOut,
   type Stage,
 } from "@/lib/exec/plan";
 
@@ -53,6 +54,7 @@ type Props = {
   onOpen: (id: Opens) => void;
   onUpdatePlan: () => void;
   onRewritePlan: () => void;
+  onBringBack: (id: string) => void;
 };
 
 type Run = { queue: string[]; rows: Record<string, string> };
@@ -431,7 +433,32 @@ export function ExecutivePlan(p: Props) {
           <ul className="xp-list">{needs.map((it) => row(it))}</ul>
         </section>
       )}
+
+      {!pipe && tab !== "results" && <LeftOutList items={plan.leftOut.filter((l) => tab === "now" || l.agent === tab)} onBringBack={p.onBringBack} />}
     </section>
+  );
+}
+
+/** What the brand-fit check left out (§23.6 n), last and folded: each with Athena's one line why, and Bring it back. */
+function LeftOutList({ items, onBringBack }: { items: LeftOut[]; onBringBack: (id: string) => void }) {
+  if (!items.length) return null;
+  return (
+    <details className="xp-group xp-leftout">
+      <summary className="small muted">Left out ({items.length}): places and names that don&apos;t fit your brand</summary>
+      <ul className="xp-leftout-list">
+        {items.map((l) => (
+          <li key={l.id}>
+            <span className="small">
+              <strong>{l.name}</strong>
+              {l.why && <span className="muted"> · {l.why}</span>}
+            </span>
+            <button type="button" className="linkish small" onClick={() => onBringBack(l.id)}>
+              Bring it back
+            </button>
+          </li>
+        ))}
+      </ul>
+    </details>
   );
 }
 
@@ -776,11 +803,12 @@ function Why({ it, ctx }: { it: ExecItem; ctx: Ctx }) {
   const kids = ctx.plan.items.filter((k) => k.parent === it.id);
   const step = ctx.plan.steps.find((s) => s.n === it.now?.step);
   const text = it.kind === "message" || !it.note || restates(it.note) ? undefined : it.note;
-  if (!text && !facts.length && !lines.length && !links.length && !kids.length && !step) return null;
+  if (!text && !it.caution && !facts.length && !lines.length && !links.length && !kids.length && !step) return null;
   return (
     <div className="xp-sec">
       <p className="crowd-label">Why it&apos;s on the plan</p>
       {text && <p className="small">{text}</p>}
+      {it.caution && <p className="small xp-caution">Worth knowing: {it.caution}</p>}
       {facts.length > 0 && (
         <dl className="xp-facts">
           {facts.map((f) => (

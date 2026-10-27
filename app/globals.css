@@ -2775,6 +2775,11 @@ a.xp-src { color: var(--muted); text-decoration: underline dotted; text-underlin
 .xp-note { margin: 0; padding: 2px 0 2px 10px; border-left: 2px solid var(--line); color: var(--muted); }
 .xp-also { margin: 0; }
 .xp-more { align-self: flex-start; margin-top: 6px; }
+.xp-leftout { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); }
+.xp-leftout summary { cursor: pointer; }
+.xp-leftout-list { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.xp-leftout-list li { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.xp-caution { margin: 4px 0 0; padding-left: 8px; border-left: 2px solid var(--line); }
 
 .xp-results { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
 .xp-result { display: flex; flex-direction: column; gap: 6px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }

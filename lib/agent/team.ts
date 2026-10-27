@@ -6,7 +6,7 @@ import type { ConverseResult, FunctionDeclaration } from "@/lib/llm/vertex";
 import { converse, generate, parseJson } from "@/lib/llm/vertex";
 import { TIER_LABEL } from "@/lib/fits/types";
 import type { CrowdCard } from "@/lib/journey/types";
-import { planSig, type AgentStatus, type Asked, type Goal, type GrowthPlan, type TeamEvent, type TeamState, type Work, type WorkItem, type Workflow, type WorkflowStep } from "@/lib/team/types";
+import { planSig, type AgentStatus, type Asked, type FitVerdict, type Goal, type GrowthPlan, type TeamEvent, type TeamState, type Work, type WorkItem, type Workflow, type WorkflowStep } from "@/lib/team/types";
 import type { SourceRef } from "@/lib/fits/types";
 import { checkClaims, type Claim } from "./cite";
 import { CLAIMS, PLAIN_NUMBERS, runAgent, type AgentBudget, type AgentRun, type Finisher, type Source } from "./loop";
@@ -29,6 +29,8 @@ import { reachOf } from "@/lib/journey/types";
 import { defaultCalendar } from "./fits";
 import { checkWorkflow, fallbackWorkflow, readySteps, resetFrom, setStep, type Have } from "./workflow";
 import { athenaPlan } from "./athena-plan";
+import { brandFit } from "./brand-fit";
+import { leftOutOf } from "@/lib/exec/plan";
 import { askLead, missingInputs } from "@/lib/team/inputs";
 
 // The team runner (PRD §23.2 step 8): Athena turns the founder's goals into work for the specialists and runs them,
@@ -683,6 +685,8 @@ export type WorkflowInput = TeamInput & {
   resynth?: boolean;
   /** The founder's plan as they have it now (`planSig`), so a re-plan that changes nothing says nothing. */
   planSig?: string;
+  /** The brand-fit verdicts the founder has and the items they brought back (§23.6 n). */
+  fit?: { fit: Record<string, FitVerdict>; kept: string[] };
 };
 
 /** A work with no results that handed back, where a step it needs has delivered since. */
@@ -754,16 +758,25 @@ export async function runWorkflow(r: WorkflowInput): Promise<{ works: Partial<Re
     emit();
   };
 
-  const synthesize = () => {
+  const synthesize = async () => {
     w = setStep(w, "athena", "running");
     emit();
     const crowds = (t.fits?.fits ?? []).map((f) => ({ id: f.crowd, name: f.name, tier: f.tier, ...(f.reasons[0] ? { why: f.reasons[0] } : {}) }));
-    plan = athenaPlan({ works: { ...r.state.works, ...works }, crowds, outcomes: r.state.outcomes, disagreements: r.disagreements, answers: [...r.answered, ...(t.answers ?? [])] });
+    const all = { ...r.state.works, ...works };
+    // The brand-fit check (§23.6 n): what a founder of this brand wouldn't pitch is left out before she writes the
+    // plan. Only items not checked before are read, so a re-plan after a mark costs nothing.
+    const facts = [...(t.facts ?? []), ...(t.answers ?? []).map((a) => `${a.question} ${a.answer}`)];
+    const fit = await brandFit(t.brand, facts, all, r.fit?.fit, r.llm);
+    const out = leftOutOf(fit, r.fit?.kept);
+    plan = { ...athenaPlan({ works: all, crowds, outcomes: r.state.outcomes, disagreements: r.disagreements, answers: [...r.answered, ...(t.answers ?? [])], out }), fit };
     // After a mark, the plan updates in place: one short line, not the announcement again. Her order is not yet the
     // founder's plan: the Executive turns it into that (§23.5 q), so the line says the work is in order. It comes
     // before the plan, so the Start / Later card the plan brings follows it in the chat (§23.5 r).
     // A mark that leaves the plan as it was says nothing: the line is for a change, not for each mark.
-    if (!(r.resynth && !ran.size)) say(`The team's work is in order: ${plan.headline}`);
+    // Fresh leave-outs are named once, so the founder knows where they went (the end of Execute Plan).
+    const fresh = [...out].filter((id) => !r.fit?.fit[id]);
+    const left = fresh.length ? ` I left out ${fresh.length === 1 ? `${fit[fresh[0]].name}, which doesn't fit ${t.brand.name}` : `${fresh.length} places and names that don't fit ${t.brand.name}`}: they're at the end of Execute Plan if you want any back.` : "";
+    if (!(r.resynth && !ran.size)) say(`The team's work is in order: ${plan.headline}${left}`);
     else if (planSig(plan) !== r.planSig) say("I updated the plan from your marks.");
     r.send({ type: "plan", plan });
     w = setStep(w, "athena", "done");
@@ -776,7 +789,7 @@ export async function runWorkflow(r: WorkflowInput): Promise<{ works: Partial<Re
     for (const step of readySteps(w)) {
       if (running.has(step.id) || running.size >= CONCURRENCY) continue;
       if (step.id === "athena") {
-        if (!running.size) synthesize();
+        if (!running.size) await synthesize();
         continue;
       }
       const id = step.id;

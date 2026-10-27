@@ -36,7 +36,7 @@ const { fallbackWorkflow } = await import("@/lib/agent/workflow");
 const { GOALS } = await import("@/lib/agent/goals");
 
 const item = (over: Partial<ExecItem>): ExecItem => ({ id: "venue:a", kind: "venue", name: "A", agent: "rep", agents: ["rep"], rank: 0, crowds: ["Mystery readers"], cities: ["Los Angeles"], facets: {}, action: "Pitch A", outreach: true, ...over });
-const planOf = (items: ExecItem[]): ExecPlan => ({ items, steps: [], byId: new Map(items.map((i) => [i.id, i])) });
+const planOf = (items: ExecItem[]): ExecPlan => ({ items, steps: [], byId: new Map(items.map((i) => [i.id, i])), leftOut: [] });
 const team = (over: Partial<TeamState> = {}) => ({ works: {}, outcomes: [], ...over }) as unknown as TeamState;
 const fresh = (): ExecState => ({ started: 1, contacts: {}, drafts: {} });
 

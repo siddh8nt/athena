@@ -16,7 +16,7 @@ import { isMetroId, metroById } from "@/lib/playbook/metros";
 import { readBrief } from "@/lib/brief/form";
 import { cachedCrowds, latestCrowds, rememberCrowds } from "@/lib/taste/engine";
 import { MAX_EXTRA } from "@/lib/taste/graph";
-import { readGoals, readTeam } from "@/lib/team/read";
+import { readFit, readGoals, readTeam } from "@/lib/team/read";
 import type { Goal, TeamEvent } from "@/lib/team/types";
 import { dated } from "@/lib/time/now";
 import { readLookups, runExec } from "@/lib/exec/contacts";
@@ -182,7 +182,7 @@ export const POST = dated(async function post(req: Request) {
       const disagreements = strs(raw.disagreements, 6, 200);
       const before = { crowds: t.crowds, fits: t.fits, probes: t.probes.join("|") };
       let calls = 0;
-      await runWorkflow({ goals, team: t, state: team, graphRev, qloo, env, send: (e) => (e.type === "done" ? (calls = e.qlooCalls) : send(e)), llm, workflow, answered: [...answers, ...(team.answered ?? [])], disagreements, resynth: raw.resynth === true, planSig: typeof raw.planSig === "string" ? raw.planSig.slice(0, 40) : undefined });
+      await runWorkflow({ goals, team: t, state: team, graphRev, qloo, env, send: (e) => (e.type === "done" ? (calls = e.qlooCalls) : send(e)), llm, workflow, answered: [...answers, ...(team.answered ?? [])], disagreements, resynth: raw.resynth === true, planSig: typeof raw.planSig === "string" ? raw.planSig.slice(0, 40) : undefined, fit: readFit(raw.team) });
       if (t.crowds !== before.crowds || t.fits !== before.fits || t.probes.join("|") !== before.probes) {
         const ranked = t.fits !== before.fits;
         send({ type: "memory", crowds: t.crowds, seed: t.seed, ...(ranked ? { fits: t.fits, ...(t.ranked ?? {}) } : {}), probes: t.probes });

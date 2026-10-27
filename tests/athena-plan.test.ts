@@ -1,6 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { athenaPlan, type PlanCrowd } from "@/lib/agent/athena-plan";
-import type { Outcome, Work } from "@/lib/team/types";
+import { brandFit, fitCandidates, type FitBrand } from "@/lib/agent/brand-fit";
+import { execPlan, leftOutOf } from "@/lib/exec/plan";
+import type { generate } from "@/lib/llm/vertex";
+import type { FitVerdict, GrowthPlan, Outcome, TeamState, Work } from "@/lib/team/types";
 import type { CrowdPage } from "@/lib/team/page";
 
 // Athena's plan (PRD §23.5 m): numbered steps from the subagents' saved results, shared moves first, then each crowd
@@ -214,5 +217,76 @@ describe("Athena's plan (§23.5 m)", () => {
       for (const c of s.crowds) expect(ids.has(c), c).toBe(false);
       for (const id of ids) expect(s.what).not.toMatch(new RegExp(`\\b${id}\\b`));
     }
+  });
+});
+
+// The brand-fit check (§23.6 n), with the model mocked: no real calls. The mock reads the prompt's numbered lines and
+// leaves out Fig Larder, notes Tide Tins, and keeps the rest.
+describe("The brand-fit check (§23.6 n)", () => {
+  const brand = { name: "Brightland", product: "olive oil", category: "G1", tier: "premium" } as FitBrand;
+  const reply = (prompt: string) => {
+    const at = (name: string) => Number(new RegExp(String.raw`\[(\d+)\] [a-z]+: ${name}\b`).exec(prompt)?.[1]);
+    return JSON.stringify({ out: [{ i: at("Fig Larder"), why: "A shop that can't stock olive oil." }], note: [{ i: at("Tide Tins"), note: "Much bigger than you: lead with the crowd you share." }] });
+  };
+  const gen = vi.fn(async (o: { prompt: string }) => ({ text: reply(o.prompt), sources: [], supports: [], queries: [], model: "mock", ms: 0 })) as unknown as typeof generate;
+  // Execute Plan reads the subagents' pages: a small one per subagent, naming the same items the reads hold.
+  const pageOf = (names: [string, string][]): CrowdPage => ({ at: 1, tabs: [], across: { sources: [], method: "", sections: [{ id: "list", title: "List", blocks: [{ type: "names", label: "", groups: [{ label: "", names: names.map(([item, name]) => ({ item, name, note: `${name}: loved by Coastal cooks` })) }] }] }] } }) as unknown as CrowdPage;
+  const paged = {
+    ...works,
+    rep: { ...works.rep, page: pageOf([["venue:fig larder", "Fig Larder"], ["venue:salt shelf", "Salt Shelf"]]) },
+    matchmaker: { ...works.matchmaker, page: pageOf([["partner:tide tins", "Tide Tins"], ["creator:ana cooks", "Ana Cooks"]]) },
+  };
+  const fig = "venue:fig larder";
+  const named = (p: ReturnType<typeof athenaPlan>) => JSON.stringify(p.steps);
+  const teamWith = (fit: Record<string, FitVerdict>, extra: Partial<TeamState> = {}): TeamState => ({ goals: [], works: paged, outcomes: no, plan: { headline: "h", disagreements: [], open: [], from: {}, at: 1, fit } as GrowthPlan, ...extra });
+
+  it("reads every place, partner, creator and event once", () => {
+    const ids = fitCandidates(paged).map((i) => i.id);
+    expect(ids).toContain(fig);
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(fitCandidates(paged).some((i) => i.name === "Tide Tins")).toBe(true);
+  });
+
+  it("leaves an item out of Athena's plan and Execute Plan, and brings it back", async () => {
+    const fit = await brandFit(brand, [], paged, {}, true, gen);
+    expect(fit[fig]).toMatchObject({ fit: "out", why: "A shop that can't stock olive oil." });
+    const tide = Object.values(fit).find((v) => v.name === "Tide Tins");
+    expect(tide?.fit).toBe("note");
+
+    expect(named(athenaPlan({ works, crowds, outcomes: no }))).toContain("Fig Larder");
+    expect(named(athenaPlan({ works, crowds, outcomes: no, out: leftOutOf(fit) }))).not.toContain("Fig Larder");
+    const ex = execPlan(teamWith(fit));
+    expect(ex.byId.has(fig)).toBe(false);
+    expect(ex.leftOut).toEqual([expect.objectContaining({ id: fig, name: "Fig Larder", why: "A shop that can't stock olive oil." })]);
+    expect(ex.items.find((i) => i.name === "Tide Tins")?.caution).toMatch(/bigger than you/);
+
+    // Bring it back: on Execute Plan and in Athena's plan again.
+    const back = execPlan(teamWith(fit, { exec: { contacts: {}, drafts: {}, kept: [fig] } }));
+    expect(back.byId.has(fig)).toBe(true);
+    expect(back.leftOut).toEqual([]);
+    expect(named(athenaPlan({ works, crowds, outcomes: no, out: leftOutOf(fit, [fig]) }))).toContain("Fig Larder");
+  });
+
+  it("never hides an item the founder already worked on", async () => {
+    const fit = await brandFit(brand, [], paged, {}, true, gen);
+    const ex = execPlan(teamWith(fit, { outcomes: [...no, mark(fig, "rep", "pitched")] }));
+    expect(ex.byId.has(fig)).toBe(true);
+    expect(ex.leftOut).toEqual([]);
+  });
+
+  it("checks only new items, and a failed call leaves everything in", async () => {
+    const fit = await brandFit(brand, [], paged, {}, true, gen);
+    const calls = vi.mocked(gen).mock.calls.length;
+    expect(await brandFit(brand, [], paged, fit, true, gen)).toEqual(fit);
+    expect(vi.mocked(gen).mock.calls.length).toBe(calls);
+
+    const broken = (async () => {
+      throw new Error("down");
+    }) as unknown as typeof generate;
+    const err = vi.spyOn(console, "error").mockImplementation(() => {});
+    const none = await brandFit(brand, [], paged, {}, true, broken);
+    err.mockRestore();
+    expect(leftOutOf(none).size).toBe(0);
+    expect(execPlan(teamWith(none)).byId.has(fig)).toBe(true);
   });
 });

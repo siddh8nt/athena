@@ -6,7 +6,7 @@ import type { Band, Creator, LeftOut, MatchRead, Partner, Rate, Size } from "@/l
 import type { PromoEvent, PromoRead } from "@/lib/agent/promoter";
 import type { Evidence, Source } from "@/lib/blocks/types";
 import type { AreaFigures } from "@/lib/enrich/census";
-import { MARKS, emptyTeam, type Answer, type Goal, type Mark, type Outcome, type TeamState, type Work, type WorkItem } from "./types";
+import { MARKS, emptyTeam, type Answer, type FitVerdict, type Goal, type Mark, type Outcome, type TeamState, type Work, type WorkItem } from "./types";
 
 // The team as the client sends it back (a stateless server: the journey holds its own state). Everything is
 // shape-checked and cut to size; anything malformed is left out, never an error. Client-safe.
@@ -574,4 +574,21 @@ export function readTeam(raw: unknown): TeamState {
     ...(readWorkflow(t.workflow) ? { workflow: readWorkflow(t.workflow) } : {}),
     ...(Array.isArray(t.answered) ? { answered: readAnswers(t.answered) } : {}),
   };
+}
+
+/**
+ * The brand-fit check's verdicts the founder already has (`plan.fit`) and the items they brought back (`exec.kept`),
+ * PRD §23.6 n, so a re-plan checks only new items and keeps every Bring it back. Read apart from `readTeam`, which
+ * leaves the plan and the Executive's state to the browser.
+ */
+export function readFit(raw: unknown): { fit: Record<string, FitVerdict>; kept: string[] } {
+  const t = rec(raw);
+  const fit: Record<string, FitVerdict> = {};
+  for (const [id, v] of Object.entries(rec(rec(t.plan).fit)).slice(0, 2000)) {
+    const f = rec(v);
+    if (!str(id, 200) || !["keep", "note", "out"].includes(f.fit as string) || !isAgent(f.agent)) continue;
+    const why = str(f.why, 240);
+    fit[id] = { fit: f.fit as FitVerdict["fit"], name: str(f.name, 200), kind: str(f.kind, 40), agent: f.agent, ...(why ? { why } : {}) };
+  }
+  return { fit, kept: strs(rec(t.exec).kept, 500) };
 }

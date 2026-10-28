@@ -4,12 +4,15 @@ import { briefFacts } from "@/lib/brief/facts";
 import { execPlan, planView, type Stage } from "@/lib/exec/plan";
 import { emptyTeam, type PlanStep } from "@/lib/team/types";
 import { salesLine } from "@/lib/sales/orders";
+import { hostOf } from "@/lib/sources";
+import { whereFor } from "./where";
 
 // The brand context file (PRD §23.6 f): `athena-brand.md`, the brief, crowds, Athena's order and the open tasks,
 // written for an AI assistant to read. It's the reverse of onboarding's "Copies a prompt for your AI assistant": that
 // asks the founder's assistant what it knows; this hands it what Athena knows. Pure, so the browser builds it from
 // its own journey with no server state; the MCP server serves the same text, and the judges' demo builds it from the
-// seeded Fishwife workspace. Plain words throughout: no ids, no internals.
+// seeded Fishwife workspace. Plain words throughout: no ids, no internals. A line that rests on a source carries a [n]
+// marker, and the sources close the file in the same words the app's cards use (§23.8 e).
 
 /** What a plan row's stage means in plain words, so an outside tool reads it without knowing Athena's internals. */
 export const STAGE_NOTE: Record<Stage, string> = {
@@ -30,6 +33,10 @@ export const ACTIONABLE: Stage[] = ["queued", "reading", "drafting", "ready", "n
 /** A plan step's tier, in words. */
 export const PHASE: Record<PlanStep["phase"], string> = { shared: "for every crowd", win_first: "Win first", win_next: "Win next", watch: "Watch" };
 
+const cap = (s: string) => `${s[0].toUpperCase()}${s.slice(1)}`;
+/** A plan line's own page, named by its host. */
+const webOf = (url: string) => ({ from: `the web: ${hostOf(url)}`, url });
+
 /** Open tasks listed in the file, so it stays a size an assistant reads in one go. */
 const TASKS = 40;
 
@@ -42,6 +49,15 @@ export function brandFile(saved: { brief?: BrandBrief; journey?: Journey }, now 
   const name = brief?.name?.value ?? "The brand";
   const out: string[] = [];
   const day = new Date(now).toISOString().slice(0, 10);
+  const where = whereFor(saved);
+  // The file's sources, numbered as first cited: "[1]" after a line, "1. Qloo's taste graph, 101 calls" at the end.
+  const sources: { from: string; url?: string }[] = [];
+  const cite = (s?: { from: string; url?: string }) => {
+    if (!s) return "";
+    let n = sources.findIndex((x) => x.from === s.from && x.url === s.url);
+    if (n < 0) n = sources.push(s) - 1;
+    return ` [${n + 1}]`;
+  };
 
   out.push(`# ${name}: brand context from Athena`, "");
   out.push(
@@ -67,11 +83,21 @@ export function brandFile(saved: { brief?: BrandBrief; journey?: Journey }, now 
 
   const crowds = (journey?.crowds?.crowds ?? []).filter((c) => !c.nearMiss);
   if (crowds.length) {
-    out.push("## Crowds", "", "The groups of people whose taste fits the brand, strongest first.", "");
+    out.push(
+      "## Crowds",
+      "",
+      "The founder's crowds: people whose tastes overlap, each named after two things they love, strongest first. What a crowd loves is brands, shows, artists and places, never people.",
+      "",
+    );
     for (const c of crowds.slice(0, 6)) {
+      const src = where.crowd(c);
+      const from = src ? cite({ from: src }) : "";
       out.push(`### ${c.name}${c.main ? " (the main crowd)" : ""}`, "");
-      if (c.loves.length) out.push(`- Also loves: ${c.loves.slice(0, 10).map((l) => l.name).join(", ")}`);
-      if (c.cities.length) out.push(`- Strongest cities: ${c.cities.slice(0, 5).map((m) => m.name).join(", ")}`);
+      if (c.handle) out.push(`- Called ${c.handle} for short`);
+      if (c.shared) out.push(`- What they share (Athena's read): ${c.shared}`);
+      if (c.after?.length) out.push(`- Named after ${c.after.join(" and ")}, two things it loves${from}`);
+      if (c.loves.length) out.push(`- Also loves: ${c.loves.slice(0, 10).map((l) => l.name).join(", ")}${from}`);
+      if (c.cities.length) out.push(`- Strongest cities: ${c.cities.slice(0, 5).map((m) => m.name).join(", ")}${from}`);
       out.push("");
     }
   }
@@ -87,7 +113,10 @@ export function brandFile(saved: { brief?: BrandBrief; journey?: Journey }, now 
     for (const s of plan.steps ?? []) {
       const who = s.crowds.length ? ` (${PHASE[s.phase]}: ${s.crowds.join(", ")})` : s.phase === "shared" ? ` (${PHASE.shared})` : "";
       out.push(`${s.n}. ${s.what}${who}`);
-      for (const l of s.lines.slice(0, 6)) out.push(`   - ${l.text}`);
+      for (const l of s.lines.slice(0, 6)) {
+        const by = l.agent && where.agent(l.agent);
+        out.push(`   - ${l.text}${cite(l.url ? webOf(l.url) : by ? { from: by } : undefined)}`);
+      }
     }
     if (plan.open.length) {
       out.push("", "Still to hear from the founder:", "");
@@ -103,13 +132,20 @@ export function brandFile(saved: { brief?: BrandBrief; journey?: Journey }, now 
     out.push("## Open tasks", "", "The outreach the founder can act on next, in Athena's order, with where each one stands. Athena keeps the drafts.", "");
     for (const r of open.slice(0, TASKS)) {
       const it = byId.get(r.id);
-      const where = [...(it?.crowds ?? []).slice(0, 2), ...(it?.cities ?? []).slice(0, 1)].join(", ");
-      out.push(`- ${it?.action ?? r.name}: ${STAGE_NOTE[r.stage]}${where ? ` (${where})` : ""}`);
+      const place = [...(it?.crowds ?? []).slice(0, 2), ...(it?.cities ?? []).slice(0, 1)].join(", ");
+      const src = it && where.item({ id: it.id, name: it.name, agent: it.agent });
+      out.push(`- ${it?.action ?? r.name}: ${STAGE_NOTE[r.stage]}${place ? ` (${place})` : ""}${cite(src)}`);
     }
     if (open.length > TASKS) out.push(`- …and ${open.length - TASKS} more in Athena's Execute Plan.`);
     out.push("");
   } else if (!plan) {
     out.push("## Plan", "", "Athena's team hasn't written the plan yet. Ask the founder to open Athena to start it.", "");
+  }
+
+  if (sources.length) {
+    out.push("## Where this came from", "", "The sources behind the lines marked [n] above. The founder's own answers and Athena's reads aren't marked.", "");
+    sources.forEach((s, i) => out.push(`${i + 1}. ${cap(s.from)}${s.url ? ` (${s.url})` : ""}`));
+    out.push("");
   }
 
   return out.join("\n").replace(/\n{3,}/g, "\n\n").trimEnd() + "\n";

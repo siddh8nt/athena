@@ -9,12 +9,14 @@ import { emptyTeam, markLabel, TASK_LABEL, type Field, type PlanLine, type TeamS
 import { salesByPlace, salesLine } from "@/lib/sales/orders";
 import { PHASE, STAGE_NOTE } from "./brand-file";
 import { sheetNames, xlsx, type Cell, type Sheet } from "./xlsx";
+import { whereFor, type Where } from "./where";
 
 // The plan spreadsheet (athena-plan.xlsx): the brand file's companion, for the founder and their team rather than an
 // AI assistant. One tab each for the outreach with every contact found and where it stands, the drafts, Athena's plan,
 // the crowds, each subagent's tables and findings, the results and what was left out. Built in the browser from the
 // saved journey, so it costs nothing; the judges' demo builds it on the server from the seeded workspace. A subagent
 // that hasn't run has no tab, a column nothing fills is left out, and everything is named in words, never by id.
+// Every tab says where each row came from, in the words the app's cards use (§23.8 e).
 
 export const PLAN_FILE = "athena-plan.xlsx";
 export const XLSX_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
@@ -56,6 +58,12 @@ function kindOf(it: { kind: string; group?: string }): string {
   return g && OUTREACH_KINDS.has(it.kind) && norm(g) !== norm(it.kind) && norm(g) !== norm(k) ? `${k} (${g})` : k;
 }
 
+/** Where a result came from, as a cell: the source in words, then its page. */
+const fromCell = (where: Where, it: { id?: string; name: string; agent?: string }) => {
+  const w = where.item(it);
+  return w && list([cap(w.from), w.url], "\n");
+};
+
 /** Athena's order: Now first, in her steps' order, then each subagent's own ranking. */
 const inOrder = (a: ExecItem, b: ExecItem) => (a.now?.order ?? 1e9) - (b.now?.order ?? 1e9) || a.rank - b.rank;
 
@@ -68,12 +76,12 @@ function leanOf(skew?: CrowdCard["skew"]): string {
   return list([top.length ? `Leans ${top.join(" and ")}` : "", f >= 0.1 ? "leans women" : f <= -0.1 ? "leans men" : ""]);
 }
 
-function outreach(team: TeamState, items: ExecItem[], now: number): Sheet | undefined {
+function outreach(team: TeamState, items: ExecItem[], now: number, where: Where): Sheet | undefined {
   const x = team.exec;
   const st = statesOf(team);
   const pitched = new Map<string, number>();
   for (const o of team.outcomes ?? []) if (o.mark === "pitched") pitched.set(o.item, Math.max(pitched.get(o.item) ?? 0, o.at));
-  const head = ["Plan step", "Name", "Type", "Subagent", "Crowds", "Cities", "What to do", "Where it stands", "Pitched on", "Follow up from", "Event date", "Email", "Phone", "Website", "Contact form", "DMs", "Address", "Where the contact came from", "Spent ($)", "Brand-fit note"];
+  const head = ["Plan step", "Name", "Type", "Subagent", "Crowds", "Cities", "What to do", "Where it stands", "Pitched on", "Follow up from", "Event date", "Email", "Phone", "Website", "Contact form", "DMs", "Address", "Where it came from", "Where the contact came from", "Spent ($)", "Brand-fit note"];
   const rows = items.map((it): Cell[] => {
     const s = st(it.id);
     const c = contactOf(it, x);
@@ -97,6 +105,7 @@ function outreach(team: TeamState, items: ExecItem[], now: number): Sheet | unde
       c?.form?.value,
       list(c?.social.map((f) => `${f.label}: ${f.value}`) ?? [], "\n"),
       c?.address?.value,
+      fromCell(where, it),
       from.join("\n"),
       x?.spend?.[it.id]?.usd,
       it.caution,
@@ -105,27 +114,27 @@ function outreach(team: TeamState, items: ExecItem[], now: number): Sheet | unde
   return table("Outreach", head, rows);
 }
 
-function drafts(team: TeamState, items: ExecItem[]): Sheet | undefined {
+function drafts(team: TeamState, items: ExecItem[], where: Where): Sheet | undefined {
   const rows = items.flatMap((it): Cell[][] => {
     const d = team.exec?.drafts[it.id];
     const page = it.detail?.draft;
     if (!d && !page?.body) return [];
     const call = d && list([d.call.opener && `Opener: ${d.call.opener}`, d.call.why && `Why them: ${d.call.why}`, d.call.offer && `The offer: ${d.call.offer}`, d.call.send && `If they ask you to send something: ${d.call.send}`, d.call.close && `Close: ${d.call.close}`], "\n\n");
-    return [[it.now?.step, it.name, nameOf(it.agent), contactOf(it, team.exec)?.email?.value, d?.email.subject ?? page?.subject, d?.email.body ?? page?.body, d?.dm, call]];
+    return [[it.now?.step, it.name, nameOf(it.agent), contactOf(it, team.exec)?.email?.value, d?.email.subject ?? page?.subject, d?.email.body ?? page?.body, d?.dm, call, fromCell(where, it)]];
   });
-  return table("Drafts", ["Plan step", "Name", "Subagent", "Send to", "Email subject", "Email", "DM", "Call or walk-in script"], rows);
+  return table("Drafts", ["Plan step", "Name", "Subagent", "Send to", "Email subject", "Email", "DM", "Call or walk-in script", "Where it came from"], rows);
 }
 
-function tasks(team: TeamState, items: ExecItem[]): Sheet | undefined {
+function tasks(team: TeamState, items: ExecItem[], where: Where): Sheet | undefined {
   const st = statesOf(team);
   const rows = items.map((it): Cell[] => {
     const s = st(it.id);
-    return [it.now?.step, it.action, kindOf(it), nameOf(it.agent), it.crowds.join(", "), it.cities.join(", "), TASK_LABEL[s.status], s.mark && markLabel(s.mark, s.by), it.note];
+    return [it.now?.step, it.action, kindOf(it), nameOf(it.agent), it.crowds.join(", "), it.cities.join(", "), TASK_LABEL[s.status], s.mark && markLabel(s.mark, s.by), it.note, fromCell(where, it)];
   });
-  return table("Other tasks", ["Plan step", "Task", "Type", "Subagent", "Crowds", "Cities", "Status", "Result", "Note"], rows);
+  return table("Other tasks", ["Plan step", "Task", "Type", "Subagent", "Crowds", "Cities", "Status", "Result", "Note", "Where it came from"], rows);
 }
 
-function planSheet(team: TeamState, plan: ExecPlan): Sheet | undefined {
+function planSheet(team: TeamState, plan: ExecPlan, where: Where): Sheet | undefined {
   const kinds = Object.keys(KIND_LABEL) as PlanLine["kind"][];
   const rows = (team.plan?.steps ?? []).map((s): Cell[] => {
     const named = (s.items ?? []).map((i) => plan.byId.get(i.id)?.name ?? i.name);
@@ -138,12 +147,13 @@ function planSheet(team: TeamState, plan: ExecPlan): Sheet | undefined {
       s.depends.join(", "),
       list([...new Set(named)].slice(0, 40)),
       list(s.notes ?? [], "\n"),
+      list([...new Set(s.lines.flatMap((l) => (l.url ? [l.url] : l.agent && where.agent(l.agent) ? [`${nameOf(l.agent)}: ${where.agent(l.agent)}`] : [])))], "\n"),
     ];
   });
-  return table("Plan", ["Step", "For", "Crowds", "What", ...kinds.map((k) => KIND_LABEL[k]), "After steps", "What it works on", "Where the subagents disagree"], rows);
+  return table("Plan", ["Step", "For", "Crowds", "What", ...kinds.map((k) => KIND_LABEL[k]), "After steps", "What it works on", "Where the subagents disagree", "Where it came from"], rows);
 }
 
-function crowds(journey?: Journey): Sheet | undefined {
+function crowds(journey: Journey | undefined, where: Where): Sheet | undefined {
   const cards = (journey?.crowds?.crowds ?? []).filter((c) => !c.nearMiss);
   const fits = journey?.fits?.fits.fits ?? [];
   const reasons = journey?.fits?.answer.reasons ?? [];
@@ -154,6 +164,8 @@ function crowds(journey?: Journey): Sheet | undefined {
     return [
       f?.rank ?? i + 1,
       c.name,
+      c.after?.join(" and "),
+      c.shared,
       f && TIER_LABEL[f.tier],
       c.main ? "Yes" : "",
       list(said.length ? said : (f?.reasons ?? []).slice(0, 3), "\n"),
@@ -161,9 +173,10 @@ function crowds(journey?: Journey): Sheet | undefined {
       leanOf(c.skew),
       list(c.loves.slice(0, 12).map((l) => l.name)),
       list(c.cities.slice(0, 6).map((m) => m.name)),
+      cap(where.crowd(c) ?? ""),
     ];
   });
-  return table("Crowds", ["Rank", "Crowd", "Tier", "Main crowd", "Why it fits", "When", "Leans", "Also loves", "Strongest cities"], rows);
+  return table("Crowds", ["Rank", "Crowd", "Named after", "What they share (Athena's read)", "Tier", "Main crowd", "Why it fits", "When", "Leans", "Also loves", "Strongest cities", "Where it came from"], rows);
 }
 
 /** The subagents with a page, in the order a founder reads them. The Analyst's crowds are the Crowds tab. */
@@ -180,19 +193,22 @@ function tabName(agent: string, title: string): string {
   return `${agent} – ${cap(words.join(" "))}`;
 }
 
-type Grid = { title: string; cols: string[]; rows: Map<string, { cells: Record<string, string>; crowds: Set<string>; parts: Set<string>; links: string }> };
+type Grid = { title: string; cols: string[]; rows: Map<string, { cells: Record<string, string>; crowds: Set<string>; parts: Set<string>; links: string; from?: string }> };
 
 /** One subagent's page as tabs: each table (and the calendar's list) as its own, merged across the crowd tabs and
  *  sections it appears in, then everything else it found (names, words, notes) as one more. */
-function pageSheets(agent: SpecialistId, page: CrowdPage): { sheet: Sheet; about: string }[] {
+function pageSheets(agent: SpecialistId, page: CrowdPage, where: Where): { sheet: Sheet; about: string }[] {
   const who = nameOf(agent);
   const grids = new Map<string, Grid>();
   const found: Cell[][] = [];
   const seen = new Set<string>();
-  const say = (crowd: string, part: string, group: string | undefined, what: string | undefined, why?: string) => {
+  // What the page itself read ("Qloo's taste graph", "the U.S. Census"), for a row no result says more about.
+  let pageFrom = "";
+  const say = (crowd: string, part: string, group: string | undefined, what: string | undefined, why?: string, item?: string) => {
     if (!what?.trim()) return;
     const key = [crowd, part, group, what, why].join("\u0001");
-    if (!seen.has(key)) seen.add(key), found.push([crowd, part, group, what, why]);
+    const from = (item && fromCell(where, { id: item, name: what, agent })) || cap(pageFrom);
+    if (!seen.has(key)) seen.add(key), found.push([crowd, part, group, what, why, from]);
   };
   const grid = (sec: Section, label: string | undefined, columns: string[], rows: Row[], crowd?: string) => {
     const title = titleOf(label || sec.title);
@@ -202,7 +218,7 @@ function pageSheets(agent: SpecialistId, page: CrowdPage): { sheet: Sheet; about
     const part = label && titleOf(label) !== titleOf(sec.title) ? sec.title : "";
     for (const r of rows) {
       const key = columns.map((c, i) => `${c}=${r.cells[i] ?? ""}`).join("\u0001");
-      const had = g.rows.get(key) ?? { cells: Object.fromEntries(columns.map((c, i) => [c, r.cells[i] ?? ""])), crowds: new Set<string>(), parts: new Set<string>(), links: list((r.detail?.links ?? []).map((l) => `${l.label}: ${l.url}`), "\n") };
+      const had = g.rows.get(key) ?? { cells: Object.fromEntries(columns.map((c, i) => [c, r.cells[i] ?? ""])), crowds: new Set<string>(), parts: new Set<string>(), links: list((r.detail?.links ?? []).map((l) => `${l.label}: ${l.url}`), "\n"), from: (r.detail?.item && fromCell(where, { id: r.detail.item, name: r.detail.title, agent })) || cap(pageFrom) };
       g.rows.set(key, had);
       const text = r.cells.join(" ").toLowerCase();
       // Which crowd's tab and which section it sat in, unless the row already says so.
@@ -222,7 +238,7 @@ function pageSheets(agent: SpecialistId, page: CrowdPage): { sheet: Sheet; about
       case "facts":
         return b.rows.forEach((r) => say(c, part, r.label, r.value));
       case "names":
-        return b.groups.forEach((g) => g.names.forEach((n) => say(c, part, list([b.label, g.label], ": "), n.name, n.note)));
+        return b.groups.forEach((g) => g.names.forEach((n) => say(c, part, list([b.label, g.label], ": "), n.name, n.note, n.item)));
       case "lines":
         return b.lines.forEach((l) => say(c, part, l.tag ?? b.label, l.text, l.reason ?? (l.from?.length ? `From ${l.from.join(", ")}` : undefined)));
       case "steps":
@@ -241,7 +257,11 @@ function pageSheets(agent: SpecialistId, page: CrowdPage): { sheet: Sheet; about
         return; // the maps, the graph of paths and the live boards are views of what's already here
     }
   };
-  for (const tab of page.tabs) for (const sec of tab.sections) for (const b of sec.blocks) block(b, sec, tab.crowd.name);
+  for (const tab of page.tabs) {
+    pageFrom = where.page(tab.sources) || where.agent(agent) || "";
+    for (const sec of tab.sections) for (const b of sec.blocks) block(b, sec, tab.crowd.name);
+  }
+  pageFrom = where.page(page.across?.sources ?? []) || where.agent(agent) || "";
   for (const sec of page.across?.sections ?? []) for (const b of sec.blocks) block(b, sec, undefined);
 
   // A table whose every row is in another with the same columns (the events for several crowds, inside the calendar's
@@ -253,28 +273,28 @@ function pageSheets(agent: SpecialistId, page: CrowdPage): { sheet: Sheet; about
 
   const out: { sheet: Sheet; about: string }[] = [];
   for (const g of kept) {
-    const rows = [...g.rows.values()].map((r): Cell[] => [...g.cols.map((c) => r.cells[c]), [...r.crowds].join(", "), [...r.parts].join(", "), r.links]);
-    const sheet = table(tabName(who, g.title), [...g.cols, "For crowds", "Page section", "Links"], rows);
+    const rows = [...g.rows.values()].map((r): Cell[] => [...g.cols.map((c) => r.cells[c]), [...r.crowds].join(", "), [...r.parts].join(", "), r.links, r.from]);
+    const sheet = table(tabName(who, g.title), [...g.cols, "For crowds", "Page section", "Links", "Where it came from"], rows);
     if (sheet) out.push({ sheet, about: `From the ${who}'s page: ${g.title}.` });
   }
-  const more = table(tabName(who, "Findings"), ["Crowd", "Section", "Group", "What", "Why, or where it's from"], found);
+  const more = table(tabName(who, "Findings"), ["Crowd", "Section", "Group", "What", "Why", "Where it came from"], found);
   if (more) out.push({ sheet: more, about: `Everything else the ${who} found: names, words and notes, by crowd.` });
   return out;
 }
 
 function results(team: TeamState): Sheet | undefined {
-  const rows = [...(team.outcomes ?? [])].sort((a, b) => b.at - a.at).map((o): Cell[] => [day(o.at), o.name, kindOf(o), nameOf(o.agent), markLabel(o.mark, o.agent)]);
-  return table("Results", ["Date", "Name", "Type", "Subagent", "What happened"], rows);
+  const rows = [...(team.outcomes ?? [])].sort((a, b) => b.at - a.at).map((o): Cell[] => [day(o.at), o.name, kindOf(o), nameOf(o.agent), markLabel(o.mark, o.agent), "Your mark in Execute Plan"]);
+  return table("Results", ["Date", "Name", "Type", "Subagent", "What happened", "Where it came from"], rows);
 }
 
 function sales(team: TeamState): Sheet | undefined {
   const s = team.sales;
   if (!s?.orders.length) return undefined;
-  return table(s.sample ? "Sales by place (sample)" : "Sales by place", ["Place", "Orders", "Revenue ($)"], salesByPlace(s).map((p) => [p.name, p.orders, p.revenue]));
+  return table(s.sample ? "Sales by place (sample)" : "Sales by place", ["Place", "Orders", "Revenue ($)", "Where it came from"], salesByPlace(s).map((p) => [p.name, p.orders, p.revenue, s.sample ? "The sample orders file" : "Your orders file"]));
 }
 
-function leftOut(plan: ExecPlan): Sheet | undefined {
-  return table("Left out", ["Name", "Type", "Subagent", "Why it was left out"], plan.leftOut.map((l) => [l.name, kindOf(l), nameOf(l.agent), l.why]));
+function leftOut(plan: ExecPlan, where: Where): Sheet | undefined {
+  return table("Left out", ["Name", "Type", "Subagent", "Why it was left out", "Where it came from"], plan.leftOut.map((l) => [l.name, kindOf(l), nameOf(l.agent), l.why, fromCell(where, l)]));
 }
 
 /** The workbook's tabs, About first. `now` dates it and sets which follow-ups are due. */
@@ -284,17 +304,18 @@ export function planSheets(saved: { brief?: BrandBrief; journey?: Journey }, now
   const plan = execPlan(team);
   const live = plan.items.filter((it) => !it.left).sort(inOrder);
   const reach = live.filter((it) => it.outreach);
+  const where = whereFor(saved);
 
   const tabs: { sheet?: Sheet; about: string }[] = [
-    { sheet: outreach(team, reach, now), about: "Every shop, partner, creator, podcast and event to reach, in Athena's order, with the contact found and where each stands." },
-    { sheet: drafts(team, reach), about: "The email, DM and call script for each one, to copy. Athena never sends them." },
-    { sheet: planSheet(team, plan), about: "Athena's growth plan, step by step." },
-    { sheet: tasks(team, live.filter((it) => !it.outreach)), about: "The rest of Execute Plan: the steps that aren't outreach." },
-    { sheet: crowds(journey), about: "The crowds whose taste fits the brand, strongest first." },
-    ...PAGES.flatMap((a) => { const p = team.works[a]?.page; return p ? pageSheets(a, p) : []; }),
+    { sheet: outreach(team, reach, now, where), about: "Every shop, partner, creator, podcast and event to reach, in Athena's order, with the contact found and where each stands." },
+    { sheet: drafts(team, reach, where), about: "The email, DM and call script for each one, to copy. Athena never sends them." },
+    { sheet: planSheet(team, plan, where), about: "Athena's growth plan, step by step." },
+    { sheet: tasks(team, live.filter((it) => !it.outreach), where), about: "The rest of Execute Plan: the steps that aren't outreach." },
+    { sheet: crowds(journey, where), about: "Your crowds, strongest first: people whose tastes overlap, each named after two things they love, with what they share as Athena's read." },
+    ...PAGES.flatMap((a) => { const p = team.works[a]?.page; return p ? pageSheets(a, p, where) : []; }),
     { sheet: results(team), about: "What happened: each mark made in Execute Plan, newest first." },
     { sheet: sales(team), about: "Orders from the sales file, by place." },
-    { sheet: leftOut(plan), about: "What the brand-fit check left out, and why." },
+    { sheet: leftOut(plan, where), about: "What the brand-fit check left out, and why." },
   ];
   const sheets = tabs.filter((t): t is { sheet: Sheet; about: string } => !!t.sheet);
   const names = sheetNames(["About", ...sheets.map((t) => t.sheet.name)]);

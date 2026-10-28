@@ -51,11 +51,11 @@ function crowdRefs(crowds: CrowdCard[], calls: number): Ref[] {
 function workRefs(team: TeamState): Ref[] {
   return Object.values(team.works).flatMap((w) => {
     if (!w) return [];
-    const byId = new Map(w.sources.map((s) => [s.id, s]));
+    const byId = new Map((w.sources ?? []).map((s) => [s.id, s]));
     // A crowd the journey holds is already named above; on the share page, with no journey, its result names it.
-    return w.results
+    return (w.results ?? [])
       .map((r) => {
-        const src = r.sources.map((id) => byId.get(id)).find(Boolean);
+        const src = (r.sources ?? []).map((id) => byId.get(id)).find(Boolean);
         return {
           id: r.id,
           names: [r.name],

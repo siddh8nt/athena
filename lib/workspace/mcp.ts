@@ -12,6 +12,7 @@ import { type LinkMeta } from "./links";
 import { reserved } from "./demo";
 import { ACTIONABLE, BRAND_FILE, STAGE_NOTE, brandFile } from "./brand-file";
 import { thisWeek, weekText } from "./week";
+import { whereFor } from "./where";
 
 // The Athena MCP server (PRD §23.6 b). A founder's own AI tool connects through a link (links.ts) and reads the
 // same brief, crowds, plan and Execute Plan the app shows, and writes back the founder's marks, answers and facts —
@@ -74,9 +75,21 @@ export function buildServer(meta: LinkMeta): McpServer {
     return { contents: [{ uri: "athena://brief", mimeType: "application/json", text: JSON.stringify({ brand: v.brand, knowledge: v.facts }, null, 2) }] };
   });
 
-  server.registerResource("crowds", "athena://crowds", { title: "Crowds", description: "The audiences Athena measured, strongest first.", mimeType: "application/json" }, async () => {
+  // The same names and source words as the app's cards and the brand file (§23.8 e). A crowd's members are brands,
+  // shows and places, never people, so no count of them is sent for an assistant to read as a head count.
+  server.registerResource("crowds", "athena://crowds", { title: "Crowds", description: "The founder's crowds, strongest first: people whose tastes overlap, each named after two things they love. What a crowd loves is brands, shows, artists and places, never people; `shared` is Athena's read.", mimeType: "application/json" }, async () => {
     const v = await readView(ws);
-    const crowds = (v.journey?.crowds?.crowds ?? []).map((c) => ({ name: c.name, main: c.main, size: c.size, loves: c.loves.slice(0, 8).map((l) => l.name), cities: c.cities.slice(0, 5).map((m) => m.name) }));
+    const where = whereFor(v);
+    const crowds = (v.journey?.crowds?.crowds ?? []).filter((c) => !c.nearMiss).map((c) => ({
+      name: c.name,
+      ...(c.handle ? { handle: c.handle } : {}),
+      main: c.main,
+      ...(c.after?.length ? { namedAfter: c.after } : {}),
+      ...(c.shared ? { shared: c.shared } : {}),
+      loves: c.loves.slice(0, 8).map((l) => l.name),
+      cities: c.cities.slice(0, 5).map((m) => m.name),
+      from: where.crowd(c),
+    }));
     return { contents: [{ uri: "athena://crowds", mimeType: "application/json", text: JSON.stringify(crowds, null, 2) }] };
   });
 
@@ -87,9 +100,10 @@ export function buildServer(meta: LinkMeta): McpServer {
     return { contents: [{ uri: "athena://plan", mimeType: "application/json", text: JSON.stringify({ headline: p?.headline ?? "", steps, open: p?.open ?? [] }, null, 2) }] };
   });
 
-  server.registerResource("tasks", "athena://tasks", { title: "Execute Plan", description: "The outreach plan: each contact and where it stands.", mimeType: "application/json" }, async () => {
+  server.registerResource("tasks", "athena://tasks", { title: "Execute Plan", description: "The outreach plan: each contact, where it stands and where it came from.", mimeType: "application/json" }, async () => {
     const v = await readView(ws);
-    const items = (v.plan?.items ?? []).map((it) => ({ id: it.id, name: it.name, kind: it.kind, stage: it.stage, note: STAGE_NOTE[it.stage] }));
+    const where = whereFor(v);
+    const items = (v.plan?.items ?? []).map((it) => ({ id: it.id, name: it.name, kind: it.kind, stage: it.stage, note: STAGE_NOTE[it.stage], from: where.item({ id: it.id, name: it.name })?.from }));
     return { contents: [{ uri: "athena://tasks", mimeType: "application/json", text: JSON.stringify({ headline: v.plan?.headline ?? "", found: v.plan?.found ?? 0, items }, null, 2) }] };
   });
 

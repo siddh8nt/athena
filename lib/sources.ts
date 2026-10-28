@@ -122,3 +122,10 @@ export function briefSourceWords(s: BriefSource | undefined): { from: string; ur
       return { from: "my read of your brand" };
   }
 }
+
+/** A subagent page's own source ("Qloo places", "Census, ACS 2020–2024") in the same words as a card's. */
+export function pageSourceWords(label: string): string {
+  if (/census/i.test(label)) return `the U.S. Census${/acs/i.test(label) ? ` (${label.replace(/^census,?\s*/i, "")})` : ""}`;
+  if (/^qloo/i.test(label)) return "Qloo's taste graph";
+  return label;
+}

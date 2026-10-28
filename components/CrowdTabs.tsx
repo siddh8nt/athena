@@ -10,6 +10,7 @@ import { markLabel, marksFor, type Mark, type Outcome, type WorkItem } from "@/l
 import { Handoffs } from "./Team";
 import { HeatLayers } from "./HeatLayers";
 import { InYourCalendar } from "./McpConnect";
+import { Linked } from "./Refs";
 
 // One page shape for every subagent (PRD §23.5 b): a tab per crowd (Win first, Win next, Watch) and Across all
 // three, the same sections in the same order in every crowd tab. On a phone the tabs swipe, the sections fold into
@@ -143,7 +144,7 @@ function AttentionHandoffs({ tab, onHandoff }: { tab: PageTab; onHandoff: (h: Ha
 const KIND_OF_SECTION: Record<string, string> = { words: "message", rivals: "rival" };
 
 function BlockView({ b, section, ctx }: { b: Block; section: string; ctx: Ctx }) {
-  if (b.type === "note") return <p className="small muted">{b.text}</p>;
+  if (b.type === "note") return <p className="small muted"><Linked text={b.text} /></p>;
   if (b.type === "facts")
     return (
       <dl className="crowd-facts">
@@ -229,8 +230,8 @@ function BlockView({ b, section, ctx }: { b: Block; section: string; ctx: Ctx })
           {b.checks.map((c) => (
             <li key={c.item} className={`crowd-line nav-check${ctx.marks.get(c.item) === "yes" ? " nav-done" : ""}`}>
               <div>
-                <p>{c.text}</p>
-                {c.detail && <p className="small muted">{c.detail}</p>}
+                <p><Linked text={c.text} /></p>
+                {c.detail && <p className="small muted"><Linked text={c.detail} /></p>}
               </div>
               <Marks step name={c.text} mark={ctx.marks.get(c.item)} onMark={(m) => ctx.mark(c.item, "step", c.text, m, c.group)} />
             </li>
@@ -243,7 +244,7 @@ function BlockView({ b, section, ctx }: { b: Block; section: string; ctx: Ctx })
       <ol className="crowd-steps">
         {b.steps.map((s, i) => (
           <li key={i}>
-            <span>{s.text}</span>
+            <span><Linked text={s.text} /></span>
             {s.signal && <small className="muted">{s.signal}</small>}
           </li>
         ))}
@@ -542,8 +543,8 @@ function Lines({ b, kind, ctx }: { b: Extract<Block, { type: "lines" }>; kind: s
           <li key={l.text} className="crowd-line">
             <div>
               {l.tag && <small className="crowd-tag">{l.tag}</small>}
-              <p>{l.text}</p>
-              {l.reason && <p className="small muted">{l.reason}</p>}
+              <p><Linked text={l.text} /></p>
+              {l.reason && <p className="small muted"><Linked text={l.reason} /></p>}
               {!!l.from?.length && <p className="small muted">Built on {l.from.slice(0, 4).join(", ")}</p>}
             </div>
             {l.item && MARKABLE.has(kind) && <Marks agent={ctx.agent} name={l.text} mark={ctx.marks.get(l.item)} onMark={(m) => ctx.mark(l.item!, kind, l.text, m)} />}
@@ -639,7 +640,7 @@ function Sheet({ p, agent, marks, mark, onHandoff, onClose }: { p: Picked; agent
             Close
           </button>
         </div>
-        {n.note && <p className="small">{n.note}</p>}
+        {n.note && <p className="small"><Linked text={n.note} /></p>}
         {!detail && crowd && <p className="small muted">{crowd.name}</p>}
         {detail && (
           <dl className="crowd-facts nav-sheet-facts">
@@ -653,7 +654,7 @@ function Sheet({ p, agent, marks, mark, onHandoff, onClose }: { p: Picked; agent
         )}
         {detail?.lines?.map((l) => (
           <p key={l} className="nav-sheet-line">
-            {l}
+            <Linked text={l} />
           </p>
         ))}
         {src && <p className="small muted">From {src.label}</p>}

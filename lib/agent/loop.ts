@@ -14,6 +14,8 @@ import type { FitsEvent } from "./fits";
 import type { StrategyEvent } from "./strategy";
 import type { CheckItem } from "./checklist";
 import type { Work, WorkItem } from "@/lib/team/types";
+import type { SourceRef } from "@/lib/fits/types";
+import { pagesOf } from "@/lib/sources";
 
 // The agent core (PRD §23.2 step 2, problem 0): our own loop on Gemini function calling. The model is given a goal,
 // a budget and the tools; it picks each next step from what the last ones returned. Code holds the hard caps (turns,
@@ -28,6 +30,11 @@ const MAX: AgentBudget = { qloo: 400, ms: 180_000, turns: 12 };
 
 /** items: the results a specialist can name from this source (§23.2 step 8), each backed by it. */
 export type Source = { id: string; tool: string; args: Record<string, unknown>; summary: string; data: unknown; callIds: string[]; items?: WorkItem[] };
+/** A source as the page keeps it: no data, with the pages a web source read. */
+export const toRef = (s: Source): SourceRef => {
+  const pages = pagesOf(s.tool, s.args, s.data);
+  return { id: s.id, tool: s.tool, summary: s.summary, callIds: s.callIds, ...(pages ? { pages } : {}) };
+};
 export type AgentAnswer = { headline: string; claims: Claim[]; assumptions: string[]; dropped: number };
 
 export type AgentStreamEvent =

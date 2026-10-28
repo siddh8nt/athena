@@ -9,7 +9,7 @@ import type { CrowdCard } from "@/lib/journey/types";
 import { planSig, type AgentStatus, type Asked, type FitVerdict, type Goal, type GrowthPlan, type TeamEvent, type TeamState, type Work, type WorkItem, type Workflow, type WorkflowStep } from "@/lib/team/types";
 import type { SourceRef } from "@/lib/fits/types";
 import { checkClaims, type Claim } from "./cite";
-import { CLAIMS, PLAIN_NUMBERS, runAgent, type AgentBudget, type AgentRun, type Finisher, type Source } from "./loop";
+import { CLAIMS, PLAIN_NUMBERS, runAgent, toRef, type AgentBudget, type AgentRun, type Finisher, type Source } from "./loop";
 import { TOOLS, type AgentState, type Decision, type FounderQuestion, type Tool } from "./tools";
 import { PLAYS, aimed, yoursOf, type TeamCtx } from "./plays";
 import { navigatorPage, saveNav, type BackFill } from "./navigator";
@@ -134,7 +134,7 @@ export function makeFinisher(agent: SpecialistId, goal: string): Finisher {
           }
         : undefined;
       const cited = new Set([...checked.kept.flatMap((c) => c.sources), ...results.flatMap((r) => r.sources)]);
-      const refs: SourceRef[] = [...sources.values()].filter((s) => cited.has(s.id)).map((s) => ({ id: s.id, tool: s.tool, summary: s.summary, callIds: s.callIds }));
+      const refs: SourceRef[] = [...sources.values()].filter((s) => cited.has(s.id)).map(toRef);
       const work: Work = {
         agent,
         goal,

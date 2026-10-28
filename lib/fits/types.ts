@@ -80,4 +80,5 @@ export type FitsAnswer = {
   assumptions: string[];
 };
 
-export type SourceRef = { id: string; tool: string; summary: string; callIds: string[] };
+/** pages: the web pages a web source read, so its chip opens them (§23.8 d). */
+export type SourceRef = { id: string; tool: string; summary: string; callIds: string[]; pages?: { title?: string; url: string }[] };

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { ACCEPT, readable, refusal, RecordView, TrailView, useBriefChat, type FileChip, type Msg } from "./chat";
 import type { WorkRecord } from "@/lib/agent/record";
@@ -32,6 +32,8 @@ import { keepFile, workspace } from "@/lib/knowledge/workspace";
 import { bySource, mergeNotes, themesOf, type Synth } from "@/lib/knowledge/notes";
 import { RunProgress, StepTimer } from "./Progress";
 import { ExecutivePlan } from "./Executive";
+import { Linked, RefsProvider } from "./Refs";
+import { refsFor } from "@/lib/refs";
 import type { ExecItem } from "@/lib/exec/plan";
 import { AthenaRoom, DashboardPage, PausedBanner, SubagentPage, focusTray, usePausedTab, type Page } from "./Views";
 import type { Channel } from "@/lib/journey/growth";
@@ -169,6 +171,8 @@ export function Journey() {
   const g = graphState(j.graph);
   const team = j.team ?? emptyTeam();
   const gInput: GraphInput = { brief, facts: j.facts ?? [], crowds: j.crowds, fits: j.fits, strategy: j.strategy, team, hidden: g.hidden };
+  // Every name the journey holds, so wherever one is said it opens where it came from (§23.8 c).
+  const refs = useMemo(() => refsFor({ crowds: j.crowds?.crowds, calls: j.crowds?.calls, team, brief }), [j.crowds, j.team, brief]);
   const ran: RunId[] = [...(j.crowds || turn.ready ? ["crowds" as const] : []), ...(j.fits ? ["fits" as const] : []), ...(j.strategy ? ["strategy" as const] : [])];
   // Async replies (a resolved addition, a file read) apply to the graph as it is when they land.
   const latest = useRef({ input: gInput, state: g, ran });
@@ -867,7 +871,7 @@ export function Journey() {
           m.record && <RecordView key={`r${i}`} record={m.record} />,
           (m.text || !!m.files?.length) && (
             <li key={i} className={`msg msg-${m.who}`}>
-              {m.text}
+              {m.who === "athena" ? <Linked text={m.text} /> : m.text}
               {!!m.files?.length && <span className="msg-files">{m.files.map((f) => <span key={f} className="chip">{f}</span>)}</span>}
             </li>
           ),
@@ -1067,6 +1071,7 @@ export function Journey() {
   };
 
   return (
+    <RefsProvider refs={refs} onOpen={(id) => go(id)}>
     <div className={`journey ${drag ? "dragging" : ""} ${onboarding ? "ob-on" : ""}`} {...dropZone}>
       {/* Above the top bar, so every sheet and drawer opens just beneath it (§23.5 a3). */}
       {!onboarding && pausedAsk && pausedWho && <PausedBanner who={pausedWho} question={pausedAsk.question} more={openAsks.length - 1} onAnswer={answerPaused} />}
@@ -1142,6 +1147,7 @@ export function Journey() {
         </AthenaRoom>
       )}
     </div>
+    </RefsProvider>
   );
 }
 

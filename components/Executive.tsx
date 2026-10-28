@@ -7,6 +7,7 @@ import { nameOf, type SpecialistId } from "@/lib/agent/specialists";
 import { strengthWord } from "@/lib/agent/fit";
 import { TIER_LABEL } from "@/lib/team/page";
 import { InYourCalendar } from "./McpConnect";
+import { Linked } from "./Refs";
 import { salesByPlace } from "@/lib/sales/orders";
 import { markLabel, type Drafts, type Mark, type Src, type TeamState } from "@/lib/team/types";
 import {
@@ -473,7 +474,7 @@ function LeftOutList({ items, onBringBack }: { items: LeftOut[]; onBringBack?: (
           <li key={l.id}>
             <span className="small">
               <strong>{l.name}</strong>
-              {l.why && <span className="muted"> · {l.why}</span>}
+              {l.why && <span className="muted"> · <Linked text={l.why} /></span>}
             </span>
             {onBringBack && (
               <button type="button" className="linkish small" onClick={() => onBringBack(l.id)}>
@@ -631,10 +632,10 @@ function NowSteps({ plan, state, exec, list, filtering, disagreements, row, onSt
           <section key={s.n} className={`xp-step${on ? " xp-waiting" : ""}`} aria-label={s.what}>
             {head && <p className="eyebrow xp-phase">{head}</p>}
             <header className="xp-step-head">
-              <h3>{s.what}</h3>
+              <h3><Linked text={s.what} /></h3>
               {(s.crowds.length > 0 || s.needs) && (
                 <p className="small muted">
-                  {s.crowds.length > 0 && `For ${and(s.crowds)}`}
+                  {s.crowds.length > 0 && <Linked text={`For ${and(s.crowds)}`} />}
                   {s.crowds.length > 0 && s.needs && " · "}
                   {s.needs}
                 </p>
@@ -651,7 +652,7 @@ function NowSteps({ plan, state, exec, list, filtering, disagreements, row, onSt
               )}
               {s.notes?.map((n) => (
                 <p key={n} className="small xp-note">
-                  {n}
+                  <Linked text={n} />
                 </p>
               ))}
             </header>
@@ -665,7 +666,7 @@ function NowSteps({ plan, state, exec, list, filtering, disagreements, row, onSt
           <p className="eyebrow xp-phase">Where the subagents disagree</p>
           {left.map((d) => (
             <p key={d} className="small xp-note">
-              {d}
+              <Linked text={d} />
             </p>
           ))}
         </section>
@@ -857,7 +858,7 @@ function Why({ it, ctx }: { it: ExecItem; ctx: Ctx }) {
   return (
     <div className="xp-sec">
       <p className="crowd-label">Why it&apos;s on the plan</p>
-      {text && <p className="small">{text}</p>}
+      {text && <p className="small"><Linked text={text} /></p>}
       {it.caution && <p className="small xp-caution">Worth knowing: {it.caution}</p>}
       {facts.length > 0 && (
         <dl className="xp-facts">
@@ -871,7 +872,7 @@ function Why({ it, ctx }: { it: ExecItem; ctx: Ctx }) {
       )}
       {lines.map((l) => (
         <p key={l} className="small">
-          {l}
+          <Linked text={l} />
         </p>
       ))}
       {kids.length > 0 && (

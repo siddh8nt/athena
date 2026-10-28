@@ -10,6 +10,7 @@ import type { Journey } from "@/lib/journey/types";
 import { thisWeek, weekEmpty, type WeekLine } from "@/lib/workspace/week";
 import { workspace } from "@/lib/knowledge/workspace";
 import { SaveButton, ShareLink, saveBrandFile, savePlanSheet } from "./McpConnect";
+import { Linked } from "./Refs";
 import { BRAND_FILE } from "@/lib/workspace/brand-file";
 import { PLAN_FILE } from "@/lib/workspace/plan-sheets";
 
@@ -515,7 +516,7 @@ export function Dashboard(p: {
                   {out ? (
                     <p className="small muted">Not needed for these goals</p>
                   ) : (
-                    <p className={`small${line.tone === "live" ? " shimmer-text" : line.tone === "muted" ? " muted" : line.tone === "wait" ? " dash-wait" : ""}`}>{line.text}</p>
+                    <p className={`small${line.tone === "live" ? " shimmer-text" : line.tone === "muted" ? " muted" : line.tone === "wait" ? " dash-wait" : ""}`}><Linked text={line.text} /></p>
                   )}
                   <div className="dash-acts">
                     {out ? (

@@ -21,6 +21,8 @@ import { followCard, handleOf, phoneCard, profileCard, sentCard, startCard, wait
 import { pacer } from "@/lib/stream/pace";
 import { withHooks, type Line as PageLine } from "@/lib/team/page";
 import { CrowdTabs } from "./CrowdTabs";
+import { Cites } from "./Cites";
+import { Linked } from "./Refs";
 import { RunProgress, StepTimer, type ProgressStep } from "./Progress";
 import { NavIcon, RailToggle, useRail } from "./SideNav";
 import { McpConnect } from "./McpConnect";
@@ -1158,7 +1160,7 @@ export function WorkView({ work, team, updating, alone, onMark, onHandoff, crowd
   return (
     <section className={`card spec-work ${updating ? "spec-updating" : ""}`} aria-busy={updating}>
       {updating && <p className="small muted spec-updating-line">Updating; these stay up until the new results land.</p>}
-      {headed && <h4>{work.headline}</h4>}
+      {headed && <h4><Linked text={work.headline} /></h4>}
       <p className="small muted">
         {secs(work.ms)} · {work.qlooCalls} Qloo call{work.qlooCalls === 1 ? "" : "s"}
         {nodes > 0 && ` · added ${nodes} node${nodes === 1 ? "" : "s"} to your Brand Graph`}
@@ -1168,10 +1170,7 @@ export function WorkView({ work, team, updating, alone, onMark, onHandoff, crowd
       {work.outcomes && <p className="small">Read your outcomes first: {work.outcomes}.</p>}
       {work.claims.map((c, i) => (
         <p key={i} className="small">
-          {c.text}{" "}
-          {c.sources.filter((x) => sources.has(x)).map((x) => (
-            <span key={x} className="cite" title={sources.get(x)!.summary}>{x}</span>
-          ))}
+          <Linked text={c.text} /> <Cites ids={c.sources} sources={sources} />
         </p>
       ))}
       {work.page ? (
@@ -1235,7 +1234,7 @@ function Result({ work, item, mark, team, alone, onMark, onHandoff }: { work: Wo
         <strong>{item.name}</strong>
         {item.group && item.group !== item.kind && <small className="muted"> · {item.group}</small>}
       </div>
-      <p className="small">{item.why}</p>
+      <p className="small"><Linked text={item.why} /></p>
       {item.detail && (item.kind === "draft" ? <DraftText detail={item.detail} /> : <p className="small muted spec-detail">{item.detail}</p>)}
       <div className="spec-result-foot">
         {MARKABLE.has(item.kind) && (
@@ -1283,7 +1282,7 @@ function HowWeKnow({ work, item, cited, calls, team, alone }: { work: Work; item
         <ul>
           {cited.map((s) => (
             <li key={s.id}>
-              <span className="cite">{s.id}</span> {s.tool.replace(/_/g, " ")}: {s.summary}
+              <Cites ids={[s.id]} sources={new Map([[s.id, s]])} /> {s.summary}
             </li>
           ))}
         </ul>

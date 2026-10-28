@@ -8,7 +8,7 @@ import { checkClaims } from "./cite";
 import { crowdRef, FOUNDER_VOICE } from "./voice";
 import { briefData, knowledgeParts, type FitsInput } from "./fits";
 import { PLAN_STRATEGY, TOOLS, type AgentState } from "./tools";
-import type { AgentBudget, Finisher, Source } from "./loop";
+import { toRef, type AgentBudget, type Finisher, type Source } from "./loop";
 
 // A strategy for every most valuable fit as an agent run (PRD §23.2 step 6, problem 3). The ranking, the calendar,
 // each crowd's retailers and creators are already in hand (given sources); the agent reads the founder's context for
@@ -136,7 +136,7 @@ const FINISH_STRATEGY = {
   },
 };
 
-const refs = (sources: Map<string, Source>): SourceRef[] => [...sources.values()].map(({ id, tool, summary, callIds }) => ({ id, tool, summary, callIds }));
+const refs = (sources: Map<string, Source>): SourceRef[] => [...sources.values()].map(toRef);
 
 export const strategyFinisher: Finisher = {
   declaration: FINISH_STRATEGY,

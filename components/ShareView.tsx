@@ -1,6 +1,9 @@
 "use client";
 
+import { useMemo } from "react";
 import { ExecutivePlan } from "./Executive";
+import { RefsProvider } from "./Refs";
+import { refsFor } from "@/lib/refs";
 import type { TeamLive } from "./Team";
 import type { TeamState } from "@/lib/team/types";
 
@@ -11,7 +14,10 @@ const idle: TeamLive = { status: {}, lines: {}, replies: {}, asks: [], answers: 
 const none = () => {};
 
 export function ShareView({ team, brand, budget }: { team: TeamState; brand: string; budget?: string }) {
+  // Names link to where they came from here too (§23.8 c), from what the team found; nothing opens a subagent.
+  const refs = useMemo(() => refsFor({ team }), [team]);
   return (
+    <RefsProvider refs={refs}>
     <ExecutivePlan
       readOnly
       team={team}
@@ -28,5 +34,6 @@ export function ShareView({ team, brand, budget }: { team: TeamState; brand: str
       onRewritePlan={none}
       onBringBack={none}
     />
+    </RefsProvider>
   );
 }

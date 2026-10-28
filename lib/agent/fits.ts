@@ -10,7 +10,7 @@ import { timeContext } from "@/lib/time/now";
 import { checkClaims } from "./cite";
 import { FOUNDER_VOICE } from "./voice";
 import { crowdsOut, TOOLS, type AgentState } from "./tools";
-import type { AgentBudget, Finisher, Source } from "./loop";
+import { toRef, type AgentBudget, type Finisher, type Source } from "./loop";
 
 // Most valuable fits as an agent run (PRD §23.2 step 5, problems 1, 2 and 3G). The crowds the journey measured are
 // the starting point; the founder's context (the brief and every live fact from their files and site) decides what
@@ -159,7 +159,7 @@ const FINISH_FITS = {
   },
 };
 
-const refs = (sources: Map<string, Source>): SourceRef[] => [...sources.values()].map(({ id, tool, summary, callIds }) => ({ id, tool, summary, callIds }));
+const refs = (sources: Map<string, Source>): SourceRef[] => [...sources.values()].map(toRef);
 
 /** The calendar, when the agent didn't ask for one: retail moments and each crowd's own. */
 export function defaultCalendar(state: Pick<AgentState, "evidence" | "seasons">): Calendar {

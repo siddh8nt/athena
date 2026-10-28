@@ -32,7 +32,7 @@ import { athenaPlan } from "./athena-plan";
 import { brandFit } from "./brand-fit";
 import { leftOutOf } from "@/lib/exec/plan";
 import { askLead, missingInputs } from "@/lib/team/inputs";
-import { FOUNDER_VOICE } from "./voice";
+import { crowdRef, FOUNDER_VOICE } from "./voice";
 
 // The team runner (PRD §23.2 step 8): Athena turns the founder's goals into work for the specialists and runs them,
 // 2–3 at once, each a real agent on the step 2 loop with its own instructions, tools, budget and transcript. The
@@ -329,7 +329,7 @@ function given(t: TeamCtx, s: AgentState): NonNullable<AgentRun["given"]> {
     stockists: b.stockists.slice(0, 40),
     already_sells_in: b.soldIn,
     capacity: b.capacity,
-    crowds: crowds.map((c) => ({ id: c.id, name: c.name, main: c.main, stability: c.stability })),
+    crowds: crowds.map((c) => ({ id: c.id, ...crowdRef(c), main: c.main, stability: c.stability })),
     fits: s.fits?.fits.map((f) => ({ name: f.name, tier: f.tier, score: f.score })),
     aiming_at: aimed(t, s)?.name,
     next_crowd: t.next?.name,
@@ -921,7 +921,7 @@ ${FOUNDER_VOICE}
 Reply with JSON only.`,
       prompt:
         (t.answers?.length ? `The founder's answers so far: ${JSON.stringify(t.answers)}\n` : "") +
-        `The brand: ${JSON.stringify({ name: t.brand.name, sells: t.brand.product, channel: t.brand.channel, home_city: facts.city ?? "not known yet", stockists: t.brand.stockists.length, in_qloo: !!t.brand.ownId, crowds: t.crowds?.crowds.map((c) => c.name), fits: t.fits?.fits.map((f) => `${f.name} (${f.tier})`) })}\n` +
+        `The brand: ${JSON.stringify({ name: t.brand.name, sells: t.brand.product, channel: t.brand.channel, home_city: facts.city ?? "not known yet", stockists: t.brand.stockists.length, in_qloo: !!t.brand.ownId, crowds: t.crowds?.crowds.map(crowdRef), fits: t.fits?.fits.map((f) => `${f.name} (${f.tier})`) })}\n` +
         `The specialists and what each delivers: ${JSON.stringify(SPECIALISTS.map((s) => ({ id: s.id, delivers: s.delivers })))}\n` +
         `Goals the team knows how to run (ids to reuse when one fits): ${JSON.stringify(GOALS.filter((g) => g.id !== "know_crowd").map((g) => ({ id: g.id, label: g.label, team: g.team, conflicts: g.conflicts })))}\n` +
         "The Analyst measures the crowds first on every journey, so never propose knowing the customers as a goal: propose growth goals. Propose 3 or 4 goals for this brand now, the one you recommend first. Each goal is the founder's, with the specialists it takes (usually several). Mark goals that can't be pursued together in conflicts (by id). Only goals the specialists can deliver. Going deeper at home needs a home city: with none known it isn't a goal yet; with one, name the city in its label.\n" +

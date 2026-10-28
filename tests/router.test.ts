@@ -56,6 +56,13 @@ describe("router", () => {
     expect(k).toContain("message 0");
   });
 
+  it("names the founder's crowds as every page does, with their handles, and says members are never people (§23.8 b)", () => {
+    const k = teamKnowledge(input({ crowds: [{ name: "Liquid I.V. and Rachel Hollis fans", handle: "the Liquid I.V. crowd", shared: "Wellness routines and country radio." }] }));
+    expect(k).toContain('"handle":"the Liquid I.V. crowd"');
+    expect(selfKnowledge()).toMatch(/never people/);
+    expect(teamKnowledge(input())).not.toContain("The founder's crowds");
+  });
+
   it("with no model, sends a message on a subagent's page to that subagent, and anything else to the graph's reader", async () => {
     expect(codeRoute({ page: "rep", message: "Make it more playful" })).toMatchObject({ do: "handoff", to: "rep", task: "Make it more playful" });
     expect(codeRoute({ page: "dashboard", message: "We're in Whole Foods now" })).toEqual({ do: "graph" });

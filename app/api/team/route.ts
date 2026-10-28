@@ -101,6 +101,10 @@ export const POST = dated(async function post(req: Request) {
             team,
             open: strs(raw.open, 6, 200),
             plan: readPlanView(raw.planView),
+            crowds: (Array.isArray(raw.crowdNames) ? raw.crowdNames : [])
+              .map((c) => c as Record<string, unknown>)
+              .flatMap((c) => (str(c?.name, 160) ? [{ name: str(c.name, 160), handle: str(c.handle, 160) || undefined, shared: str(c.shared, 200) || undefined }] : []))
+              .slice(0, 8),
           },
           llm,
         )

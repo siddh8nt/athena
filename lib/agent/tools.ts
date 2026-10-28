@@ -163,7 +163,7 @@ const entityOut = (e: QlooEntity) => ({
 /** The crowds as the agent reads them: compact, with the numbers it may cite. */
 /** What each crowd number measures, so the model doesn't read an entity count or a 0–1 score as people. */
 const CROWD_KEY =
-  "Crowds are groups of entities (brands, artists, places, shows) that the same people love, measured from Qloo. members: entities in the crowd, not people. " +
+  "Crowds are groups of entities (brands, artists, places, shows) that the same people love, measured from Qloo. name: say it exactly as given the first time, then handle. shared: Athena's own read of what these people have in common, not a measurement. members: how many entities are in the crowd, never people, never to be quoted to the founder. " +
   "stability: 0–1, how often resampling Qloo's data gives back the same crowd (Hennig); under ~0.6 is soft, worth a probe. core_members: members certain above shuffled-data chance. " +
   "skew: the audience's age and gender lean from Qloo; each value is a relative lean (0 = average), not a share of the audience. cities.venues: venues in that city that score for the crowd. " +
   "near_miss: not a measured crowd. Fewer than three crowds held, so this is the group next to them (the strongest group too small to count, or the fringe along one taste axis); its numbers are real, it always sits in Watch, and it is called \"next to your crowds, not yours yet\".";
@@ -175,6 +175,8 @@ export function crowdsOut(r: CrowdsResult) {
     crowds: r.crowds.map((c) => ({
       id: c.id,
       name: c.name,
+      ...(c.handle ? { handle: c.handle } : {}),
+      ...(c.shared ? { shared: c.shared } : {}),
       main: c.main,
       ...(c.nearMiss ? { near_miss: true } : {}),
       members: c.size,
@@ -194,12 +196,12 @@ export function crowdsOut(r: CrowdsResult) {
 
 /** The crowds as results a specialist can return (§23.2 step 8b). */
 const crowdItems = (r: CrowdsResult) =>
-  r.crowds.map((c) => ({ id: itemId("crowd", c.name), kind: "crowd", name: c.name, why: `${c.nearMiss ? `${NEAR_MISS_LABEL}: a group` : c.main ? "Your main crowd" : "A crowd"} of ${c.size}, loving ${c.loves.slice(0, 3).map((l) => l.name).join(", ")}`, group: "crowd", ref: c.id }));
+  r.crowds.map((c) => ({ id: itemId("crowd", c.name), kind: "crowd", name: c.name, why: `${c.nearMiss ? `${NEAR_MISS_LABEL}: a group that loves` : c.main ? "Your main crowd: loves" : "Loves"} ${c.loves.slice(0, 3).map((l) => l.name).join(", ")}${c.shared ? `. ${c.shared}` : ""}`, group: "crowd", ref: c.id }));
 
 const crowdLine = (r: CrowdsResult) => {
   const held = heldCrowds(r);
   return r.crowds.length
-    ? `${held} crowd${held > 1 ? "s" : ""}${held < r.crowds.length ? " and a group next to them" : ""}: ${r.crowds.map((c) => `${c.name}${c.nearMiss ? ` (${NEAR_MISS_LABEL.toLowerCase()})` : c.stability !== undefined ? (c.stability < 0.6 ? " (still soft)" : " (firm)") : ""}`).join("; ")}`
+    ? `${held} crowd${held > 1 ? "s" : ""}${held < r.crowds.length ? " and a group next to them" : ""}: ${r.crowds.map((c) => `${c.name}${c.nearMiss ? ` (${NEAR_MISS_LABEL.toLowerCase()})` : ""}`).join("; ")}`
     : "no crowds: the seed had too little Qloo knows";
 };
 

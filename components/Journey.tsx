@@ -349,6 +349,8 @@ export function Journey() {
       facts: x.facts ?? [],
       // What the Brand Graph still asks the founder to settle, for Athena's plan to name.
       disagreements: editQs.map((q) => q.question),
+      // The crowds by name, handle and what they share, so Athena's chat names them as every page does (§23.8 b).
+      crowdNames: (x.crowds?.crowds ?? []).map((c) => ({ name: c.name, handle: c.handle, shared: c.shared })),
     };
   };
   const tm = useTeam({

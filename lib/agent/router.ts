@@ -4,7 +4,7 @@ import { TOOLS } from "./tools";
 import { briefFacts } from "@/lib/brief/facts";
 import { ATHENA, EXECUTIVE, SPECIALISTS, isSpecialist, nameOf, type AgentId, type SpecialistId } from "./specialists";
 import { checkChange } from "./interpret";
-import { FOUNDER_VOICE } from "./voice";
+import { crowdRef, FOUNDER_VOICE } from "./voice";
 import type { BrandBrief } from "@/lib/brief/types";
 import { MARKS, MARK_LABEL, type Answer, type GivenContact, type Route, type TeamState, type WaitScope } from "@/lib/team/types";
 import { DEFAULT_WAIT, norm, planView, profileOf, type PlanView, type Stage } from "@/lib/exec/plan";
@@ -36,6 +36,8 @@ export type RouteInput = {
   open: string[];
   /** Execute Plan as the page shows it (§23.5 r); without it, read from the team. */
   plan?: PlanView;
+  /** The founder's crowds as the page names them (§23.8 b). */
+  crowds?: { name: string; handle?: string; shared?: string }[];
 };
 
 const DATA = [
@@ -137,6 +139,7 @@ export function teamKnowledge(i: RouteInput): string {
   return [
     `The brand: ${i.brand.name}${i.brand.sells ? `, which sells ${i.brand.sells}` : ""}${i.brand.home ? `, based in ${i.brand.home}` : ""}.`,
     i.facts.length ? `What the Brand Graph holds:\n${i.facts.slice(0, 40).map((f) => `- ${f}`).join("\n")}` : "The Brand Graph is still thin.",
+    i.crowds?.length ? `The founder's crowds (name, handle, what they share as your read): ${JSON.stringify(i.crowds.map(crowdRef))}` : "",
     t.goals.length ? `The founder's goals: ${t.goals.filter((g) => g.id !== "know_crowd").map((g) => g.label).join("; ") || "not picked yet"}.` : "No goals picked yet.",
     steps.length ? `The workflow: ${steps.join("; ")}.` : "No workflow yet: the founder starts it from the dashboard.",
     works.length ? `What the team has found:\n${works.join("\n")}` : "The team hasn't found anything yet.",

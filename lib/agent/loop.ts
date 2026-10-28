@@ -96,7 +96,7 @@ function forModel(data: unknown): unknown {
 
 /** What the founder sees has no internal scores: the model says what they mean. */
 export const PLAIN_NUMBERS =
-  'Internal scores (popularity, stability, bridge, affinity or fit scores, any value between 0 and 1) are for your reasoning, not the founder: say what they mean in words ("a firm crowd", "among the shows both crowds love most"). Counts of people, places and members, percentages, prices and dates are fine to give.';
+  'Internal scores (popularity, stability, bridge, affinity or fit scores, any value between 0 and 1) are for your reasoning, not the founder: say what they mean in words ("a firm crowd", "among the shows both crowds love most"). Counts of residents (from the Census), places and shops, percentages, prices and dates are fine to give; the number of members in a crowd is not a count of people and is never given.';
 
 const SYSTEM = `You are Athena, a growth strategist for consumer brands. You reach the goal by calling tools, choosing each next step from what the last ones returned. Qloo's taste graph tells you who loves what; the real-world tools tell you how many people, how fast attention is moving and when.
 

@@ -5,7 +5,7 @@ import type { StrategyAnswer, StrategyResult } from "@/lib/strategy/types";
 import { CHANNEL_LABEL } from "@/lib/strategy/types";
 import { buildStrategies, topFits, type CrowdPicks, type StrategyBase, type StrategyIn } from "@/lib/strategy/build";
 import { checkClaims } from "./cite";
-import { FOUNDER_VOICE } from "./voice";
+import { crowdRef, FOUNDER_VOICE } from "./voice";
 import { briefData, knowledgeParts, type FitsInput } from "./fits";
 import { PLAN_STRATEGY, TOOLS, type AgentState } from "./tools";
 import type { AgentBudget, Finisher, Source } from "./loop";
@@ -62,7 +62,7 @@ export function strategyGiven(input: StrategyInput): { given: { tool: string; su
     {
       tool: "crowds",
       summary: `${crowds.length} most valuable fits: what each loves and where its venues are`,
-      data: { crowds: crowds.map((c) => ({ id: c.id, name: c.name, loves: c.loves.slice(0, 6).map((l) => l.name), cities: c.cities.slice(0, 6).map((x) => ({ city: x.name, venue: x.venue, venues: x.venues })) })) },
+      data: { crowds: crowds.map((c) => ({ id: c.id, ...crowdRef(c), loves: c.loves.slice(0, 6).map((l) => l.name), cities: c.cities.slice(0, 6).map((x) => ({ city: x.name, venue: x.venue, venues: x.venues })) })) },
     },
     {
       tool: "fits",

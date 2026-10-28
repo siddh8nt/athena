@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 
 // Developer mode (dev server only; the layout leaves it out of production builds). It wraps the browser's fetch for
 // /api/*: in Record it saves every response to /.cache/dev with a snapshot of the app after it; in Replay it serves
-// the recorded response (the exact request, else the closest for that route) and turns the server offline, so a
-// request with no recording gets fixtures and no Gemini, and nothing reaches Qloo or Google.
+// the recorded response (the exact request, else the closest from the same brand's run) and turns the server offline,
+// so a request with no recording (a brand never recorded) gets fixtures and no Gemini, and nothing reaches Qloo or Google.
 
 export type DevMode = "live" | "record" | "replay";
 const MODE = "athena:dev:mode";
@@ -76,7 +76,16 @@ function replayed(t: { status: number; type: string; body: string; ms: number })
   return new Response(stream, { status: t.status, headers });
 }
 
-function bump(kind: "recorded" | "replayed" | "nearest" | "fixtures") {
+/** The journey's brand as the page saved it, empty before onboarding names one: Replay keeps to that brand's run. */
+function journeyBrand(): string {
+  try {
+    return (JSON.parse(localStorage.getItem("athena:journey:v1") ?? "null") as { brief?: { name?: { value?: string } } } | null)?.brief?.name?.value ?? "";
+  } catch {
+    return "";
+  }
+}
+
+function bump(kind: "recorded" | "replayed" | "nearest" | "not recorded") {
   try {
     const c = JSON.parse(sessionStorage.getItem(COUNT) ?? "{}") as Record<string, number>;
     c[kind] = (c[kind] ?? 0) + 1;
@@ -100,14 +109,14 @@ function install() {
     const req = `${url.search}|${bodyText(init?.body)}`;
     const key = `${hash(`${init?.method ?? "GET"} ${path} ${req}`, 2166136261)}${hash(req, 374761393)}`;
     if (m === "replay") {
-      const hit = (await devPost({ op: "replay", path, key, req: bodyText(init?.body) }).catch(() => null)) as { tape: Parameters<typeof replayed>[0]; exact: boolean } | null;
+      const hit = (await devPost({ op: "replay", path, key, req: bodyText(init?.body), brand: journeyBrand() }).catch(() => null)) as { tape: Parameters<typeof replayed>[0]; exact: boolean } | null;
       // The founder's files always reach the server: a recording would show another run's list, or drop a file added or
       // removed now. Offline mode keeps the server from paid calls, so keeping them costs nothing.
       if (hit && path !== "/api/uploads") {
         bump(hit.exact ? "replayed" : "nearest");
         return replayed(hit.tape);
       }
-      bump("fixtures");
+      bump("not recorded");
       return real(input, init);
     }
     const t0 = Date.now();

@@ -35,20 +35,45 @@ function fields(req: string): Map<string, string> {
   return new Map(req.split("&").map((p) => [p.split("=")[0], p] as [string, string]));
 }
 
-/** The exact recording for this request, else the closest one for the same route (most equal fields, then newest). */
-export async function findTape(path: string, key: string, req: string): Promise<{ tape: Tape; exact: boolean } | undefined> {
+/** The exact recording for this request, else the closest one from the same brand's run (most equal fields, then
+ *  newest). `brand` is the journey's brand in the browser, empty before onboarding names one; then the request itself
+ *  must name the run's brand (a sample's first message, a website). A brand never recorded gets nothing here, so it
+ *  runs offline instead of playing another brand's run. */
+export async function findTape(path: string, key: string, req: string, brand = ""): Promise<{ tape: Tape; exact: boolean } | undefined> {
   const all = await tapesOf(path);
   const exact = all.find((t) => t.key === key);
   if (exact) return { tape: exact, exact: true };
-  if (!all.length) return undefined;
+  const best = nearest(all, req, brand, brandsOf(await listSnapshots()));
+  return best && { tape: best, exact: false };
+}
+
+const plain = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "");
+
+/** How far from a tape its run's snapshots can be: each recorded response saves one a moment after it. */
+const RUN_GAP = 15 * 60_000;
+
+/** A tape's brand: the journey's brand in the first snapshot saved after it, else the last one before it, within a run's gap. */
+export function brandsOf(snaps: { at: number; journey?: { brand?: string } }[]): (t: Tape) => string | undefined {
+  const named = snaps.filter((s) => s.journey?.brand).sort((a, b) => a.at - b.at);
+  return (t) => {
+    const after = named.find((s) => s.at >= t.at);
+    if (after && after.at - t.at <= RUN_GAP) return after.journey!.brand;
+    const before = named.filter((s) => s.at < t.at).at(-1);
+    return before && t.at - before.at <= RUN_GAP ? before.journey!.brand : undefined;
+  };
+}
+
+export function nearest(all: Tape[], req: string, brand: string, brandOf: (t: Tape) => string | undefined): Tape | undefined {
+  const named = (b: string | undefined) => !!b && !!plain(b) && (brand ? plain(b) === plain(brand) : plain(req).includes(plain(b)));
+  const same = all.filter((t) => named(brandOf(t)));
+  if (!same.length) return undefined;
   const want = fields(req);
   const score = (t: Tape) => {
     let n = 0;
     for (const [k, v] of fields(t.req)) if (want.get(k) === v) n++;
     return n;
   };
-  const best = all.sort((a, b) => score(b) - score(a) || b.at - a.at)[0];
-  return { tape: best, exact: false };
+  return same.sort((a, b) => score(b) - score(a) || b.at - a.at)[0];
 }
 
 export async function tapeCounts(): Promise<Record<string, number>> {

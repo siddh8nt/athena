@@ -26,7 +26,7 @@ export async function POST(req: Request) {
       await saveTape(body.tape as Tape);
       return NextResponse.json({ ok: true });
     case "replay": {
-      const hit = await findTape(String(body.path), String(body.key), String(body.req ?? ""));
+      const hit = await findTape(String(body.path), String(body.key), String(body.req ?? ""), String(body.brand ?? ""));
       return NextResponse.json(hit ?? null);
     }
     case "save":

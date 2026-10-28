@@ -1,7 +1,8 @@
 import { afterAll, describe, expect, it } from "vitest";
 import { readdir, readFile, rm } from "node:fs/promises";
 import path from "node:path";
-import { mintLink, resolveLink, revokeLink } from "@/lib/workspace/links";
+import { REPLACED, currentLink, mintLink, resolveLink, revokeLink } from "@/lib/workspace/links";
+import { POST as mcpPost } from "@/app/mcp/[secret]/route";
 
 // §23.6 c: a connect link is an opaque secret mapped to a workspace and a scope. The store keeps only the hash, a
 // new link replaces the old, and a read-only link is marked so the MCP server refuses writes.
@@ -67,5 +68,36 @@ describe("connect links (§23.6 c)", () => {
     const minted = await mintLink(id, "full");
     await revokeLink(id, "full");
     expect(await resolveLink(minted!.secret)).toBeUndefined();
+  });
+
+  it("says whether a live link exists, so a browser that lost its secret asks before replacing it (§23.6 d)", async () => {
+    const id = ws();
+    expect(await currentLink(id, "share")).toBe(false);
+    await mintLink(id, "share");
+    expect(await currentLink(id, "share")).toBe(true);
+    expect(await currentLink(id, "cal")).toBe(false);
+    await revokeLink(id, "share");
+    expect(await currentLink(id, "share")).toBe(false);
+  });
+});
+
+describe("an old link says what happened (§23.6 c)", () => {
+  const call = (secret: string) =>
+    mcpPost(new Request(`http://x/mcp/${secret}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 7, method: "tools/list" }) }), {
+      params: Promise.resolve({ secret }),
+    });
+
+  it("answers a replaced link with one line on the request's own id", async () => {
+    const id = ws();
+    const old = await mintLink(id, "full");
+    await mintLink(id, "full");
+    const res = await call(old!.secret);
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ jsonrpc: "2.0", id: 7, error: { code: -32001, message: REPLACED } });
+  });
+
+  it("gives a calendar or team link the same line, never the MCP server", async () => {
+    const cal = await mintLink(ws(), "cal");
+    expect(((await (await call(cal!.secret)).json()) as { error?: { message: string } }).error?.message).toBe(REPLACED);
   });
 });

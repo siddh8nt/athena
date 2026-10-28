@@ -81,6 +81,7 @@ const PATHS: Record<string, React.ReactNode> = {
   promoter: <path d="M4 10v4a1 1 0 001 1h2l6 4V5L7 9H5a1 1 0 00-1 1z M17 9a4 4 0 010 6 M19.5 6.5a7.5 7.5 0 010 11" />,
   executive: <path d="M9 5h10 M9 12h10 M9 19h10 M4 5l1 1 2-2 M4 12l1 1 2-2 M4.5 19h1.5" />,
   link: <path d="M9.5 14.5l5-5 M8 11l-2 2a3.5 3.5 0 005 5l2-2 M16 13l2-2a3.5 3.5 0 00-5-5l-2 2" />,
+  share: <path d="M12 15V4 M8 8l4-4 4 4 M6 12v6.5a1.5 1.5 0 001.5 1.5h9a1.5 1.5 0 001.5-1.5V12" />,
   dashboard: (
     <>
       <rect x="4" y="4" width="7" height="7" rx="1.5" />

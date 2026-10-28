@@ -8,8 +8,7 @@ import { execPlan, statesOf, stripOf } from "@/lib/exec/plan";
 import type { Answer, StepState, TeamState, Work, Workflow, WorkflowStep } from "@/lib/team/types";
 import type { Journey } from "@/lib/journey/types";
 import { thisWeek, weekEmpty, type WeekLine } from "@/lib/workspace/week";
-import { workspace } from "@/lib/knowledge/workspace";
-import { SaveButton, ShareLink, saveBrandFile, savePlanSheet } from "./McpConnect";
+import { MondayEmail, SaveButton, ShareLink, saveBrandFile, savePlanSheet } from "./McpConnect";
 import { Linked } from "./Refs";
 import { BRAND_FILE } from "@/lib/workspace/brand-file";
 import { PLAN_FILE } from "@/lib/workspace/plan-sheets";
@@ -262,7 +261,7 @@ function ThisWeek({ team, onRow }: { team: TeamState; onRow: (id: string) => voi
 }
 
 /** "Take your plan with you", once the plan is written: the brand file for the founder's AI assistant, the plan
- *  spreadsheet for the team, and the view-only share link, the same ones the Athena MCP panel gives. */
+ *  spreadsheet for the team, and the view-only share link, the same ones Connect with Athena MCP and Share your plan give. */
 function TakeAway() {
   const [saved, setSaved] = useState<string>();
   const file = (name: string, what: string, save: () => Promise<void>) => (
@@ -295,51 +294,6 @@ function TakeAway() {
         </li>
       </ul>
     </section>
-  );
-}
-
-/** "Email me this every Monday" (§23.6 j): the founder's address and one toggle, saved for the Monday run. Hidden
- *  until Athena's sending account is set up, so it never offers a send that can't happen. */
-function MondayEmail() {
-  const [ready, setReady] = useState(false);
-  const [email, setEmail] = useState("");
-  const [on, setOn] = useState(false);
-  const [note, setNote] = useState("");
-  useEffect(() => {
-    let live = true;
-    fetch(`/api/digest?ws=${encodeURIComponent(workspace())}`)
-      .then((r) => r.json())
-      .then((j: { ready?: boolean; email?: string; on?: boolean }) => {
-        if (!live) return;
-        setReady(!!j.ready);
-        if (j.email) setEmail(j.email);
-        setOn(!!j.on);
-      })
-      .catch(() => undefined);
-    return () => {
-      live = false;
-    };
-  }, []);
-  if (!ready) return null;
-  const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
-  const save = async (next: boolean) => {
-    if (!valid) return setNote("Add your email address first.");
-    setOn(next);
-    const r = await fetch("/api/digest", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ws: workspace(), email: email.trim(), on: next }) })
-      .then((x) => x.json() as Promise<{ ok?: boolean }>)
-      .catch(() => ({ ok: false }));
-    if (!r.ok) setOn(!next);
-    setNote(r.ok ? (next ? `Every Monday morning, to ${email.trim()}.` : "Off. Turn it on again any time.") : "Saving takes a moment; try the toggle again.");
-  };
-  return (
-    <div className="week-mail">
-      <label className="week-mail-toggle">
-        <input type="checkbox" checked={on} onChange={(e) => save(e.target.checked)} />
-        <span>Email me this every Monday</span>
-      </label>
-      <input type="email" className="week-mail-to" placeholder="you@yourbrand.com" value={email} onChange={(e) => (setEmail(e.target.value), setNote(""))} onBlur={() => on && valid && save(true)} aria-label="Your email address" />
-      {note && <small className="muted">{note}</small>}
-    </div>
   );
 }
 

@@ -32,6 +32,7 @@ import { keepFile, workspace } from "@/lib/knowledge/workspace";
 import { bySource, mergeNotes, themesOf, type Synth } from "@/lib/knowledge/notes";
 import { RunProgress, StepTimer } from "./Progress";
 import { ExecutivePlan } from "./Executive";
+import { dropLinks } from "./McpConnect";
 import { Linked, RefsProvider } from "./Refs";
 import { refsFor } from "@/lib/refs";
 import type { ExecItem } from "@/lib/exec/plan";
@@ -68,7 +69,7 @@ function readEntry(): { fresh: boolean; message: string } {
     const q = new URLSearchParams(window.location.search);
     const pack = packBySlug(q.get("pack"));
     const fresh = !!pack || q.get("new") === "1";
-    if (fresh) localStorage.removeItem(STORE);
+    if (fresh) (dropLinks(), localStorage.removeItem(STORE));
     return { fresh, message: pack?.message ?? "" };
   } catch {
     return { fresh: false, message: "" };
@@ -1083,6 +1084,8 @@ export function Journey() {
             type="button"
             className="linkish"
             onClick={() => {
+              // A new brand: the old one's links stop working rather than show the new plan (§23.6 d).
+              dropLinks();
               try {
                 localStorage.removeItem(STORE);
               } catch {

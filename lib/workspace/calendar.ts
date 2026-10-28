@@ -148,7 +148,7 @@ export function icsOf(entries: CalEntry[], o: { name: string; base?: string; now
   const now = o.now ?? Date.now();
   // A replaced link still answers, with no entries and a name that says where the current one is.
   const calName = o.replaced ? "Athena: this link was replaced" : `${o.name} · Athena`;
-  const calDesc = o.replaced ? "Open Athena, then Athena MCP › Calendar, for the current link." : `The dated steps of Athena's plan for ${o.name}: events, deadlines, follow-ups and launches.`;
+  const calDesc = o.replaced ? "Open Athena, then Share your plan › Calendar, for the current link." : `The dated steps of Athena's plan for ${o.name}: events, deadlines, follow-ups and launches.`;
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",

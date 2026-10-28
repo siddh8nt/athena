@@ -68,11 +68,13 @@ Athena is a Qloo hackathon entry. Submission is **28 Oct**, the only real date.
 - Seen once in a live run: "How does Magic Spoon sell today?" asked twice; crowd names could read better.
 - Parked reminders (raise only when the founder asks what's left): second gcloud key, Bench write-up, fast search API, Qloo limit request.
 
+**Known limit (links):** there are no accounts, so a link is tied to the browser that made it. Start over, `?new=1` and `?pack=` revoke the MCP, calendar and share links; once the founder clears the browser, nothing can revoke them. A browser that lost a link it still has on the server shows a calm line and New link, never a silent new link.
+
 **Where things live:**
 - **Dev mode:** `/dev` is `app/dev/page.tsx` (404 in production), the step map is `app/dev/DevMap.tsx`, tapes are in `lib/dev/`, and the fetch shim is `components/DevTape.tsx`. Recordings and snapshots are in `.cache/dev` (never committed).
 - **Onboarding:** `components/Onboard.tsx`. **Journey shell, composer and drop zone:** `components/Journey.tsx`. **Chat hook and file rules:** `components/chat.tsx`.
 - **Dashboard:** `components/Dashboard.tsx`. **Execute Plan:** `components/Executive.tsx` and `lib/exec/`.
-- **Athena MCP panel:** `components/McpConnect.tsx`. **MCP server:** `app/mcp/[secret]` and `lib/workspace/mcp.ts`. **Calendar:** `lib/workspace/calendar.ts`. **This week:** `lib/workspace/week.ts` and `digest.ts`.
+- **Sidebar rows "Connect with Athena MCP" and "Share your plan" (PRD §23.6 d), their panels and links:** `components/McpConnect.tsx`; on a phone both are in the Workspace menu. **Links:** `lib/workspace/links.ts`. **MCP server:** `app/mcp/[secret]` and `lib/workspace/mcp.ts`. **Calendar:** `lib/workspace/calendar.ts`. **This week:** `lib/workspace/week.ts` and `digest.ts`.
 - **Voice of every line the founder reads:** `lib/agent/voice.ts`. Fix wording through prompt context, never text filters.
 - **Landing page:** `app/page.tsx`, `app/landing.module.css` and `app/HeroGlow.tsx`.
 

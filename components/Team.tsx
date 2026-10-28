@@ -25,7 +25,7 @@ import { Cites } from "./Cites";
 import { Linked } from "./Refs";
 import { RunProgress, StepTimer, type ProgressStep } from "./Progress";
 import { NavIcon, RailToggle, useRail } from "./SideNav";
-import { McpConnect } from "./McpConnect";
+import { MCP_EVENT, McpConnect } from "./McpConnect";
 import type { CrowdCard } from "@/lib/journey/types";
 import { salesByCrowd, salesByPlace, spanOf, usd, type Sales } from "@/lib/sales/orders";
 
@@ -130,7 +130,10 @@ export function useTeam(p: {
     else if (e.type === "workflow") setTeam((t) => ({ ...t, workflow: e.workflow }));
     else if (e.type === "known") setTeam((t) => ({ ...t, answered: [...(t.answered ?? []).filter((x) => x.id !== e.answer.id), e.answer].slice(-24) }));
     else if (e.type === "plan") {
+      const first = !latestTeam.current.plan;
       setTeam((t) => ({ ...t, plan: e.plan }));
+      // Share your plan joins the sidebar with the first plan (§23.6 d); Athena says so once, with no badge.
+      if (first) p.say("Your plan is written. Share your plan, in the sidebar, has it as a spreadsheet, in your calendar and as a view-only page for your team.");
       // The Executive turns her plan into the founder's; Athena asks once before it starts (§23.5 r), and after that
       // new items run by themselves. A quiet re-plan after a mark changes no items, so it asks nothing.
       if (!runs.current.get(n)?.resynth) askExec();
@@ -963,7 +966,8 @@ export function TeamPanel({ live, team, active, onOpen, athena }: { live: TeamLi
       </div>
       <label className="team-menu">
         <span className="small muted">Workspace</span>
-        <select value={active} onChange={(e) => onOpen(e.target.value as View)}>
+        {/* The two panel rows join the menu; picking one opens its panel and the menu stays on the page. */}
+        <select value={active} onChange={(e) => (e.target.value === "connect" || e.target.value === "share" ? window.dispatchEvent(new CustomEvent(MCP_EVENT, { detail: e.target.value })) : onOpen(e.target.value as View))}>
           <option value="dashboard">Dashboard</option>
           {ids.map((id) => (
             <option key={id} value={id}>
@@ -971,6 +975,8 @@ export function TeamPanel({ live, team, active, onOpen, athena }: { live: TeamLi
             </option>
           ))}
           <option value={EXECUTIVE.id}>{EXECUTIVE.name} · {EXECUTIVE.role}</option>
+          <option value="connect">Connect with Athena MCP</option>
+          {team.plan && <option value="share">Share your plan</option>}
         </select>
       </label>
       <div className="team-list">
@@ -981,7 +987,7 @@ export function TeamPanel({ live, team, active, onOpen, athena }: { live: TeamLi
           {ids.filter((id) => id !== "athena").map((id) => <li key={id}>{row(id)}</li>)}
           <li>{item(EXECUTIVE.id, EXECUTIVE.name, undefined, undefined, `${EXECUTIVE.name}: ${EXECUTIVE.tile}`)}</li>
         </ul>
-        <McpConnect />
+        <McpConnect planned={!!team.plan} />
       </div>
     </aside>
   );

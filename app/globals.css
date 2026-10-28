@@ -976,7 +976,7 @@ a.button.big { padding: 11px 20px; font-size: 15px; font-weight: 600; }
 .ob-samples ul { list-style: none; margin: 0; padding: 0; display: flex; gap: 6px; }
 .ob-samples button { padding: 3px 10px; border-radius: 999px; font-size: 12px; color: var(--muted); background: transparent; transition: color 0.15s, border-color 0.15s; }
 .ob-samples button:hover { color: var(--fg); border-color: color-mix(in srgb, var(--fg) 28%, var(--line)); }
-/* §23.6 e: one quiet line under the samples that opens Athena MCP on the precomputed Fishwife plan. */
+/* §23.6 e: one quiet line under the samples that opens Athena MCP and Share your plan on the precomputed Fishwife plan. */
 .ob-mcp { margin-top: 10px; display: flex; justify-content: center; }
 .ob-mcp button { border: 0; background: none; padding: 2px 4px; font-size: 12px; color: var(--muted); text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--muted) 45%, transparent); text-underline-offset: 3px; cursor: pointer; }
 .ob-mcp button:hover { color: var(--fg); }
@@ -2122,9 +2122,10 @@ button.nav-item:hover:not(:disabled) { background: rgba(255, 255, 255, 0.045); c
 .nav.team-rail .team-working .nav-glyph::after { background: #e9e4da; animation: wvpulse 1.2s ease-in-out infinite; }
 .nav.team-rail .team-waiting .nav-glyph::after { background: #d9a441; }
 
-/* "Athena MCP" (§23.6 d): a quiet row set off from the subagents by a hairline above it. */
+/* Connect with Athena MCP and Share your plan (§23.6 d): two quiet rows set off from the subagents by one hairline. */
 .nav-mcp { margin-top: 10px; padding-top: 12px; border-top: 1px solid rgba(255, 255, 255, 0.06); border-radius: 0 0 7px 7px; }
 .nav.team-rail .nav-mcp { margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255, 255, 255, 0.07); border-radius: 7px; }
+.nav-mcp + .nav-share { margin-top: 2px; }
 
 /* The frosted side panel it opens: a right-hand sheet over the whole app, in the light surface, a full sheet on a phone. */
 .mcp-backdrop { position: fixed; inset: 0; z-index: 60; display: flex; justify-content: flex-end; background: rgba(20, 20, 18, 0.38); -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); animation: mcp-fade 160ms ease-out; }
@@ -2153,6 +2154,9 @@ button.nav-item:hover:not(:disabled) { background: rgba(255, 255, 255, 0.045); c
 .mcp-new { padding: 6px 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--fg); cursor: pointer; }
 .mcp-new:disabled { opacity: 0.5; cursor: default; }
 .mcp-note { margin: 2px 0 0; line-height: 1.45; }
+/* A link this browser no longer holds (§23.6 d): a calm line in place of the field, with New link below it. */
+.mcp-lost { margin: 0; padding: 9px 11px; border: 1px dashed var(--line); border-radius: 8px; line-height: 1.45; color: var(--fg); }
+.mcp-switch { margin-top: -4px; }
 .mcp-tag { display: inline-flex; gap: 6px; margin-top: 6px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; color: var(--muted); }
 .mcp-tag span { padding: 1px 7px; border: 1px solid var(--line); border-radius: 999px; background: var(--bg); }
 @keyframes mcp-fade { from { opacity: 0; } to { opacity: 1; } }
@@ -2913,7 +2917,7 @@ a.mcp-new { text-decoration: none; display: inline-flex; align-items: center; }
 }
 
 /* Every panel that slides or opens over the page (§23.7 f) is the same frosted sheet as the dashboard's (868fef1): the
-   onboarding panel, the chat drawer, the Athena MCP panel and a name's sheet. Each keeps its own shape and edge. */
+   onboarding panel, the chat drawer, the Connect and Share panels and a name's sheet. Each keeps its own shape and edge. */
 .agent-panel, .chat-drawer, .mcp-panel, .crowd-sheet {
   background:
     linear-gradient(160deg, rgba(255, 255, 255, 0.32) 0%, rgba(255, 255, 255, 0.06) 40%, rgba(255, 255, 255, 0) 65%, rgba(255, 255, 255, 0.1) 100%),

@@ -3165,17 +3165,34 @@ A founder asks Claude, Cursor or ChatGPT "what should I do next for Fishwife?" a
 - **The link:** each workspace gets a long random secret inside its URL. Firestore stores only the secret's hash, with its workspace and its scope (read and write, or read only).
 - **New link** makes a new secret, and the old link stops working at once.
 - **Headers too:** the same secret also works as `Authorization: Bearer …`, for tools that set headers.
-- **An old link** answers every call with one line: "This link was replaced. Open Athena › Use Athena elsewhere for the current one."
+- **An old link** answers every call with one line: "This link was replaced. Open Athena › Connect with Athena MCP for the current one."
 - **Trade-off, stated plainly:** a secret in a URL is weaker than OAuth, since anyone holding the link gets in. It's revocable in one click, and the public link is read only. OAuth can be added later on top of the same workspace mapping.
 
-#### (d) The "Use Athena elsewhere" panel
+#### (d) Two sidebar rows: "Connect with Athena MCP" and "Share your plan" (founder, 29 Oct)
 
-- **One place:** a quiet sidebar row below Subagents opens one frosted side panel (a full-screen sheet at 375 px), with four sections:
-  1. **Your AI assistant:** the link in one field with Copy, a segmented control (Claude · Claude Code · Cursor · ChatGPT) with three short steps for the chosen tool, and New link. For Claude Code, the step is one command to copy: `claude mcp add --transport http athena <link>` [VERIFY Cursor's steps].
-  2. **As a file:** (f).
-  3. **Calendar:** (g).
-  4. **Share with your team:** (k).
+The one panel built first ("Athena MCP") named only its most technical part. It's now two quiet rows below Subagents, split by where the plan goes: to the founder's AI, or to people and their tools. Each opens the frosted side panel (a full-screen sheet at 375 px).
+
+1. **Connect with Athena MCP**, from the end of onboarding:
+   - **Connect an MCP client:** the link in one field with Copy, a segmented control (Claude · Claude Code · Cursor · ChatGPT) with three short steps for the chosen tool, and New link. For Claude Code, the step is one command to copy: `claude mcp add --transport http athena <link>` [VERIFY Cursor's steps].
+   - **As a file:** `athena-brand.md` (f), the same context for an AI tool that can't connect.
+   - **What it can read now:** one line. Before the plan is written, the brand and what Athena knows so far; after, the plan and drafts too. The link is live, so it fills in as the work lands.
+   - **What the link can do:** one line. It reads the plan, marks tasks, answers Athena's questions, adds facts and asks Athena (which uses the budget), so it's kept private like a password, and New link cuts off the old one.
+2. **Share your plan**, once the plan is written (the same moment as the dashboard's "Take your plan with you"). Hidden until then, so no section is ever empty:
+   - **The plan as a spreadsheet:** `athena-plan.xlsx`.
+   - **Calendar:** (g).
+   - **Share with your team:** (k).
+   - **Monday email:** (j)'s toggle, hidden until Athena's sending account is set up.
+   - **Copies and live links:** one line. A file is a copy made when it's downloaded, and says when inside; the calendar feed and the team link follow the plan.
+
+- **Said once:** when the plan is first written, Athena says in the chat that Share your plan has it as a spreadsheet, in a calendar and as a link for the team. No badge.
 - **Founder words:** "link", never "token", "bearer" or "endpoint". One small line names it an MCP server, for anyone who looks for that.
+- **Access (founder, 29 Oct):**
+  - **One job per link:** the team link only shows the plan, the calendar link only gives the dates, and only the MCP link can change anything.
+  - **Never replaced without asking:** if this browser no longer holds a link the server still has, the panel says so and offers New link, which says the old one stops working. No link is minted over a live one without that click.
+  - **An old link says what happened:** the MCP answers with the line in (c); the share page and the calendar feed already do.
+  - **Start over** (a new brand in the same browser) revokes the old brand's links, so a co-founder or a calendar holding them never sees the new brand's plan. The new brand gets its own.
+  - **No accounts:** a founder who clears this browser can't revoke links given out before. A known limit until there's sign-in.
+  - **The judges' demo** stays fixed and read only, with no New link; its panel shows both rows' sections behind one switch.
 
 #### (e) The judges' demo link
 
@@ -3234,7 +3251,7 @@ A founder asks Claude, Cursor or ChatGPT "what should I do next for Fishwife?" a
 
 #### (m) Dev mode
 
-- Each new view and state gets a card on the `/dev` step map (§23.5 o): the panel's four sections, a replaced link, the demo link, This week, the What's working sales view and the share page.
+- Each new view and state gets a card on the `/dev` step map (§23.5 o): both panels' sections (Connect with Athena MCP before and after the plan, Share your plan), a lost link, a replaced link, the demo link, This week, the What's working sales view and the share page.
 
 #### (n) The brand-fit check (founder, 27 Oct)
 

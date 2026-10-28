@@ -20,6 +20,9 @@ export type Scope = "full" | "read" | "cal" | "share";
 /** What a secret opens, as stored under its hash. Never includes the secret itself. */
 export type LinkMeta = { ws: string; scope: Scope; at: number; label?: string };
 
+/** What an old or replaced link answers in the founder's AI tool (§23.6 c): what happened, and where the current one is. */
+export const REPLACED = "This Athena link was replaced. Open Athena, then Connect with Athena MCP in the sidebar, for the current one.";
+
 const hashOf = (secret: string) => createHash("sha256").update(secret).digest("hex");
 
 /** A URL-safe secret with plenty of entropy; base64url of 24 random bytes (~32 chars), no padding. */
@@ -47,6 +50,15 @@ export async function resolveLink(secret: string | undefined | null): Promise<Li
   if (!secret || !/^[A-Za-z0-9_-]{16,128}$/.test(secret)) return undefined;
   if (secret === DEMO_SECRET) return DEMO_LINK;
   return (await getStore().get<LinkMeta>(LINK, hashOf(secret)))?.value;
+}
+
+/** Whether a workspace has a live link for a scope. The panel asks before minting one, so a browser that lost the
+ *  secret it was shown never replaces a link the founder already gave out without saying so (§23.6 d). */
+export async function currentLink(ws: string, scope: Scope): Promise<boolean> {
+  if (!ws || reserved(ws)) return false;
+  const store = getStore();
+  const hash = (await store.get<string>(CUR, `${ws}:${scope}`))?.value;
+  return !!hash && !!(await store.get<LinkMeta>(LINK, hash))?.value;
 }
 
 /** Revoke the current link for a workspace and scope, so its URL stops resolving. */

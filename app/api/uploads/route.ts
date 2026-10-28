@@ -1,5 +1,6 @@
 import { LIMITS, clientIp } from "@/lib/limits";
 import { FILE_LIMITS } from "@/lib/knowledge/read";
+import { sniff } from "@/lib/brief/extract";
 import { addUpload, deleteUpload, listUploads, meter, validWorkspace } from "@/lib/knowledge/uploads";
 import { dated } from "@/lib/time/now";
 
@@ -31,7 +32,10 @@ export const POST = dated(async function post(req: Request) {
   if (list.length >= MAX_FILES) return note(`That's ${MAX_FILES} files; remove one to add another`);
   const cap = LIMITS.upload(clientIp(req));
   if (!cap.ok) return note(cap.message);
-  const up = await addUpload(ws, file.name.slice(0, 120), new Uint8Array(await file.arrayBuffer()));
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  // The page only sends files Athena reads; this holds for any other way in, by what the bytes are.
+  if (sniff(bytes) === "unknown") return note("I read PDF, Word, Excel, PowerPoint, CSV, text and pictures (PNG, JPEG, WebP)");
+  const up = await addUpload(ws, file.name.slice(0, 120), bytes);
   const files = await listUploads(ws);
   return Response.json({ file: { ...up, kept: true }, files, meter: meter(files) });
 });

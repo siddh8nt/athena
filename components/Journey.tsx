@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ACCEPT, RecordView, TrailView, useBriefChat, type FileChip, type Msg } from "./chat";
+import { ACCEPT, readable, refusal, RecordView, TrailView, useBriefChat, type FileChip, type Msg } from "./chat";
 import type { WorkRecord } from "@/lib/agent/record";
 import { BrandGraph, StaleFlag } from "./BrandGraph";
 import { ordinal } from "./Blocks";
@@ -139,6 +139,24 @@ export function Journey() {
   const [j, setJ] = useState<JourneyState>(saved?.journey ? loadedJourney(saved.journey) : emptyJourney());
   const [text, setText] = useState(start.message);
   const [drag, setDrag] = useState(false);
+  // A file let go anywhere never opens in the tab and leaving this page, and the highlight always clears: a drop a
+  // child box handles itself (the Brand Graph's) doesn't reach the page.
+  useEffect(() => {
+    const files = (e: DragEvent) => !!e.dataTransfer?.types.includes("Files");
+    const over = (e: DragEvent) => files(e) && e.preventDefault();
+    const done = (e: DragEvent) => {
+      if (files(e)) e.preventDefault();
+      setDrag(false);
+    };
+    window.addEventListener("dragover", over);
+    window.addEventListener("drop", done);
+    window.addEventListener("dragend", done);
+    return () => {
+      window.removeEventListener("dragover", over);
+      window.removeEventListener("drop", done);
+      window.removeEventListener("dragend", done);
+    };
+  }, []);
   // The Taste Galaxy as it forms, round by round, while the Analyst measures.
   const [forming, setForming] = useState<GalaxyData | undefined>();
   // The Analyst finished measuring this visit (so an empty result reads as "not enough in Qloo", not as waiting).
@@ -671,7 +689,11 @@ export function Journey() {
     return true;
   };
   /** A file added after onboarding (§23.2 step 7d): read through the knowledge reader into the graph, as one edit. */
-  const readFiles = async (all: File[]) => {
+  const readFiles = async (dropped: File[]) => {
+    // A file Athena doesn't read stays a chip saying what to send instead, and never goes up.
+    const no = dropped.filter((f) => !readable(f));
+    if (no.length) setGraphChips((c) => [...c.filter((x) => !no.some((f) => f.name === x.name)), ...no.map((f) => ({ name: f.name, status: refusal(f.name), busy: false }))]);
+    const all = dropped.filter(readable);
     const isOrders = await Promise.all(all.map((f) => (/\.csv$/i.test(f.name) || f.type === "text/csv" ? readSales(f) : Promise.resolve(false))));
     const fs = all.filter((_, i) => !isOrders[i]);
     if (!fs.length) return;
@@ -889,6 +911,15 @@ export function Journey() {
           send();
         }}
       >
+        {!onboarding &&
+          Object.entries(chat.refused).map(([n, t]) => (
+            <small key={n} className="muted ob-file-note">
+              {n}: {t}
+              <button type="button" className="linkish" aria-label={`Dismiss ${n}`} onClick={() => chat.dismiss(n)}>
+                ✕
+              </button>
+            </small>
+          ))}
         {!!chat.files.length && (
           <ul className="chips">
             {chat.files.map((f, i) => (
@@ -1013,12 +1044,16 @@ export function Journey() {
     if (!tm.live.asks.some((a) => a.id === "goals") && !tm.live.running) void tm.propose();
   };
 
+  // Only a drag carrying files lights the page, and only leaving the page itself (not crossing into a child) dims it.
   const dropZone = {
     onDragOver: (e: React.DragEvent) => {
+      if (!e.dataTransfer.types.includes("Files")) return;
       e.preventDefault();
       setDrag(true);
     },
-    onDragLeave: () => setDrag(false),
+    onDragLeave: (e: React.DragEvent) => {
+      if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDrag(false);
+    },
     onDrop: (e: React.DragEvent) => {
       e.preventDefault();
       setDrag(false);
@@ -1052,7 +1087,7 @@ export function Journey() {
       </header>
       {onboarding ? (
         <main className="journey-main ob-main">
-          <Onboard brief={brief} files={chat.files} addFiles={chat.addFiles} setFiles={chat.setFiles} onBrief={onBrief} onFacts={onRaw} graph={graphEl} dock={dockEl} grouping={working?.by === "graph" ? working.text : undefined} onRecord={(r) => (record.current = r)} />
+          <Onboard brief={brief} files={chat.files} addFiles={chat.addFiles} refused={chat.refused} dismiss={chat.dismiss} setFiles={chat.setFiles} onBrief={onBrief} onFacts={onRaw} graph={graphEl} dock={dockEl} grouping={working?.by === "graph" ? working.text : undefined} onRecord={(r) => (record.current = r)} />
         </main>
       ) : page === "dashboard" ? (
         <DashboardPage nav={navEl} chat={chatEl} paused={pausedFor} open={drawer} setOpen={setDrawer}>

@@ -105,6 +105,8 @@ export function Onboard({
   brief,
   files,
   addFiles,
+  refused,
+  dismiss,
   setFiles,
   onBrief,
   onFacts,
@@ -116,6 +118,9 @@ export function Onboard({
   brief: BrandBrief;
   files: File[];
   addFiles: (f: FileList | File[]) => void;
+  /** Files Athena doesn't read, each with what to send instead; never uploaded. */
+  refused: Record<string, string>;
+  dismiss: (name: string) => void;
   setFiles: (f: File[]) => void;
   /** early: the first brief from the home and About pages, replaced in place by the full one. */
   onBrief: (brief: BrandBrief, assumptions: string[], facts: LiveFact[], early?: boolean) => void;
@@ -170,6 +175,8 @@ export function Onboard({
   const [meter, setMeter] = useState<Meter>();
   const [adding, setAdding] = useState<string[]>([]);
   const [notes, setNotes] = useState<Record<string, string>>({});
+  // Files the founder took back while they were still going up: skipped, or removed again once kept.
+  const dropped = useRef(new Set<string>());
   const [left, setLeft] = useState<Set<string>>(new Set());
   const [kb, setKb] = useState<Knowledge>();
   const [struck, setStruck] = useState<Set<string>>(new Set());
@@ -216,11 +223,16 @@ export function Onboard({
     setAdding((a) => [...a, ...batch.map((f) => f.name)]);
     void (async () => {
       for (const f of batch) {
+        if (dropped.current.delete(f.name)) continue;
         const form = new FormData();
         form.set("ws", ws);
         form.set("file", f);
         try {
           const j = (await (await fetch("/api/uploads", { method: "POST", body: form })).json()) as { file: Kept & { kept: boolean; status: string }; files: Kept[]; meter: Meter };
+          if (dropped.current.delete(f.name)) {
+            if (j.file?.kept && j.file.hash) void remove({ ...j.file, kept: true });
+            continue;
+          }
           if (j.files) setKept(j.files);
           if (j.file?.kept) {
             setRefiled(true);
@@ -238,6 +250,15 @@ export function Onboard({
       }
     })();
   }, [files, ws, setFiles]);
+
+  /** Takes back a file still going up: it leaves the list now and never stays kept. */
+  function cancel(name: string) {
+    dropped.current.add(name);
+    setAdding((a) => {
+      const i = a.indexOf(name);
+      return i < 0 ? a : [...a.slice(0, i), ...a.slice(i + 1)];
+    });
+  }
 
   async function remove(u: Kept) {
     setKept((k) => k.filter((x) => x.hash !== u.hash));
@@ -509,13 +530,27 @@ export function Onboard({
               <Icon d="file" size={13} />
               <span className="ob-file-name">{n}</span>
               <small className="muted">keeping it</small>
+              <button type="button" className="linkish" aria-label={`Remove ${n}`} title="Don't add this file" onClick={() => cancel(n)}>
+                ✕
+              </button>
             </li>
           ))}
         </ul>
       )}
+      {Object.entries(refused).map(([n, t]) => (
+        <small key={`no:${n}`} className="muted ob-file-note">
+          {n}: {t}
+          <button type="button" className="linkish" aria-label={`Dismiss ${n}`} onClick={() => dismiss(n)}>
+            ✕
+          </button>
+        </small>
+      ))}
       {Object.entries(notes).map(([n, t]) => (
         <small key={n} className="muted ob-file-note">
           {n}: {t}
+          <button type="button" className="linkish" aria-label={`Dismiss ${n}`} onClick={() => setNotes(({ [n]: _, ...rest }) => rest)}>
+            ✕
+          </button>
         </small>
       ))}
       {over && meter && (

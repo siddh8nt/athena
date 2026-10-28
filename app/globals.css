@@ -453,6 +453,8 @@ a.button.big { padding: 11px 20px; font-size: 15px; font-weight: 600; }
 /* ---- The journey (v3.0, §13.1–13.2): conversation left, canvas right, progress rail on top ---- */
 .journey { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr; grid-template-areas: "top" "main"; height: 100vh; height: 100dvh; overflow: hidden; background: var(--bg); }
 .journey.dragging { outline: 2px dashed var(--accent); outline-offset: -6px; }
+.journey.dragging::after { content: "Drop files to add them"; position: fixed; left: 50%; bottom: 32px; transform: translateX(-50%); z-index: 90; padding: 10px 18px; border-radius: 999px; background: var(--accent); color: #fff; font-size: 14px; pointer-events: none; animation: drop-in 0.15s ease-out; }
+@keyframes drop-in { from { opacity: 0; transform: translate(-50%, 6px); } }
 .journey-loading { background: var(--bg); }
 .journey-shape-main { grid-area: main; display: grid; grid-template-columns: minmax(0, 1fr); min-height: 0; }
 .journey-shape { overflow: hidden; }
@@ -1005,6 +1007,7 @@ a.button.big { padding: 11px 20px; font-size: 15px; font-weight: 600; }
 .ob-file input[type="checkbox"] { margin: 0; }
 .ob-file .linkish { color: var(--muted); font-size: 11px; }
 .ob-file-note { display: block; font-size: 12px; padding: 0 4px; }
+.ob-file-note .linkish { margin-left: 6px; font-size: 11px; }
 ::view-transition-group(ob-box) { animation-duration: 0.5s; animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1); }
 
 /* The workspace: the team on the left (Athena now, the specialists in step 8f), the transcript, the panel. */

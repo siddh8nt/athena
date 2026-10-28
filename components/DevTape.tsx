@@ -101,7 +101,9 @@ function install() {
     const key = `${hash(`${init?.method ?? "GET"} ${path} ${req}`, 2166136261)}${hash(req, 374761393)}`;
     if (m === "replay") {
       const hit = (await devPost({ op: "replay", path, key, req: bodyText(init?.body) }).catch(() => null)) as { tape: Parameters<typeof replayed>[0]; exact: boolean } | null;
-      if (hit) {
+      // The founder's files always reach the server: a recording would show another run's list, or drop a file added or
+      // removed now. Offline mode keeps the server from paid calls, so keeping them costs nothing.
+      if (hit && path !== "/api/uploads") {
         bump(hit.exact ? "replayed" : "nearest");
         return replayed(hit.tape);
       }

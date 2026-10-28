@@ -20,7 +20,25 @@ export type Trail = { steps: { text: string; done: boolean }[]; sources: { title
 export type Msg = { who: "athena" | "you"; text: string; files?: string[]; trail?: Trail; card?: string; record?: WorkRecord; /** The subagent whose step trail goes under the line (§23.2 step 8.5k). */ run?: SpecialistId; /** Athena handing a workflow step to that subagent: one line per subagent, updated in place (§23.5 p). */ handoff?: boolean; /** Athena's reply still streaming in (§23.2 step 8.5n). */ live?: boolean; /** Where a question was asked: its answer shows here once given. */ asked?: string };
 export type FileChip = { name: string; status: string; busy: boolean };
 
-export const ACCEPT = ".png,.jpg,.jpeg,.webp,.pdf,.txt,.csv,.tsv,.xlsx,.pptx,.docx,image/*";
+/** The files Athena reads (decided 28 Oct): documents, sheets, decks and pictures. Every way in checks it: the Files
+ *  button, a drop, a paste and the Brand Graph's box. */
+const READS = [".pdf", ".docx", ".txt", ".md", ".xlsx", ".csv", ".tsv", ".pptx", ".png", ".jpg", ".jpeg", ".webp"];
+export const ACCEPT = READS.join(",");
+
+const ext = (name: string) => name.toLowerCase().match(/\.[a-z0-9]+$/)?.[0] ?? "";
+
+/** Whether Athena reads this file, by its name. */
+export const readable = (f: File) => READS.includes(ext(f.name));
+
+/** The line for a file Athena doesn't read: what to send instead. */
+export function refusal(name: string): string {
+  const e = ext(name);
+  if ([".mp4", ".mov", ".m4v", ".avi", ".webm", ".mkv", ".mp3", ".wav", ".m4a", ".aac"].includes(e)) return "I read documents, sheets, decks and pictures, not video or audio. A PDF or Word export works";
+  if ([".pages", ".numbers", ".key"].includes(e)) return "Export it as a PDF, Word, Excel or PowerPoint file and I'll read it";
+  if ([".doc", ".xls", ".ppt"].includes(e)) return "Save it as .docx, .xlsx or .pptx and I'll read it";
+  if ([".heic", ".heif"].includes(e)) return "Save it as a JPEG and I'll read it";
+  return "I read PDF, Word, Excel, PowerPoint, CSV, text and pictures (PNG, JPEG, WebP)";
+}
 
 export { sourceLabel };
 
@@ -43,7 +61,16 @@ export function useBriefChat(initial?: { brief: BrandBrief; msgs: Msg[]; turn: T
   // nothing left to introduce, even if they haven't typed in the chat yet.
   const first = !msgs.some((m) => m.who === "you") && !brief.name?.value;
 
-  const addFiles = (list: FileList | File[]) => setFiles((f) => [...f, ...Array.from(list)].slice(0, 10));
+  // Files Athena doesn't read, by name, with the line saying what to send instead. They never go up.
+  const [refused, setRefused] = useState<Record<string, string>>({});
+  const addFiles = (list: FileList | File[]) => {
+    const all = Array.from(list);
+    const no = all.filter((f) => !readable(f));
+    if (no.length) setRefused((r) => ({ ...r, ...Object.fromEntries(no.map((f) => [f.name, refusal(f.name)])) }));
+    const yes = all.filter(readable);
+    if (yes.length) setFiles((f) => [...f, ...yes].slice(0, 10));
+  };
+  const dismiss = (name: string) => setRefused(({ [name]: _, ...rest }) => rest);
 
   // Once research ends, send what the founder wrote meanwhile (already shown in the chat).
   useEffect(() => {
@@ -131,7 +158,7 @@ export function useBriefChat(initial?: { brief: BrandBrief; msgs: Msg[]; turn: T
     }
   }
 
-  return { brief, setBrief, msgs, setMsgs, turn, setTurn, files, setFiles, addFiles, chips, busy, status, live, researching, queued, first, send };
+  return { brief, setBrief, msgs, setMsgs, turn, setTurn, files, setFiles, addFiles, refused, dismiss, chips, busy, status, live, researching, queued, first, send };
 }
 
 const domain = (u?: string) => {

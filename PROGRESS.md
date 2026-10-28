@@ -1,6 +1,6 @@
 # Athena progress
 
-Last updated: 27 Oct 2026. This file is a summary for the team.
+Last updated: 28 Oct 2026. This file is a summary for the team.
 
 - **Source of truth:** `ATHENA PRD.md` v5.0, §23. §23.2 is the build order.
 - **Next build:** `HANDOFF.md`.
@@ -33,17 +33,17 @@ Athena is a taste-led growth agent for consumer brands, built for the Qloo hacka
 | §23.2 step | State |
 |---|---|
 | 1–8.6, including §23.5 (a)–(r) | Built and verified live, on `complete-rework`. |
-| 8.7 Athena in the founder's own tools (§23.6) | Specced, not built. |
-| 8.8 Dev mode out of the founder's UI, and a polish pass (§23.7) | Specced, not built. |
+| 8.7 Athena in the founder's own tools (§23.6) | Built, pushed and deployed. |
+| 8.8 Dev mode out of the founder's UI, and a polish pass (§23.7) | Built, pushed and deployed. |
 | 9 The context test | Not started. |
 | 10 QA, deploy and write-up | Not started. |
 
-**Checks:** tsc is clean, and vitest passes 629/629.
+**Checks:** tsc is clean, and vitest passes 699/699.
 
 **What has gone where:**
-- `complete-rework` is 13 commits ahead of GitHub, none pushed.
+- `complete-rework` is at `bcfddb2` and pushed to GitHub.
 - `main` is untouched.
-- The Cloud Run preview is on rev 00002.
+- The Cloud Run preview is on revision `athena-00004-klz`, deployed from `bcfddb2`.
 
 ## How we work
 

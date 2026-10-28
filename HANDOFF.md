@@ -1,40 +1,23 @@
-# Handoff: building PRD v5.0 §23.2 steps 8.8 and 8.7
+# Handoff: PRD v5.0 §23.2 is built through step 8.8
 
 This is a **guide** for a new Claude Code session on the founder's machine, in this same folder. It is not the spec.
 
-- **The spec is `ATHENA PRD.md` §23.** For this handoff that means the §23.2 table (rows 8.7 and 8.8), **§23.7** (step 8.8) and **§23.6** (step 8.7). Where this file and the PRD disagree, the PRD wins.
-- **Branch:** `complete-rework`, at `176caff`. It is 13 commits ahead of `origin/complete-rework`, none of them pushed. Work only on this branch, and don't open a PR or merge to `main`.
-- **The session runs locally** with the founder's real keys in `.env`, so live checks run here.
+- **The spec is `ATHENA PRD.md` §23.** Where this file and the PRD disagree, the PRD wins.
+- **Branch:** `complete-rework`, at `bcfddb2`, **pushed** to `origin/complete-rework` (28 Oct). Work only on this branch, and don't open a PR or merge to `main`.
+- **Live:** Cloud Run revision `athena-00004-klz`, deployed from `bcfddb2`. Service URL https://athena-610996920841.us-central1.run.app (the older https://athena-zgaqinafna-uc.a.run.app also works).
+- **The session runs locally** with the founder's real keys in `.env`, so live checks run here. **The API budget is low:** make no paid calls (live runs, Record, run buttons) without the founder's yes. Use dev mode's Replay.
 
 ---
 
 ## 1. Start here (do this before any edit)
 
 1. **Read `CLAUDE.md`.**
-2. **Read `ATHENA PRD.md` §23 in full:**
-   - §23.1, the founder's problems, verbatim;
-   - §23.2, the build order;
-   - §23.3, coverage;
-   - §23.4, the rules;
-   - §23.5, step 8.6 in detail, items (a)–(r). Its (p), (q) and (r) are the most recent UI decisions;
-   - §23.6, step 8.7;
-   - §23.7, step 8.8.
+2. **Read `ATHENA PRD.md` §23 in full:** §23.1 (the founder's problems, verbatim), §23.2 (the build order), §23.3 (coverage), §23.4 (the rules), §23.5 (step 8.6, items (a)–(r)), §23.6 (step 8.7) and §23.7 (step 8.8). `PLAN v4.md` is a superseded draft. Never build from it.
+3. **Memory:** `CLAUDE.md` says to re-read `MEMORY.md` and `build-status.md` in the Claude Code memory folder (`~/.claude/projects/C--Users-siddh-OneDrive-Desktop-BUILDING-QLOO-HACKATHON/memory/`). If this account can't see them, sections 2 and 3 of this file replace them.
+4. **Ask the founder what's next.** Every step through 8.8 is built. Step 9 (the context test) is not started and waits on the founder. The open decisions in section 2 are theirs too.
+5. **Before writing code for anything new, write a short plan** (files, what each covers, how it will be checked), show it to the founder and wait for their go.
 
-   `PLAN v4.md` is a superseded draft. Never build from it.
-3. **Memory:** `CLAUDE.md` says to re-read `MEMORY.md` and `build-status.md` in the Claude Code memory folder (`~/.claude/projects/C--Users-siddh-OneDrive-Desktop-BUILDING-QLOO-HACKATHON/memory/`).
-   - If this account can see them, read them. Their last entries match this file.
-   - If it can't, sections 2 and 3 of this file replace them.
-4. **Ask the founder which step to build first:** 8.8 or 8.7. Both are specced and neither is built. The order against §23.5 (r) is the founder's call.
-   - 8.8 is smaller, and clears what judges and founders see.
-   - 8.7 is the larger feature step.
-5. **Before writing code, write a short plan for that step:**
-   - which files;
-   - which spec items each file covers;
-   - how each "done when" will be checked.
-
-   Show the plan to the founder and wait for their go.
-
-## 2. Where the project is (27 Oct)
+## 2. Where the project is (28 Oct)
 
 Athena is a Qloo hackathon entry. Submission is **28 Oct**, the only real date.
 
@@ -42,31 +25,48 @@ Athena is a Qloo hackathon entry. Submission is **28 Oct**, the only real date.
 - Next.js 16 with React 19 and TypeScript, using pnpm through corepack;
 - Gemini on Vertex, through ADC;
 - the Qloo hackathon API, with two keys rotated;
-- Firestore and Cloud Run for the deploy. The Cloud Run preview is on rev 00002 and has not been redeployed.
+- Firestore and Cloud Run for the deploy.
 
 | §23.2 step | State |
 |---|---|
-| 1–8.6, including §23.5 (a)–(r) | Built and verified live. Commits are in `git log`; the latest app commit is `fb163c4`. |
-| **8.7 Athena in the founder's own tools** (§23.6) | Specced in `176caff`. **Not built.** |
-| **8.8 Dev mode out of the founder's UI, and a polish pass** (§23.7) | Specced in `176caff`. **Not built.** |
-| 9 The context test, 10 QA, deploy and write-up | Not started. Out of scope here. |
+| 1–8.6, including §23.5 (a)–(r) | Built and verified live. |
+| 8.7 Athena in the founder's own tools (§23.6) | Built (through `b6f474e`), pushed, deployed. |
+| 8.8 Dev mode out of the founder's UI, and a polish pass (§23.7) | Built (`da9ecb6`…`87a3620`), pushed, deployed. Its prompt-voice fixes haven't been seen on a live call yet. |
+| 9 The context test, 10 QA, deploy and write-up | Not started. |
 
-**Checks at `fb163c4`:** tsc is clean, and vitest passes 629/629.
+**Checks at `bcfddb2`:** tsc is clean, and vitest passes 699/699. Two tests (`knowledge.test.ts` "keeps a long list whole", `methods.test.ts` "parses dates the way pages write them") have flaked once under full-suite load; each passes alone.
 
-**No known open bugs.**
+**Since 8.8 (founder-requested, both pushed and deployed):**
+- `2d05511`:
+  - Sample brands name their product everywhere: "Brightland olive oil", "Starface pimple patches", "Fishwife tinned fish" (a `product` field in `lib/journey/packs.ts`). Any new sample needs one.
+  - The MCP panel and the first screen use product terms: MCP server, MCP client, server URL, resources and tools, New URL.
+  - Dev mode gains a run picker and cards for `/dev/shape` and Execute Plan's Left out list.
+- `bcfddb2`:
+  - Files: one allowed list (PDF, `.docx`, `.txt`, `.md`, `.xlsx`, `.csv`, `.tsv`, `.pptx`, PNG, JPEG, WebP) lives in `components/chat.tsx` (`readable`, `refusal`). It's checked at the Files button, drop, paste and the Brand Graph's box, and again on the server by bytes (`app/api/uploads/route.ts`, so a non-UTF-8 CSV is now refused). Anything else gets a calm line with a ✕, never an upload.
+  - A file still uploading has a ✕ that takes it back.
+  - Drag-and-drop: only file drags light the page, with a "Drop files to add them" pill; the highlight always clears; a stray drop never opens the file in the tab.
 
-**What a pass on the dev server found for 8.8** is listed in §23.7 under "What a pass on the dev server found". Where it lives in the code:
+**Known dev-mode behaviour:**
+- With no exact recording, Replay plays the closest one. A brand never recorded (Starface) shows the newest run (Magic Spoon) without saying so; a fix was offered (a dev note naming whose run is shown), not built.
+- `/api/uploads` always goes to the real server in Replay, which is free: offline mode blocks paid calls.
+- The Magic Spoon run lacks several states (Scout and Matchmaker pages, Execute Plan running, drafts, What's working, This week). Those cards fall back to older runs and are labelled.
 
-- **Dev mode:**
-  - the "Open dev mode" link is at `components/Onboard.tsx` ~599–604;
-  - the pills are in `components/DevTape.tsx` (they return `null` in Live) and are mounted in `app/layout.tsx:26`;
-  - `/dev` is `app/dev/page.tsx` (it calls `notFound()` in production), with the step map in `app/dev/DevMap.tsx` and tapes in `lib/dev/`.
-- **Overview's step cards** show `step.task`, the brief Athena writes for each subagent. The briefs are written in `lib/agent/workflow.ts` and `lib/agent/athena-plan.ts`, and shown in `components/Dashboard.tsx` (~67 and ~202).
-- **The team cards' lines** are the subagents' run summaries (`lib/agent/team.ts`, `lib/agent/specialists.ts`). Fix their voice through prompt context, never with text filters.
-- **Execute Plan's card on Overview:** `components/Dashboard.tsx` ~100–120, which holds the counts line and "Start the Executive". Its summary sentence also shows in Athena's team card, and those two are the duplicate.
-- **The Execute Plan page:** `components/Executive.tsx` and `lib/exec/`.
-- **The first onboarding screen:** `components/Onboard.tsx` (cards and chips), styled in `app/globals.css`.
-- **The landing page:** `app/page.tsx`, `app/landing.module.css` and `app/HeroGlow.tsx`.
+**Open decisions for the founder (don't act on them unasked):**
+- Cloud Run still has `GEMINI_FLASH_MODEL=gemini-3.8-flash`; local `.env` uses 3.5.
+- A Next.js security-upgrade nudge appeared in a build log: not run. It belongs on its own branch, with the founder's yes.
+- Whether to pin the light theme again: since 8.8 (f) the app follows the system's light or dark setting.
+- The Monday email needs a sending account (SMTP settings in `.env`) and one Cloud Scheduler job. It was waiting on the founder on 27 Oct; confirm before assuming.
+- A faint amber "24"/"11" shows behind the first screen's MCP link, likely the hero texture. Not investigated.
+- Seen once in a live run: "How does Magic Spoon sell today?" asked twice; crowd names could read better.
+- Parked reminders (raise only when the founder asks what's left): second gcloud key, Bench write-up, fast search API, Qloo limit request.
+
+**Where things live:**
+- **Dev mode:** `/dev` is `app/dev/page.tsx` (404 in production), the step map is `app/dev/DevMap.tsx`, tapes are in `lib/dev/`, and the fetch shim is `components/DevTape.tsx`. Recordings and snapshots are in `.cache/dev` (never committed).
+- **Onboarding:** `components/Onboard.tsx`. **Journey shell, composer and drop zone:** `components/Journey.tsx`. **Chat hook and file rules:** `components/chat.tsx`.
+- **Dashboard:** `components/Dashboard.tsx`. **Execute Plan:** `components/Executive.tsx` and `lib/exec/`.
+- **Athena MCP panel:** `components/McpConnect.tsx`. **MCP server:** `app/mcp/[secret]` and `lib/workspace/mcp.ts`. **Calendar:** `lib/workspace/calendar.ts`. **This week:** `lib/workspace/week.ts` and `digest.ts`.
+- **Voice of every line the founder reads:** `lib/agent/voice.ts`. Fix wording through prompt context, never text filters.
+- **Landing page:** `app/page.tsx`, `app/landing.module.css` and `app/HeroGlow.tsx`.
 
 ## 3. Standing rules (from the founder; non-negotiable)
 
@@ -116,6 +116,8 @@ Athena is a Qloo hackathon entry. Submission is **28 Oct**, the only real date.
   - §23.5 (a), (p), (q) and (r).
 - **No mockup widgets:** explain designs in chat text unless the founder asks for a visual.
 - **Subagent logos:** the subagents keep their letter badges until the founder adds logos.
+- **Sample brands are named with their product** ("Fishwife tinned fish"), wherever the app names one.
+- **Product-tech wording** for the MCP features: MCP server, MCP client, server URL, resources, tools.
 
 **Topics the founder will raise later (don't start them):**
 - brand safety;
@@ -148,7 +150,9 @@ corepack pnpm live <file>
 
 The step map has a card for every page and state, and saved snapshots open past pages without spending Qloo calls.
 
-**Production check for 8.8:** `corepack pnpm build`, then `corepack pnpm start`. Ask before redeploying Cloud Run (`docs/DEPLOY.md`).
+**Production check:** `corepack pnpm build`, then `corepack pnpm start`.
+
+**Deploy** (ask first): `gcloud run deploy athena --source . --region us-central1 --quiet` (`docs/DEPLOY.md`).
 
 ## 5. Finishing a step
 

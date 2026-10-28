@@ -13,8 +13,9 @@
   isolation: isolate;
 }
 /* The pattern: the product's character field (components/ChatField), fixed behind the page: an even, faint scatter of
-   mono characters that fade in and out at random while the field rises slowly, gathering under the pointer and rippling
-   out from a click. Titles and text sit on feathered clearings. */
+   mono characters that fade in and out at random while the field rises slowly. A soft lens follows the pointer, warming
+   and decoding the characters under it and leaving a cooling wake; a click ripples out. Titles and text sit on feathered
+   clearings. */
 
 /* The top bar: a floating capsule that tightens on scroll, with a reading-progress hairline (LandingNav). */
 .top { position: sticky; top: 0; z-index: 10; width: min(1440px, 100%); margin: 0 auto; padding: 16px 40px 0; }

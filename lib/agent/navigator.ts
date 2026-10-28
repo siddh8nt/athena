@@ -7,6 +7,7 @@ import type { MarketRow, Neighbourhood } from "@/lib/blocks/markets";
 import type { AreaFigures } from "@/lib/enrich/census";
 import { itemId } from "./outcomes";
 import type { CrowdInput } from "./scout";
+import type { CrowdCard } from "@/lib/journey/types";
 import { TIER_LABEL, TIER_ORDER, type Block, type CrowdPage, type CrowdTier, type PageSource, type PageTab, type Row, type Section } from "@/lib/team/page";
 import type { Outcome } from "@/lib/team/types";
 
@@ -35,6 +36,19 @@ const VISITED = 8_000;
 
 export type Verdict = "launch" | "test" | "later" | "home";
 export const VERDICT_LABEL: Record<Verdict, string> = { launch: "Launch here", test: "Test here", later: "Later", home: "Already yours" };
+const VERDICT_SO: Record<Verdict, string> = { launch: "a city to launch in", test: "one to test first", later: "one for later", home: "" };
+
+/**
+ * Why a city got its verdict, as a sentence the founder reads (§23.8 f): the crowds strong there by their handles,
+ * never their full names glued into a list. "The Graza crowd and the Liquid I.V. crowd are strong here, so it's a
+ * city to launch in."
+ */
+export function cityWhy(v: Verdict, crowds: CrowdCard[]): string {
+  const names = crowds.map((c) => c.handle ?? c.name);
+  const who = names.length ? `${and(names)} ${names.length > 1 ? "are" : "is"} strong here` : "";
+  const line = v === "home" ? (who ? `Already yours, and ${who}` : "Already yours") : `${who || "No crowd is strong here yet"}, so it's ${VERDICT_SO[v]}`;
+  return line.charAt(0).toUpperCase() + line.slice(1);
+}
 export type Role = "anchor" | "spillover" | "popup" | "online";
 export const ROLE_LABEL: Record<Role, string> = { anchor: "Anchor", spillover: "Spillover", popup: "Pop-up or event spot", online: "Online-target zip" };
 
@@ -432,7 +446,7 @@ function cityPage(read: NavRead, city: CityRead, v: Verdict, opts: { channel?: "
         }
       : { type: "note", text: `The taste map of ${city.name} is spread evenly, with no neighbourhood standing out yet` },
   ];
-  return { id: `city:${city.metroId}`, title: city.name, summary: `${VERDICT_LABEL[v]} · ${strong.length ? `strong for ${and(strong.map((x) => x.c.crowd.name))}` : "no crowd strong yet"}`, blocks };
+  return { id: `city:${city.metroId}`, title: city.name, summary: cityWhy(v, strong.map((x) => x.c.crowd)), blocks };
 }
 
 /** A crowd tab (Level 1 for that crowd): its city ranking, with why and the rivals strong there, and its hot neighbourhoods. */

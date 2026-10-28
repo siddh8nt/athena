@@ -185,7 +185,7 @@ describe("Athena's plan (§23.5 m)", () => {
     expect(steps[2].lines.find((l) => l.kind === "cost")?.text).toMatch(/^Tide Tins: [a-z].*\(/);
     expect(steps.flatMap((s) => s.lines).some((l) => /· (Ask|See the fee)$/.test(l.text))).toBe(false);
     expect(steps.some((s) => / at$/.test(s.what))).toBe(false);
-    expect(plan.headline).toMatch(/winning Coastal cooks first, then Night owls and Weekend hosts/);
+    expect(plan.headline).toMatch(/winning Coastal cooks first, then your other two crowds/);
     const two = athenaPlan({ works, crowds: crowds.map((c) => (c.id === "c2" ? { ...c, tier: "win_first" as const } : c)) });
     expect(two.headline).toMatch(/winning Coastal cooks and Night owls first, then Weekend hosts/);
     // The crowd after two Win first crowds waits for both of them, not only the second.

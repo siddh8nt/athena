@@ -14,6 +14,8 @@ import type { GrowthPlan, Mark, Outcome, PlanItem, PlanLine, PlanStep, Work } fr
 // subagent it came from; a date is only ever a sourced one, else "once step N holds". Items the founder marked No (or
 // Skipped) drop out, and the Navigator's verdicts read the marks. Then where the subagents disagree and what's open.
 
+const COUNT: Record<number, string> = { 2: "two", 3: "three", 4: "four", 5: "five", 6: "six" };
+
 export type PlanCrowd = { id: string; name: string; tier: CrowdTier; why?: string };
 
 export type AthenaPlanInput = {
@@ -82,6 +84,8 @@ export function athenaPlan(p: AthenaPlanInput): GrowthPlan {
   const crowds = [...p.crowds].sort((a, b) => TIER_ORDER.indexOf(a.tier) - TIER_ORDER.indexOf(b.tier));
   // A crowd is named only once it's ranked: an id with no crowd behind it is left out, never shown raw.
   const crowdNames = (ids: string[]) => ids.flatMap((id) => crowds.find((c) => c.id === id)?.name ?? []);
+  // Two or more crowds are said as what they mean for the founder, not their names glued together (§23.8 f).
+  const reaches = (names: string[]) => (names.length > 1 ? `${COUNT[names.length] ?? names.length} of your crowds` : names[0]);
 
   const steps: PlanStep[] = [];
   const add = (s: Omit<PlanStep, "n">) => {
@@ -194,7 +198,7 @@ export function athenaPlan(p: AthenaPlanInput): GrowthPlan {
   for (const e of multiEvents) {
     used.add(e.id);
     add({
-      what: `Show up at ${noted(e.name, e.id)}${crowdNames(e.crowds).length ? `: it reaches ${list(crowdNames(e.crowds))}` : ""}`,
+      what: `Show up at ${noted(e.name, e.id)}${crowdNames(e.crowds).length ? `: it reaches ${reaches(crowdNames(e.crowds))}` : ""}`,
       crowds: e.crowds,
       phase: "shared",
       lines: [
@@ -341,7 +345,7 @@ export function athenaPlan(p: AthenaPlanInput): GrowthPlan {
   const rest = crowds.filter((c) => !lead.includes(c));
   return {
     headline: steps.length
-      ? `${steps.length} steps${lead.length ? `, winning ${list(lead.map((c) => c.name))} first` : ""}${rest.length ? `, then ${list(rest.map((c) => c.name))}` : ""}, from what ${list(ran.map((x) => `the ${nameOf(x.agent)}`))} found.`
+      ? `${steps.length} steps${lead.length ? `, winning ${list(lead.map((c) => c.name))} first` : ""}${rest.length ? `, then ${rest.length > 1 ? `your other ${COUNT[rest.length] ?? rest.length} crowds` : rest[0].name}` : ""}, from what ${list(ran.map((x) => `the ${nameOf(x.agent)}`))} found.`
       : "The plan fills in as the subagents finish.",
     // The crowds by name, as the founder reads them.
     steps: steps.map((s) => ({ ...s, crowds: crowdNames(s.crowds) })),

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { METROS } from "@/lib/playbook/metros";
-import { across, crowdSize, crowdTab, navigatorPage, rankCities, roles, verdict, workedCities, type CityRead, type CrowdCities, type NavRead } from "@/lib/agent/navigator";
+import { across, cityWhy, crowdSize, crowdTab, navigatorPage, rankCities, roles, verdict, workedCities, type CityRead, type CrowdCities, type NavRead } from "@/lib/agent/navigator";
 import type { CrowdCard } from "@/lib/journey/types";
 import type { Outcome } from "@/lib/team/types";
 
@@ -149,9 +149,21 @@ describe("the page", () => {
     const t = nyc.blocks.find((b) => b.type === "table" && !!b.label?.startsWith("Every hot neighbourhood"));
     expect(t?.type === "table" && t.columns).toContain("Shops");
     expect(t?.type === "table" && t.rows[0].cells).toContain("1");
-    expect(nyc.summary).toMatch(/^Launch here/);
+    expect(nyc.summary).toMatch(/strong here, so it's a city to launch in$/);
     const plain = navigatorPage(nav(), [], { at: 1 }).across!.sections.find((s) => s.id === "city:nyc")!;
     const t2 = plain.blocks.find((b) => b.type === "table" && !!b.label?.startsWith("Every hot neighbourhood"));
     expect(t2?.type === "table" && t2.columns).not.toContain("Shops");
+  });
+});
+
+describe("a city's verdict reads as a sentence (§23.8 f)", () => {
+  const graza = { ...card("a", "Graza and Bon Appétit fans"), handle: "the Graza crowd" } as CrowdCard;
+  const ivy = { ...card("b", "Liquid I.V. and Rachel Hollis fans"), handle: "the Liquid I.V. crowd" } as CrowdCard;
+
+  it("names the strong crowds by their handles, never their full names glued together", () => {
+    expect(cityWhy("launch", [graza, ivy])).toBe("The Graza crowd and the Liquid I.V. crowd are strong here, so it's a city to launch in");
+    expect(cityWhy("test", [graza])).toBe("The Graza crowd is strong here, so it's one to test first");
+    expect(cityWhy("later", [])).toBe("No crowd is strong here yet, so it's one for later");
+    expect(cityWhy("home", [graza])).toBe("Already yours, and the Graza crowd is strong here");
   });
 });

@@ -15,7 +15,7 @@ import type { HookEvidence, Hooks } from "./hooks";
 import type { Look, LookEvidence } from "./looks";
 import { by, oneLineEvidence, readCrowd, scoutPage, writeCrowd, type CrowdInput } from "./scout";
 import { mergePage, type CrowdPage, type CrowdTier } from "@/lib/team/page";
-import { isStrong, readCities, roles, verdict, VERDICT_LABEL, type CityRead, type NavRead } from "./navigator";
+import { cityWhy, isStrong, readCities, roles, verdict, VERDICT_LABEL, type CityRead, type NavRead } from "./navigator";
 import { budgetOf, contactOf, crowdCities, entryRoute, FEW_IN_HOOD, FITS, offerFor, readShops, shopCities, wholesaleOf, type RepRead, type Shop, type ShopSite } from "./rep";
 import { FORMAT_LABEL, feeLine, launchOf, promoCrowds, readPromo, topEvent, type Audience, type Inquiry, type PromoCity, type PromoEvent, type PromoRead, type WebEvent, type WebMoment } from "./promoter";
 import type { OnlineData } from "@/lib/stops/online";
@@ -237,7 +237,8 @@ async function fp(t: TeamCtx, qloo: QlooClient, status: (s: string) => void): Pr
 /** A venue's kind for outcomes ("café", "wine store"): its first channel tag. Its other tags ("credit cards", "resy") say nothing of what it is. */
 function venueGroup(v: VenuePick, channels: string[]): string {
   const tag = v.tags.find((x) => channels.includes(x.id));
-  return (tag?.name ?? "venue").toLowerCase();
+  // A shop with no channel tag is a "shop" to the founder, never the graph's "venue".
+  return (tag?.name ?? "shop").toLowerCase();
 }
 
 const CHANNEL_IDS = Object.values(VENUE_TAGS) as string[];
@@ -478,7 +479,8 @@ export const PLAYS: Tool[] = [
         const role = roles(first);
         t.hoods = [...first.hoods].sort((x, y) => Number(role.get(y.name) === "anchor") - Number(role.get(x.name) === "anchor")).slice(0, 5).map((h) => h.name);
       }
-      const strong = (id: string) => read.crowds.filter((c) => isStrong(c.cities.find((f) => f.metroId === id))).map((c) => c.crowd.name);
+      const strongCrowds = (id: string) => read.crowds.filter((c) => isStrong(c.cities.find((f) => f.metroId === id))).map((c) => c.crowd);
+      const strong = (id: string) => strongCrowds(id).map((c) => c.name);
       const overlap = read.cities.filter((c) => !c.yours && strong(c.metroId).length >= 2).map((c) => c.name);
       return {
         summary: `${read.cities.map((c) => `${c.name}: ${VERDICT_LABEL[v(c.metroId)]}`).join("; ")}${overlap.length ? `. Overlap: ${list(overlap)}` : ""}`,
@@ -490,7 +492,7 @@ export const PLAYS: Tool[] = [
           already_yours: yours.map((id) => metroById(id).name),
         },
         status: read.cities.length ? "ok" : "thin",
-        items: read.cities.filter((c) => !c.yours || c.metroId === home?.id).map((c) => item("city", c.name, `${VERDICT_LABEL[v(c.metroId)]}: ${strong(c.metroId).length ? `strong for ${list(strong(c.metroId))}` : "no crowd strong yet"}`, { group: c.metroId, ref: c.metroId })),
+        items: read.cities.filter((c) => !c.yours || c.metroId === home?.id).map((c) => item("city", c.name, cityWhy(v(c.metroId), strongCrowds(c.metroId)), { group: c.metroId, ref: c.metroId })),
       };
     },
   },

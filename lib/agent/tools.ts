@@ -118,7 +118,7 @@ export type Tool = {
 
 const WHY = {
   type: "string",
-  description: "One short sentence for the founder: why this call, now, in plain words. Shown to the founder as the step's live line while it runs, so it says what is being done for their brand, as a short phrase in their words (\"Measuring the crowds around brands like yours\"), addressed to the founder (\"your crowds\", never \"our\", \"we\" or \"Let's\") and not a plan written for a model, and no terms such as \"lookalike\", \"seed\" or \"taste graph\". No scores, decimals or ids from the data (\"the crowd that's still soft\", not \"stability 0.52\").",
+  description: "One short sentence for the founder: why this call, now, in plain words. Shown to the founder as the step's live line while it runs, so it says what is being done for their brand, as a short phrase in their words (\"Measuring the crowds around brands like yours\"), addressed to the founder (\"your crowds\", never \"our\", \"we\" or \"Let's\") and not a plan written for a model, and no terms such as \"lookalike\", \"seed\" or \"taste graph\". No scores, decimals or ids from the data (\"the crowd with the least to go on\", not \"stability 0.52\").",
 };
 
 /** Function declarations for Gemini, with `why` added to each tool. */
@@ -648,7 +648,7 @@ export const TOOLS: Tool[] = [
       "The founder answers later; you carry on now with your recommended option as an assumption and say so. At most 2 per run, unless your instructions allow more.",
     properties: {
       question: { type: "string" },
-      options: { type: "array", items: { type: "object", properties: { label: { type: "string" }, hint: { type: "string" } }, required: ["label"] }, description: "2–4 options, the recommended one first." },
+      options: { type: "array", items: { type: "object", properties: { label: { type: "string" }, hint: { type: "string" } }, required: ["label"] }, description: "2–4 options, the recommended one first. The founder reads the question, each label and each hint: speak to them as \"you\" and \"your\", as Athena (\"I\"), never \"we\" or \"our\" (\"Where your team is based; I'll start your cities from there\")." },
       multi_select: { type: "boolean" },
     },
     required: ["question", "options"],

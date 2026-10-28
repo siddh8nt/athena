@@ -197,7 +197,10 @@ export function Journey() {
     clearTimeout(mirror.current);
     mirror.current = setTimeout(() => {
       try {
-        void fetch("/api/workspace", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ws: workspace(), saved }), keepalive: true }).catch(() => {});
+        // keepalive lets a save still land if the tab closes, but browsers refuse a keepalive body over 64 KB and a
+        // finished plan is far past that, so a larger one goes as a plain request.
+        const body = JSON.stringify({ ws: workspace(), saved });
+        void fetch("/api/workspace", { method: "POST", headers: { "content-type": "application/json" }, body, keepalive: new Blob([body]).size < 60_000 }).catch(() => {});
       } catch {
         // Offline or blocked: the next change retries.
       }

@@ -6,6 +6,7 @@ import { workspace } from "@/lib/knowledge/workspace";
 import { NavIcon } from "./SideNav";
 import { BRAND_FILE, brandFile } from "@/lib/workspace/brand-file";
 import { CAL_FILE, calendarFile } from "@/lib/workspace/calendar";
+import { PLAN_FILE, XLSX_TYPE, planWorkbook } from "@/lib/workspace/plan-sheets";
 
 // "Athena MCP" (PRD §23.6 d): a quiet sidebar row opens one frosted side panel (a full-screen sheet on a phone).
 // Section 1, "Connect an MCP client", gives the founder a server URL to paste into Claude, Claude Code, Cursor or ChatGPT,
@@ -14,7 +15,8 @@ import { CAL_FILE, calendarFile } from "@/lib/workspace/calendar";
 // changes it. The same panel opens from /plan's first screen on the judges' demo (§23.6 e): the fixed, read-only
 // link to the precomputed Fishwife plan, with no New link (rotating a shared link would break it for everyone).
 // Section 2, "As a file" (f), downloads athena-brand.md, built in the browser from its own journey (the demo's comes
-// from the seeded sample). Section 3, "Calendar" (g): Subscribe to a live feed of the plan's dated things, on its own
+// from the seeded sample), and athena-plan.xlsx, the plan as a spreadsheet for the founder's team, built the same way.
+// Both files and the share link are on the dashboard too, under "Take your plan with you". Section 3, "Calendar" (g): Subscribe to a live feed of the plan's dated things, on its own
 // calendar-only link, or Download a one-off .ics. "In your calendar" lines elsewhere open the panel at this section
 // (the `athena:mcp` window event). Section 4, "Share with your team" (k): a link to a view-only Execute Plan for
 // co-founders or advisors, on its own share-only link; New link revokes the old one.
@@ -22,6 +24,7 @@ import { CAL_FILE, calendarFile } from "@/lib/workspace/calendar";
 const SECRET_KEY = "athena:link:full"; // the secret this browser was shown, so the panel shows the same link each time
 const CAL_KEY = "athena:link:cal"; // the calendar feed's own secret, kept the same way
 const SHARE_KEY = "athena:link:share"; // the team page's own secret, kept the same way
+const SHARE_EVENT = "athena:share"; // a new share link, so every copy on the page shows it, never a revoked one
 const JOURNEY_KEY = "athena:journey:v1"; // the journey as components/Journey.tsx saves it: { brief, journey, … }
 /** The demo's calendar feed: the demo link's fixed secret, read only (lib/workspace/demo.ts). */
 const DEMO_CAL = "fishwife-sample-plan";
@@ -239,41 +242,74 @@ export function McpPanel({ onClose, demo, at }: { onClose: () => void; demo?: st
   );
 }
 
-/** Section 2 (§23.6 f): one line on what's in the file, and one button that downloads it. */
-function AsAFile({ demo }: { demo: boolean }) {
-  const [busy, setBusy] = useState(false);
-  const [done, setDone] = useState(false);
-  const save = async () => {
-    setBusy(true);
-    let text = "";
-    try {
-      if (demo) {
-        const res = await fetch("/api/workspace/demo?file=1");
-        if (res.headers.get("Content-Type")?.startsWith("text/markdown")) text = await res.text();
-      } else {
-        text = brandFile(JSON.parse(localStorage.getItem(JOURNEY_KEY) ?? "{}"));
-      }
-    } catch {
-      // Unreadable save or no network: the file below still says what Athena has (nothing yet).
+/** Hands the browser a file to save. */
+function hand(blob: Blob, name: string) {
+  const url = URL.createObjectURL(blob);
+  Object.assign(document.createElement("a"), { href: url, download: name }).click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+const savedJourney = () => JSON.parse(localStorage.getItem(JOURNEY_KEY) ?? "{}");
+
+/** Downloads athena-brand.md (§23.6 f), built in the browser from its own journey; the demo's is the seeded sample's. */
+export async function saveBrandFile(demo = false) {
+  let text = "";
+  try {
+    if (demo) {
+      const res = await fetch("/api/workspace/demo?file=1");
+      if (res.headers.get("Content-Type")?.startsWith("text/markdown")) text = await res.text();
+    } else {
+      text = brandFile(savedJourney());
     }
-    if (!text) text = brandFile({});
-    const url = URL.createObjectURL(new Blob([text], { type: "text/markdown;charset=utf-8" }));
-    const a = Object.assign(document.createElement("a"), { href: url, download: BRAND_FILE });
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  } catch {
+    // Unreadable save or no network: the file below still says what Athena has (nothing yet).
+  }
+  hand(new Blob([text || brandFile({})], { type: "text/markdown;charset=utf-8" }), BRAND_FILE);
+}
+
+/** Downloads athena-plan.xlsx, the plan as a spreadsheet, built the same way. */
+export async function savePlanSheet(demo = false) {
+  let bytes: Uint8Array | undefined;
+  try {
+    if (demo) {
+      const res = await fetch("/api/workspace/demo?file=plan");
+      if (res.headers.get("Content-Type")?.startsWith(XLSX_TYPE)) bytes = new Uint8Array(await res.arrayBuffer());
+    } else {
+      bytes = planWorkbook(savedJourney());
+    }
+  } catch {
+    // Unreadable save or no network: the workbook below is a valid one that says what Athena has (nothing yet).
+  }
+  hand(new Blob([(bytes ?? planWorkbook({})) as BlobPart], { type: XLSX_TYPE }), PLAN_FILE);
+}
+
+/** A Download button for one of the files, held while it's built; `onSaved` once the browser has it. */
+export function SaveButton({ file, save, onSaved }: { file: string; save: () => Promise<void>; onSaved?: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const click = async () => {
+    setBusy(true);
+    await save();
     setBusy(false);
-    setDone(true);
+    onSaved?.();
   };
+  return (
+    <button type="button" className="mcp-new" onClick={click} disabled={busy}>
+      Download {file}
+    </button>
+  );
+}
+
+/** Section 2 (§23.6 f): what's in each file, and the buttons that download them. */
+function AsAFile({ demo }: { demo: boolean }) {
+  const [done, setDone] = useState(false);
   return (
     <section className="mcp-section" id="mcp-file">
       <h3>As a file</h3>
       <p className="small muted">
-        {demo ? "The Fishwife tinned fish sample" : "Your brand"}, its crowds, Athena&apos;s plan in order and the open tasks, in one Markdown file any LLM can read. Drop it into a chat or a project, or attach it as context.
+        {demo ? "The Fishwife tinned fish sample" : "Your brand"}, its crowds, Athena&apos;s plan in order and the open tasks, in one Markdown file any LLM can read. Drop it into a chat or a project, or attach it as context. Or the plan as a spreadsheet for the team: a tab each for the outreach and every contact found, the drafts, the plan, the crowds and each subagent&apos;s tables.
       </p>
       <div className="mcp-link-foot">
-        <button type="button" className="mcp-new" onClick={save} disabled={busy}>
-          Download {BRAND_FILE}
-        </button>
+        <SaveButton file={BRAND_FILE} save={() => saveBrandFile(demo)} onSaved={() => setDone(true)} />
+        <SaveButton file={PLAN_FILE} save={() => savePlanSheet(demo)} onSaved={() => setDone(true)} />
         {done && <span className="small muted">Saved to your downloads.</span>}
       </div>
     </section>
@@ -413,67 +449,78 @@ function Calendar({ demo }: { demo: boolean }) {
   );
 }
 
-/** Section 4 (§23.6 k): a link to the view-only Execute Plan for the founder's team, minted the first time it's shown;
- *  New link revokes the old one. The demo shows the Fishwife sample's page, with no New link. */
+/** Section 4 (§23.6 k): a link to the view-only Execute Plan for the founder's team. */
 function ShareWithTeam({ demo }: { demo: boolean }) {
-  const [url, setUrl] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [note, setNote] = useState("");
-  const urlOf = (secret: string) => (secret ? `${window.location.origin}/share/${secret}` : "");
-
-  const mint = useCallback(async (): Promise<string> => {
-    try {
-      const res = await fetch("/api/workspace/link", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ws: workspace(), scope: "share" }) });
-      const j = (await res.json()) as { ok?: boolean; path?: string };
-      const secret = j.ok && j.path ? j.path.replace(/^\/share\//, "") : "";
-      if (secret)
-        try {
-          localStorage.setItem(SHARE_KEY, secret);
-        } catch {
-          // Storage unavailable: the link still works this visit.
-        }
-      return secret;
-    } catch {
-      return "";
-    }
-  }, []);
-
-  useEffect(() => {
-    if (url) return;
-    if (demo) return void setUrl(urlOf(DEMO_CAL));
-    let live = true;
-    (async () => {
-      let secret = "";
-      try {
-        secret = localStorage.getItem(SHARE_KEY) ?? "";
-      } catch {
-        // Storage unavailable.
-      }
-      if (!secret) {
-        setBusy(true);
-        secret = await mint();
-        if (live) setBusy(false);
-      }
-      if (live) setUrl(urlOf(secret));
-    })();
-    return () => {
-      live = false;
-    };
-  }, [url, demo, mint]);
-
-  const renew = async () => {
-    setBusy(true);
-    setUrl(urlOf(await mint()));
-    setBusy(false);
-    setNote("New link ready: the old one no longer opens the plan.");
-  };
-
   return (
     <section className="mcp-section" id="mcp-share">
       <h3>Share with your team</h3>
       <p className="small muted">
         {demo ? "The sample plan's" : "Your"} Execute Plan as a view-only page, for co-founders or advisors. It looks the same and follows the plan as it changes, with nothing to start or edit.
       </p>
+      <ShareLink demo={demo} />
+    </section>
+  );
+}
+
+/** Mints a share link (revoking the one before), keeps its secret, and tells every ShareLink on the page. */
+async function mintShare(): Promise<string> {
+  try {
+    const res = await fetch("/api/workspace/link", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ws: workspace(), scope: "share" }) });
+    const j = (await res.json()) as { ok?: boolean; path?: string };
+    const secret = j.ok && j.path ? j.path.replace(/^\/share\//, "") : "";
+    if (secret) {
+      try {
+        localStorage.setItem(SHARE_KEY, secret);
+      } catch {
+        // Storage unavailable: the link still works this visit.
+      }
+      window.dispatchEvent(new CustomEvent(SHARE_EVENT, { detail: secret }));
+    }
+    return secret;
+  } catch {
+    return "";
+  }
+}
+/** The first link, minted once however many copies ask for it at the same time (the panel and the dashboard). */
+let firstShare: Promise<string> | undefined;
+
+/** The team page's link, minted the first time it's shown, with Copy link, Open the page and New link (which revokes
+ *  the old one). The demo shows the Fishwife sample's page, with no New link. Also on the dashboard: a new link
+ *  reaches every copy on the page (SHARE_EVENT), so none shows a revoked one. */
+export function ShareLink({ demo = false }: { demo?: boolean }) {
+  const [url, setUrl] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState("");
+  const urlOf = (secret: string) => (secret ? `${window.location.origin}/share/${secret}` : "");
+
+  useEffect(() => {
+    if (demo) return void setUrl(urlOf(DEMO_CAL));
+    const next = (e: Event) => setUrl(urlOf(String((e as CustomEvent).detail ?? "")));
+    window.addEventListener(SHARE_EVENT, next);
+    let secret = "";
+    try {
+      secret = localStorage.getItem(SHARE_KEY) ?? "";
+    } catch {
+      // Storage unavailable.
+    }
+    if (secret) setUrl(urlOf(secret));
+    else {
+      setBusy(true);
+      firstShare ??= mintShare().finally(() => (firstShare = undefined));
+      firstShare.then((s) => (setUrl(urlOf(s)), setBusy(false)));
+    }
+    return () => window.removeEventListener(SHARE_EVENT, next);
+  }, [demo]);
+
+  const renew = async () => {
+    setBusy(true);
+    setUrl(urlOf(await mintShare()));
+    setBusy(false);
+    setNote("New link ready: the old one no longer opens the plan.");
+  };
+
+  return (
+    <>
       {busy ? <CopyRow value="Preparing your share link…" label="Copy link" disabled /> : <CopyRow value={url} label="Copy link" />}
       <div className="mcp-link-foot">
         {url && !busy && (
@@ -489,7 +536,7 @@ function ShareWithTeam({ demo }: { demo: boolean }) {
         {note && <span className="small muted">{note}</span>}
       </div>
       {!demo && <p className="small muted mcp-note">Anyone with the link can see the plan, but nothing else in your workspace. Use New link to stop the old one working.</p>}
-    </section>
+    </>
   );
 }
 

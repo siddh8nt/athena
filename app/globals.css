@@ -2879,6 +2879,14 @@ a.xp-src { color: var(--muted); text-decoration: underline dotted; text-underlin
 .week-mail-toggle { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; }
 .week-mail-to { flex: 1 1 200px; min-width: 0; max-width: 320px; padding: 7px 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--fg); font: inherit; font-size: 14px; }
 
+/* Take your plan with you: the brand file, the plan spreadsheet and the share link, a card each, under the plan. */
+.take-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.take-row { display: flex; flex-direction: column; gap: 10px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 16px; background: var(--card, transparent); }
+.take-row strong { font-weight: 600; overflow-wrap: anywhere; }
+.take-row p { margin: 2px 0 0; line-height: 1.45; }
+.take-row .mcp-note { margin: 0; }
+a.mcp-new { text-decoration: none; display: inline-flex; align-items: center; }
+
 /* Share with your team (§23.6 k): the view-only Execute Plan, on its own page. */
 .share-main { max-width: 1180px; margin: 0 auto; padding: 40px 16px 80px; display: flex; flex-direction: column; gap: 24px; }
 .share-head { display: flex; flex-direction: column; gap: 8px; }
@@ -2886,7 +2894,7 @@ a.xp-src { color: var(--muted); text-decoration: underline dotted; text-underlin
 
 /* Phones (§23.7 d): every tap target at least 44 px tall. A link inside a sentence keeps its line. */
 @media (max-width: 640px) {
-  button:not(.linkish), a.button, select, [role="tab"], input:not([type="checkbox"]):not([type="radio"]):not([type="range"]) { min-height: 44px; }
+  button:not(.linkish), a.button, a.mcp-new, select, [role="tab"], input:not([type="checkbox"]):not([type="radio"]):not([type="range"]) { min-height: 44px; }
   button.linkish:not(p *):not(li > span *), a.wordmark-link { min-height: 44px; display: inline-flex; align-items: center; }
   .dash-tabs button.dash-tab, .journey-top .top-actions .linkish, .journey-top .top-actions button:not(.primary), .intake select, .bg-fact select, .team-menu select, .pipe-row select { min-height: 44px; }
   .record-line, .run-trail-step, .q-tray .question-hint { white-space: normal; }

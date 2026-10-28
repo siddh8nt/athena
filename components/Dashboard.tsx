@@ -9,6 +9,9 @@ import type { Answer, StepState, TeamState, Work, Workflow, WorkflowStep } from 
 import type { Journey } from "@/lib/journey/types";
 import { thisWeek, weekEmpty, type WeekLine } from "@/lib/workspace/week";
 import { workspace } from "@/lib/knowledge/workspace";
+import { SaveButton, ShareLink, saveBrandFile, savePlanSheet } from "./McpConnect";
+import { BRAND_FILE } from "@/lib/workspace/brand-file";
+import { PLAN_FILE } from "@/lib/workspace/plan-sheets";
 
 // The founder's dashboard after onboarding (PRD §23.2 step 8.5 b–d): the growth plan's workflow as a live diagram
 // under the goals, ending on Execute Plan, Athena's lead tile and the subagents' tiles, the founder's answers
@@ -257,6 +260,43 @@ function ThisWeek({ team, onRow }: { team: TeamState; onRow: (id: string) => voi
   );
 }
 
+/** "Take your plan with you", once the plan is written: the brand file for the founder's AI assistant, the plan
+ *  spreadsheet for the team, and the view-only share link, the same ones the Athena MCP panel gives. */
+function TakeAway() {
+  const [saved, setSaved] = useState<string>();
+  const file = (name: string, what: string, save: () => Promise<void>) => (
+    <li className="take-row">
+      <div>
+        <strong>{name}</strong>
+        <p className="small muted">{what}</p>
+      </div>
+      <div className="mcp-link-foot">
+        <SaveButton file={name} save={save} onSaved={() => setSaved(name)} />
+        {saved === name && <span className="small muted">Saved to your downloads.</span>}
+      </div>
+    </li>
+  );
+  return (
+    <section className="dash-sec dash-take">
+      <div className="dash-sec-head">
+        <h3>Take your plan with you</h3>
+        <small className="muted">Your plan as it stands now, to keep or pass on</small>
+      </div>
+      <ul className="take-list">
+        {file(BRAND_FILE, "For your AI assistant: the brand, its crowds, the plan in order and the open tasks. Drop it into Claude, ChatGPT or Cursor as context.", () => saveBrandFile())}
+        {file(PLAN_FILE, "For you and your team: a tab each for the outreach and every contact found, the drafts, the plan, the crowds and each subagent's tables.", () => savePlanSheet())}
+        <li className="take-row">
+          <div>
+            <strong>Share with your team</strong>
+            <p className="small muted">A view-only Execute Plan for co-founders or advisors. It follows the plan as it changes.</p>
+          </div>
+          <ShareLink />
+        </li>
+      </ul>
+    </section>
+  );
+}
+
 /** "Email me this every Monday" (§23.6 j): the founder's address and one toggle, saved for the Monday run. Hidden
  *  until Athena's sending account is set up, so it never offers a send that can't happen. */
 function MondayEmail() {
@@ -448,6 +488,8 @@ export function Dashboard(p: {
           {w && <ExecLine team={team} live={live} onExec={p.onExec} onOpen={() => pick("executive")} />}
         </section>
       )}
+
+      {plan && <TakeAway />}
 
       <section className="dash-sec">
         <h3>Your team</h3>

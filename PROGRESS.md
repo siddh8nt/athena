@@ -38,12 +38,12 @@ Athena is a taste-led growth agent for consumer brands, built for the Qloo hacka
 | 9 The context test | Not started. |
 | 10 QA, deploy and write-up | Not started. |
 
-**Checks:** tsc is clean, and vitest passes 699/699.
+**Checks:** tsc is clean, and vitest passes 710/710.
 
 **What has gone where:**
-- `complete-rework` is at `bcfddb2` and pushed to GitHub.
+- `complete-rework` is pushed to GitHub up to `4dfc1c3`. One later commit is local only: the dashboard's Take your plan with you section, the athena-plan.xlsx spreadsheet, and a fix that lets a finished plan reach the server.
 - `main` is untouched.
-- The Cloud Run preview is on revision `athena-00005-qsn`: the `bcfddb2` build, with Flash on `gemini-3.5-flash` as locally.
+- The Cloud Run preview is on revision `athena-00006-hkb`: the `4dfc1c3` build, with Flash on `gemini-3.5-flash` as locally.
 
 ## How we work
 

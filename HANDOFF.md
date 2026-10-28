@@ -3,8 +3,8 @@
 This is a **guide** for a new Claude Code session on the founder's machine, in this same folder. It is not the spec.
 
 - **The spec is `ATHENA PRD.md` §23.** Where this file and the PRD disagree, the PRD wins.
-- **Branch:** `complete-rework`, at `bcfddb2`, **pushed** to `origin/complete-rework` (28 Oct). Work only on this branch, and don't open a PR or merge to `main`.
-- **Live:** Cloud Run revision `athena-00005-qsn`: the `bcfddb2` build with `GEMINI_FLASH_MODEL=gemini-3.5-flash` (28 Oct). Service URL https://athena-610996920841.us-central1.run.app (the older https://athena-zgaqinafna-uc.a.run.app also works).
+- **Branch:** `complete-rework`, **pushed** to `origin/complete-rework` up to `4dfc1c3` (28 Oct). One commit after it (Take your plan with you, see section 2) is committed locally, **not pushed**. Work only on this branch, and don't open a PR or merge to `main`.
+- **Live:** Cloud Run revision `athena-00006-hkb`: the `4dfc1c3` build (pushed) with `GEMINI_FLASH_MODEL=gemini-3.5-flash` (28 Oct). It lacks the mirror fix in section 2 until the founder says to redeploy. Service URL https://athena-610996920841.us-central1.run.app (the older https://athena-zgaqinafna-uc.a.run.app also works).
 - **The session runs locally** with the founder's real keys in `.env`, so live checks run here. **The API budget is low:** make no paid calls (live runs, Record, run buttons) without the founder's yes. Use dev mode's Replay.
 
 ---
@@ -36,7 +36,7 @@ Athena is a Qloo hackathon entry. Submission is **28 Oct**, the only real date.
 
 **Flash model:** `gemini-3.5-flash` both locally and on Cloud Run (founder's call, 28 Oct; 3.8 answers again but 3.5 is the model verified live). Pro is `gemini-3.1-pro-preview`, backup `gemini-3.1-flash-lite`.
 
-**Checks at `bcfddb2`:** tsc is clean, and vitest passes 699/699. Two tests (`knowledge.test.ts` "keeps a long list whole", `methods.test.ts` "parses dates the way pages write them") have flaked once under full-suite load; each passes alone.
+**Checks now:** tsc is clean, and vitest passes 710/710. Two tests (`knowledge.test.ts` "keeps a long list whole", `methods.test.ts` "parses dates the way pages write them") have flaked once under full-suite load; each passes alone.
 
 **Since 8.8 (founder-requested, both pushed and deployed):**
 - `2d05511`:
@@ -47,9 +47,16 @@ Athena is a Qloo hackathon entry. Submission is **28 Oct**, the only real date.
   - Files: one allowed list (PDF, `.docx`, `.txt`, `.md`, `.xlsx`, `.csv`, `.tsv`, `.pptx`, PNG, JPEG, WebP) lives in `components/chat.tsx` (`readable`, `refusal`). It's checked at the Files button, drop, paste and the Brand Graph's box, and again on the server by bytes (`app/api/uploads/route.ts`, so a non-UTF-8 CSV is now refused). Anything else gets a calm line with a ✕, never an upload.
   - A file still uploading has a ✕ that takes it back.
   - Drag-and-drop: only file drags light the page, with a "Drop files to add them" pill; the highlight always clears; a stray drop never opens the file in the tab.
+- `4dfc1c3`: dev Replay keeps to one brand's run (pushed and deployed).
+
+**Since `4dfc1c3` (founder-requested, committed, not pushed or deployed):**
+- **Take your plan with you:** a section on the dashboard's Overview, under the growth plan, shown once `team.plan` is set. It holds athena-brand.md, athena-plan.xlsx and the Share with your team link (`TakeAway` in `components/Dashboard.tsx`, reusing `SaveButton` and `ShareLink` from `components/McpConnect.tsx`).
+- **athena-plan.xlsx:** built in the browser from the saved journey (`lib/workspace/plan-sheets.ts`, written by `lib/workspace/xlsx.ts`). It has a tab each for the outreach, drafts, plan, other tasks, crowds and every table of each subagent that ran, plus Left out. Empty columns are dropped, Sources are skipped, and the Analyst is covered by Crowds. The MCP panel's As a file has the same button.
+- **Mirror fix:** the journey mirror (`components/Journey.tsx`) sent `keepalive` requests, which browsers refuse over 64 KB, so no finished plan ever reached the server. The share page, MCP server, calendar feed and Monday email read an onboarding-era copy. keepalive is now used only when the body fits.
+- **Seen in the spreadsheet, not fixed:** the plan's open list holds filler such as "The Scout needs none"; the Rep's Every matching shop shows a raw "venue" type; some crowds' Also loves lists hold odd entities.
 
 **Known dev-mode behaviour:**
-- With no exact recording, Replay plays the closest one. A brand never recorded (Starface) shows the newest run (Magic Spoon) without saying so; a fix was offered (a dev note naming whose run is shown), not built.
+- With no exact recording, Replay near-matches only tapes from the journey's brand's run (`4dfc1c3`); anything else runs offline.
 - `/api/uploads` always goes to the real server in Replay, which is free: offline mode blocks paid calls.
 - The Magic Spoon run lacks several states (Scout and Matchmaker pages, Execute Plan running, drafts, What's working, This week). Those cards fall back to older runs and are labelled.
 

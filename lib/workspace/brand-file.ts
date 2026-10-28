@@ -27,7 +27,8 @@ export const STAGE_NOTE: Record<Stage, string> = {
 /** The rows the founder can act on next: not already sent-and-waiting, not closed. */
 export const ACTIONABLE: Stage[] = ["queued", "reading", "drafting", "ready", "needs", "follow"];
 
-const PHASE: Record<PlanStep["phase"], string> = { shared: "for every crowd", win_first: "Win first", win_next: "Win next", watch: "Watch" };
+/** A plan step's tier, in words. */
+export const PHASE: Record<PlanStep["phase"], string> = { shared: "for every crowd", win_first: "Win first", win_next: "Win next", watch: "Watch" };
 
 /** Open tasks listed in the file, so it stays a size an assistant reads in one go. */
 const TASKS = 40;

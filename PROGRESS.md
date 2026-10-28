@@ -43,7 +43,7 @@ Athena is a taste-led growth agent for consumer brands, built for the Qloo hacka
 **What has gone where:**
 - `complete-rework` is at `bcfddb2` and pushed to GitHub.
 - `main` is untouched.
-- The Cloud Run preview is on revision `athena-00004-klz`, deployed from `bcfddb2`.
+- The Cloud Run preview is on revision `athena-00005-qsn`: the `bcfddb2` build, with Flash on `gemini-3.5-flash` as locally.
 
 ## How we work
 

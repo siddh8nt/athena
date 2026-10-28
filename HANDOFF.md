@@ -4,7 +4,7 @@ This is a **guide** for a new Claude Code session on the founder's machine, in t
 
 - **The spec is `ATHENA PRD.md` §23.** Where this file and the PRD disagree, the PRD wins.
 - **Branch:** `complete-rework`, at `bcfddb2`, **pushed** to `origin/complete-rework` (28 Oct). Work only on this branch, and don't open a PR or merge to `main`.
-- **Live:** Cloud Run revision `athena-00004-klz`, deployed from `bcfddb2`. Service URL https://athena-610996920841.us-central1.run.app (the older https://athena-zgaqinafna-uc.a.run.app also works).
+- **Live:** Cloud Run revision `athena-00005-qsn`: the `bcfddb2` build with `GEMINI_FLASH_MODEL=gemini-3.5-flash` (28 Oct). Service URL https://athena-610996920841.us-central1.run.app (the older https://athena-zgaqinafna-uc.a.run.app also works).
 - **The session runs locally** with the founder's real keys in `.env`, so live checks run here. **The API budget is low:** make no paid calls (live runs, Record, run buttons) without the founder's yes. Use dev mode's Replay.
 
 ---
@@ -34,6 +34,8 @@ Athena is a Qloo hackathon entry. Submission is **28 Oct**, the only real date.
 | 8.8 Dev mode out of the founder's UI, and a polish pass (§23.7) | Built (`da9ecb6`…`87a3620`), pushed, deployed. Its prompt-voice fixes haven't been seen on a live call yet. |
 | 9 The context test, 10 QA, deploy and write-up | Not started. |
 
+**Flash model:** `gemini-3.5-flash` both locally and on Cloud Run (founder's call, 28 Oct; 3.8 answers again but 3.5 is the model verified live). Pro is `gemini-3.1-pro-preview`, backup `gemini-3.1-flash-lite`.
+
 **Checks at `bcfddb2`:** tsc is clean, and vitest passes 699/699. Two tests (`knowledge.test.ts` "keeps a long list whole", `methods.test.ts` "parses dates the way pages write them") have flaked once under full-suite load; each passes alone.
 
 **Since 8.8 (founder-requested, both pushed and deployed):**
@@ -52,7 +54,6 @@ Athena is a Qloo hackathon entry. Submission is **28 Oct**, the only real date.
 - The Magic Spoon run lacks several states (Scout and Matchmaker pages, Execute Plan running, drafts, What's working, This week). Those cards fall back to older runs and are labelled.
 
 **Open decisions for the founder (don't act on them unasked):**
-- Cloud Run still has `GEMINI_FLASH_MODEL=gemini-3.8-flash`; local `.env` uses 3.5.
 - A Next.js security-upgrade nudge appeared in a build log: not run. It belongs on its own branch, with the founder's yes.
 - Whether to pin the light theme again: since 8.8 (f) the app follows the system's light or dark setting.
 - The Monday email needs a sending account (SMTP settings in `.env`) and one Cloud Scheduler job. It was waiting on the founder on 27 Oct; confirm before assuming.
@@ -128,7 +129,6 @@ Athena is a Qloo hackathon entry. Submission is **28 Oct**, the only real date.
 - the fast search API;
 - the Qloo limit request;
 - a second gcloud key;
-- switching Flash back to 3.8 if it recovers.
 
 ## 4. Commands
 

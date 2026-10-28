@@ -112,6 +112,20 @@ const FLOWS: Flow[] = [
     ],
   })),
   {
+    title: "Names and sources",
+    note: "§23.8: crowds named after two things they love, a card behind every known name, and sources named instead of numbered. The share page needs no snapshot; narrow the window below 640px to see a card as a bottom sheet.",
+    steps: [
+      { label: "Crowd card: named after two loves", note: "Its handle, and what they share as Athena's read in the dashed outline.", find: (s) => !!s.journey?.analyst, url: "/plan?agent=analyst" },
+      { label: "Name card: a crowd", find: none, url: "/share/fishwife-sample-plan", fresh: true, then: [".ref-link[data-kind=crowd]"] },
+      { label: "Name card: a shop", find: done("rep"), url: "/plan?agent=rep", then: [".ref-link[data-kind=shop]"] },
+      { label: "Name card: a city", find: done("navigator"), url: "/plan?agent=navigator", then: [".ref-link[data-kind=city]"] },
+      { label: "Name card: a creator, partner or podcast", find: done("matchmaker"), url: "/plan?agent=matchmaker", then: [".ref-link[data-kind=creator], .ref-link[data-kind=partner], .ref-link[data-kind=podcast]"] },
+      { label: "Name card: an event", find: done("promoter"), url: "/plan?agent=promoter", then: [".ref-link[data-kind=event]"] },
+      { label: "Name card: from the Brand Graph", note: "A brand like yours, a rival or a shop that stocks you, in Athena's chat.", find: full, url: "/plan?agent=athena", then: [".ref-link[data-kind=brand], .ref-link[data-kind=rival], .ref-link[data-kind=shop]"] },
+      { label: "Source chip: a subagent's sentence", find: done("scout"), url: "/plan?agent=scout", then: [".src-chip"] },
+    ],
+  },
+  {
     title: "Execute Plan",
     steps: [
       { label: "Ready: Start / Later card", find: (s) => !!s.journey?.plan && !s.journey.exec, url: "/plan" },

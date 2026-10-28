@@ -176,8 +176,11 @@ async function runThen() {
   localStorage.removeItem(THEN);
   for (const c of clicks) {
     const [sel, text] = c.split("::");
+    // A server-rendered page (the share page) shows its buttons before React hydrates them: a click then is lost, so
+    // an element counts only once React has attached to it.
+    const live = (el: HTMLElement) => Object.keys(el).some((k) => k.startsWith("__reactProps"));
     const find = () =>
-      [...document.querySelectorAll<HTMLElement>(sel)].find((el) => !text || (el.textContent ?? "").trim().startsWith(text) || (el.getAttribute("aria-label") ?? "").startsWith(text));
+      [...document.querySelectorAll<HTMLElement>(sel)].find((el) => live(el) && (!text || (el.textContent ?? "").trim().startsWith(text) || (el.getAttribute("aria-label") ?? "").startsWith(text)));
     let el = find();
     // The page restores its state and draws in its own time: wait for the element, up to ten seconds.
     for (let i = 0; !el && i < 40; i++) {
@@ -185,9 +188,17 @@ async function runThen() {
       el = find();
     }
     if (!el) return;
-    el.scrollIntoView({ block: "center" });
-    el.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    await new Promise((r) => setTimeout(r, 600));
+    // Hydration attaches props before it commits, and a page that restores its state draws again after: a click in
+    // between is dropped, so let the page settle first. A name or a source opens a card, so try again until one shows.
+    const card = el.getAttribute("aria-haspopup") === "dialog";
+    for (let i = 0; i < (card ? 5 : 1); i++) {
+      await new Promise((r) => setTimeout(r, 400));
+      el = find() ?? el;
+      el.scrollIntoView({ block: "center" });
+      el.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      await new Promise((r) => setTimeout(r, 600));
+      if (!card || document.querySelector("[role=dialog]")) break;
+    }
   }
 }
 

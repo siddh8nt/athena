@@ -134,6 +134,7 @@ function RefLink({ text, card }: { text: string; card: CardOf }) {
     <button
       type="button"
       className={`ref-link ${ctx.openId === card.id ? "on" : ""}`}
+      data-kind={card.kind}
       aria-haspopup="dialog"
       onMouseEnter={(e) => ctx.show(card, e.currentTarget, false)}
       onMouseLeave={ctx.leave}

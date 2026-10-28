@@ -541,7 +541,7 @@ export function across(read: NavRead, yours: string[], opts: { channel?: "online
           })),
         },
         ...(overlap.length ? [] : [{ type: "note" as const, text: "No city is strong for two crowds at once yet, so each crowd starts in its own city" }]),
-        ...(mine.length ? [{ type: "note" as const, text: `Already yours: ${and(mine.map((m) => `${m.name}${m.strong.length ? ` (strong for ${and(m.strong.map((x) => x.crowd.name))})` : ""}`))}. Kept as home base, not counted as new.` }] : []),
+        ...(mine.length ? [{ type: "note" as const, text: `Already yours: ${and(mine.map((m) => `${m.name}${m.strong.length ? ` (${and(m.strong.map((x) => x.crowd.handle ?? x.crowd.name))} ${m.strong.length > 1 ? "are" : "is"} strong here)` : ""}`))}. Kept as home base, not counted as new.` }] : []),
       ],
     },
     ...cities.map((c) => cityPage(read, c, v(c.metroId), opts)),

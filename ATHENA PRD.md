@@ -138,7 +138,7 @@ A judge who gives it two minutes leaves convinced. A judge who gives it ten find
 |---|---|---|---|---|
 | J1 | **Tell me about your product** | Describes the product, drops in a deck or photos, or picks a sample-brand pack | Athena reads it all, asks at most one question at a time, and fills a live "What I understood" card; every field shows its source | It asks what founders know, never what they don't |
 | J2 | **Online or offline, and how to grow** | Confirms Athena's guess (one tap), picks up to 3 growth types | The options reorder for the channel; Athena pre-selects 1–2 with a reason | The founder states the goal; Athena does the rest |
-| J3 | **Your crowds** | Reads 2–3 crowd cards, answers "That's us", "Not us" or "Partly", picks one | Each card: a name from its Qloo entities and tags, what it loves across brands, music, TV and places, its labelled audience skew, where it concentrates | The part no LLM can do: real crowds from a real taste graph |
+| J3 | **Your crowds** | Reads 2–3 crowd cards, answers "That's us", "Not us" or "Partly", picks one | Each card: a name after two things it loves, with what they share as Athena's read (§23.8 a), what it loves across brands, music, TV and places, its labelled audience skew, where it concentrates | The part no LLM can do: real crowds from a real taste graph |
 | J4 | **Where** | Picks a city, or asks "what if Austin?" | Cities ranked for that crowd; the map flies to the pick; heatmap and named neighbourhoods | Only Qloo can rank cities by a crowd's taste |
 | J5 | **Places, Partners, Online, Message, Moments** | At each stop: shortlists, filters, asks for "more like this" | Each stop streams in, ranked for the chosen crowd and city, every pick with evidence and "Show me why" | Every pick carries evidence |
 | J6 | **Without Qloo** | Flips the toggle on Places | The chatbot's venues replace Athena's; each is marked *found*, *closed* or *unverified*, and the comparison line updates (§10.2) | The challenge's comparison, on the judge's own click |
@@ -607,7 +607,7 @@ P0 is the demo path. Every requirement has a test.
 | F39 | One-page growth brief (print stylesheet) | — | P2 | Prints on one page from the browser |
 | F40 | **Online or offline**, with Athena's guess and a one-tap confirm (§6.2.1) | J2 | P0 | The guess is right for ≥ 8 of 10 test brands with websites |
 | F41 | **Growth types:** up to 3, prerequisites, conflict questions, channel-based ordering (§7.8) | J2 | P0 | Each rule in §7.8 has a unit test |
-| F42 | **Taste graph and crowds** (§9.23) | J3 | P0 | Liquid Death and one product-only brand each give 2–3 crowds whose top 10 entities overlap ≤ 30% between any two; every crowd name uses only words from its Qloo entities and tags (validator); the graph uses ≤ 40 Qloo calls; a "That's us" re-weights the next stop's results |
+| F42 | **Taste graph and crowds** (§9.23) | J3 | P0 | Liquid Death and one product-only brand each give 2–3 crowds whose top 10 entities overlap ≤ 30% between any two; every crowd is named after two of its own core members, checked in code (§23.8 a); the graph uses ≤ 40 Qloo calls; a "That's us" re-weights the next stop's results |
 | F43 | **The journey** (§13.1–13.2): step by step, a progress rail, back and forward, choices carried forward with a "what moved" note | J3–J7 | P0 | Changing the crowd re-ranks every later stop; no stop starts before the founder chooses |
 | F44 | **The dashboard** (§13.2): the whole plan on one screen, sharing state with the journey; the pipeline is worked here | J7 | P0 | A change in either view shows in the other; a returning founder lands on it |
 | F45 | **Online stop** (§9.24): creators, podcasts, ad interests and audiences to test, content angles | J5 | P0 | An online test brand gets ≥ 5 creators or podcasts and ≥ 3 ad-interest suggestions, each with evidence and the aggregate label; a code test proves no blocked audience type (§9.17) can appear |
@@ -1018,7 +1018,7 @@ type BrandBrief = {
    - *Measured 12 Oct (Brightland, offline on cached matrices, 0 calls).* With Great Jones and Our Place as lookalikes, λ₂–λ₄ were 0.84 / 0.83 / 0.76 against 0.75 / 0.73 / 0.69 on shuffled data, and a crowd was recovered (Jaccard ≥ 0.5) in 31–39% of resamples against 3–16%: **real but soft crowds**, hence the core rule. With Our Place and Caraway the two crowds were strong: mean Jaccard 0.66 against 0.40, recovered in 85–88% of resamples against 20%, λ₂ 0.89 against 0.75; 86 of 150 entities were core. Tried and rejected: 80% subsamples (inflate real and shuffled data alike), rank-4 denoising (makes shuffled data look structured), a kNN of 12 (no gain).
    - **The seed shapes the map.** Lookalikes come from the brief (step 1), so two briefs of the same brand can give different crowds (12 Oct: k = 2 with Our Place and Caraway, k = 3 with Aesop and Great Jones). For a fixed seed the engine is deterministic, because its random draws are seeded from the signal. The Bench registers each brand's seed (§10.6).
 5. **Each crowd gets:**
-   - a **name** written by the agent from only its entities and tags (validator: every word maps to an entity or tag; otherwise "Crowd A");
+   - a **name** after two of its own core members a founder would recognise ("Liquid I.V. and Rachel Hollis fans"), picked by the agent and checked in code, with a short handle ("the Liquid I.V. crowd") and one sentence on what they share, shown as Athena's read (v5, §23.8 a; until 28 Oct the name was stitched from its entities' words and tags under the validator);
    - its **top loves** across domains, core members first, with affinity;
    - its **audience skew** from `urn:demographics` with the crowd's top entities as the signal, under §9.17. *Verified 10 Oct:* crowds of the same brand get distinct skews (Liquid Death's emo-rap crowd ≤ 34 and gender-neutral, its Dr. Squatch–Slim Jim crowd male +0.69), while the brand alone gives a blend of them (45–54, male +0.43), which is itself an argument for crowds;
    - **where it concentrates:** metros by the place-diversify method (§9.3), any US metro.
@@ -2469,6 +2469,7 @@ Written 14 Oct, after the founder's review of the v4 build. **§23.1 is `problem
 | 8.6 | 1, 3 G, 5 | **Every subagent works on all three crowds; Athena's plan stitches them; the Executive skeleton; a dashboard in tabs** (founder, 21 Oct; after 8.5's build, before its "done when" run). Supersedes in 8.5 the out-of-scope line "several cities and all crowds at once". It also supersedes creator ownership: 8.3 a, 8.4 f and the Promoter's mission move creators to the Matchmaker. Full spec in §23.5: (a) UI fixes and a tabbed dashboard; (b) one page shape for every subagent; (c) the Analyst always gives 3 crowds; (d) the Scout; (e) the Navigator; (f) the Rep; (g) the Matchmaker; (h) the Promoter; (i) ownership and run order; (j) data sources; (k) budgets; (l) outreach rules; (m) Athena's plan; (n) the Executive skeleton. | See §23.5 "Done when". |
 | 8.7 | — (founder, 27 Oct) | **Athena in the founder's own tools** (founder, 27 Oct; after 8.6, order against §23.5 (r) is the founder's call). The plan, tasks and brand context reach the tools a founder already works in, and what they do there comes back to Athena. No Google OAuth; judges can try it in about a minute. Full spec in §23.6: (a) the workspace saved on the server; (b) the Athena MCP server; (c) connect links, no OAuth; (d) the "Use Athena elsewhere" panel; (e) the judges' demo link; (f) the brand context file; (g) calendar; (h) Open in Gmail; (i) Shopify sales from an orders export; (j) This week and the Monday email; (k) a read-only share link; (l) design rules; (m) dev mode. | See §23.6 "Done when". |
 | 8.8 | — (founder, 27 Oct) | **Dev mode out of the founder's UI, and a polish pass for founders** (founder, 27 Oct; order against 8.7 and §23.5 (r) is the founder's call). Nothing a founder sees is there for the builder: no dev-mode link, no debug text. Every page reads as written to the founder, fits a phone, and never shows a blank screen while it loads. Full spec in §23.7: (a) dev mode out of the founder's UI; (b) every line written to the founder; (c) one place for each thing; (d) phones; (e) no blank first paint; (f) one look on every page; (g) design rules; (h) dev mode keeps up. | See §23.7 "Done when". |
+| 8.9 | — (founder, 28 Oct) | **Crowds named after what they love, and where every name comes from** (founder, 28 Oct; after 8.8). Crowd names stitched from Qloo tags read as AI slop, and references don't say where they came from. Full spec in §23.8: (a) crowds named after two things they love, with what they share as Athena's read; (b) what a crowd is, in every prompt; (c) a card behind every name saying where it came from; (d) sources named, not numbered; (e) the files and shared pages; (f) the slop sweep; (g) dev mode. | See §23.8 "Done when". |
 | 9 | 3 G | **The context test:** the same brand with only its website, then with the full knowledge base. The crowds, ranking and actions must change in ways that trace back to specific facts. A product check, separate from the Bench. | The diff is written up per brand; no change is treated as a bug. |
 | 10 | all | QA against the no-failure-state rules, the phone layout, the Cloud Run deploy, re-warming the demo packs, and the write-up and video. The write-up says plainly that Athena is now an agent (problem 0), for Stage 1 judging. | Rehearsed twice end to end, and the coverage table (§23.3) is all ticked. |
 
@@ -3325,7 +3326,7 @@ A founder asks Claude, Cursor or ChatGPT "what should I do next for Fishwife?" a
 - **Overview's step cards** say what the step means for the brand, not the subagent's task brief. The brief stays in the subagent's page for anyone who opens it.
 - **Counts:** one count per sentence, the one that matters to the founder. The rest sits a click away in Execute Plan.
 - **Fixed text in the app:** every heading, label, empty state and button is read once and rewritten where it speaks to the builder. Examples: a step name, an internal stage, a technical term, an id. Words-not-ids (§23.6 (b)) applies here too.
-- **Out of this step:** how crowds are named. It stays a later topic for the founder.
+- **Out of this step:** how crowds are named. It stays a later topic for the founder (taken up in §23.8).
 
 #### (c) One place for each thing (§23.5 (p), applied again)
 
@@ -3394,6 +3395,133 @@ Every state this step changes still has its card in `/dev`'s step map, so the po
 - **A founder's read-through** of every page in (d) finds no line written for the builder, no id, and nothing shown twice on one screen. Checked with a brand not used before, so the new voice comes from the prompts rather than from cached text.
 - **Every page in (d)** is checked on desktop and at 375 px, light and dark: no clipped text, no sideways scroll, no blank first paint on the production build.
 - **Every changed state** has its dev-mode card.
+
+### 23.8 Step 8.9 in detail: crowds named after what they love, and where every name comes from (founder, 28 Oct; not built)
+
+**Why:** the founder said that wherever the project mentions the crowds Athena finds, their "eccentric" names "sound straight like AI slop". They asked for better, more intuitive ways to name and talk about crowds and similar things. They also asked for a way to highlight each reference and explain where it came from, across every subagent's output, Execute Plan and the files and share link Athena makes, and for a polish of slop like this across the project. This replaces the "how crowds are named" topic that §23.7 left for later.
+
+**What saved runs show (28 Oct):**
+- **Names are stitched from tags:**
+  - Magic Spoon: "Mindful Fitness Podcasts", "Social Justice Sparkling Drinks" (a book's tag next to LaCroix) and "Contemporary Country Heartland";
+  - Fishwife: "Indie Pop Comedy" and "Comedy Podcast Mystery";
+  - Graza: "Modern Culinary Home", "Folk Soul Memoir" and "Indie Folk Health".
+
+  The validator (every word must come from the crowd's entity names or tags) keeps these names from inventing taste. It doesn't make them mean anything.
+- **The lines built on them:**
+  - "The Mindful Fitness Podcasts crowd is our primary audience, consisting of 27 members": members are brands, shows and artists, not people, and the crowd is the founder's, not "ours".
+  - "Win Indie Pop Comedy first, then cross the bridge to Comedy Podcast Mystery".
+  - "Launch here: strong for Mindful Fitness Podcasts, Social Justice Sparkling Drinks and Contemporary Country Heartland".
+  - "3 crowds: … (still soft)".
+- **Names drift between pages:** subagents rename crowds (Graza: "Faithful soul memoir" on one page, "Folk Soul Memoir" on another), so Execute Plan rows mix two sets of names.
+- **Sources show as ids:** "s4" badges next to claims, with the meaning only on hover. The plan spreadsheet leaves sources out.
+
+#### (a) Crowds named after what they love
+
+- **The name** is two of the crowd's own core members that a founder would recognise, by their real names: "Liquid I.V. and Rachel Hollis fans".
+  - The model picks the two, preferring well-known ones of different kinds (a brand and a show, say). It may shorten each to how people say it ("Rachel Hollis" for "The Rachel Hollis Podcast").
+  - Code checks that both are core members of that crowd and that each short form comes from its member's own name. No two crowds share a member in their names.
+  - Otherwise the fallback is the two most popular core members, by name.
+- **The short handle** for later mentions is "the Liquid I.V. crowd": the first anchor.
+- **What they share:** one sentence, written by the model from the crowd's full loves and tags ("Wellness routines, faith-friendly TV and country radio").
+  - It is shown as Athena's read, with the Brand Graph's thin "my read" outline, never as a measured fact.
+  - Never age, gender, ethnicity, religion, politics or health, as before.
+- **One crowd, one name everywhere.** The Analyst's names are the only names; subagents, Athena, Execute Plan and the files never rename a crowd.
+- **Saved journeys keep the names they have**, so a plan never changes words under the founder. Cached crowd results get the new names on their next read with one Flash Lite call and no Qloo calls.
+- **The taste axes** keep their names (§9.27): they describe a direction, not a group of people.
+
+#### (b) What a crowd is, in every prompt
+
+Fixed through context, never word filters (agent reasoning, not keyword rules). The context goes to Athena, every subagent and the Executive:
+- A crowd is people whose tastes overlap, named after things they love.
+- **It is the founder's crowd:** "your crowd", never "our audience".
+- **Members are the brands, shows and artists in it, never people.** The number of people comes only from Census and is said as residents of a place. This replaces the line that let "counts of members" through as fine to give.
+- **Say what a crowd means for the founder rather than chaining names:**
+  - "strong for all three of your crowds", not three names glued together;
+  - the full name the first time on a page, then the handle.
+- **Use names exactly as given.** That keeps every mention linkable, as in (c).
+
+#### (c) Where every name comes from
+
+- **Names Athena knows are highlighted:**
+  - a crowd (name or handle);
+  - a city, shop, retailer, partner, podcast, creator or event from a subagent's results;
+  - a fact from the founder's site or files.
+
+  Each shows as a quiet underlined name. The renderer finds them by exact match on the names the journey already holds. No markup is asked of the model, so none can leak. Text that matches nothing stays plain.
+- **Tapping or hovering a name opens a small card:**
+  - what it is, in one line: for a crowd, what they share and what it's named after; for a city, its residents and income; for a shop, its address; for an event, its date;
+  - where it came from, in plain words: "Qloo's taste graph, 102 calls", "U.S. Census", "Ticketmaster", "the web: graza.co/pages/about", "your file pricing.pdf", "you said";
+  - which subagent found it, with Open to its page (and to its Execute Plan row when it is on the plan).
+- **Where:**
+  - every subagent page (headline, claims, results);
+  - Athena's chat replies;
+  - the Dashboard's step and team cards;
+  - Execute Plan's rows and detail sheet;
+  - the share page.
+- **How it behaves:**
+  - one link per name per block, so a paragraph doesn't turn into a row of underlines;
+  - keyboard-reachable;
+  - Esc or a tap outside closes it;
+  - on a phone, the card is a small bottom sheet;
+  - never a "not found" state: a name without a source isn't linked.
+
+#### (d) Sources named, not numbered
+
+- **The "s4" badges become named source chips:**
+  - "Qloo · 20 calls", "Census", "Ticketmaster", "Wikipedia", "the web", "your site", "your file", "the Brand Graph";
+  - one chip per source per sentence;
+  - the summary on tap, as in (c).
+- **A web source keeps the page it read,** so its chip opens that page.
+- **Source summaries are written for the founder:** no "(still soft)", ids or tool names.
+
+#### (e) The files and shared pages
+
+- **`athena-brand.md`:**
+  - each crowd with its name, what they share (marked as Athena's read), what it's named after and its top loves;
+  - lines that rest on a source carry a [n] marker, and a numbered source list in plain words closes the file.
+- **`athena-plan.xlsx`:**
+  - the Crowds tab gains "Named after", "What they share (Athena's read)" and "Where it came from";
+  - every other tab gains a plain "Where it came from" column, never an id. This reverses 77ffc2d's choice to leave sources out.
+- **The share page and the MCP resources** use the same names and source words.
+
+#### (f) The slop sweep
+
+Read every page of one fresh run and fix what reads as machine-written: through prompt context where a model wrote it, in the app's fixed text where the code did. Already known:
+- members counted as people;
+- "our" for the founder's brand, crowds and cities;
+- "(still soft)" and other internal words in source summaries;
+- glued crowd lists;
+- "Launch here:" / "Test here:" prefixes on a city's reason;
+- the home-base option's "which we'll use";
+- "The Scout needs none" filler in the plan's open items;
+- the Rep's shop type showing as a raw "venue".
+
+#### (g) Dev mode keeps up
+
+The new crowd card, a reference card of each kind, and the named source chips each have a card in `/dev`'s step map.
+
+#### Out of this step
+
+- What a crowd contains (the taste engine, §9.23 steps 1–4).
+- Renaming the crowds inside saved journeys and the Fishwife demo plan. Regenerating the demo is a paid run, so it's the founder's call.
+- New features.
+
+#### Done when
+
+- **Checks pass:** tsc, lint and tests, with new tests for:
+  - the name check (anchors are core members, short forms come from their names, fallback);
+  - the name linker (known names linked once per block, unknown text plain, no markup);
+  - the source naming;
+  - the brand file's and spreadsheet's new columns.
+- **One live run on a brand not used before:**
+  - every crowd is named after two things a founder would recognise and has its "what they share" read;
+  - no sentence counts members as people or says "our";
+  - every page in (c) links its crowds, cities and results to a card that says where each came from;
+  - no "s4"-style chip anywhere;
+  - the two files and the share page carry the same names and sources;
+  - checked on desktop and at 375 px.
+- **A saved journey** from before this step opens with its old names and no blank or broken view.
+- **Every new state** has its dev-mode card.
 
 ---
 

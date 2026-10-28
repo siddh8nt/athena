@@ -5,7 +5,7 @@ import { buildSeed, type SeedInput } from "@/lib/taste/seed";
 import { DOMAINS, buildGraph, extendGraph, seedSignal, shortName, type Crowd, type Domain, type GraphState, type TasteGraph } from "@/lib/taste/graph";
 import type { QlooClient } from "@/lib/qloo/client";
 import { crowdDetails } from "@/lib/taste/crowds";
-import { nameAxes, nameCrowds } from "@/lib/taste/name";
+import { nameAxes, nameCards, nameCrowds } from "@/lib/taste/name";
 import { tasteAxes } from "@/lib/taste/axes";
 import { STAND_IN, crowdBridges } from "@/lib/taste/bridges";
 import type { CrowdCard, CrowdMeeting, CrowdsResult, Love, TasteAxisCard } from "@/lib/journey/types";
@@ -55,7 +55,7 @@ export async function measure(qloo: QlooClient, input: SeedInput, base: string, 
   return { result, saved };
 }
 
-/** Each crowd's card: its skew and cities (2 calls each) and its name (the agent, under the validator). */
+/** Each crowd's card: its skew and cities (2 calls each) and its name after two things it loves (the agent, checked; §23.8 a). */
 export async function resultOf(qloo: QlooClient, graph: TasteGraph, seed: CrowdsResult["seed"], seedCallIds: string[], status: (t: string) => void): Promise<CrowdsResult> {
   if (!graph.crowds.length) return { seed, crowds: [], calls: seedCallIds.length + graph.calls, callIds: [...seedCallIds, ...graph.callIds], empty: true };
   const held = graph.crowds.filter((c) => !c.nearMiss).length;
@@ -64,7 +64,7 @@ export async function resultOf(qloo: QlooClient, graph: TasteGraph, seed: Crowds
   const [details, names, axes] = await Promise.all([Promise.all(graph.crowds.map((c) => crowdDetails(qloo, c, { priority: c.main ? "now" : "next" }))), nameCrowds(graph.crowds), graph.state ? axesOf(graph.state) : undefined]);
   const crowds: CrowdCard[] = graph.crowds.map((c, i) => ({
     id: c.id,
-    name: names[i],
+    ...names[i],
     main: c.main,
     loves: lovesOf(c),
     signal: c.signal,
@@ -167,9 +167,19 @@ export async function cachedCrowds(input: SeedInput, probes: string[] = []): Pro
   const base = baseKey(input);
   const hit = (await getStore().get<CrowdsResult>("crowds", probeKey(base, probes)).catch(() => undefined))?.value;
   if (!hit?.crowds?.length) return undefined;
-  if (hit.axes && hit.meetings) return hit;
+  const named = await renamed(hit, probeKey(base, probes));
+  if (named.axes && named.meetings) return named;
   const extras = await storedExtras(base, probes);
-  return extras ? { ...hit, ...extras } : hit;
+  return extras ? { ...named, ...extras } : named;
+}
+
+/** A result cached before §23.8 gets its crowds named after what they love, once (one Flash Lite call, no Qloo calls). */
+async function renamed(hit: CrowdsResult, key: string): Promise<CrowdsResult> {
+  if (hit.crowds.every((c) => c.after)) return hit;
+  const names = await nameCards(hit.crowds);
+  const out = { ...hit, crowds: hit.crowds.map((c, i) => ({ ...c, ...names[i] })) };
+  await getStore().set("crowds", key, out, TTL).catch(() => undefined);
+  return out;
 }
 
 type Latest = { seed: SeedInput; probes: string[] };

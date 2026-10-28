@@ -2929,3 +2929,7 @@ a.mcp-new { text-decoration: none; display: inline-flex; align-items: center; }
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 30px 70px -38px rgba(0, 0, 0, 0.6);
   }
 }
+
+/* Athena's read (§23.8 a): a thin dashed outline, as the Brand Graph draws its guesses, so a read never looks like a measurement. */
+.my-read { margin: 0 0 8px; padding: 6px 10px; border: 1px dashed var(--dash); border-radius: 10px; line-height: 1.45; }
+.my-read-tag { font-family: var(--font-caps); font-size: 10px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--thin); margin-right: 4px; }

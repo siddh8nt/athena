@@ -16,7 +16,14 @@ export type Love = { name: string; kind: "brand" | "artist" | "TV" | "film" | "p
 /** One crowd as the founder sees it (§9.23 step 5). */
 export type CrowdCard = {
   id: string;
+  /** Named after two things it loves (§23.8 a): "Liquid I.V. and Rachel Hollis fans". */
   name: string;
+  /** For mentions after the first: "the Liquid I.V. crowd". Absent on crowds named before §23.8. */
+  handle?: string;
+  /** The members the name is after, by their full names. Absent on crowds named before §23.8. */
+  after?: string[];
+  /** What they share, in one sentence: Athena's read, never a measured fact. */
+  shared?: string;
   main: boolean;
   /** What this crowd loves, strongest first, across domains. */
   loves: Love[];

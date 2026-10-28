@@ -4,6 +4,8 @@ import { isChainName } from "@/lib/methods/names";
 import { cleanMetroName, metroFor } from "@/lib/playbook/metros";
 import { VENUE_TAGS } from "@/lib/playbook/config";
 import type { Crowd } from "./graph";
+import { shortName } from "./galaxy";
+import type { Candidate } from "./naming";
 
 // A crowd's card (PRD §9.23 step 5): its labelled audience skew and where its taste concentrates. Any US metro can
 // be named (§9.3, v3.0): the metro comes from Qloo's own geocode, and the 25 fixed metros only lend display names.
@@ -87,17 +89,22 @@ export async function crowdDetails(qloo: QlooClient, crowd: Crowd, opts: { prior
   };
 }
 
-/** The always-valid name: "The Great Jones crowd". The agent may write a better one from the crowd's own words (§9.23 step 5). */
-export function fallbackName(crowd: Crowd): string {
-  const lead = crowd.entities.find((n) => n.domain === "brand") ?? crowd.entities[0];
-  if (!lead) return "This crowd";
-  return /^the\s/i.test(lead.name) ? `${lead.name} crowd` : `The ${lead.name} crowd`;
+const KIND: Record<string, string> = { brand: "brand", artist: "artist", tv_show: "TV", movie: "film", podcast: "podcast", book: "book" };
+
+/** The members a crowd may be named after (§23.8 a): its core, most widely known first (all members when the core is small). */
+export function candidatesOf(c: Pick<Crowd, "entities">, n = 14): Candidate[] {
+  const core = c.entities.filter((e) => e.core ?? true);
+  const pool = core.length >= 4 ? core : c.entities;
+  return [...pool]
+    .sort((a, b) => (b.popularity ?? 0) - (a.popularity ?? 0) || b.affinity - a.affinity)
+    .slice(0, n)
+    .map((e) => ({ name: shortName(e.name, e.domain), kind: KIND[e.domain] ?? e.domain }));
 }
 
 const STOP = new Set(["the", "and", "of", "a", "an", "crowd", "fans", "people", "lovers", "set", "with", "for", "who", "love", "&"]);
 
 /**
- * The name validator (§9.23 step 5): every content word must come from the crowd's own entity names or Qloo tags,
+ * The name validator, now for the taste axes (§9.27): every content word must come from the entities' names or Qloo tags,
  * so a name can never claim a taste Qloo didn't show. Prefix matching lets "comedies" match "comedy".
  */
 export function validName(name: string, crowd: Pick<Crowd, "entities">): boolean {

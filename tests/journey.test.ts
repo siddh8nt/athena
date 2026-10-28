@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { alreadyIn, retailCategory, OWN_LABEL } from "@/lib/stops/retailers";
 import { creatorRole, MIN_CREATORS } from "@/lib/stops/online";
-import { citiesFrom, fallbackName, readSkew, validName } from "@/lib/taste/crowds";
+import { candidatesOf, citiesFrom, readSkew, validName } from "@/lib/taste/crowds";
+import { checkPick, checkPicks, fallbackFor, handleOf, shortOf } from "@/lib/taste/naming";
 import { seedSignal, type Crowd } from "@/lib/taste/graph";
 import type { QlooEntity } from "@/lib/qloo/types";
 
@@ -16,20 +17,60 @@ const crowd = (names: [string, string][], tags: string[] = []): Crowd => ({
   domains: ["brand"],
 });
 
-describe("crowd names (§9.23 step 5)", () => {
+describe("axis name validator (§9.27)", () => {
   const c = crowd([["Great Jones", "brand"], ["Chef's Table", "tv_show"], ["Patty Griffin", "artist"]], ["Cooking", "Folk", "Minimalist"]);
 
-  it("accepts a name built from the crowd's own entities and tags", () => {
+  it("accepts a name built from the entities and tags", () => {
     expect(validName("Minimalist folk cooks", c)).toBe(true);
   });
 
   it("rejects a word Qloo didn't show", () => {
     expect(validName("Wealthy suburban moms", c)).toBe(false);
   });
+});
 
-  it("falls back to the lead brand, without doubling 'The'", () => {
-    expect(fallbackName(c)).toBe("The Great Jones crowd");
-    expect(fallbackName(crowd([["The Culinistas", "brand"]]))).toBe("The Culinistas crowd");
+describe("crowd names after what they love (§23.8 a)", () => {
+  const cands = [
+    { name: "Liquid I.V.", kind: "brand" },
+    { name: "Verb Energy Co.", kind: "brand" },
+    { name: "The Rachel Hollis Podcast", kind: "podcast" },
+    { name: "Seth Ennis", kind: "artist" },
+  ];
+
+  it("takes the model's two members and short forms when they're on the crowd's list", () => {
+    const n = checkPick({ after: ["liquid i.v.", "The Rachel Hollis Podcast"], short: ["Liquid I.V.", "Rachel Hollis"], shared: "Wellness routines and country radio" }, cands);
+    expect(n).toEqual({ name: "Liquid I.V. and Rachel Hollis fans", handle: "the Liquid I.V. crowd", after: ["Liquid I.V.", "The Rachel Hollis Podcast"], shared: "Wellness routines and country radio." });
+  });
+
+  it("keeps the full name when a short form adds a word", () => {
+    expect(shortOf("The Rachel Hollis Podcast", "Rachel Hollis Show")).toBe("The Rachel Hollis Podcast");
+    expect(shortOf("The Rachel Hollis Podcast", "The")).toBe("The Rachel Hollis Podcast");
+    expect(shortOf("Verb Energy Co.", "Verb")).toBe("Verb");
+  });
+
+  it("falls back to the strongest members of different kinds when a pick isn't on the list", () => {
+    const n = checkPick({ after: ["Liquid I.V.", "Peloton"], short: [], shared: "x" }, cands);
+    expect(n.name).toBe("Liquid I.V. and The Rachel Hollis Podcast fans");
+    expect(n.shared).toBeUndefined();
+  });
+
+  it("never lets one member name two crowds", () => {
+    const [a, b] = checkPicks([{ after: ["Liquid I.V.", "Seth Ennis"] }, { after: ["Liquid I.V.", "Verb Energy Co."] }], [cands, cands]);
+    expect(a.name).toBe("Liquid I.V. and Seth Ennis fans");
+    expect(b.after).not.toContain("Liquid I.V.");
+  });
+
+  it("names a one-member crowd, an empty one, and doesn't double 'The' in the handle", () => {
+    expect(fallbackFor([{ name: "The Durrells", kind: "TV" }])).toEqual({ name: "The Durrells fans", handle: "the Durrells crowd", after: ["The Durrells"] });
+    expect(fallbackFor([]).name).toBe("This crowd");
+    expect(handleOf("The Culinistas")).toBe("the Culinistas crowd");
+  });
+
+  it("offers the core, most widely known first", () => {
+    const c = crowd([["Great Jones", "brand"], ["Chef's Table", "tv_show"], ["Patty Griffin", "artist"], ["Our Place", "brand"]]);
+    c.entities[2].popularity = 0.9;
+    c.entities[3].core = false;
+    expect(candidatesOf(c).map((x) => x.name)).toEqual(["Patty Griffin", "Great Jones", "Chef's Table", "Our Place"]);
   });
 });
 

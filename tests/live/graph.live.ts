@@ -7,7 +7,8 @@ import { getStore } from "@/lib/store";
 import { resolveBrand } from "@/lib/methods/resolve";
 import { buildGraph, whyOf, type Seed } from "@/lib/taste/graph";
 import { readEnv } from "@/lib/env";
-import { crowdDetails, fallbackName } from "@/lib/taste/crowds";
+import { candidatesOf, crowdDetails } from "@/lib/taste/crowds";
+import { fallbackFor } from "@/lib/taste/naming";
 
 // Usage: pnpm live tests/live/graph.live.ts. Builds the taste graph for a few brands and prints the crowds.
 const env = Object.fromEntries(
@@ -49,7 +50,7 @@ for (const c of CASES.filter((x) => !process.env.ONLY || x.label.startsWith(proc
     for (const cr of g.crowds) {
       log(`  ${cr.main ? "MAIN" : "adj."} ${cr.id} (${cr.entities.length}, holds ${Math.round((cr.stability ?? 0) * 100)}%, signal ${cr.signal.map((s) => s.name).join(" / ")}): ${cr.domains.map((d) => `${d}: ${cr.entities.filter((n) => n.domain === d).slice(0, 5).map((n) => n.name).join(", ")}`).join(" || ")}`);
       const d = await crowdDetails(qloo, cr);
-      log(`       ${fallbackName(cr)} · skew ${d.skew?.clear ? JSON.stringify({ ...d.skew.age, ...d.skew.gender }) : "none clear"}`);
+      log(`       ${fallbackFor(candidatesOf(cr)).name} · skew ${d.skew?.clear ? JSON.stringify({ ...d.skew.age, ...d.skew.gender }) : "none clear"}`);
       log(`       cities: ${d.cities.map((x) => `${x.name} (${x.venues}: ${x.venue})`).join(" | ")}`);
       log(`       sample tags: ${[...new Set(cr.entities.flatMap((n) => n.tags))].slice(0, 12).join(", ")}`);
     }

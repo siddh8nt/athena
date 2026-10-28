@@ -1290,11 +1290,16 @@ function AnalystResults({ j, step, measured, forming, fits, onAsk, probing, alon
   );
 }
 
-/** What a crowd loves, where it concentrates, where it meets the main crowd, and its taste-panel lean. */
+/** What a crowd shares (Athena's read, §23.8 a), what it loves, where it concentrates, where it meets the main crowd, and its taste-panel lean. */
 function CrowdAbout({ r, c }: { r: NonNullable<JourneyState["crowds"]>; c: CrowdCard }) {
   const skew = skewLine(c.skew);
   return (
     <>
+      {c.shared && (
+        <p className="my-read small" title="Athena's read from what this crowd loves, not a measurement">
+          <span className="my-read-tag">My read</span> {c.shared}
+        </p>
+      )}
       <div className="taste-loves">
         {c.loves.map((l, i) => (
           <span key={l.name} className="love" style={{ animationDelay: `${i * 50}ms` }}>

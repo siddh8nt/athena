@@ -15,7 +15,7 @@ export const DEMO_WS = "demo-fishwife";
 export const DEMO_SECRET = "fishwife-sample-plan";
 
 /** What the demo link opens. */
-export const DEMO_LINK: LinkMeta = { ws: DEMO_WS, scope: "read", at: 0, label: "Fishwife sample" };
+export const DEMO_LINK: LinkMeta = { ws: DEMO_WS, scope: "read", at: 0, label: "Fishwife tinned fish sample" };
 
 /** A workspace id no browser may save over or mint a link for: the demo's (and any later "demo-" one). */
 export const reserved = (ws: string) => ws.startsWith("demo-");

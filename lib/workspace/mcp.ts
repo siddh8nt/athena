@@ -61,7 +61,7 @@ export function buildServer(meta: LinkMeta): McpServer {
   const refuse = () => ({
     ...text(
       reserved(ws)
-        ? "This is Athena's read-only Fishwife sample, so it can't make changes, and everyone who connects sees the same plan. Start your own brand in Athena for a link that can mark tasks, answer questions and add facts."
+        ? "This is Athena's read-only Fishwife tinned fish sample, so it can't make changes, and everyone who connects sees the same plan. Start your own brand in Athena for a link that can mark tasks, answer questions and add facts."
         : "This is a read-only link, so it can't make changes. Ask the founder for a full connect link to record marks, answers or facts.",
     ),
     isError: true,
@@ -154,7 +154,7 @@ export function buildServer(meta: LinkMeta): McpServer {
       return {
         ...text(
           reserved(ws)
-            ? "The Fishwife sample is read-only, so it can't ask Athena to run new work. Read its resources (brief, crowds, plan, tasks) for everything Athena already found, or start your own brand in Athena to ask it anything."
+            ? "The Fishwife tinned fish sample is read-only, so it can't ask Athena to run new work. Read its resources (brief, crowds, plan, tasks) for everything Athena already found, or start your own brand in Athena to ask it anything."
             : "This is a read-only link, so it can't ask Athena (that would run Athena's tools). Ask the founder for a full connect link, or read the workspace resources for what Athena has already found.",
         ),
         isError: true,

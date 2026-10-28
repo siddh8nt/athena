@@ -68,7 +68,7 @@ export async function sendDemo(to: string): Promise<"sent" | "already" | "busy" 
   const n = (await store.get<number>(DEMO_COUNT, day))?.value ?? 0;
   if (n >= DEMO_DAILY) return "busy";
   await store.set<number>(DEMO_COUNT, day, n + 1, 2 * DAY);
-  const ok = await sendWeek(DEMO_WS, to.trim(), undefined, "A sample: Fishwife's plan, as seeded for the Athena demo. A founder gets their own every Monday.");
+  const ok = await sendWeek(DEMO_WS, to.trim(), undefined, "A sample: the plan for Fishwife tinned fish, as seeded for the Athena demo. A founder gets their own every Monday.");
   if (ok) await store.set<number>(DEMO_SENT, who, 1, DAY);
   return ok ? "sent" : "busy";
 }

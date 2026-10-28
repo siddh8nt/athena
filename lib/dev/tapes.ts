@@ -68,7 +68,7 @@ export type SnapshotInfo = Omit<Snapshot, "store"> & { journey?: JourneySummary 
 /** Each snapshot's summary, kept beside them: snapshots never change once saved, and reading every one again for the
  *  step map takes most of a minute once there are hundreds. A new summary shape (INDEX_V) reads them all once more. */
 const INDEX = join(ROOT, "snapshot-index.json");
-const INDEX_V = 3;
+const INDEX_V = 4;
 
 export async function listSnapshots(): Promise<SnapshotInfo[]> {
   const files = await readdir(SNAPS).catch(() => [] as string[]);
@@ -121,6 +121,8 @@ export type JourneySummary = {
   later: boolean;
   /** An orders export read (§23.6 i). */
   sales: boolean;
+  /** Places and names the brand-fit check left out (§23.6 n). */
+  leftOut: number;
 };
 
 function summarize(raw: string): JourneySummary | undefined {
@@ -129,7 +131,7 @@ function summarize(raw: string): JourneySummary | undefined {
     const s = JSON.parse(raw) as {
       brief?: { name?: { value?: string } };
       msgs?: { record?: { settled?: unknown[] } }[];
-      journey?: { crowds?: unknown; team?: { proposed?: unknown[]; goals?: unknown[]; workflow?: { steps?: { id: string; state: string }[] }; works?: Record<string, unknown>; plan?: unknown; tasks?: Record<string, unknown>; exec?: Exec; outcomes?: unknown[]; sales?: { orders?: unknown[] } } };
+      journey?: { crowds?: unknown; team?: { proposed?: unknown[]; goals?: unknown[]; workflow?: { steps?: { id: string; state: string }[] }; works?: Record<string, unknown>; plan?: { fit?: Record<string, { fit?: string }> }; tasks?: Record<string, unknown>; exec?: Exec; outcomes?: unknown[]; sales?: { orders?: unknown[] } } };
     };
     const team = s.journey?.team;
     const steps = team?.workflow?.steps ?? [];
@@ -153,6 +155,7 @@ function summarize(raw: string): JourneySummary | undefined {
       profiles: Object.values(exec?.contacts ?? {}).filter((c) => c.ask).length,
       later: !!exec?.later && !exec.started,
       sales: !!team?.sales?.orders?.length,
+      leftOut: Object.values(team?.plan?.fit ?? {}).filter((v) => v.fit === "out").length,
     };
   } catch {
     return undefined;

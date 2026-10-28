@@ -647,7 +647,7 @@ export function Onboard({
               {PACKS.map((p) => (
                 <li key={p.slug}>
                   <button type="button" onClick={() => sample(p.message)} title={`Built from public info; not affiliated with ${p.name}.`}>
-                    {p.name}
+                    {p.name} {p.product}
                   </button>
                 </li>
               ))}
@@ -655,8 +655,8 @@ export function Onboard({
           </div>
           {demo && (
             <div className="ob-mcp">
-              <button type="button" onClick={() => setDemoOpen(true)} title="Read-only Athena MCP link to the precomputed Fishwife plan">
-                Connect the Fishwife plan to your AI
+              <button type="button" onClick={() => setDemoOpen(true)} title="A read-only MCP server on the Fishwife tinned fish sample plan. Your own brand gets its own MCP server once it's set up.">
+                Try the Athena MCP server on a sample plan
               </button>
             </div>
           )}

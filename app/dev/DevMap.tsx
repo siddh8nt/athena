@@ -8,6 +8,7 @@ import { DEMO_BRANDS } from "@/lib/playbook/demo";
 
 // The step map: every flow and step of the app, each opening the real app at that point from a recorded snapshot.
 // Replay serves the recorded responses, so a step can be clicked through and its code edited with hot reload at no cost.
+// A run picks whose snapshots the cards open: a step that run never reached opens the newest other run that did.
 
 type Status = { offline: boolean; tapes: Record<string, number>; snapshots: SnapshotInfo[] };
 /** A card: the snapshot it opens (the latest that `find` matches), the page, and `then`, the clicks after the page
@@ -35,6 +36,7 @@ const FLOWS: Flow[] = [
     note: "As a new visitor sees them: no snapshot. Every page follows the system's light or dark setting; switch it to check both.",
     steps: [
       { label: "Landing page", find: none, url: "/", fresh: true },
+      { label: "/plan while it loads", note: "The page's own shape before the journey arrives, held still.", find: none, url: "/dev/shape", fresh: true },
       ...PACKS.map((p) => ({ label: `Sample brand: ${p.name}`, note: "Starts fresh with its first message; replays a recorded run where there is one.", find: none, url: `/plan?pack=${p.slug}`, fresh: true })),
       ...DEMO_BRANDS.map((b) => ({ label: `Demo workspace: ${b.name}`, note: `The older precomputed workspace at /${b.slug}.`, find: none, url: `/${b.slug}`, fresh: true })),
     ],
@@ -75,11 +77,11 @@ const FLOWS: Flow[] = [
   {
     title: "Athena MCP and sharing",
     steps: [
-      { label: "Panel: your AI assistant", find: full, url: "/plan", then: [".nav-mcp"] },
+      { label: "Panel: connect an MCP client", find: full, url: "/plan", then: [".nav-mcp"] },
       { label: "Panel: as a file", find: full, url: "/plan", then: [".nav-mcp", "#mcp-file h3"] },
       { label: "Panel: calendar", find: full, url: "/plan", then: [".nav-mcp", "#mcp-calendar h3"] },
       { label: "Panel: share with your team", find: full, url: "/plan", then: [".nav-mcp", "#mcp-share h3"] },
-      { label: "Demo link on the first screen", note: "Connect the Fishwife plan to your AI, with the Monday email.", find: none, url: "/plan?new=1", fresh: true, then: [".ob-mcp button"] },
+      { label: "Demo link on the first screen", note: "Try the Athena MCP server on a sample plan: the Fishwife panel, with the Monday email.", find: none, url: "/plan?new=1", fresh: true, then: [".ob-mcp button"] },
       { label: "Team share page", note: "The demo's view-only Execute Plan.", find: none, url: "/share/fishwife-sample-plan", fresh: true },
       { label: "Share link replaced", find: none, url: "/share/replaced-link", fresh: true },
     ],
@@ -114,6 +116,7 @@ const FLOWS: Flow[] = [
     steps: [
       { label: "Ready: Start / Later card", find: (s) => !!s.journey?.plan && !s.journey.exec, url: "/plan" },
       { label: "Left for later", find: (s) => !!s.journey?.later, url: "/plan?agent=executive" },
+      { label: "Left out: the brand-fit check", note: "Opened at the end of the list: each one's reason and Bring it back.", find: (s) => !!s.journey?.plan && !!s.journey.leftOut, url: "/plan?agent=executive", then: [".xp-leftout summary"] },
       { label: "Running: rows, contacts and drafts", find: (s) => !!s.journey?.exec, url: "/plan?agent=executive" },
       { label: "A row open: its email", find: (s) => !!s.journey?.exec, url: "/plan?agent=executive", then: [".xp-row-head:has(.xp-icons)"] },
       { label: "A row's DM", find: (s) => !!s.journey?.exec, url: "/plan?agent=executive", then: [".xp-row-head:has(.xp-icons)", ".xp-draft-kind [role=tab]::DM"] },
@@ -149,6 +152,7 @@ async function open(name: string | undefined, url: string, then?: string[]) {
 }
 
 const when = (at: number) => new Date(at).toLocaleString();
+const RUN = "athena:dev:run";
 const head = { font: "700 12px/1 var(--font-label), sans-serif", letterSpacing: ".08em", textTransform: "uppercase", color: "#59636e", margin: "0 0 8px" } as const;
 const btn = (on: boolean) => ({ padding: "6px 12px", borderRadius: 999, border: "1px solid #d0d7de", background: on ? "#1f2328" : "#fff", color: on ? "#fff" : "#1f2328", cursor: "pointer", font: "inherit" }) as const;
 const card = (ready: boolean) => ({ textAlign: "left", padding: "10px 12px", borderRadius: 10, border: "1px solid #d0d7de", background: ready ? "#fff" : "#f6f8fa", color: ready ? "#1f2328" : "#8c959f", cursor: ready ? "pointer" : "default", font: "inherit" }) as const;
@@ -156,9 +160,13 @@ const card = (ready: boolean) => ({ textAlign: "left", padding: "10px 12px", bor
 export function DevMap() {
   const [st, setSt] = useState<Status>();
   const [mode, setM] = useState<DevMode>("live");
+  const [run, setRunState] = useState<string | null>(null);
   const load = useCallback(() => void fetch("/api/dev?op=status").then((r) => r.json()).then(setSt), []);
   useEffect(() => {
     setM(devMode());
+    try {
+      setRunState(localStorage.getItem(RUN));
+    } catch {}
     load();
   }, [load]);
   const pick = (m: DevMode) => {
@@ -166,8 +174,20 @@ export function DevMap() {
     void setMode(m).then(load);
   };
   const snaps = st?.snapshots ?? [];
-  // The latest snapshot that matches a step: the state as it was when that step was last reached.
-  const latest = (f: (s: SnapshotInfo) => boolean) => [...snaps].reverse().find(f);
+  // Each brand's run, newest first; the picked one (by default the newest) is the one the cards open.
+  const runs = [...new Map(snaps.flatMap((s) => (s.journey?.brand ? [[s.journey.brand, s.at] as const] : []))).entries()].sort((a, b) => b[1] - a[1]);
+  const picked = run === "" ? "" : run && runs.some(([b]) => b === run) ? run : (runs[0]?.[0] ?? "");
+  const pickRun = (b: string) => {
+    setRunState(b);
+    try {
+      localStorage.setItem(RUN, b);
+    } catch {}
+  };
+  // The latest snapshot that matches a step in the picked run, else in any run: the state as it was when last reached.
+  const latest = (f: (s: SnapshotInfo) => boolean) => {
+    const all = [...snaps].reverse().filter(f);
+    return (picked && all.find((s) => s.journey?.brand === picked)) || all[0];
+  };
   const tapes = Object.values(st?.tapes ?? {}).reduce((a, b) => a + b, 0);
 
   return (
@@ -189,6 +209,18 @@ export function DevMap() {
         <span style={{ color: "#59636e" }}>Server: {st?.offline ? "offline (fixtures, no Gemini)" : "live"}</span>
       </section>
 
+      <section style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 24 }}>
+        <span style={head}>Run</span>
+        {runs.map(([b, at]) => (
+          <button key={b} type="button" onClick={() => pickRun(b)} style={btn(picked === b)}>
+            {b} · {new Date(at).toLocaleDateString(undefined, { day: "numeric", month: "short" })}
+          </button>
+        ))}
+        <button type="button" onClick={() => pickRun("")} style={btn(picked === "")}>
+          Newest of each step
+        </button>
+      </section>
+
       {FLOWS.map((f) => (
         <section key={f.title} style={{ marginBottom: 18 }}>
           <h2 style={head}>{f.title}</h2>
@@ -201,6 +233,7 @@ export function DevMap() {
                 <button key={s.label} type="button" disabled={!ready} onClick={() => void open(snap?.name, s.url ?? snap?.url ?? "/plan", s.then)} style={card(ready)}>
                   <strong style={{ display: "block" }}>{s.label}</strong>
                   <span style={{ display: "block", color: "#59636e", fontSize: 12 }}>{s.fresh ? (s.note ?? "Opens fresh") : snap ? `${snap.journey?.brand ?? ""} · ${when(snap.at)}` : "Not recorded yet"}</span>
+                  {snap && picked && snap.journey?.brand !== picked && <span style={{ display: "block", color: "#9a6700", fontSize: 12 }}>Not reached in {picked}&apos;s run</span>}
                   {!s.fresh && s.note && <span style={{ display: "block", color: "#8c959f", fontSize: 12 }}>{s.note}</span>}
                 </button>
               );

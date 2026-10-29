@@ -16,10 +16,11 @@ import { Question, QuestionTray, type Asked, type TrayItem } from "./Question";
 import { KnowledgePanel, Settle } from "./Knowledge";
 import { workspace } from "@/lib/knowledge/workspace";
 import { PACKS } from "@/lib/journey/packs";
+import { reviewGate } from "@/lib/journey/flow";
 import { pacer } from "@/lib/stream/pace";
 import { RunProgress, StepTimer, type ProgressStep } from "./Progress";
 import { PanelGrip } from "./Resize";
-import { NavIcon, RailToggle, useRail } from "./SideNav";
+import { NavIcon, RailToggle, ThemeToggle, useRail } from "./SideNav";
 import { McpPanel } from "./McpConnect";
 
 // Onboarding as a workspace (PRD §23.2 step 7.2). First, one box: the founder types, pastes or drops anything, and
@@ -114,6 +115,9 @@ export function Onboard({
   dock,
   grouping,
   onRecord,
+  growth,
+  onReviewed,
+  leaving,
 }: {
   brief: BrandBrief;
   files: File[];
@@ -132,6 +136,12 @@ export function Onboard({
   grouping?: string;
   /** What onboarding did, kept for the team chat after it, so moving on never hides the work. */
   onRecord?: (r: WorkRecord) => void;
+  /** The growth question, once the founder has checked the review: asked here, so the page doesn't swap (§23.9 d). */
+  growth?: TrayItem;
+  /** "Looks right: plan my growth →" on the review. */
+  onReviewed?: () => void;
+  /** The growth question is answered: onboarding fades out as the dashboard fades in. */
+  leaving?: boolean;
 }) {
   const had = !!brief.name;
   const [phase, setPhase] = useState<"first" | "work">(had ? "work" : "first");
@@ -379,7 +389,10 @@ export function Onboard({
   }, [running, pending, queued, again, asks, answers, kb, picked]);
 
   useEffect(() => {
-    if (!shown && full && !running && !grouping) setShown(true);
+    if (shown || !full || running || grouping) return;
+    setShown(true);
+    // The panel opens on the review, on a phone too, where it's the Brand tab (§23.9 d).
+    setView("brand");
   }, [shown, full, running, grouping]);
 
   // The record for the chat after onboarding, kept current as the transcript grows.
@@ -861,10 +874,23 @@ export function Onboard({
       const s = picked[c.id] ?? inUse[c.id];
       return { q: conflictQuestion(c, kb!), answer: isResolution(s) ? s.fact : typedFor[c.id], onAnswer: (a: string) => void answerConflict(c, a) };
     }),
+    ...(growth ? [growth] : []),
   ];
+  // The review's one button waits until the graph is revealed and nothing is open or still being written (§23.9 d).
+  const gate = reviewGate({ shown, running, grouping, open: openAsks + openConflicts });
+  // What the sources disagreed on and what was kept, for the review.
+  const settledList = (kb?.conflicts ?? []).map((c) => {
+    const s = picked[c.id] ?? inUse[c.id];
+    return { id: c.id, about: c.about, kept: isResolution(s) ? s.fact : keptOptions(c, s).map((i) => c.options[i]?.value).filter(Boolean).join(", "), by: s === undefined ? "Athena" : "you" };
+  });
+  const reviewed = () => {
+    onReviewed?.();
+    // On a phone the review is its own tab: back to the transcript, where the question lands by the box.
+    setView("transcript");
+  };
 
   return (
-    <div className={`ob ob-work ${panel ? "ob-has-panel" : ""}`} data-view={view}>
+    <div className={`ob ob-work ${panel ? "ob-has-panel" : ""}${leaving ? " ob-leave" : ""}`} data-view={view}>
       {picker}
       <nav className="ob-tabs" aria-label="Onboarding">
         {(["transcript", "brand", "kept"] as const).map((v) => (
@@ -879,7 +905,10 @@ export function Onboard({
       <aside className={`ob-team nav${rail ? " team-rail" : ""}`} aria-label="Who's working">
         <div className="nav-head">
           <span className="nav-title">Workspace</span>
-          <RailToggle rail={rail} onFlip={flipRail} />
+          <span className="nav-head-acts">
+            <ThemeToggle />
+            <RailToggle rail={rail} onFlip={flipRail} />
+          </span>
         </div>
         <div className="team-list">
           <span className="nav-section">Agents</span>
@@ -975,7 +1004,29 @@ export function Onboard({
           </div>
           <div className="ob-panel-body" hidden={side !== "brand"}>
             {shown ? (
-              <div className="ob-graph-reveal">{graph}</div>
+              <div className="ob-review">
+                <header className="ob-review-head">
+                  <span className="gb-kicker">Your brief</span>
+                  <strong>Check it, edit anything here or tell me below.</strong>
+                </header>
+                <div className="ob-graph-reveal">{graph}</div>
+                {settledList.length > 0 && (
+                  <section className="ob-review-settled" aria-label="Where your sources disagreed">
+                    <span className="gb-kicker">Where your sources disagreed</span>
+                    <ul>
+                      {settledList.map((c) => (
+                        <li key={c.id}>
+                          <span>{c.about}</span>
+                          <small className="muted">{c.kept ? `${c.kept} · chosen by ${c.by}` : `chosen by ${c.by}`}</small>
+                        </li>
+                      ))}
+                    </ul>
+                    <button type="button" className="linkish small" onClick={() => setView("kept")}>
+                      Change a choice
+                    </button>
+                  </section>
+                )}
+              </div>
             ) : (
               <GraphBuild
                 stages={buildStages({ kb, full, running, grouping, waiting: waitingOnYou, open: kb?.conflicts.filter((c) => picked[c.id] === undefined).length ?? 0, comparing: lines.some((l) => l.ev.tool === "compare") })}
@@ -1005,6 +1056,20 @@ export function Onboard({
           <div className="ob-panel-body" hidden={side !== "kept"}>
             {keptTab}
           </div>
+          {/* One button, once the graph is revealed; until then the foot says what it waits on (§23.9 d). */}
+          {side === "brand" && (
+            <footer className="ob-review-foot" role="status">
+              {growth ? (
+                <p>{growth.answer === undefined ? "One last question, by the box: how you sell today." : "Opening your dashboard"}</p>
+              ) : gate.ready ? (
+                <button type="button" className="primary" onClick={reviewed}>
+                  Looks right: plan my growth →
+                </button>
+              ) : (
+                <p>{gate.waiting}</p>
+              )}
+            </footer>
+          )}
         </aside>
       )}
       {!panel && (view === "brand" || view === "kept") && (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { Asked } from "./Question";
 import { WithWithout, type AloneRequest } from "./WithWithout";
 import type { AgentEvent } from "@/lib/blocks/types";
@@ -24,9 +24,11 @@ import { CrowdTabs } from "./CrowdTabs";
 import { Cites } from "./Cites";
 import { Linked } from "./Refs";
 import { RunProgress, StepTimer, type ProgressStep } from "./Progress";
-import { NavIcon, RailToggle, useRail } from "./SideNav";
+import { NavIcon, RailToggle, ThemeToggle, useRail } from "./SideNav";
 import { MCP_EVENT, McpConnect } from "./McpConnect";
 import type { CrowdCard } from "@/lib/journey/types";
+import { DOING, finishLines, type Next } from "@/lib/journey/next";
+import type { SpineGo } from "@/lib/journey/spine";
 import { salesByCrowd, salesByPlace, spanOf, usd, type Sales } from "@/lib/sales/orders";
 
 // Athena and her six specialists in the journey (PRD §23.2 step 8): the goals on top, the team in the left panel with
@@ -962,7 +964,10 @@ export function TeamPanel({ live, team, active, onOpen, athena }: { live: TeamLi
     <aside className={`team nav${rail ? " team-rail" : ""}`} aria-label="Athena and her subagents">
       <div className="nav-head">
         <span className="nav-title">Workspace</span>
-        <RailToggle rail={rail} onFlip={flip} />
+        <span className="nav-head-acts">
+          <ThemeToggle />
+          <RailToggle rail={rail} onFlip={flip} />
+        </span>
       </div>
       <label className="team-menu">
         <span className="small muted">Workspace</span>
@@ -1046,14 +1051,17 @@ export function PausedForYou({ live, onGo }: { live: TeamLive; onGo?: () => void
 
 /**
  * The head of a subagent's page (§23.2 step 8b–d): what it's for, its live progress and its steps. Its questions and
- * answers are in the one chat with Athena (§23.2 step 8.5j), so they aren't repeated here.
+ * answers are in the one chat with Athena (§23.2 step 8.5j), so they aren't repeated here. While it works the page says
+ * what it's doing for the founder and the outline of what it will give (§23.9 f); once its output is in, `finish` (the
+ * finish card and its Next line) takes the headline's place.
  */
-export function SpecialistWorkspace({ id, live, team }: { id: SpecialistId; live: TeamLive; team: TeamState }) {
+export function SpecialistWorkspace({ id, live, team, finish }: { id: SpecialistId; live: TeamLive; team: TeamState; finish?: ReactNode }) {
   const s = specialist(id);
   const st = statusOf(id, live, team);
   const work = team.works[id];
   const lines = live.lines[id] ?? [];
   const goals = team.goals.filter((g) => g.team.includes(id));
+  const working = st.state === "working";
   return (
     <div className="spec">
       <header className="spec-head">
@@ -1062,11 +1070,60 @@ export function SpecialistWorkspace({ id, live, team }: { id: SpecialistId; live
         {goals.length > 0 && <p className="small">For {goals.map((g) => `“${g.label}”`).join(", ")}</p>}
         {st.state === "waiting" && <p className="small muted spec-wait">Waiting: {st.reason}.</p>}
       </header>
-      {st.state === "working" && <AgentProgress lines={lines} who={`The ${s.name}`} />}
+      {working && <p className="spec-doing">{DOING[id]}</p>}
+      {working && <AgentProgress lines={lines} who={`The ${s.name}`} />}
+      {working && (
+        <div className="spec-outline" aria-label="What you'll get">
+          <span className="spec-outline-k">What you&apos;ll get</span>
+          <p>{s.gives}</p>
+          <div className="spec-outline-rows" aria-hidden>
+            <i />
+            <i />
+            <i />
+          </div>
+        </div>
+      )}
+      {!working && finish}
       {lines.length > 0 && <Transcript lines={lines} />}
-      {work && st.state !== "working" && <p className="spec-reply">{work.headline}</p>}
+      {work && !working && !finish && <p className="spec-reply">{work.headline}</p>}
       {!work && st.state === "idle" && !lines.length && <p className="small muted">Done when: {s.doneWhen}</p>}
     </div>
+  );
+}
+
+/**
+ * The end of a subagent's page (§23.9 f): what it found in three plain lines and a link to all of it, then one Next
+ * line, "Your turn" with the question right under it, or "Nothing needed from you" with where the run carries on.
+ * A subagent that waits on the founder shows the Next line alone.
+ */
+export function FinishCard({ id, work, next, onGo, question, resultsId }: { id: SpecialistId; work?: Work; next: Next; onGo: (to: SpineGo) => void; question?: ReactNode; resultsId: string }) {
+  const lines = work ? finishLines(work) : [];
+  return (
+    <section className="finish-card" aria-label={work ? `What the ${nameOf(id)} found` : "What happens next"}>
+      {work && (
+        <>
+          <h4>What the {nameOf(id)} found</h4>
+          <ul className="finish-lines">
+            {lines.map((l) => (
+              <li key={l}>{l}</li>
+            ))}
+          </ul>
+          <button type="button" className="linkish small" onClick={() => document.getElementById(resultsId)?.scrollIntoView({ behavior: "smooth", block: "start" })}>
+            See everything the {nameOf(id)} found ↓
+          </button>
+        </>
+      )}
+      <div className={`next-line${next.you ? " next-you" : ""}`} role="status">
+        <span className="next-k">{next.you ? "Your turn" : "Nothing needed from you"}</span>
+        <span className="next-text">{next.line}</span>
+        {next.go && next.act && !question && (
+          <button type="button" className={next.you ? "primary" : undefined} onClick={() => onGo(next.go!)}>
+            {next.act}
+          </button>
+        )}
+      </div>
+      {question && <div className="finish-q">{question}</div>}
+    </section>
   );
 }
 

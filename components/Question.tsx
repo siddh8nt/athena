@@ -32,7 +32,6 @@ export function QuestionTray({ items }: { items: TrayItem[] }) {
   }, [ids]);
   if (!open.length) return null;
   const i = Math.max(0, open.findIndex((it) => it.q.id === at));
-  const cur = open[i];
   const go = (k: number) => setAt(open[(k + open.length) % open.length].q.id);
   return (
     <section className="q-tray" aria-label="Questions for you">
@@ -47,17 +46,21 @@ export function QuestionTray({ items }: { items: TrayItem[] }) {
           </span>
         </header>
       )}
-      <Question
-        key={cur.q.id}
-        q={cur.q}
-        onAnswer={(a) => {
-          setSent((s) => [...s, cur.q.id]);
-          // Straight on to the next open one, in order.
-          const next = open[i + 1] ?? open[0];
-          setAt(next && next !== cur ? next.q.id : undefined);
-          cur.onAnswer(a);
-        }}
-      />
+      {/* Every open question stays mounted, only the current one shown: picks made on one survive ‹ › to another. */}
+      {open.map((it, k) => (
+        <div key={it.q.id} hidden={k !== i}>
+          <Question
+            q={it.q}
+            onAnswer={(a) => {
+              setSent((s) => [...s, it.q.id]);
+              // Straight on to the next open one, in order.
+              const next = open[k + 1] ?? open[0];
+              setAt(next && next !== it ? next.q.id : undefined);
+              it.onAnswer(a);
+            }}
+          />
+        </div>
+      ))}
     </section>
   );
 }
@@ -80,13 +83,14 @@ export function Question({ q, answer, onAnswer }: { q: Asked; answer?: string; o
 
   return (
     <div className={`question${q.pauses ? " question-pauses" : ""}`} role="group" aria-label={q.question}>
-      {q.for && (
-        <p className="question-for">
-          For the {q.for}
-          {q.pauses && <small> · it waits for this</small>}
-        </p>
-      )}
+      {/* Your turn, then why it's asked and what happens with the answer (§23.9 b). */}
+      <p className="question-for">
+        <span className="question-turn">Your turn</span>
+        {q.for && <> · for the {q.for}</>}
+        {q.pauses && <small> · it waits for this</small>}
+      </p>
       <p className="question-text">{q.question}</p>
+      {q.why && <p className="question-why">{q.why}</p>}
       <ol className="question-options">
         {q.options.map((o, i) => {
           // An option that can't go with one already picked stays visible, with the reason.

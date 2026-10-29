@@ -1,4 +1,4 @@
-import { PARAMS, PARAM_LABEL, type Fit, type FitsResult, type Param, type ParamScore, type Tier, type WeightChange } from "./types";
+import { PARAMS, type Fit, type FitsResult, type Param, type ParamScore, type Tier, type WeightChange } from "./types";
 
 // The combined score (PRD §23.2 step 5a–c, problem 1): every crowd scored on six parameters, each mapped to 0–1 on a
 // fixed scale (never relative to the other crowds, so one brand's ranking means the same as another's), then a
@@ -69,8 +69,8 @@ export function nextPeak(index: number[], date: string): { month: number; index:
   return undefined;
 }
 
-const ordinal = (n: number) => `${n}${n % 100 >= 11 && n % 100 <= 13 ? "th" : (["th", "st", "nd", "rd"][n % 10] ?? "th")}`;
-const pts = (n: number) => `${n} percentile point${n === 1 ? "" : "s"}`;
+
+const cap = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
 
 /** Each parameter's 0–1 score on a fixed scale, and the line that says what was measured. */
 export function paramScores(c: CrowdEvidence, date: string): Record<Param, ParamScore> {
@@ -79,7 +79,7 @@ export function paramScores(c: CrowdEvidence, date: string): Record<Param, Param
     c.fit === undefined
       ? { text: "not measured" }
       : // Members' mean percentile in the seed's ranking: 0.35 → 0, 0.65 → 1 (crowds measured so far span 0.41–0.61).
-        { value: r2(c.fit), score: clamp((c.fit - 0.35) / 0.3), text: `its members sit at the ${ordinal(Math.round(c.fit * 100))} percentile of your brand's own Qloo ranking` };
+        { value: r2(c.fit), score: clamp((c.fit - 0.35) / 0.3), text: `what it loves sits ${c.fit >= 0.55 ? "close to" : c.fit >= 0.45 ? "near" : "further from"} what your own customers love` };
   out.reach =
     c.reach === undefined
       ? { text: "not measured" }
@@ -88,7 +88,7 @@ export function paramScores(c: CrowdEvidence, date: string): Record<Param, Param
         {
           value: c.reach.fresh,
           score: c.reach.fresh > 0 ? clamp(Math.log10(c.reach.fresh / 1e6) / Math.log10(331)) : 0,
-          text: `${people(c.reach.fresh)} people live in the places where it over-indexes${c.reach.fresh < c.reach.people ? ` outside where you already sell (${people(c.reach.people)} in all)` : ""}${c.reach.metros.length ? `, led by ${c.reach.metros.slice(0, 2).join(" and ")}` : ""}`,
+          text: `${people(c.reach.fresh)} people live in the places where it's strongest${c.reach.fresh < c.reach.people ? ` outside where you already sell (${people(c.reach.people)} in all)` : ""}${c.reach.metros.length ? `, led by ${c.reach.metros.slice(0, 2).join(" and ")}` : ""}`,
         };
   out.efficiency =
     c.specificity === undefined
@@ -99,10 +99,10 @@ export function paramScores(c: CrowdEvidence, date: string): Record<Param, Param
           score: clamp(0.5 + c.specificity / 0.4),
           text:
             Math.abs(c.specificity) < 0.02
-              ? "it loves its core about as much as their popularity explains, so spend reaches it no better or worse than anyone"
+              ? "what it loves is about as popular with everyone else, so spend reaches it no better or worse than anyone"
               : c.specificity > 0
-                ? `it ranks its core ${pts(Math.round(c.specificity * 100))} higher than their popularity alone explains, so spend reaches the crowd, not everyone`
-                : `its core is ${pts(Math.round(-c.specificity * 100))} more mainstream than this crowd alone, so spend spills wider`,
+                ? "it loves its favourites more than their fame explains, so spend aimed at them reaches this crowd, not everyone"
+                : "what it loves is popular with everyone, so spend aimed at it spills wider than this crowd",
         };
   out.momentum =
     c.momentum === undefined
@@ -126,9 +126,11 @@ export function paramScores(c: CrowdEvidence, date: string): Record<Param, Param
     c.stability === undefined
       ? { text: "not measured" }
       : (() => {
-          // Mean of stability (0.3 → 0, 0.8 → 1) and the share of members at its core.
+          // Mean of stability (0.3 → 0, 0.8 → 1) and the share of members at its core. The founder hears the share in
+          // words: a crowd's members are brands, shows and places, so a count of them would read as a head count.
           const share = c.members ? (c.core ?? 0) / c.members : 0;
-          return { value: r2(c.stability), score: (clamp((c.stability - 0.3) / 0.5) + clamp(share)) / 2, text: `it comes back the same in ${Math.round(c.stability * 100)}% of resamples, with ${c.core ?? 0} of ${c.members} members at its core` };
+          const held = share >= 0.6 ? "most of what it loves" : share >= 0.35 ? "much of what it loves" : "only some of what it loves";
+          return { value: r2(c.stability), score: (clamp((c.stability - 0.3) / 0.5) + clamp(share)) / 2, text: `Qloo's data gives back the same crowd ${Math.round(c.stability * 100)}% of the time, and ${held} is firmly in it` };
         })();
   return out;
 }
@@ -178,10 +180,11 @@ export function rankFits(crowds: CrowdEvidence[], opts: { date: string; changes?
     const vs = s.present.map((p) => ({ p, d: (s.params[p].score! - mean(p)) * weights[p] })).sort((a, b) => b.d - a.d);
     const up = (scored.length > 1 ? vs.filter((x) => x.d > 0.02) : vs.filter((x) => s.params[x.p].score! >= 0.6)).slice(0, 2);
     const down = tier === "win_first" ? [] : vs.filter((x) => x.d < -0.02).slice(-1);
+    // Said as the founder reads them, each a sentence of its own: the measure's name stays on the card's breakdown.
     const reasons = [
-      ...up.map((x) => `${PARAM_LABEL[x.p]}: ${s.params[x.p].text}`),
-      ...(weak ? [`${PARAM_LABEL.signal}, too soft to act on yet: ${s.params.signal.text}`] : []),
-      ...down.filter((x) => !(weak && x.p === "signal")).map((x) => `Held back by ${PARAM_LABEL[x.p].toLowerCase()}: ${s.params[x.p].text}`),
+      ...up.map((x) => cap(s.params[x.p].text)),
+      ...(weak ? [`Too soft to act on yet: ${s.params.signal.text}`] : []),
+      ...down.filter((x) => !(weak && x.p === "signal")).map((x) => `Held back: ${s.params[x.p].text}`),
     ];
     const peak = s.c.season ? nextPeak(s.c.season.index, opts.date) : undefined;
     const event = (s.c.events ?? []).filter((e) => e.days >= 0).sort((a, b) => a.days - b.days)[0];

@@ -52,52 +52,60 @@
   --theme-4: color-mix(in srgb, var(--theme-ink) 94%, var(--surface)); --theme-5: color-mix(in srgb, var(--theme-ink) 66%, var(--surface)); --theme-6: color-mix(in srgb, var(--theme-ink) 80%, var(--surface)); --theme-7: color-mix(in srgb, var(--theme-ink) 52%, var(--surface));
   --theme-label: color-mix(in srgb, var(--theme-ink) 70%, var(--fg));
   --dot: #dfd8ca;
+  --raised: #fffdf8;
+  --label: #8a6418;
+  --edge-act: #7e2b34;
+  --edge-data: #a9791c;
   color-scheme: light;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg: #14120f;
-    --surface: #1d1a16;
-    --sunken: #221e19;
-    --fg: #f3efe6;
-    --muted: #c2baab;
-    --faint: #9a9283;
-    --line: #2e2a24;
-    --dash: #4a443c;
-    --line-soft: #26221d;
-    --accent: #c25663;
-    --accent-hover: #d06a76;
-    --accent-soft: #3a2226;
-    --accent-ink: #f0b7bd;
-    --on-accent: #fffdf8;
-    --emph: #d9a441;
-    --emph-soft: #352b18;
-    --emph-ink: #e6bd6a;
-    --pos: #7cc48f;
-    --pos-soft: #1d2e22;
-    --neg: #f08a72;
-    --pick: #c25663;
-    --account: #7cc48f;
-    --moment: #d9a441;
-    --thin: #e6bd6a;
-    --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3);
-    --shadow-overlay: 0 8px 24px rgba(0, 0, 0, 0.45);
-    --crowd-0: #95b2dc;
-    --crowd-1: #f08a6c;
-    --crowd-2: #6cc5a0;
-    --crowd-3: #c99be6;
-    --ink: #f3efe6;
-    --graph-brand: #6cc0d0;
-    --graph-rival: #f08a9a;
-    --graph-shop: #e0c06c;
-    --graph-place: #a9b6d6;
-    --graph-time: #f0a86c;
-    --graph-fact: #b5b0a6;
-    --theme-ink: #e3b25a;
-    --dot: #2e2a24;
-    color-scheme: dark;
-  }
+/* Dark is the default (§23.9 a): three surface levels clearly apart (page, section, raised), warm borders that can be seen,
+   and the light palette's oxblood and ochre carried over to mark structure and state. */
+:root:not([data-theme="light"]) {
+  --bg: #100e0b;
+  --surface: #1b1814;
+  --sunken: #15120f;
+  --raised: #262019;
+  --fg: #f3efe6;
+  --muted: #c2baab;
+  --faint: #9a9283;
+  --line: #3a3128;
+  --dash: #54493c;
+  --line-soft: #2a241d;
+  --label: #d1a253;
+  --edge-act: #b84c5a;
+  --edge-data: #c9973d;
+  --accent: #c25663;
+  --accent-hover: #d06a76;
+  --accent-soft: #3a2226;
+  --accent-ink: #f0b7bd;
+  --on-accent: #fffdf8;
+  --emph: #d9a441;
+  --emph-soft: #352b18;
+  --emph-ink: #e6bd6a;
+  --pos: #7cc48f;
+  --pos-soft: #1d2e22;
+  --neg: #f08a72;
+  --pick: #c25663;
+  --account: #7cc48f;
+  --moment: #d9a441;
+  --thin: #e6bd6a;
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-overlay: 0 8px 24px rgba(0, 0, 0, 0.45);
+  --crowd-0: #95b2dc;
+  --crowd-1: #f08a6c;
+  --crowd-2: #6cc5a0;
+  --crowd-3: #c99be6;
+  --ink: #f3efe6;
+  --graph-brand: #6cc0d0;
+  --graph-rival: #f08a9a;
+  --graph-shop: #e0c06c;
+  --graph-place: #a9b6d6;
+  --graph-time: #f0a86c;
+  --graph-fact: #b5b0a6;
+  --theme-ink: #e3b25a;
+  --dot: #2e2a24;
+  color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
@@ -1266,7 +1274,7 @@ span.ob-source { color: var(--muted); }
    state, ochre for data; green and red only for change. Motion: 120 / 180 / 240 ms. */
 
 :root { --bg: #f4ecdc; --dot: #dfd2b8; --overlay: 0 8px 24px rgba(26, 24, 20, 0.12); --ease-slow: cubic-bezier(0.2, 0.8, 0.2, 1); }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #14120f; --dot: #26221d; --overlay: 0 8px 24px rgba(0, 0, 0, 0.45); } }
+:root:not([data-theme="light"]) { --bg: #100e0b; --dot: #241f19; --overlay: 0 8px 24px rgba(0, 0, 0, 0.45); }
 
 html, body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; font-size: 14px; line-height: 1.5; }
 body { -webkit-font-smoothing: antialiased; }
@@ -1283,10 +1291,8 @@ a:hover { color: var(--accent-hover); }
   --emph: #d9a441; --emph-soft: #352b18; --emph-ink: #d9a441; --pos: #7cc48f; --account: #7cc48f; --neg: #f08a72; --moment: #d9a441;
   background: #14120f; color: var(--fg); color-scheme: dark;
 }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .ob-team, :root:not([data-theme="light"]) .journey-main .team,
-  :root:not([data-theme="light"]) .bg-head, :root:not([data-theme="light"]) .go-card { background: #1d1a16; box-shadow: inset 0 0 0 1px #2e2a24; }
-}
+:root:not([data-theme="light"]) .ob-team, :root:not([data-theme="light"]) .journey-main .team,
+:root:not([data-theme="light"]) .bg-head, :root:not([data-theme="light"]) .go-card { background: #1d1a16; box-shadow: inset 0 0 0 1px #2e2a24; }
 
 /* ── Type ─────────────────────────────────────────────────────────────────────────────── */
 h1, h2, h3, .bg-title, .bg-card-title, .wordmark, .fits-headline, .question-text { font-family: var(--font-display); font-weight: 400; color: var(--fg); text-transform: none; letter-spacing: -0.01em; }
@@ -1336,7 +1342,7 @@ button.primary, a.button.primary { background: var(--accent); border-color: var(
 button.primary:hover:not(:disabled), a.button.primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); color: var(--on-accent); }
 button:disabled { opacity: 1; color: #c8c2b6; background: var(--surface); border-color: #e8d3c4; cursor: not-allowed; }
 button.primary:disabled { background: var(--accent-soft); border-color: var(--accent-soft); color: color-mix(in srgb, var(--accent) 55%, transparent); }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) button:disabled { color: #6b655b; border-color: #2e2a24; } }
+:root:not([data-theme="light"]) button:disabled { color: #6b655b; border-color: #2e2a24; }
 .ob-team button:disabled, .journey-main .team button:disabled { color: #6b655b; border-color: #2e2a24; }
 :focus-visible { outline: 0; box-shadow: 0 0 0 3px var(--accent-soft), 0 0 0 1px var(--accent); }
 a.button { font-family: var(--font-caps); font-weight: 700; font-size: 13px; height: 30px; display: inline-flex; align-items: center; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); }
@@ -1869,12 +1875,10 @@ input[type="checkbox"] { accent-color: var(--accent); }
 }
 /* The same clear glass in the dark: a faint light catch and a dim rim, so the pane reads as glass over the dark field
    and not as a grey patch. */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .ob-work::before, :root:not([data-theme="light"]) .agent-stage .chat::before {
-    background: linear-gradient(160deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0) 45%, rgba(255, 255, 255, 0.02) 100%), rgba(29, 26, 22, 0.42);
-    border-color: rgba(255, 255, 255, 0.1);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 30px 70px -38px rgba(0, 0, 0, 0.6);
-  }
+:root:not([data-theme="light"]) .ob-work::before, :root:not([data-theme="light"]) .agent-stage .chat::before {
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0) 45%, rgba(255, 255, 255, 0.02) 100%), rgba(29, 26, 22, 0.42);
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 30px 70px -38px rgba(0, 0, 0, 0.6);
 }
 .agent-stage .agent-chat-head { padding-top: 28px; }
 .agent-stage .composer { margin-bottom: 28px; }
@@ -2069,62 +2073,69 @@ input[type="checkbox"] { accent-color: var(--accent); }
   .journey-main.agent-stage:has(.team-rail), .ob-work:has(.team-rail) { --nav-w: 56px; }
 }
 .journey-main .team.nav, .ob-team.nav {
+  --nav-bg: #161412; --nav-fg: #e9e4da; --nav-strong: #fbf8f2; --nav-item: #a9a397; --nav-muted: #8c867c; --nav-faint: #6f6a62;
+  --nav-glyph: #7f796f; --nav-live: #cfc8bb; --nav-wait: #d9a441; --nav-tint: 255, 255, 255;
   margin: 0; border-radius: 0; padding: 10px 8px 12px; gap: 2px; position: relative; overflow: hidden auto;
-  background: #161412; box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.06); color: #e9e4da;
+  background: var(--nav-bg); box-shadow: inset -1px 0 0 rgba(var(--nav-tint), 0.06); color: var(--nav-fg);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; animation: none;
+}
+/* Light: the same column in the page's paper, a shade darker than the page. */
+:root[data-theme="light"] :is(.journey-main .team.nav, .ob-team.nav) {
+  --nav-bg: #ece3d1; --nav-fg: #2a2620; --nav-strong: #1a1814; --nav-item: #4f493f; --nav-muted: #6f685c; --nav-faint: #8a8274;
+  --nav-glyph: #7a7366; --nav-live: #3d3830; --nav-wait: #8f6514; --nav-tint: 26, 24, 20;
 }
 .journey-main .team.nav::before, .ob-team.nav::before { content: none; }
 .nav-head { display: flex; align-items: center; justify-content: space-between; height: 32px; padding: 0 2px 0 10px; margin-bottom: 6px; }
-.nav-title { font-size: 12px; font-weight: 600; color: #8c867c; letter-spacing: 0; white-space: nowrap; }
+.nav-title { font-size: 12px; font-weight: 600; color: var(--nav-muted); letter-spacing: 0; white-space: nowrap; }
 .nav .nav-toggle {
   display: grid; place-items: center; width: 28px; height: 28px; min-height: 0; padding: 0; border: 0; border-radius: 6px;
-  background: transparent; color: #8c867c; flex: none;
+  background: transparent; color: var(--nav-muted); flex: none;
 }
-.nav .nav-toggle:hover:not(:disabled) { background: rgba(255, 255, 255, 0.06); color: #f5f1ea; }
+.nav .nav-toggle:hover:not(:disabled) { background: rgba(var(--nav-tint), 0.06); color: var(--nav-strong); }
 .nav .team-list { display: flex; flex-direction: column; gap: 1px; }
 .nav .team-list ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 1px; }
-.nav-section { display: block; margin: 14px 0 4px; padding: 0 10px; font-size: 11.5px; font-weight: 500; color: #6f6a62; white-space: nowrap; }
+.nav-section { display: block; margin: 14px 0 4px; padding: 0 10px; font-size: 11.5px; font-weight: 500; color: var(--nav-faint); white-space: nowrap; }
 .nav-item {
   width: 100%; display: flex; align-items: center; gap: 10px; min-height: 32px; padding: 6px 10px; border: 0; border-radius: 7px;
-  background: transparent; color: #a9a397; text-align: left; font-family: inherit; font-size: 13px; font-weight: 500;
+  background: transparent; color: var(--nav-item); text-align: left; font-family: inherit; font-size: 13px; font-weight: 500;
   transition: background-color 100ms ease-out, color 100ms ease-out;
 }
-button.nav-item:hover:not(:disabled) { background: rgba(255, 255, 255, 0.045); color: #ece7de; border-color: transparent; }
-.nav-item.on, button.nav-item.on:hover:not(:disabled) { background: rgba(255, 255, 255, 0.08); color: #fbf8f2; }
-.nav-glyph { position: relative; display: grid; place-items: center; width: 16px; height: 16px; flex: none; color: #7f796f; }
+button.nav-item:hover:not(:disabled) { background: rgba(var(--nav-tint), 0.045); color: var(--nav-strong); border-color: transparent; }
+.nav-item.on, button.nav-item.on:hover:not(:disabled) { background: rgba(var(--nav-tint), 0.08); color: var(--nav-strong); }
+.nav-glyph { position: relative; display: grid; place-items: center; width: 16px; height: 16px; flex: none; color: var(--nav-glyph); }
 .nav-item:hover .nav-glyph, .nav-item.on .nav-glyph { color: inherit; }
 .nav-icon { display: block; }
 .nav-label { display: flex; flex-direction: column; min-width: 0; flex: 1; }
 .nav-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 20px; }
-.nav-sub { font-size: 11.5px; font-weight: 400; line-height: 16px; color: #8c867c; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nav-sub { font-size: 11.5px; font-weight: 400; line-height: 16px; color: var(--nav-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .nav-item:has(.nav-sub) { align-items: flex-start; }
 .nav-item:has(.nav-sub) .nav-glyph { margin-top: 2px; }
 .nav-item:has(.nav-sub) .nav-state { margin-top: 4px; }
-.nav-item.team-working .nav-sub { color: #cfc8bb; }
+.nav-item.team-working .nav-sub { color: var(--nav-live); }
 .nav-item.team-waiting { opacity: 1; }
-.nav-item.team-waiting .nav-sub { color: #d9a441; }
+.nav-item.team-waiting .nav-sub { color: var(--nav-wait); }
 .nav-item.team-on-goal .nav-name::after { content: none; }
 .nav .nav-state { flex: none; }
-.nav .nav-state.spin { width: 12px; height: 12px; margin: 0; border-width: 1.5px; border-color: rgba(255, 255, 255, 0.14); border-top-color: #e9e4da; }
-.nav-wait { width: 6px; height: 6px; border-radius: 50%; background: #d9a441; margin-right: 3px; }
-.nav-note { margin: 10px 10px 0; font-size: 11.5px; line-height: 1.45; color: #6f6a62; }
+.nav .nav-state.spin { width: 12px; height: 12px; margin: 0; border-width: 1.5px; border-color: rgba(var(--nav-tint), 0.14); border-top-color: var(--nav-fg); }
+.nav-wait { width: 6px; height: 6px; border-radius: 50%; background: var(--nav-wait); margin-right: 3px; }
+.nav-note { margin: 10px 10px 0; font-size: 11.5px; line-height: 1.45; color: var(--nav-faint); }
 
 /* Collapsed: a 56px rail of icons; live status rides on the icon's corner. */
 .nav.team-rail { padding: 10px 8px 12px; align-items: stretch; }
 .nav.team-rail .nav-head { justify-content: center; padding: 0; }
 .nav.team-rail .nav-title, .nav.team-rail .nav-label, .nav.team-rail .nav-state, .nav.team-rail .nav-note { display: none; }
-.nav.team-rail .nav-section { height: 1px; margin: 10px 8px; padding: 0; overflow: hidden; color: transparent; background: rgba(255, 255, 255, 0.07); }
+.nav.team-rail .nav-section { height: 1px; margin: 10px 8px; padding: 0; overflow: hidden; color: transparent; background: rgba(var(--nav-tint), 0.07); }
 .nav.team-rail .nav-item, .nav.team-rail .nav-item:has(.nav-sub) { align-items: center; justify-content: center; width: 40px; height: 36px; padding: 0; margin: 0 auto; }
 .nav.team-rail .nav-item:has(.nav-sub) .nav-glyph { margin-top: 0; }
 .nav.team-rail .team-working .nav-glyph::after, .nav.team-rail .team-waiting .nav-glyph::after {
-  content: ""; position: absolute; top: -3px; right: -4px; width: 7px; height: 7px; border-radius: 50%; box-shadow: 0 0 0 2px #161412;
+  content: ""; position: absolute; top: -3px; right: -4px; width: 7px; height: 7px; border-radius: 50%; box-shadow: 0 0 0 2px var(--nav-bg);
 }
-.nav.team-rail .team-working .nav-glyph::after { background: #e9e4da; animation: wvpulse 1.2s ease-in-out infinite; }
-.nav.team-rail .team-waiting .nav-glyph::after { background: #d9a441; }
+.nav.team-rail .team-working .nav-glyph::after { background: var(--nav-fg); animation: wvpulse 1.2s ease-in-out infinite; }
+.nav.team-rail .team-waiting .nav-glyph::after { background: var(--nav-wait); }
 
 /* Connect with Athena MCP and Share your plan (§23.6 d): two quiet rows set off from the subagents by one hairline. */
-.nav-mcp { margin-top: 10px; padding-top: 12px; border-top: 1px solid rgba(255, 255, 255, 0.06); border-radius: 0 0 7px 7px; }
-.nav.team-rail .nav-mcp { margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255, 255, 255, 0.07); border-radius: 7px; }
+.nav-mcp { margin-top: 10px; padding-top: 12px; border-top: 1px solid rgba(var(--nav-tint), 0.06); border-radius: 0 0 7px 7px; }
+.nav.team-rail .nav-mcp { margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(var(--nav-tint), 0.07); border-radius: 7px; }
 .nav-mcp + .nav-share { margin-top: 2px; }
 
 /* The frosted side panel it opens: a right-hand sheet over the whole app, in the light surface, a full sheet on a phone. */
@@ -2166,7 +2177,7 @@ button.nav-item:hover:not(:disabled) { background: rgba(255, 255, 255, 0.045); c
 
 /* Phones: the sidebar is a menu under the top bar, as before. */
 @media (max-width: 900px) {
-  .journey-main .team.nav { margin: 0; padding: 8px 12px; flex-direction: row; align-items: center; box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.06); }
+  .journey-main .team.nav { margin: 0; padding: 8px 12px; flex-direction: row; align-items: center; box-shadow: inset 0 -1px 0 rgba(var(--nav-tint), 0.06); }
   .nav .nav-head { display: none; }
   .nav .team-list { display: none; }
 }
@@ -2251,9 +2262,8 @@ button.nav-item:hover:not(:disabled) { background: rgba(255, 255, 255, 0.045); c
 /* The build card's Answer: the waiting question lifts once so the eye lands on it. */
 .q-tray-call .question { animation: q-call 0.9s cubic-bezier(0.2, 0.8, 0.2, 1); }
 @keyframes q-call {
-  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent, #8b2335) 0%, transparent); }
-  30% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent, #8b2335) 22%, transparent); }
-  100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent, #8b2335) 0%, transparent); }
+  0%, 100% { transform: none; }
+  30% { transform: translateY(-4px); }
 }
 @media (prefers-reduced-motion: reduce) { .q-tray-call .question { animation: none; } }
 
@@ -2863,14 +2873,12 @@ a.xp-src { color: var(--muted); text-decoration: underline dotted; text-underlin
     0 1px 2px rgba(20, 18, 15, 0.04), 0 30px 70px -38px rgba(20, 18, 15, 0.32);
 }
 @media (max-width: 900px) { .dash-page, .sub-page { margin: 8px; border-radius: 18px; } }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .dash-page, :root:not([data-theme="light"]) .sub-page {
-    background:
-      linear-gradient(160deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0) 45%),
-      color-mix(in srgb, var(--surface) 84%, transparent);
-    border-color: rgba(255, 255, 255, 0.08);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 30px 70px -38px rgba(0, 0, 0, 0.6);
-  }
+:root:not([data-theme="light"]) .dash-page, :root:not([data-theme="light"]) .sub-page {
+  background:
+    linear-gradient(160deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0) 45%),
+    color-mix(in srgb, var(--surface) 84%, transparent);
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 30px 70px -38px rgba(0, 0, 0, 0.6);
 }
 
 /* This week (§23.6 j): three short lists at the top of Overview, each line a card that opens its row. */
@@ -2926,12 +2934,10 @@ a.mcp-new { text-decoration: none; display: inline-flex; align-items: center; }
   border-color: rgba(255, 255, 255, 0.6);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85), inset 0 0 0 0.5px rgba(20, 18, 15, 0.05), 0 30px 70px -38px rgba(20, 18, 15, 0.32);
 }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) :is(.agent-panel, .chat-drawer, .mcp-panel, .crowd-sheet) {
-    background: linear-gradient(160deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0) 45%), color-mix(in srgb, var(--surface) 92%, transparent);
-    border-color: rgba(255, 255, 255, 0.08);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 30px 70px -38px rgba(0, 0, 0, 0.6);
-  }
+:root:not([data-theme="light"]) :is(.agent-panel, .chat-drawer, .mcp-panel, .crowd-sheet) {
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0) 45%), color-mix(in srgb, var(--surface) 92%, transparent);
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 30px 70px -38px rgba(0, 0, 0, 0.6);
 }
 
 /* Athena's read (§23.8 a): a thin dashed outline, as the Brand Graph draws its guesses, so a read never looks like a measurement. */
@@ -2961,3 +2967,270 @@ a.mcp-new { text-decoration: none; display: inline-flex; align-items: center; }
 .src-chip { all: unset; display: inline-flex; align-items: center; cursor: pointer; font-family: var(--font-caps); font-size: 10.5px; font-weight: 700; line-height: 1.3; padding: 1px 7px; border-radius: 999px; background: var(--emph-soft); color: var(--emph-ink); white-space: nowrap; vertical-align: 1px; }
 .src-chip:hover, .src-chip.on { background: var(--emph-ink); color: var(--surface); }
 .src-chip:focus-visible { outline: 2px solid var(--emph-ink); outline-offset: 1px; }
+
+/* ── Step 8.10 (a): dark by default, with more colour (§23.9 a) ───────────────────────────────────────────────────
+   Colour marks structure and state only: an oxblood edge where something leads to an action, an ochre edge where a
+   section holds data, an ochre underline on the active tab, warm ochre kickers. Light mode keeps its look. */
+:root:not([data-theme="light"]) {
+  --sheet-rim: color-mix(in srgb, var(--emph) 16%, var(--line));
+}
+/* The chrome: the sidebar sits deeper than the page with an oxblood edge; its active row carries an oxblood bar. */
+:root:not([data-theme="light"]) :is(.journey-main .team.nav, .ob-team.nav) {
+  background: #0b0a08; box-shadow: inset -1px 0 0 color-mix(in srgb, var(--edge-act) 55%, transparent);
+}
+:root:not([data-theme="light"]) .nav-item.on { position: relative; background: color-mix(in srgb, var(--edge-act) 16%, transparent); }
+:root:not([data-theme="light"]) .nav-item.on::before {
+  content: ""; position: absolute; left: -8px; top: 7px; bottom: 7px; width: 2px; border-radius: 0 2px 2px 0; background: var(--edge-act);
+}
+:root:not([data-theme="light"]) .nav.team-rail .nav-item.on::before { left: -8px; }
+:root:not([data-theme="light"]) .nav-section { color: color-mix(in srgb, var(--label) 70%, #6f6a62); }
+:root:not([data-theme="light"]) .journey-top { background: #0e0c0a; box-shadow: inset 0 -1px 0 var(--line); }
+.nav-head-acts { display: flex; align-items: center; gap: 2px; }
+.nav.team-rail .nav-head-acts .theme-toggle { display: none; }
+.journey-top .theme-top { display: none; }
+/* Where there's no sidebar (the first screen) or the sidebar is a phone menu, the switch sits in the top bar. */
+.journey:not(:has(.nav)) .journey-top .theme-top { display: inline-grid; place-items: center; width: 36px; padding: 0; }
+@media (max-width: 900px) { .journey-top .theme-top { display: inline-grid; place-items: center; width: 36px; padding: 0; } }
+
+/* The frosted sheet and the panels: a warm rim that reads against the page. */
+:root:not([data-theme="light"]) :is(.dash-page, .sub-page, .agent-panel, .chat-drawer, .mcp-panel, .crowd-sheet) { border-color: var(--sheet-rim); }
+:root:not([data-theme="light"]) .ob-panel { background: var(--surface); border-left-color: var(--sheet-rim); }
+:root:not([data-theme="light"]) .chat-dock { border-left-color: var(--sheet-rim); }
+
+/* Sections: a thin coloured edge on top, ochre for data, oxblood for what leads to an action. */
+:root:not([data-theme="light"]) :is(.dash-page-body, .sub-page-body, .agent-panel-body, .ob-panel) > :is(.card, section, .kb-fold, .dash-agent, .dash-lead, .crowd, .gb, .bg-graph, .prog, .xp-result),
+:root:not([data-theme="light"]) :is(.dash-sec, .kb-fold, .ob-plan) {
+  border-top: 2px solid color-mix(in srgb, var(--edge-data) 62%, var(--line));
+}
+:root:not([data-theme="light"]) .dash-sec { padding-top: 14px; border-top-color: color-mix(in srgb, var(--edge-data) 45%, transparent); }
+:root:not([data-theme="light"]) :is(.dash-start, .xp-banner) { border-top: 2px solid var(--edge-act); }
+:root:not([data-theme="light"]) :is(.card, .crowd, .kb-fold, .dash-agent, .wf-node, .ans, .taste-card, .week-line, .take-row) { border-color: var(--line); }
+:root:not([data-theme="light"]) :is(.card, .crowd, .kb-fold, .dash-agent, .ans, .taste-card) { background: var(--surface); }
+
+/* Tabs: the active one has an ochre underline. */
+:root:not([data-theme="light"]) .dash-tabs button.dash-tab.on,
+:root:not([data-theme="light"]) .dash-tabs button.dash-tab.on:hover:not(:disabled) { border-bottom-color: var(--emph); color: var(--fg); }
+:root:not([data-theme="light"]) .dash-tabs { border-bottom-color: var(--line); }
+:root:not([data-theme="light"]) .ob-panel-tabs { border-bottom-color: var(--line); }
+:root:not([data-theme="light"]) .ob-panel-tabs button.on,
+:root:not([data-theme="light"]) .ob-panel-tabs button.on:hover:not(:disabled) { background: none; color: #f3efe6; border-radius: 0; box-shadow: inset 0 -2px 0 var(--emph); }
+:root:not([data-theme="light"]) .panel-tab.on,
+:root:not([data-theme="light"]) .panel-tab.on:hover:not(:disabled) { background: color-mix(in srgb, var(--edge-act) 28%, transparent); color: #f3efe6; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--edge-act) 70%, transparent); }
+
+/* Kickers and small labels in a warm ochre. */
+:root:not([data-theme="light"]) :is(.page-kicker, .gb-kicker, .bg-kicker, .bg-label, .ans-for, .wf-state, .kb-head, .nav-table thead th, .crowd-tabs .crowd-tier, .xp-date span) { color: var(--label); }
+:root:not([data-theme="light"]) .dash-sec-head h3, :root:not([data-theme="light"]) .page-head strong { color: #f6efe1; }
+:root:not([data-theme="light"]) .chat-open { background: var(--raised); box-shadow: inset 0 0 0 1px var(--line); }
+:root:not([data-theme="light"]) .chat-open:hover:not(:disabled) { background: #30281f; }
+
+/* ── Step 8.10 (b): a question the founder must answer can't be missed ─────────────────────────────── */
+/* A lighter, raised card with an oxblood edge and a "Your turn" label, then one line on why it's asked. */
+.question:not(.question-done) {
+  background: var(--raised);
+  border-color: color-mix(in srgb, var(--edge-act) 45%, var(--line));
+  box-shadow: inset 3px 0 0 var(--edge-act), 0 1px 2px rgba(0, 0, 0, 0.12), 0 16px 34px -22px rgba(0, 0, 0, 0.6);
+}
+.q-tray .question:not(.question-done), .q-tray .question-pauses, .question-pauses {
+  box-shadow: inset 3px 0 0 var(--edge-act), 0 1px 2px rgba(0, 0, 0, 0.12), 0 16px 34px -22px rgba(0, 0, 0, 0.6);
+}
+.question-for { color: var(--label); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.question-for small { font: inherit; color: var(--muted); }
+.question-turn { display: inline-block; padding: 2px 8px; border-radius: 999px; background: var(--edge-act); color: #fbf6ee; letter-spacing: 0.08em; }
+.question-why { margin: -2px 0 2px; font-size: 13px; line-height: 1.45; color: var(--muted); }
+.q-tray .question-why { font-size: 12.5px; }
+.question:not(.question-done) .question-options > li > button { background: var(--surface); }
+.question:not(.question-done) .question-options > li > button:hover:not(:disabled) { background: var(--sunken); border-color: color-mix(in srgb, var(--edge-act) 40%, var(--line)); }
+
+/* ── Step 8.10 (c): smooth motion ───────────────────────────────────────────────────────────────── */
+/* Every looping animation moves only transform or opacity, so the compositor runs it without a repaint. One shared
+   shimmer: a full-width layer, squeezed to a third and slid across, fading at the ends. It stays inside its row, so it
+   never widens the page. */
+@keyframes sweep {
+  0% { transform: translateX(-32%) scaleX(0.36); opacity: 0; }
+  20%, 80% { opacity: 0.85; }
+  100% { transform: translateX(32%) scaleX(0.36); opacity: 0; }
+}
+@keyframes text-breathe { 0%, 100% { opacity: 1; } 50% { opacity: 0.62; } }
+.ob-live > .ob-line-head::after, .live-steps .step-active::after, .steps .step-running::after, .prog::before, .prog-bar > span::after {
+  background: linear-gradient(90deg, transparent, var(--accent), transparent); background-size: auto; background-repeat: no-repeat;
+  animation: sweep 1.5s ease-in-out infinite; will-change: transform, opacity;
+}
+.prog::before { background: linear-gradient(90deg, transparent, var(--emph), transparent); }
+.prog-bar > span::after { background: linear-gradient(90deg, transparent, rgba(255, 253, 248, 0.6), transparent); animation-duration: 1.3s; }
+/* Live lines: the words breathe instead of a gradient clipped to the text. */
+.ob-live > .ob-line-head .ob-line-text, .shimmer-text { background: none; -webkit-background-clip: border-box; background-clip: border-box; color: var(--fg); animation: text-breathe 1.8s ease-in-out infinite; }
+.shimmer-text { color: var(--muted); }
+/* Skeletons: a still bar whose row breathes (the row already does). */
+.gb-bar { background: var(--line-soft); animation: none; }
+.skeleton .sk-row, .shimmer-bar { background: var(--sunken); animation: wvpulse 1.2s ease-in-out infinite; }
+/* A live Execute Plan row: a still tint; its dot pulses. */
+.xp-row.xp-live { background: color-mix(in srgb, var(--emph-soft) 45%, transparent); animation: none; }
+/* Paused glows: a still ring; the dot beside each already pulses. */
+.wf-paused, .wf-paused:hover:not(:disabled), .chat-open-paused, .chat-open-paused:hover:not(:disabled), .nav-item.nav-paused {
+  animation: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--emph) 24%, transparent);
+}
+.agent-stage .team-agent.on { animation: pop 0.35s cubic-bezier(0.2, 0.8, 0.2, 1); }
+@keyframes gb-reveal { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+/* No backdrop-filter over the background field, which animates: the sheets and the glass panes keep their tint and rim,
+   a little more opaque, and the field shows through without a per-frame blur. */
+.ob-work::before, .agent-stage .chat::before, .dash-page, .sub-page, .agent-panel, .chat-drawer, .mcp-panel, .crowd-sheet, .mcp-backdrop,
+.ob-plan, .ob-top, .agent-stage .chat > .paused, .record-head, .ob-tabs, .rail {
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+}
+.ob-work::before, .agent-stage .chat::before {
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.02) 40%, rgba(255, 255, 255, 0) 65%, rgba(255, 255, 255, 0.06) 100%), rgba(255, 255, 255, 0.58);
+}
+:root:not([data-theme="light"]) .ob-work::before, :root:not([data-theme="light"]) .agent-stage .chat::before {
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0) 45%, rgba(255, 255, 255, 0.02) 100%), rgba(24, 21, 17, 0.74);
+}
+.dash-page, .sub-page, .agent-panel, .chat-drawer, .crowd-sheet {
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.32) 0%, rgba(255, 255, 255, 0.06) 40%, rgba(255, 255, 255, 0) 65%, rgba(255, 255, 255, 0.1) 100%), color-mix(in srgb, var(--surface) 95%, transparent);
+}
+:root:not([data-theme="light"]) :is(.dash-page, .sub-page, .agent-panel, .chat-drawer, .crowd-sheet) {
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0) 45%), color-mix(in srgb, var(--surface) 96%, transparent);
+}
+.mcp-panel { background: var(--surface); }
+.ob-plan { background: color-mix(in srgb, var(--surface) 96%, transparent); }
+.ob-top { background: var(--surface); }
+.agent-stage .chat > .paused { background: color-mix(in srgb, var(--accent) 8%, var(--surface)); }
+.record-head { background: var(--surface); }
+.ob-tabs { background: color-mix(in srgb, var(--surface) 94%, transparent); }
+@media (prefers-reduced-motion: reduce) {
+  .ob-live > .ob-line-head::after, .live-steps .step-active::after, .steps .step-running::after, .prog::before, .prog-bar > span::after,
+  .ob-live > .ob-line-head .ob-line-text, .shimmer-text, .skeleton .sk-row, .shimmer-bar, .agent-stage .team-agent.on { animation: none; }
+}
+
+/* Step 8.10 (d): onboarding ends with a review. The Brand panel opens on the brief, the graph and what the sources
+   disagreed on; its foot holds the one button, or says what it waits on. */
+.ob-review { display: flex; flex-direction: column; gap: 12px; }
+.ob-review-head { display: grid; gap: 4px; padding: 12px 14px; border-radius: 12px; background: var(--raised, var(--bg)); box-shadow: inset 0 2px 0 var(--edge-act, var(--accent)); }
+.ob-review-head strong { font-size: 15px; line-height: 1.35; }
+.ob-review-settled { display: grid; gap: 6px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; box-shadow: inset 0 2px 0 var(--edge-data, var(--line)); }
+.ob-review-settled ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.ob-review-settled li { display: grid; gap: 1px; font-size: 13px; }
+.ob-review-settled .linkish { justify-self: start; }
+.ob-review-foot { position: sticky; bottom: 0; z-index: 3; margin-top: auto; padding: 12px 16px; border-top: 1px solid var(--line); background: var(--surface); display: flex; justify-content: flex-end; align-items: center; min-height: 58px; }
+.ob-review-foot p { margin: 0; font-size: 13px; color: var(--muted); }
+.ob-review-foot .primary { width: 100%; }
+@media (max-width: 760px) { .ob-review-foot { background: var(--bg); } }
+/* The hand-over to the dashboard: onboarding fades out, the dashboard fades in. Opacity only. */
+.ob-work.ob-leave { opacity: 0; transition: opacity 0.26s ease; pointer-events: none; }
+.journey.handover > .journey-main { animation: fade-in 0.42s ease both; }
+@media (prefers-reduced-motion: reduce) { .ob-work.ob-leave { transition: none; } .journey.handover > .journey-main { animation: none; } }
+
+/* Step 8.10 (e): one spine. Six stages, each done, now or to come; the current one says what's happening or needed.
+   In full at the top of the dashboard; compact in the dark top bar, where only the current stage keeps its words. */
+.spine ol { list-style: none; margin: 0; padding: 0; display: flex; align-items: flex-start; }
+.spine-stage { flex: 1 1 0; min-width: 0; position: relative; }
+.spine-stage > button, .spine-stage > .spine-static {
+  display: flex; align-items: flex-start; gap: 8px; width: 100%; min-height: 0; padding: 6px 8px 6px 0; margin: 0;
+  border: 0; border-radius: 10px; background: none; color: inherit; font: inherit; text-align: left;
+}
+.spine-stage > button { cursor: pointer; }
+.spine-stage > button:hover:not(:disabled) { background: none; }
+.spine-stage > button:hover .spine-label { color: var(--fg); text-decoration: underline; text-underline-offset: 3px; }
+.spine-stage > button:focus-visible { outline: 2px solid var(--edge-act, var(--accent)); outline-offset: 2px; }
+/* The track between stages: ochre where the journey has been. */
+.spine-stage:not(:last-child)::after { content: ""; position: absolute; top: 17px; left: 30px; right: 8px; height: 2px; border-radius: 2px; background: var(--line); }
+.spine-done:not(:last-child)::after { background: var(--edge-data, var(--emph)); }
+.spine-mark {
+  flex: none; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; position: relative; z-index: 1;
+  font-family: var(--font-caps); font-weight: 800; font-size: 11px; line-height: 1;
+  background: var(--surface); color: var(--faint); box-shadow: inset 0 0 0 1.5px var(--line);
+}
+.spine-done .spine-mark { background: var(--edge-data, var(--emph)); color: #14120f; box-shadow: none; }
+.spine-now .spine-mark { background: var(--raised, var(--surface)); color: var(--edge-act, var(--accent)); box-shadow: inset 0 0 0 2px var(--edge-act, var(--accent)), 0 0 0 4px color-mix(in srgb, var(--edge-act, var(--accent)) 18%, transparent); }
+.spine-text { display: grid; gap: 2px; min-width: 0; padding-top: 3px; position: relative; z-index: 1; }
+.spine-label { font-family: var(--font-caps); font-weight: 700; font-size: 12px; line-height: 1.25; color: var(--muted); }
+.spine-done .spine-label { color: var(--fg); }
+.spine-now .spine-label { color: var(--fg); font-weight: 800; }
+.spine-todo .spine-label { color: var(--faint); }
+.spine-line { font-size: 13px; line-height: 1.35; color: var(--muted); }
+.spine-you { color: var(--edge-act, var(--accent)); font-weight: 600; }
+/* A subagent's live step can run long: two lines, the rest on hover. */
+.spine:not(.spine-compact) .spine-line { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+/* The current stage takes the room it needs for its line; the track gives way. */
+.spine:not(.spine-compact) .spine-now { flex: 2.2 1 0; }
+.spine:not(.spine-compact) .spine-now:not(:last-child)::after { display: none; }
+.spine:not(.spine-compact) .spine-text { background: var(--surface); padding-right: 6px; }
+.dash-page > .spine, .spine:not(.spine-compact) { margin: 0 0 18px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+.spine-needs .spine-mark { box-shadow: inset 0 0 0 2px var(--edge-act, var(--accent)), 0 0 0 4px color-mix(in srgb, var(--edge-act, var(--accent)) 30%, transparent); }
+
+/* Compact, in the top bar: dots for the other stages, the current one's words. Always on the dark band. */
+.spine-compact { flex: 1 1 auto; min-width: 0; margin: 0 8px 0 18px; }
+.spine-compact ol { align-items: center; gap: 6px; }
+.spine-compact .spine-stage { flex: none; }
+.spine-compact .spine-stage::after { display: none; }
+.spine-compact .spine-stage > button, .spine-compact .spine-static { padding: 4px; align-items: center; border-radius: 999px; }
+.spine-compact .spine-stage > button:hover { background: #241f1a; }
+.spine-compact .spine-mark { width: 9px; height: 9px; font-size: 0; background: #3a3128; box-shadow: none; }
+.spine-compact .spine-mark svg { display: none; }
+.spine-compact .spine-done .spine-mark { background: #c9973d; }
+.spine-compact .spine-text { display: none; }
+.spine-compact .spine-now { flex: 0 1 auto; min-width: 0; }
+.spine-compact .spine-now .spine-mark { width: 10px; height: 10px; background: #14120f; box-shadow: inset 0 0 0 2px #c25663; }
+.spine-compact .spine-now .spine-text { display: flex; align-items: baseline; gap: 8px; padding: 0; background: none; min-width: 0; }
+.spine-compact .spine-now .spine-label { color: #f3efe6; font-size: 12px; white-space: nowrap; }
+.spine-compact .spine-now .spine-line { color: #c2baab; font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.spine-compact .spine-now .spine-you { color: #e58a95; }
+.spine-compact .spine-now > button, .spine-compact .spine-now > .spine-static { padding: 4px 10px 4px 4px; min-width: 0; max-width: 100%; }
+
+@media (max-width: 760px) {
+  /* The dashboard's spine: marks in a row, words only on the current stage. */
+  .spine:not(.spine-compact) { padding: 10px 12px; }
+  .spine:not(.spine-compact) ol { gap: 2px; }
+  .spine:not(.spine-compact) .spine-stage:not(.spine-now) .spine-text { display: none; }
+  .spine:not(.spine-compact) .spine-stage:not(.spine-now) { flex: 0 0 auto; }
+  .spine:not(.spine-compact) .spine-stage:not(.spine-now)::after { display: none; }
+  .spine:not(.spine-compact) .spine-stage:not(.spine-now) > button, .spine:not(.spine-compact) .spine-stage:not(.spine-now) > .spine-static { padding-right: 4px; }
+  .spine:not(.spine-compact) .spine-now { flex: 0 0 auto; position: static; }
+  /* The six marks in a row; the current stage's words take the full width beneath them. */
+  .spine:not(.spine-compact) ol { position: relative; padding-bottom: 58px; }
+  .spine:not(.spine-compact) .spine-now .spine-text { position: absolute; left: 0; right: 0; top: 36px; padding: 0; }
+  /* The top bar: only the current stage's dot and words. */
+  .journey-top:has(.spine-compact) { flex-wrap: wrap; row-gap: 2px; }
+  .spine-compact { order: 3; flex: 1 1 100%; margin: 0 0 0 -4px; }
+  .spine-compact .spine-stage:not(.spine-now) { display: none; }
+  .spine-compact .spine-now .spine-label { display: none; }
+}
+
+/* Step 8.10 (f): every subagent finishes, and the founder knows what's next. While a subagent works, its page says what
+   it's doing for the founder and outlines what it will give; once its output is in, a finish card says what it found in
+   three lines, then one Next line: "Your turn" (oxblood, the question right under it) or "Nothing needed from you". */
+.spec-doing { margin: 0; font-size: 15px; font-weight: 600; color: var(--fg); }
+.spec-outline { border: 1px dashed var(--line); border-radius: 12px; padding: 12px 14px; display: grid; gap: 6px; }
+.spec-outline p { margin: 0; color: var(--muted); }
+.spec-outline-k { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--faint); }
+.spec-outline-rows { display: grid; gap: 6px; margin-top: 4px; }
+.spec-outline-rows i { display: block; height: 10px; border-radius: 5px; background: color-mix(in srgb, var(--line) 70%, transparent); }
+.spec-outline-rows i:nth-child(2) { width: 82%; }
+.spec-outline-rows i:nth-child(3) { width: 64%; }
+.finish-card { border: 1px solid var(--line); border-left: 3px solid var(--edge-data); border-radius: 14px; background: var(--raised); padding: 14px 16px; display: grid; gap: 10px; }
+.finish-card h4 { margin: 0; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--edge-data); }
+.finish-lines { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.finish-lines li { position: relative; padding-left: 16px; line-height: 1.45; }
+.finish-lines li::before { content: ""; position: absolute; left: 2px; top: 0.6em; width: 6px; height: 6px; border-radius: 50%; background: var(--edge-data); }
+.finish-lines li:first-child { font-weight: 600; }
+.finish-card > .linkish { justify-self: start; }
+.next-line { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; border-top: 1px solid var(--line); padding-top: 10px; }
+.finish-card > .next-line:first-child { border-top: 0; padding-top: 0; }
+.next-k { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 700; color: var(--muted); }
+.next-you .next-k { color: var(--edge-act); }
+.next-text { flex: 1 1 220px; }
+.next-line button { margin-left: auto; }
+.finish-q { border-radius: 12px; box-shadow: 0 0 0 2px color-mix(in srgb, var(--edge-act) 35%, transparent); }
+@media (max-width: 760px) {
+  .next-line button { margin-left: 0; width: 100%; }
+}
+/* The Next line already says "Your turn" and who asks, so the question under it does not say it again. */
+.finish-q .question-for { display: none; }
+
+/* Step 8.10 (g): the Brand Graph reads as a graph. Faint lines always drawn, lit with a node's hover; ring groups named. */
+.bg-link { stroke-width: 0.8; stroke-opacity: 0.32; pointer-events: none; transition: stroke-opacity 0.15s ease, stroke-width 0.15s ease; }
+.bg-link.spoke { stroke-opacity: 0.6; }
+.bg-link.lit { stroke: var(--accent); stroke-width: 1.4; stroke-opacity: 0.95; }
+.bg-ring-name { font-family: var(--font-caps); font-weight: 700; font-size: 9px; letter-spacing: 0.06em; text-transform: uppercase; fill: var(--muted); pointer-events: none; paint-order: stroke; stroke: var(--bg); stroke-width: 3px; stroke-linejoin: round; }
+.bg-tip-why { color: var(--muted); font-size: 11.5px; }
+.bg-tip-why::before { content: "— "; }
+@media (prefers-reduced-motion: reduce) { .bg-link { transition: none; } }

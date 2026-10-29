@@ -2470,6 +2470,7 @@ Written 14 Oct, after the founder's review of the v4 build. **§23.1 is `problem
 | 8.7 | — (founder, 27 Oct) | **Athena in the founder's own tools** (founder, 27 Oct; after 8.6, order against §23.5 (r) is the founder's call). The plan, tasks and brand context reach the tools a founder already works in, and what they do there comes back to Athena. No Google OAuth; judges can try it in about a minute. Full spec in §23.6: (a) the workspace saved on the server; (b) the Athena MCP server; (c) connect links, no OAuth; (d) the "Use Athena elsewhere" panel; (e) the judges' demo link; (f) the brand context file; (g) calendar; (h) Open in Gmail; (i) Shopify sales from an orders export; (j) This week and the Monday email; (k) a read-only share link; (l) design rules; (m) dev mode. | See §23.6 "Done when". |
 | 8.8 | — (founder, 27 Oct) | **Dev mode out of the founder's UI, and a polish pass for founders** (founder, 27 Oct; order against 8.7 and §23.5 (r) is the founder's call). Nothing a founder sees is there for the builder: no dev-mode link, no debug text. Every page reads as written to the founder, fits a phone, and never shows a blank screen while it loads. Full spec in §23.7: (a) dev mode out of the founder's UI; (b) every line written to the founder; (c) one place for each thing; (d) phones; (e) no blank first paint; (f) one look on every page; (g) design rules; (h) dev mode keeps up. | See §23.7 "Done when". |
 | 8.9 | — (founder, 28 Oct) | **Crowds named after what they love, and where every name comes from** (founder, 28 Oct; after 8.8). Crowd names stitched from Qloo tags read as AI slop, and references don't say where they came from. Full spec in §23.8: (a) crowds named after two things they love, with what they share as Athena's read; (b) what a crowd is, in every prompt; (c) a card behind every name saying where it came from; (d) sources named, not numbered; (e) the files and shared pages; (f) the slop sweep; (g) dev mode. | See §23.8 "Done when". |
+| 8.10 | — (founder, 29 Oct) | **One clear path, dark by default, smooth motion, a graph that reads as a graph** (founder, 29 Oct; after 8.9). The founder lost the thread after the Analyst, the continue button came before the Brand Graph, dark mode merges into one dark, onboarding's animations stutter and the cleaned-up graph lost its links. Full spec in §23.9: (a) dark by default with more colour; (b) question cards stand out; (c) smooth motion; (d) onboarding ends with a review; (e) one spine for the journey; (f) every subagent finishes and the founder knows what to do next; (g) a graph that reads as a graph. No new dev-mode cards (founder, 29 Oct). | See §23.9 "Done when". |
 | 9 | 3 G | **The context test:** the same brand with only its website, then with the full knowledge base. The crowds, ranking and actions must change in ways that trace back to specific facts. A product check, separate from the Bench. | The diff is written up per brand; no change is treated as a bug. |
 | 10 | all | QA against the no-failure-state rules, the phone layout, the Cloud Run deploy, re-warming the demo packs, and the write-up and video. The write-up says plainly that Athena is now an agent (problem 0), for Stage 1 judging. | Rehearsed twice end to end, and the coverage table (§23.3) is all ticked. |
 
@@ -3539,6 +3540,92 @@ The new crowd card, a reference card of each kind, and the named source chips ea
   - checked on desktop and at 375 px.
 - **A saved journey** from before this step opens with its old names and no blank or broken view.
 - **Every new state** has its dev-mode card.
+
+### 23.9 Step 8.10 in detail: one clear path, dark by default, smooth motion, a graph that reads as a graph (founder, 29 Oct; not built)
+
+**Why (founder, 29 Oct, from a live run):**
+- the question card doesn't stand out in dark mode;
+- dark mode should be the default, with about 20–25% more colour from the light design system, and every section, tab, border and sidebar distinct rather than merging into the dark;
+- the loading and searching animations in onboarding look like dropped frames;
+- "Next: how you sell" shows before the Brand Graph is ready and jumps to the next page without showing the brief or the graph;
+- after the Analyst the founder waited without knowing why, a question appeared in the chat with no stated purpose, and the dashboard still offered "Build your growth plan with Athena";
+- subagents move on before their output is complete and understood;
+- after §23.5 (r) the Brand Graph is clean but no longer reads as a graph.
+
+**What the code showed (29 Oct):**
+- the question card's surface is the page background (`--bg`), the darkest colour in dark mode;
+- dark mode only follows the system setting, with three near-black layers and borders at #2e2a24;
+- the live lines animate a background clipped to text (a repaint every frame), the sweeps and skeletons animate `background-position`, rows breathe in opacity together, glows animate `box-shadow`, the graph reveal animates `filter: blur`, all over a `backdrop-filter` chat and the animated background field;
+- the dock's "Next: how you sell →" shows on `turn.ready`, whatever the graph's state;
+- the dashboard's Start card shows whenever there are no goals or workflow, including while the Analyst is running and the goals question waits.
+
+#### (a) Dark by default, with more colour
+- Dark on every page, landing included, whatever the system says. A light/dark switch in the sidebar (and on the landing page's nav) is remembered in this browser; the theme is set before first paint, so a page never flashes the other one.
+- About 20–25% more colour, from the light palette:
+  - three surface levels that are clearly apart, with warm borders that can be seen;
+  - a thin coloured edge on top of each section: oxblood where it leads to an action, ochre where it holds data;
+  - an ochre underline on the active tab;
+  - an oxblood edge on the sidebar and on its active row;
+  - kickers and small labels in a warm ochre tone.
+- Colour marks structure and state, never decoration. Light mode keeps today's look.
+
+#### (b) Question cards stand out
+- A lighter, raised surface with an oxblood edge and a "Your turn" label.
+- One line saying why it's asked and what happens after ("This decides which subagents run next"), written by whoever asks: a model-written question carries it in its own words; a fixed question has it in the code.
+- When a question arrives and the chat is closed, the chat opens on it.
+
+#### (c) Smooth motion everywhere
+- Every looping animation moves only `transform` or `opacity`.
+- One shared shimmer replaces the text-clip one; sweeps and skeletons move a layer, not a background.
+- No `filter`, `box-shadow` or `background-position` animations; no `backdrop-filter` over content that animates.
+- The background field pauses while a run streams, and whenever the tab is hidden.
+- `prefers-reduced-motion` turns them all off, as today.
+
+#### (d) Onboarding ends with a review, not a jump
+- The dock's "Next: how you sell →" goes.
+- When the Brand Graph is revealed, the right panel opens on a review: the brief's fact strip, the graph and the conflicts, under the line "Check it, edit anything here or tell me below."
+- Only then does the panel's foot show one button: **"Looks right: plan my growth →"**. While the graph is still being built, the foot says what it's waiting on.
+- The growth question ("How does <brand> sell today?") is then asked in the onboarding transcript, so the page doesn't swap. After it's answered, the move to the dashboard is a smooth hand-over (a cross-fade, not a cut).
+- On a phone the review is the Brand tab, with the same button at its foot.
+
+#### (e) One spine for the whole journey
+- A stage strip on the dashboard and, compact, in the top bar on every page after onboarding: **Your brand → Who loves you → Your goals → The team's work → Your plan → Execute**.
+- Each stage is done, now or to come. The current one says what's happening ("The Analyst is ranking your crowds") or what's needed from you ("Pick what to work on"), and one click goes where that is.
+- The Start card shows only when nothing has started: never while the Analyst runs or a question waits.
+
+#### (f) Every subagent finishes, and the founder knows what it means and what to do next
+- A step counts as done only when its output is fully on screen.
+- Then a **finish card**: "What the Analyst found", three plain lines on what it found and why it matters for this brand, and a link to the full results.
+- Under it, one **Next line** saying what happens now and whether it needs the founder:
+  - **Your turn:** "Pick what to work on: this decides which subagents run", with the question card right there;
+  - **Nothing needed from you:** "Next: the Navigator finds where these crowds live", with the run carrying on where it can be watched.
+- **One clear next action at any moment:** each screen has a single primary button or question and everything else is secondary; when Athena needs nothing, the screen says so, so a wait never looks stuck.
+- The next question appears only after the finish card, next to it, with why it's asked.
+- While a subagent works, its page shows the outline of what it will produce, its live step, and one line on what it's doing for the founder ("Finding the cities where your three crowds are strongest").
+- The app follows the run to the working subagent's page unless the founder has navigated themselves. If they're elsewhere when something needs them, the spine and the paused banner say where, and one click takes them there.
+
+#### (g) A Brand Graph that reads as a graph
+- Faint links, always visible: brand to each theme; each theme to its notes; a note to any stockist, city, crowd or similar brand it mentions (the edges already held, with their reasons).
+- Each outer-ring group is labelled ("Stockists · 4").
+- Theme regions are sized by their notes with a cap, so a catch-all theme can't dominate.
+- Hovering a node lights its links and shows why they're there.
+- Unchanged from §23.5 (r): one colour family, nothing moves, the fixed height, Expand, clicking a theme zooms to it.
+
+#### Out of this step
+- New features or new subagent work; what the subagents compute.
+- New `/dev` step-map cards (founder, 29 Oct): record and replay stay as they are, but no step adds cards from here on. Checks use one live run in Record mode, replayed if a page needs a second look.
+- The Executive's own flow beyond its place on the spine.
+
+#### Done when
+- **Checks pass:** tsc and tests, with new tests for the spine's stage from journey state, the Next line (your turn vs nothing needed), and the review gate (no continue button before the graph is revealed).
+- **Motion:** a frame-time trace in the browser shows no long runs of dropped frames through onboarding's live steps and a subagent run at 1440 px.
+- **One fresh live run, onboarding to Execute Plan, desktop and 375 px:**
+  - no continue button before the Brand Graph is revealed; the review shows the brief, the graph and conflicts;
+  - the dashboard never offers Start while work runs or a question waits;
+  - every hand-off between subagents shows exactly one primary action or an explicit "nothing needed from you", and from the screen alone a first-time viewer can say what just happened and what to do next;
+  - no question appears before the previous output is on screen;
+  - dark by default with sections, tabs and the sidebar clearly apart; light mode still works through the switch;
+  - the Brand Graph's links explain themselves on hover.
 
 ---
 

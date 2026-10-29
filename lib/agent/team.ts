@@ -65,6 +65,7 @@ const declaration: FunctionDeclaration = {
   name: FINISH_WORK,
   description:
     "Ends your run with your work for the founder. results: what you recommend, best first, each named exactly as a tool listed it under `results`. claims: plain sentences that cite the source ids (s1, s2, …) their facts come from; every number must appear in a cited source. " +
+    "Your first claims are the lines under your headline on the founder's finish card, so each one says what you found and why it backs your results. The founder wrote the brief, so a claim never tells them back what they sell or who they are; and how you worked (a search widened, a tool retried, a place swapped) is your trail, not a finding. " +
     "headline: the decision in one sentence, no numbers. handoff: when you need something another specialist provides (a city, the crowds) or only the founder knows, say what, and Athena routes it.",
   parameters: {
     type: "object",

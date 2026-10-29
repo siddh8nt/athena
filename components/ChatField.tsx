@@ -8,12 +8,12 @@ import { createPortal } from "react-dom";
 // glides after it: under the lens the hidden characters show, denser and warmer toward its middle, the grid parts softly
 // around it, and characters its middle reaches scramble briefly and settle. The lens widens a little while the pointer
 // moves fast, leaves a wake that cools behind it, and gathers back in when the pointer rests. A click sends an ochre ring
-// rippling out through the same characters. While an agent works the field quickens a little (shorter rests, a few ochre
-// glints) and settles back when the work ends. Visual only: it reads nothing but the page's own "working" marks and its
+// rippling out through the same characters. While an agent works the field holds a still frame, so the run's own motion
+// has the frame to itself, and it moves again when the work ends (§23.9 c). Visual only: it reads nothing but the page's own "working" marks and its
 // background colour, and it mounts itself into whichever chat surface is on screen. On the landing page it covers the
 // window, fixed behind the scrolling content; the titles keep their own clearings. One canvas, one requestAnimationFrame
 // loop: the display's own rate while the pointer moves or a ring spreads, ~24 frames a second at rest, paused while the
-// tab is hidden; a still frame under prefers-reduced-motion.
+// tab is hidden or a run streams; a still frame under prefers-reduced-motion.
 
 const HOST = ".ob-first, .ob-work, .journey-main.agent-stage, .landing-page";
 const LANDING = ".landing-page";
@@ -55,13 +55,18 @@ function Field({ host, busy }: { host: HTMLElement; busy: boolean }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const live = useRef(busy);
   live.current = busy;
+  const resume = useRef(() => {});
+  useEffect(() => {
+    if (!busy) resume.current();
+  }, [busy]);
 
   useEffect(() => {
     const cv = ref.current;
     const ctx = cv?.getContext("2d");
     if (!cv || !ctx) return;
     const calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const scheme = window.matchMedia("(prefers-color-scheme: dark)");
+    // The theme is the page's own (dark unless the founder switched to light), so the field repaints when it flips.
+    const themed = new MutationObserver(() => paint());
     // The landing page scrolls under a window-sized field; the product screens carry the field on their own surface.
     const fixed = host.matches(LANDING);
     if (fixed) cv.classList.add("chat-field-fixed");
@@ -71,13 +76,12 @@ function Field({ host, busy }: { host: HTMLElement; busy: boolean }) {
     // and the next cycle draws a new character and a new rest. So at any moment a thin, even scatter is showing, and which
     // characters make it up keeps changing; nothing settles into fixed shapes or fixed holes.
     let chars: string[] = [], age = new Float32Array(0), life = new Float32Array(0);
-    let glow = new Float32Array(0), seed = new Float32Array(0);
+    let glow = new Float32Array(0);
     // Per cell for the field's whole life: a fixed draw (`mark`) that decides how near the lens's middle it must be to show
     // and which colour it takes, so nothing pops when its cycle turns over; the lens's warmth on it (`heat`); whether the
     // lens's middle has already scrambled it (`seen`); and a short scramble still to play (`flip` characters, one every `tick`).
     let mark = new Float32Array(0), heat = new Float32Array(0), tick = new Float32Array(0);
     let flip = new Uint8Array(0), seen = new Uint8Array(0);
-    let wake = live.current ? 1 : 0;
     let raf = 0, last = 0, moved = -1e9;
     // The whole field rises very slowly; rows that leave the top come back in at the bottom, fresh.
     let oy = 0, base = 0;
@@ -96,7 +100,6 @@ function Field({ host, busy }: { host: HTMLElement; busy: boolean }) {
     const born = (i: number, anywhere = false) => {
       chars[i] = pick();
       life[i] = between(LIFE);
-      seed[i] = Math.random();
       const rest = between(REST);
       age[i] = anywhere ? -rest + Math.random() * (rest + life[i]) : -rest;
     };
@@ -112,7 +115,7 @@ function Field({ host, busy }: { host: HTMLElement; busy: boolean }) {
       cols = Math.ceil(w / CW); rows = Math.ceil(h / CH) + 1;
       const n = cols * rows;
       chars = new Array(n); age = new Float32Array(n); life = new Float32Array(n);
-      glow = new Float32Array(n); seed = new Float32Array(n);
+      glow = new Float32Array(n);
       mark = new Float32Array(n); heat = new Float32Array(n); tick = new Float32Array(n);
       flip = new Uint8Array(n); seen = new Uint8Array(n);
       for (let i = 0; i < n; i++) { born(i, true); mark[i] = Math.random(); }
@@ -128,7 +131,7 @@ function Field({ host, busy }: { host: HTMLElement; busy: boolean }) {
     const paint = () => {
       const fill = (el: Element) => getComputedStyle(el).backgroundColor.match(/[\d.]+/g)?.map(Number);
       const bg = [host, document.body, document.documentElement].map(fill).find((c) => c && c.length >= 3 && (c[3] ?? 1) > 0.5);
-      const dark = bg ? (0.2126 * bg[0] + 0.7152 * bg[1] + 0.0722 * bg[2]) / 255 < 0.4 : scheme.matches;
+      const dark = bg ? (0.2126 * bg[0] + 0.7152 * bg[1] + 0.0722 * bg[2]) / 255 < 0.4 : document.documentElement.dataset.theme !== "light";
       const from = dark ? [243, 239, 230] : [20, 18, 15], to = dark ? [217, 164, 65] : [169, 121, 28];
       const rgb = (c: number[]) => `rgb(${c.map(Math.round).join(",")})`;
       blend = Array.from({ length: 17 }, (_, k) => rgb(from.map((v, j) => v + ((to[j] - v) * k) / 16)));
@@ -159,7 +162,7 @@ function Field({ host, busy }: { host: HTMLElement; busy: boolean }) {
 
     const draw = () => {
       ctx.clearRect(0, 0, w, h);
-      const a = ink * (1 + wake * 0.3);
+      const a = ink;
       let cur = "";
       for (let r = 0; r < rows; r++) {
         const y = r * CH - oy;
@@ -174,8 +177,6 @@ function Field({ host, busy }: { host: HTMLElement; busy: boolean }) {
           if (g * 0.75 > alpha) {
             const red = mark[i] > 0.88;
             fill = red ? wine : ochre; alpha = g * (red ? 0.6 : 0.75);
-          } else if (wake > 0.5 && seed[i] < 0.025) {
-            fill = ochre; alpha = Math.max(alpha, e * 0.3);
           } else {
             // The lens's middle warms toward ochre: about a third of its characters fully, the rest only tinted. Ochre has
             // less contrast than the ink on either page, so a warm character is drawn stronger to read as lit, not faded.
@@ -200,6 +201,12 @@ function Field({ host, busy }: { host: HTMLElement; busy: boolean }) {
     };
 
     const step = (now: number) => {
+      // A run is streaming: hold the frame as it is until the work ends.
+      if (live.current) {
+        draw();
+        raf = 0;
+        return;
+      }
       raf = requestAnimationFrame(step);
       // The display's own rate while the pointer moves, the lens settles or a ring spreads; ~24 frames a second at rest.
       const hot = now - moved < 1600 || rings.length > 0;
@@ -208,7 +215,6 @@ function Field({ host, busy }: { host: HTMLElement; busy: boolean }) {
       const dt = sec / 0.042;
       const ease = (rate: number) => 1 - Math.exp(-sec * rate);
       last = now;
-      wake += ((live.current ? 1 : 0) - wake) * Math.min(1, 0.06 * dt);
 
       // The lens fades in and out with the pointer, glides after it, and reaches a little further while it moves fast.
       const lx = lens.x, ly = lens.y;
@@ -230,12 +236,11 @@ function Field({ host, busy }: { host: HTMLElement; busy: boolean }) {
         }
       }
 
-      // Age every cell; while an agent works the rests run faster, so the field quickens. The lens's warmth cools on every
-      // cell (what it leaves behind is its wake), and scrambles play out.
-      const pace = 1 + wake * 0.8, cool = Math.exp(-sec / COOL);
+      // Age every cell. The lens's warmth cools on every cell (what it leaves behind is its wake), and scrambles play out.
+      const cool = Math.exp(-sec / COOL);
       const n = chars.length;
       for (let i = 0; i < n; i++) {
-        age[i] += age[i] < 0 ? sec * pace : sec;
+        age[i] += sec;
         if (age[i] >= life[i]) born(i);
         if (heat[i]) {
           heat[i] = heat[i] > 0.002 ? heat[i] * cool : 0;
@@ -285,13 +290,16 @@ function Field({ host, busy }: { host: HTMLElement; busy: boolean }) {
     const ro = new ResizeObserver(size);
     if (fixed) window.addEventListener("resize", size);
     else ro.observe(host);
-    scheme.addEventListener("change", paint);
+    themed.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
     if (calm) draw();
     else raf = requestAnimationFrame(step);
     const vis = () => {
       cancelAnimationFrame(raf);
       raf = 0;
-      if (!document.hidden && !calm) { last = 0; raf = requestAnimationFrame(step); }
+      if (!document.hidden && !calm && !live.current) { last = 0; raf = requestAnimationFrame(step); }
+    };
+    resume.current = () => {
+      if (!raf && !document.hidden && !calm) { last = 0; raf = requestAnimationFrame(step); }
     };
     document.addEventListener("visibilitychange", vis);
 
@@ -327,7 +335,7 @@ function Field({ host, busy }: { host: HTMLElement; busy: boolean }) {
     return () => {
       cancelAnimationFrame(raf); ro.disconnect(); document.removeEventListener("visibilitychange", vis);
       window.removeEventListener("resize", size);
-      scheme.removeEventListener("change", paint);
+      themed.disconnect();
       target.removeEventListener("pointermove", move as EventListener);
       exit.removeEventListener("pointerleave", leave);
       target.removeEventListener("pointerdown", press as EventListener);

@@ -386,6 +386,10 @@ export function Dashboard(p: {
   onExec: () => void;
   /** Execute Plan (§23.5 q), for its tab. */
   executive: ReactNode;
+  /** The journey's spine (§23.9 e), above the overview. */
+  spine?: ReactNode;
+  /** Nothing has started: the Start card shows, and only then. */
+  start: boolean;
 }) {
   const { team, live } = p;
   const [tab, setTab] = useState<DashTab>(tabFromUrl);
@@ -419,8 +423,9 @@ export function Dashboard(p: {
   };
   const overview = (
     <>
+      {p.spine}
       {plan && <ThisWeek team={team} onRow={openRow} />}
-      {!w && !goals.length ? (
+      {p.start ? (
         <section className="dash-start">
           <span className="eyebrow">Next</span>
           <h2>Build your growth plan with Athena</h2>
@@ -432,7 +437,7 @@ export function Dashboard(p: {
             Start
           </button>
         </section>
-      ) : (
+      ) : (w || goals.length > 0) && (
         <section className="dash-sec dash-plan">
           <div className="dash-sec-head">
             <h3>Your growth plan</h3>

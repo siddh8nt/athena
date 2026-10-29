@@ -118,7 +118,7 @@ export type Tool = {
 
 const WHY = {
   type: "string",
-  description: "One short sentence for the founder: why this call, now, in plain words. Shown to the founder as the step's live line while it runs, so it says what is being done for their brand, as a short phrase in their words (\"Measuring the crowds around brands like yours\"), addressed to the founder (\"your crowds\", never \"our\", \"we\" or \"Let's\") and not a plan written for a model, and no terms such as \"lookalike\", \"seed\" or \"taste graph\". No scores, decimals or ids from the data (\"the crowd with the least to go on\", not \"stability 0.52\").",
+  description: "One short sentence for the founder: why this call, now, in plain words. Shown to the founder as the step's live line while it runs, so it says what is being done for their brand, as a short phrase that starts with the verb, in their words (\"Measuring the crowds around brands like yours\", not \"We are measuring…\"), addressed to the founder (\"your crowds\", never \"our\", \"we\" or \"Let's\") and not a plan written for a model, and no terms such as \"lookalike\", \"seed\" or \"taste graph\". No scores, decimals or ids from the data (\"the crowd with the least to go on\", not \"stability 0.52\").",
 };
 
 /** Function declarations for Gemini, with `why` added to each tool. */
@@ -315,7 +315,7 @@ export const TOOLS: Tool[] = [
     qloo: (a, s) => 6 * Math.min(strs(a.entity_ids, MAX_EXTRA).length, MAX_EXTRA - s.probes.length) + 2 * (s.crowds?.crowds.length ?? 4) + 2,
     when: probeWhen,
     async run(a, { qloo, state, status }) {
-      if (!state.seed || !state.crowds) return { summary: "build the taste graph first", data: {}, status: "empty" };
+      if (!state.seed || !state.crowds) return { summary: "your crowds come first", data: {}, status: "empty" };
       const fresh = strs(a.entity_ids, MAX_EXTRA, 80).filter((id) => !state.probes.includes(id));
       const probes = [...state.probes, ...fresh].slice(0, MAX_EXTRA);
       if (probes.length === state.probes.length) return { summary: `the graph already holds its ${MAX_EXTRA} probes`, data: crowdsOut(state.crowds), status: "thin" };
@@ -341,7 +341,7 @@ export const TOOLS: Tool[] = [
     properties: { crowd_ids: { type: "array", items: { type: "string" }, description: "Crowd ids; all crowds when empty." } },
     qloo: (a, s) => strs(a.crowd_ids, 6).length || (s.crowds?.crowds.length ?? 5),
     async run(a, { qloo, state }) {
-      if (!state.crowds?.crowds.length) return { summary: "build the taste graph first", data: {}, status: "empty" };
+      if (!state.crowds?.crowds.length) return { summary: "your crowds come first", data: {}, status: "empty" };
       const want = strs(a.crowd_ids, 6, 40);
       const crowds = state.crowds.crowds.filter((c) => !want.length || want.includes(c.id));
       const g = await crowdGeography(qloo, crowds.map((c) => ({ id: c.id, name: c.name, signal: c.signal.map((s) => s.id) })));
@@ -371,7 +371,7 @@ export const TOOLS: Tool[] = [
     properties: {},
     qloo: () => 0,
     async run(_a, { state }) {
-      if (!state.seed || !state.crowds) return { summary: "build the taste graph first", data: [], status: "empty" };
+      if (!state.seed || !state.crowds) return { summary: "your crowds come first", data: [], status: "empty" };
       const axes = state.crowds.axes ?? (await (async () => {
         const saved = await savedGraph(state.seed!, state.probes);
         return saved ? await axesOf(saved.state) : undefined;
@@ -527,7 +527,7 @@ export const TOOLS: Tool[] = [
     qloo: (_a, s) => (s.geography ? 0 : (s.crowds?.crowds.length ?? 5)),
     when: rankWhen,
     async run(a, { qloo, env, state, sources, status }) {
-      if (!state.crowds?.crowds.length) return { summary: "build the taste graph first", data: {}, status: "empty" };
+      if (!state.crowds?.crowds.length) return { summary: "your crowds come first", data: {}, status: "empty" };
       const known = (v: unknown) => strs(v, 6, 12).filter((id) => sources.has(id));
       const ignored: string[] = [];
       // Places: each needs a source that says so, and must be a US place.
@@ -583,7 +583,7 @@ export const TOOLS: Tool[] = [
         // The summary is the founder's step line: ranks and tiers in words; the scores stay in the data the model reads.
         summary: r.fits.map((f) => `${f.rank}. ${f.name} (${f.tier.replace("_", " ")})`).join("; "),
         data: { key, fits: out, weights: r.weights, weight_changes: r.changes, left_out_as_already_sold: r.excluded, ignored },
-        items: r.fits.map((f) => ({ id: itemId("crowd", f.name), kind: "crowd", name: f.name, why: `${TIER_LABEL[f.tier]}${f.nearMiss ? `, ${NEAR_MISS_LABEL.toLowerCase()}` : ""}${f.reasons[0] ? `: ${f.reasons[0]}` : ""}`, group: TIER_LABEL[f.tier], ref: f.crowd })),
+        items: r.fits.map((f) => ({ id: itemId("crowd", f.name), kind: "crowd", name: f.name, why: `${TIER_LABEL[f.tier]}${f.nearMiss ? `, ${NEAR_MISS_LABEL.toLowerCase()}` : ""}${f.reasons[0] ? `. ${f.reasons[0]}` : ""}`, group: TIER_LABEL[f.tier], ref: f.crowd })),
       };
     },
   },
@@ -650,14 +650,15 @@ export const TOOLS: Tool[] = [
       question: { type: "string" },
       options: { type: "array", items: { type: "object", properties: { label: { type: "string" }, hint: { type: "string" } }, required: ["label"] }, description: "2–4 options, the recommended one first. The founder reads the question, each label and each hint: speak to them as \"you\" and \"your\", as Athena (\"I\"), never \"we\" or \"our\" (\"Where your team is based; I'll start your cities from there\")." },
       multi_select: { type: "boolean" },
+      because: { type: "string", description: "One line under the question, to the founder: why you ask and what you'll do with the answer, in their words, as Athena (\"So I only rank cities you can ship to; the Navigator starts from your answer\"). Not your reasoning about tools." },
     },
-    required: ["question", "options"],
+    required: ["question", "options", "because"],
     qloo: () => 0,
     async run(a, { state, ask, known }) {
       const options = (Array.isArray(a.options) ? a.options : []).map((o) => ({ label: str((o as { label?: unknown })?.label, 80), hint: str((o as { hint?: unknown })?.hint, 120) || undefined })).filter((o) => o.label).slice(0, 4);
       if (state.asks >= (state.maxAsks ?? 2)) return { summary: "the questions for this run are asked; carry on with assumptions", data: { asked: false } , status: "thin" };
       if (options.length < 2) return { summary: "a question needs 2–4 options", data: { asked: false }, status: "empty" };
-      const q: FounderQuestion = { question: str(a.question, 200), why: str(a.why, 200), options, multi: a.multi_select === true, assumed: options[0].label };
+      const q: FounderQuestion = { question: str(a.question, 200), why: str(a.because, 200) || str(a.why, 200), options, multi: a.multi_select === true, assumed: options[0].label };
       const said = await known?.(q);
       if (said) return { summary: `the Brand Graph already answers this: ${said}`, data: { asked: false, answer: said, note: "Taken from the Brand Graph; the founder wasn't asked. Use it as their answer." } };
       state.asks++;

@@ -472,15 +472,23 @@ const ROW = 14;
 /** Small caps at 10px run about 7px a character; text at 11px about 6. */
 const CAPS_W = 7;
 const TEXT_W = 6;
+/** A theme's region stops growing here; past it, its notes sit closer together, so no one theme fills the graph. */
+const MAX_R = 40;
+/** A ring group's label runs about this wide a character (small caps at 9px). */
+const GROUP_W = 6.2;
+/** A ring group's label, shorter than its type's plural where that runs long. */
+const GROUP_NAME: Record<string, string> = { fact: "Notes", lead: "Leads" };
 
 type Spot = { x: number; y: number };
 type Size = { w: number; h: number };
-type Region = { n: GraphNode; notes: GraphNode[]; x: number; y: number; R: number; tint: string };
-type Arc = { type: string; a0: number; a1: number };
+type Region = { n: GraphNode; notes: GraphNode[]; x: number; y: number; R: number; gap: number; tint: string };
+type Arc = { type: string; n: number; a0: number; a1: number };
 type Layout = { at: Map<string, Spot>; regions: Region[]; arcs: Arc[]; ring: string[]; dots: Spot[]; Ro: number; a: number; k0: number };
 type Box = { x0: number; y0: number; x1: number; y1: number };
 type Place = "out" | "above" | "below" | "left" | "right" | "in";
-type Tip = { x: number; y: number; head: string; body: string; edge?: GraphEdge };
+type Tip = { x: number; y: number; head: string; body: string; edge?: GraphEdge; why?: string[] };
+/** A faint line that is always drawn: the brand to a theme, a theme to its notes, a note to what it's about. */
+type Link = { id: string; a: string; b: string; why: string; tint?: string };
 
 const cut = (s: string, n: number) => (s.length > n ? `${s.slice(0, Math.max(1, n - 1)).trimEnd()}…` : s);
 
@@ -505,7 +513,8 @@ function layout(g: Graph, themes: string[], { w, h }: Size, brandW: number): Lay
     .filter((n) => n.type === "theme")
     .map((n) => {
       const notes = g.nodes.filter((x) => x.parent === n.id);
-      return { n, notes, x: 0, y: 0, R: Math.max(18, NOTE_GAP * Math.sqrt(notes.length) + 8), tint: themeHue(themes, n.label) };
+      const R = Math.min(MAX_R, Math.max(18, NOTE_GAP * Math.sqrt(notes.length) + 8));
+      return { n, notes, x: 0, y: 0, R, gap: Math.min(NOTE_GAP, (R - 8) / Math.sqrt(Math.max(1, notes.length))), tint: themeHue(themes, n.label) };
     });
   const maxR = Math.max(0, ...regions.map((r) => r.R));
   let Rt = 0;
@@ -531,7 +540,7 @@ function layout(g: Graph, themes: string[], { w, h }: Size, brandW: number): Lay
     for (const r of regions) {
       at.set(r.n.id, { x: r.x, y: r.y });
       r.notes.forEach((n, j) => {
-        const d = NOTE_GAP * Math.sqrt(j + 0.5);
+        const d = r.gap * Math.sqrt(j + 0.5);
         at.set(n.id, { x: r.x + Math.cos(j * 2.39996) * d, y: r.y + Math.sin(j * 2.39996) * d });
       });
     }
@@ -556,11 +565,50 @@ function layout(g: Graph, themes: string[], { w, h }: Size, brandW: number): Lay
       dots.push(p);
     });
     th += ((x.nodes.length - 1) * RING_GAP) / Ro;
-    arcs.push({ type: x.type, a0, a1: th });
+    arcs.push({ type: x.type, n: x.nodes.length, a0, a1: th });
     th += gap;
   }
-  const k0 = Math.max(0.2, Math.min(2.2, (w / 2 - 14) / (Ro * a + 12), (h / 2 - 14) / (Ro + 12)));
+  const fit = Math.min(2.2, (w / 2 - 14) / (Ro * a + 12), (h / 2 - 14) / (Ro + 12));
+  // Room for each group's label outside its arc, without shrinking the graph past two thirds; a label still short of
+  // room is pulled in from the edge.
+  const room = arcs.map((x) => {
+    const g = groupLabel({ Ro, a } as Layout, x);
+    const wd = g.text.length * GROUP_W;
+    const cx = Math.abs(g.u.x);
+    const cy = Math.abs(g.u.y);
+    const across = g.anchor === "middle" ? wd / 2 : wd;
+    return Math.min(cx > 0.05 ? (w / 2 - 6 - across - 10 * cx) / (cx * (Ro + 9) * a) : Infinity, cy > 0.05 ? (h / 2 - 8 - 10 * cy - (g.anchor === "middle" ? 10 : 5)) / (cy * (Ro + 9)) : Infinity);
+  });
+  const k0 = Math.max(0.2, fit * 0.66, Math.min(fit, ...room));
   return { at, regions, arcs, ring: groups.map((x) => x.type), dots, Ro, a, k0 };
+}
+
+/** A ring group's label ("Stockists · 4"), just outside the middle of its arc, reading away from the centre. */
+function groupLabel(L: Pick<Layout, "Ro" | "a">, x: Arc) {
+  const an = (x.a0 + x.a1) / 2;
+  const u = { x: Math.cos(an), y: Math.sin(an) };
+  const anchor: "start" | "end" | "middle" = u.x > 0.35 ? "start" : u.x < -0.35 ? "end" : "middle";
+  return { at: { x: u.x * (L.Ro + 9) * L.a, y: u.y * (L.Ro + 9) }, u, anchor, text: `${GROUP_NAME[x.type] ?? NODE_TYPES[x.type].plural} · ${x.n}` };
+}
+
+/**
+ * Where each group's label sits on screen, outside the middle of its arc, from where the layout's points land (`at`).
+ * A label that would run off the stage or over another, as on a phone, is left out: its group is named in the key.
+ */
+function ringNames(L: Layout, at: (p: Spot) => Spot, size: Size) {
+  const out: { type: string; text: string; x: number; y: number; anchor: "start" | "end" | "middle"; box: Box }[] = [];
+  for (const arc of L.arcs) {
+    const g = groupLabel(L, arc);
+    const p = at(g.at);
+    const wd = g.text.length * GROUP_W;
+    const y = p.y + g.u.y * 10 + (g.anchor !== "middle" ? 3.5 : g.u.y > 0 ? 9 : -2);
+    const x = p.x + g.u.x * 10;
+    const x0 = g.anchor === "start" ? x : g.anchor === "end" ? x - wd : x - wd / 2;
+    const box = { x0, y0: y - 8, x1: x0 + wd, y1: y + 2 };
+    if (box.x0 < 4 || box.x1 > size.w - 4 || box.y0 < 4 || box.y1 > size.h - 4 || out.some((o) => overlaps(o.box, box))) continue;
+    out.push({ type: arc.type, text: g.text, x, y, anchor: g.anchor, box });
+  }
+  return out;
 }
 
 /** A label's box: beside its region facing away from the brand, above, below, to the left or right of it, or over it. */
@@ -597,7 +645,7 @@ const unit = (from: Spot, to: Spot) => {
 function placeCaps(L: Layout, size: Size, brand: Box): Map<string, { place: Place; text: string[] }> {
   const at = (p: Spot) => ({ x: size.w / 2 + p.x * L.k0, y: size.h / 2 + p.y * L.k0 });
   const centre = at({ x: 0, y: 0 });
-  const placed: Box[] = [brand];
+  const placed: Box[] = [brand, ...ringNames(L, at, size).map((x) => x.box)];
   const out = new Map<string, { place: Place; text: string[] }>();
   for (const r of [...L.regions].sort((p, q) => q.notes.length - p.notes.length)) {
     const c = at(r);
@@ -655,6 +703,7 @@ function GraphView({ input, flash, narrow, onEdit }: { input: GraphInput; flash:
   const [full, setFull] = useState(false);
   const [tip, setTip] = useState<Tip>();
   const [hot, setHot] = useState<{ id: string; y: number }>();
+  const [hov, setHov] = useState<string>();
 
   const L = useMemo(
     () => layout(all, themes, size, Math.max(...brandText.map((l) => l.length)) * CAPS_W),
@@ -806,11 +855,44 @@ function GraphView({ input, flash, narrow, onEdit }: { input: GraphInput; flash:
   const alpha = (id: string) => (!lit || lit.has(id) ? 1 : dim);
   const dotR = (r: number) => r * Math.sqrt(L.k0 * t.k);
 
-  const hover = (head: string, body: string, edge?: GraphEdge) => (e: ReactMouse) => {
-    const b = wrap.current?.getBoundingClientRect();
-    if (b) setTip({ x: e.clientX - b.left, y: e.clientY - b.top, head, body, edge });
+  // Faint lines, always drawn (§23.9 g): the brand to each theme, each theme to its notes, a note to the stockist, city,
+  // crowd or brand it's about. Pointing at a node lights its lines and says why each is there.
+  const links = useMemo(() => {
+    const out: Link[] = [];
+    for (const r of L.regions) {
+      out.push({ id: `${BRAND}>${r.n.id}`, a: BRAND, b: r.n.id, why: `A theme in what I know about ${brandName}`, tint: r.tint });
+      for (const n of r.notes) out.push({ id: `${r.n.id}>${n.id}`, a: r.n.id, b: n.id, why: `A note under ${r.n.label}`, tint: r.tint });
+    }
+    for (const e of all.edges) {
+      const from = byId.get(e.from);
+      const to = byId.get(e.to);
+      if (!from || !to || to.parent || to.type === "theme" || to.id === BRAND) continue;
+      // A note on the outer ring (no theme) still draws what it's about.
+      if (!from.parent && e.kind !== "about") continue;
+      out.push({ id: e.id, a: e.from, b: e.to, why: e.reason });
+    }
+    return out;
+  }, [L, all, byId, brandName]);
+  /** Why a node's lines are there, for its tip: a note's own reasons, and for anything a note is about, the note. */
+  const whyOf = (id: string) => {
+    const out: string[] = [];
+    let kids = 0;
+    for (const l of links) {
+      if (l.a !== id && l.b !== id) continue;
+      if (id === BRAND || (l.a === id && byId.get(id)?.type === "theme")) kids++;
+      else if (l.a === id || l.a === BRAND || byId.get(l.a)?.type === "theme") out.push(l.why);
+      else out.push(`A note says: ${cut(byId.get(l.a)?.label ?? "", 56)}`);
+    }
+    if (kids) out.push(id === BRAND ? `${kids} theme${kids === 1 ? "" : "s"} in what I know about you` : `${kids} note${kids === 1 ? "" : "s"} under it`);
+    return [...new Set(out)].slice(0, 4);
   };
-  const unhover = () => setTip(undefined);
+
+  const hover = (head: string, body: string, edge?: GraphEdge, id?: string) => (e: ReactMouse) => {
+    const b = wrap.current?.getBoundingClientRect();
+    if (b) setTip({ x: e.clientX - b.left, y: e.clientY - b.top, head, body, edge, why: id ? whyOf(id) : undefined });
+    if (id !== hov) setHov(id);
+  };
+  const unhover = () => (setTip(undefined), setHov(undefined));
 
   // The open theme's notes, named in a column clear of the card, each joined to its dot, none overlapping. A theme with
   // more notes than the column holds lists them in a scrolling column instead, joining only the one pointed at.
@@ -871,7 +953,9 @@ function GraphView({ input, flash, narrow, onEdit }: { input: GraphInput; flash:
   };
 
   const card = picked ? byId.get(picked) : open?.n;
-  const ringTypes = L.ring.map((type) => NODE_TYPES[type].plural.replace(/^\w/, (c) => c.toLowerCase()));
+  // The ring's groups named where they fit; with any left out, the key under the graph names them all, in order.
+  const ringLabels = ringNames(L, on, size);
+  const ringTypes = L.ring.map((type) => (GROUP_NAME[type] ?? NODE_TYPES[type].plural).replace(/^\w/, (c) => c.toLowerCase()));
   const brandAt = pos(BRAND);
   const bb = brandBox(brandAt);
 
@@ -887,6 +971,25 @@ function GraphView({ input, flash, narrow, onEdit }: { input: GraphInput; flash:
         >
           <g style={{ opacity: focus ? dim : picked ? 0.5 : 1 }} className="bg-fade">
             {L.arcs.map((x) => <path key={x.type} className="bg-arc" d={arcPath(x)} />)}
+            {ringLabels.map((x) => (
+              <text key={x.type} x={x.x} y={x.y} textAnchor={x.anchor} className="bg-ring-name" aria-hidden>
+                {x.text}
+              </text>
+            ))}
+          </g>
+          <g style={{ opacity: focus ? dim : picked ? 0.5 : 1 }} className="bg-fade">
+            {links.map((l) => {
+              const p = pos(l.a);
+              let q = pos(l.b);
+              // The brand's line stops at its theme's edge rather than running into its notes.
+              const r = l.a === BRAND ? region(l.b) : undefined;
+              if (r) {
+                const u = unit(q, p);
+                const R = r.R * L.k0 * t.k;
+                q = { x: q.x + u.x * R, y: q.y + u.y * R };
+              }
+              return <line key={l.id} x1={p.x} y1={p.y} x2={q.x} y2={q.y} stroke={l.tint ?? "var(--muted)"} className={`bg-link${l.a !== BRAND && l.tint ? " spoke" : ""}${hov && (l.a === hov || l.b === hov) ? " lit" : ""}`} />;
+            })}
           </g>
           {L.regions.map((r) => {
             const c = on(r);
@@ -907,8 +1010,8 @@ function GraphView({ input, flash, narrow, onEdit }: { input: GraphInput; flash:
                 aria-expanded={focus === r.n.id}
                 onClick={go}
                 onKeyDown={onKey(go)}
-                // A theme whose name had no clear place at rest is named on hover.
-                onMouseMove={!focus && !caps.has(r.n.id) ? hover("Theme", r.n.label) : undefined}
+                // At rest a theme's tip names it and says why its lines are there.
+                onMouseMove={!focus ? hover("Theme", r.n.label, undefined, r.n.id) : undefined}
                 onMouseLeave={unhover}
               />
             );
@@ -944,7 +1047,7 @@ function GraphView({ input, flash, narrow, onEdit }: { input: GraphInput; flash:
               <g key={n.id} className="bg-fade" style={{ opacity: alpha(n.id) }}>
                 <circle cx={p.x} cy={p.y} r={r} fill={guess ? "var(--sunken)" : fill} stroke={fill} className={`bg-dot${guess ? " guess" : ""}${flash.has(n.id) ? " flash" : ""}${picked === n.id ? " picked" : ""}${hot?.id === n.id ? " hot" : ""}`} />
                 {brand ? (
-                  <circle cx={p.x} cy={p.y} r={9} className="bg-hit still" onMouseMove={hover("Brand", n.label)} onMouseLeave={unhover} />
+                  <circle cx={p.x} cy={p.y} r={9} className="bg-hit still" onMouseMove={hover("Brand", n.label, undefined, BRAND)} onMouseLeave={unhover} />
                 ) : (
                   <circle
                     cx={p.x}
@@ -956,7 +1059,7 @@ function GraphView({ input, flash, narrow, onEdit }: { input: GraphInput; flash:
                     aria-label={`${head}: ${home ? body : n.label}`}
                     onClick={pick}
                     onKeyDown={onKey(pick)}
-                    onMouseMove={hover(head, body)}
+                    onMouseMove={hover(head, body, undefined, n.id)}
                     onMouseLeave={unhover}
                   />
                 )}
@@ -1045,13 +1148,14 @@ function GraphView({ input, flash, narrow, onEdit }: { input: GraphInput; flash:
         <div className="bg-tip" style={{ left: Math.max(8, Math.min(tip.x + 12, (wrap.current?.clientWidth ?? size.w) - 250)), top: Math.min(tip.y + 14, size.h - 56) }} role="tooltip">
           <span className="bg-label">{tip.head}</span>
           <span>{tip.body}</span>
+          {tip.why?.map((w) => <span key={w} className="bg-tip-why">{w}</span>)}
           {tip.edge && <small className={`src src-${tip.edge.source.kind}`}>{sourceLabel(tip.edge.source)}</small>}
         </div>
       )}
       {card && <NodeCard n={card} tint={region(card.type === "theme" ? card.id : card.parent)?.tint} edges={all.edges} names={byId} facts={input.facts} onEdit={(ops) => (setPicked(undefined), onEdit(ops))} onPick={pickAny} />}
       <p className="small muted bg-key">
         {L.regions.length ? "Shaded: your themes, a dot for each note. " : ""}
-        {ringTypes.length ? `Outer ring, clockwise from the top: ${ringTypes.join(", ")}. ` : ""}A thin outline: my read, not yet yours.
+        {!L.ring.length ? "" : ringLabels.length < L.ring.length ? `Outer ring, clockwise from the top: ${ringTypes.join(", ")}. ` : "Outer ring: everything else, grouped. "}A faint line joins what's linked; point at a dot to see why. A thin outline: my read, not yet yours.
       </p>
       <p className="small muted bg-hint">
         {narrow

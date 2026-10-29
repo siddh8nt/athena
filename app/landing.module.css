@@ -42,6 +42,9 @@
 .mark:hover .dots i { transform: translateX(20px); }
 .mark:hover .dots i + i { transform: translateX(-20px); }
 .links { display: flex; gap: 6px; }
+/* The light/dark switch beside Get started (§23.9 a). */
+.themeBtn { display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 999px; background: transparent; color: var(--muted); flex: none; }
+.themeBtn:hover { color: var(--fg); background: rgba(127, 120, 108, 0.12); }
 .links a {
   position: relative; display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 14px; border-radius: 999px;
   font-family: var(--font-caps); font-weight: 800; font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase;
@@ -265,15 +268,13 @@
 @keyframes pulse { 50% { opacity: 0.4; } }
 @keyframes shimmer { to { background-position: -200% 0; } }
 
-@media (prefers-color-scheme: dark) {
-  :global(:root:not([data-theme="light"])) .hero, :global(:root:not([data-theme="light"])) .plan { background: #1d1a16; box-shadow: inset 0 0 0 1px #2e2a24; }
-  :global(:root:not([data-theme="light"])) .graph line { stroke: #2e2a24; }
-  /* The frosted capsule and the section plaques in the dark surface, with a dim rim. */
-  :global(:root:not([data-theme="light"])) .capsule { background: rgba(29, 26, 22, 0.6); border-color: rgba(255, 255, 255, 0.08); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 1px 2px rgba(0, 0, 0, 0.2); }
-  :global(:root:not([data-theme="light"])) .scrolled { background: rgba(29, 26, 22, 0.86); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 22px 44px -26px rgba(0, 0, 0, 0.6); }
-  :global(:root:not([data-theme="light"])) .sectionHead { background: rgba(29, 26, 22, 0.72); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 18px 36px -28px rgba(0, 0, 0, 0.6); }
-  :global(:root:not([data-theme="light"])) .small { background: #f3efe6; color: #14120f; }
-}
+:global(:root:not([data-theme="light"])) .hero, :global(:root:not([data-theme="light"])) .plan { background: #1d1a16; box-shadow: inset 0 0 0 1px #2e2a24; }
+:global(:root:not([data-theme="light"])) .graph line { stroke: #2e2a24; }
+/* The frosted capsule and the section plaques in the dark surface, with a dim rim. */
+:global(:root:not([data-theme="light"])) .capsule { background: rgba(29, 26, 22, 0.6); border-color: rgba(255, 255, 255, 0.08); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 1px 2px rgba(0, 0, 0, 0.2); }
+:global(:root:not([data-theme="light"])) .scrolled { background: rgba(29, 26, 22, 0.86); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 22px 44px -26px rgba(0, 0, 0, 0.6); }
+:global(:root:not([data-theme="light"])) .sectionHead { background: rgba(29, 26, 22, 0.72); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 18px 36px -28px rgba(0, 0, 0, 0.6); }
+:global(:root:not([data-theme="light"])) .small { background: #f3efe6; color: #14120f; }
 
 @media (prefers-reduced-motion: reduce) {
   .run li, .graph line, .graph g { animation: none; opacity: 1; }

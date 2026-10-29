@@ -47,7 +47,7 @@ export const SPECIALISTS: Specialist[] = [
     mission: "Measure who the brand speaks to: its taste fingerprint, the crowds around it ranked as most valuable fits, and where it stands against its rivals.",
     doneWhen: "The crowds are measured and stable enough to act on, ranked Win first / Win next / Watch, and the rivals are placed.",
     rules: [
-      "When the brand isn't in Qloo, seed the taste graph from 3–5 similar brands and short product traits.",
+      "When the brand isn't in Qloo, find its crowds from 3–5 similar brands and short product traits.",
       "Probe only on evidence: a soft crowd (stability under 0.6), Win first and Win next too close to call, founder facts not yet on the map, or a brand missing from Qloo.",
       "Fewer than three crowds held: probe once with 2–3 brands on the map most like the brand (not chains, not landmarks), adding them to any other probe, to see whether a third crowd appears. If it still doesn't, the group marked near_miss fills Watch: it sits next to the crowds and is never ranked above them.",
       "Don't probe when the crowds are stable and the ranking is clear. Stop probing when the crowds hold, the probe cap is hit, or a probe changed nothing.",

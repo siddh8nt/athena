@@ -39,6 +39,30 @@ export function useRail(): [boolean, () => void] {
   return [rail, flip];
 }
 
+const THEME = "athena:theme";
+
+/** The light/dark switch (§23.9 a): dark is the default; the choice is remembered in this browser. */
+export function ThemeToggle({ className = "nav-toggle" }: { className?: string }) {
+  const [light, setLight] = useState(false);
+  useEffect(() => setLight(document.documentElement.dataset.theme === "light"), []);
+  const flip = () => {
+    const next = !light;
+    document.documentElement.dataset.theme = next ? "light" : "dark";
+    try {
+      localStorage.setItem(THEME, next ? "light" : "dark");
+    } catch {
+      // Storage unavailable: the choice lasts this visit.
+    }
+    setLight(next);
+  };
+  const label = light ? "Switch to dark" : "Switch to light";
+  return (
+    <button type="button" className={`${className} theme-toggle`} aria-label={label} title={label} onClick={flip}>
+      <NavIcon name={light ? "moon" : "sun"} />
+    </button>
+  );
+}
+
 const mod = () => (typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform) ? "⌘" : "Ctrl+");
 
 export function RailToggle({ rail, onFlip }: { rail: boolean; onFlip: () => void }) {
@@ -80,6 +104,13 @@ const PATHS: Record<string, React.ReactNode> = {
   ),
   promoter: <path d="M4 10v4a1 1 0 001 1h2l6 4V5L7 9H5a1 1 0 00-1 1z M17 9a4 4 0 010 6 M19.5 6.5a7.5 7.5 0 010 11" />,
   executive: <path d="M9 5h10 M9 12h10 M9 19h10 M4 5l1 1 2-2 M4 12l1 1 2-2 M4.5 19h1.5" />,
+  sun: (
+    <>
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2.5v2 M12 19.5v2 M4.6 4.6l1.4 1.4 M18 18l1.4 1.4 M2.5 12h2 M19.5 12h2 M4.6 19.4L6 18 M18 6l1.4-1.4" />
+    </>
+  ),
+  moon: <path d="M20 14.5A8 8 0 019.5 4a8 8 0 1010.5 10.5z" />,
   link: <path d="M9.5 14.5l5-5 M8 11l-2 2a3.5 3.5 0 005 5l2-2 M16 13l2-2a3.5 3.5 0 00-5-5l-2 2" />,
   share: <path d="M12 15V4 M8 8l4-4 4 4 M6 12v6.5a1.5 1.5 0 001.5 1.5h9a1.5 1.5 0 001.5-1.5V12" />,
   dashboard: (

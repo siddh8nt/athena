@@ -19,13 +19,17 @@ describe("fits score", () => {
     expect(rankFits([crowd("a", {})], { date: "2026-10-14" }).fits[0].missing).toEqual(["reach", "momentum", "moments"]);
   });
 
-  it("ranks two brands' crowds differently, with reasons from the numbers", () => {
+  it("ranks two brands' crowds differently, with reasons from the numbers said in the founder's words", () => {
     const date = "2026-10-14";
     const a = rankFits([crowd("x", { fit: 0.6 }), crowd("y", { fit: 0.45, specificity: 0.15 })], { date });
     const b = rankFits([crowd("x", { fit: 0.45 }), crowd("y", { fit: 0.6, specificity: 0.15 })], { date });
     expect(a.fits[0].crowd).toBe("x");
     expect(b.fits[0].crowd).toBe("y");
-    expect(b.fits[0].reasons.join(" ")).toMatch(/60th percentile|points more/);
+    const said = b.fits[0].reasons.join(" ");
+    expect(said).toMatch(/close to what your own customers love/);
+    expect(said).toMatch(/reaches this crowd, not everyone/);
+    // Never a member count: a founder reads "4 of 10 members" as a head count.
+    expect(said).not.toMatch(/members|\d+ of \d+/);
   });
 
   it("lets an adjacent crowd beat the nearest one on value", () => {

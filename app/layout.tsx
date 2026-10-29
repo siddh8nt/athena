@@ -15,9 +15,15 @@ export const metadata: Metadata = {
   description: "A growth agent for consumer brands. Athena finds the crowds most likely to love your brand and plans how to win them: where, with whom, and when.",
 };
 
+// Dark unless the founder switched to light (§23.9 a), set before first paint so a page never flashes the other theme.
+const THEME = `try{document.documentElement.dataset.theme=localStorage.getItem("athena:theme")==="light"?"light":"dark"}catch(e){document.documentElement.dataset.theme="dark"}`;
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${serif.variable} ${label.variable}`}>
+    <html lang="en" className={`${serif.variable} ${label.variable}`} data-theme="dark" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME }} />
+      </head>
       <body>
         {children}
         <ScrollFade />

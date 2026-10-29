@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import s from "./landing.module.css";
+import { ThemeToggle } from "@/components/SideNav";
 
 // The landing page's top bar: a floating capsule that tightens once the page scrolls, with a gold hairline along its
 // lower edge that tracks how far down the page the reader is, and a marker that slides under the section in view.
@@ -64,6 +65,7 @@ export default function LandingNav() {
             <a key={sec.id} href={`#${sec.id}`} className={active === sec.id ? s.on : undefined} onClick={(e) => glide(e, sec.id)}>{sec.label}</a>
           ))}
         </nav>
+        <ThemeToggle className={s.themeBtn} />
         <Link href="/plan?new=1" className={s.small}>Get started <span aria-hidden>→</span></Link>
         <span className={s.progress} aria-hidden />
       </div>

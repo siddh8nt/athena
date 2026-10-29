@@ -13,7 +13,7 @@ import { WithWithout, type AloneRequest } from "./WithWithout";
 import { Onboard } from "./Onboard";
 import { Fits, When, tiersFor } from "./Fits";
 import { fromCity, fromCrowd, type Handoff } from "@/lib/agent/handoffs";
-import { GoalsBar, Handoffs, PausedForYou, RunTrail, SpecialistWorkspace, TeamPanel, WhatsWorking, WorkView, useTeam, type TeamLive } from "./Team";
+import { FinishCard, GoalsBar, Handoffs, PausedForYou, RunTrail, SpecialistWorkspace, TeamPanel, WhatsWorking, WorkView, statusOf, useTeam, type TeamLive } from "./Team";
 import { Dashboard, WorkflowDiagram, type KbPart } from "./Dashboard";
 import { INPUTS } from "@/lib/team/inputs";
 import type { Line as PageLine } from "@/lib/team/page";
@@ -36,6 +36,7 @@ import { dropLinks } from "./McpConnect";
 import { Linked, RefsProvider } from "./Refs";
 import { refsFor } from "@/lib/refs";
 import type { ExecItem } from "@/lib/exec/plan";
+import { ThemeToggle } from "./SideNav";
 import { AthenaRoom, DashboardPage, PausedBanner, SubagentPage, focusTray, usePausedTab, type Page } from "./Views";
 import type { Channel } from "@/lib/journey/growth";
 import { NEAR_MISS_LABEL, crowdAfterFits, emptyJourney, loadedJourney, type CrowdCard, type CrowdMeeting, type Journey as JourneyState } from "@/lib/journey/types";
@@ -46,6 +47,9 @@ import { metroIdFor } from "@/lib/playbook/metros";
 import { emptyTeam, type Mark, type TeamEvent, type TeamState, type WorkItem } from "@/lib/team/types";
 import { isSpecialist, isSubagent, nameOf, panelIds, specialist, type AgentId, type SpecialistId } from "@/lib/agent/specialists";
 import { growthQuestion, seedOf, type GrowthQuestion } from "@/lib/journey/flow";
+import { showStart, spineOf, type SpineGo, type SpineIn } from "@/lib/journey/spine";
+import { nextLine } from "@/lib/journey/next";
+import { Spine } from "./Spine";
 import { applyExternal, type External } from "@/lib/workspace/merge";
 
 // The journey (PRD §23.2 step 8.1): one path. Onboarding writes the Brand Graph; one growth question in the
@@ -126,13 +130,19 @@ export function Journey() {
   }, [start.fresh, start.message]);
   // The open view lives in the URL, so a reload, Back and Forward keep their place.
   const [page, setPage] = useState<Page>(() => (start.fresh && start.message ? "athena" : pageFromUrl()));
-  const go = (p: Page, replace = false) => {
+  // The founder moved themselves (a click, Back): the run stops taking them to the working subagent (§23.9 f).
+  const moved = useRef(false);
+  const go = (p: Page, replace = false, auto = false) => {
+    if (!auto) moved.current = true;
     setPage(p);
     if (replace) window.history.replaceState(null, "", urlOf(p));
     else if (urlOf(p) !== window.location.pathname + window.location.search) window.history.pushState(null, "", urlOf(p));
   };
   useEffect(() => {
-    const back = () => setPage(pageFromUrl());
+    const back = () => {
+      moved.current = true;
+      setPage(pageFromUrl());
+    };
     window.addEventListener("popstate", back);
     return () => window.removeEventListener("popstate", back);
   }, []);
@@ -190,7 +200,9 @@ export function Journey() {
     } catch {
       // Storage unavailable: the journey still works for this visit.
     }
-    end.current?.scrollIntoView({ block: "end", behavior: "smooth" });
+    // The chat's own list follows its end; the page stays where the founder is reading (scrollIntoView would move it too).
+    const list = end.current?.closest<HTMLElement>(".msgs");
+    list?.scrollTo({ top: list.scrollHeight, behavior: "smooth" });
   }, [brief, msgs, turn, j]);
 
   // Mirror the working copy to the server a moment after each change (§23.6 a), so the founder's AI tool and the
@@ -318,7 +330,8 @@ export function Journey() {
   const alone: AloneRequest = { brand: brief.name?.value || "The brand", product: String(briefToInput(brief).description ?? "").slice(0, 400) };
 
   // Athena and her six specialists (§23.2 step 8): the Analyst first, then goals from the Brand Graph, worked by the team.
-  const onboarding = j.stop === "product" && !start.message && !msgs.some((m) => m.who === "you");
+  // The growth question is asked in onboarding's transcript too (§23.9 d), so onboarding lasts until it's answered.
+  const onboarding = (j.stop === "product" || j.stop === "growth") && !start.message && !msgs.some((m) => m.who === "you");
   // Onboarding's transcript lives in its workspace; leaving it, the team chat opens with what the founder gave and the
   // record of the work, in place of the greeting, so the history carries on rather than resetting.
   const record = useRef<WorkRecord | undefined>(undefined);
@@ -326,7 +339,7 @@ export function Journey() {
   useLayoutEffect(() => {
     const r = record.current;
     // Leaving onboarding opens the dashboard (§23.2 step 8.5b): the knowledge base it built, and the plan to start.
-    if (wasOnboarding.current && !onboarding) go("dashboard", true);
+    if (wasOnboarding.current && !onboarding) go("dashboard", true, true);
     if (wasOnboarding.current && !onboarding && r)
       setMsgs((m) => {
         if (m.some((x) => x.record)) return m;
@@ -783,7 +796,22 @@ export function Journey() {
       onRerun={onRerun}
     />
   );
-  const dockEl = <Dock j={j} turn={turn} busy={busy} researching={chat.researching} onReply={(r) => void chat.send(r)} onNext={() => move("growth")} />;
+  const dockEl = <Dock j={j} turn={turn} busy={busy} researching={chat.researching} onReply={(r) => void chat.send(r)} />;
+  // The growth question answered in onboarding: its page fades out, then the dashboard fades in (§23.9 d).
+  const [leaving, setLeaving] = useState(false);
+  const [handover, setHandover] = useState(false);
+  const answerGrowthHere = (a: string) => {
+    if (leaving) return;
+    const calm = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (calm) return answerGrowth(a);
+    setLeaving(true);
+    setTimeout(() => {
+      setHandover(true);
+      answerGrowth(a);
+      setLeaving(false);
+      setTimeout(() => setHandover(false), 600);
+    }, 260);
+  };
   const analyst = tm.live.status.analyst;
   const analystStep = analyst?.state === "working" ? analyst.step : undefined;
   // Every question for the founder, as one list for the tray of the one chat: the growth question, the edit questions,
@@ -856,6 +884,17 @@ export function Journey() {
   const navEl = <TeamPanel live={tm.live} team={team} active={page} onOpen={(id) => (go(id), setAbout(undefined))} />;
 
   // The one chat with Athena (§23.2 step 8.5j): the same thread, draft and questions on the Athena tab and every subagent page.
+  // The question the run waits on, for the Paused banner on every page and the tab's title and icon (§23.5 a3).
+  const openAsks = tm.live.asks.filter((a) => !(a.id in tm.live.answers) && (a.id in tm.live.blocking || a.id === "goals"));
+  const pausedAsk = openAsks.find((a) => a.id in tm.live.blocking) ?? openAsks[0];
+  const blockingAsk = openAsks.find((a) => a.id in tm.live.blocking);
+  // A subagent's page ends on its finish card and Next line (§23.9 f) once its output is in, or the Next line alone while
+  // it waits on the founder. A Next line that needs the founder carries the question itself, with why it's asked, and the
+  // chat's tray leaves that one out, so it's asked in one place.
+  const subState = subPage ? statusOf(subPage, tm.live, team).state : undefined;
+  const waitingHere = !!subPage && blockingAsk?.agent === subPage;
+  const finishHere = !!subPage && subState !== "working" && (!!team.works[subPage] || waitingHere);
+  const inlineAsk = finishHere ? questions.find((it) => it.q.id === pausedAsk?.id && it.answer === undefined) : undefined;
   const chatEl = (
     <section className="chat agent-chat" aria-live="polite">
       <div className="agent-chat-head">
@@ -911,7 +950,7 @@ export function Journey() {
         )}
         <div ref={end} />
       </ol>
-      <QuestionTray items={questions} />
+      <QuestionTray items={inlineAsk ? questions.filter((it) => it !== inlineAsk) : questions} />
       {dockEl}
 
       <form
@@ -1036,9 +1075,6 @@ export function Journey() {
   // Who the run waits on, for the dashboard's chat button.
   const pausedAgent = Object.entries(tm.live.blocking).find(([id]) => !(id in tm.live.answers))?.[1].agent;
   const pausedFor = pausedAgent ? (pausedAgent === "athena" ? "Athena" : `the ${nameOf(pausedAgent)}`) : tm.live.asks.some((a) => a.id === "goals" && !(a.id in tm.live.answers)) ? "your goals" : undefined;
-  // The question the run waits on, for the Paused banner on every page and the tab's title and icon (§23.5 a3).
-  const openAsks = tm.live.asks.filter((a) => !(a.id in tm.live.answers) && (a.id in tm.live.blocking || a.id === "goals"));
-  const pausedAsk = openAsks.find((a) => a.id in tm.live.blocking) ?? openAsks[0];
   const pausedWho = pausedAsk ? (pausedAsk.agent === "athena" ? "Athena" : `The ${nameOf(pausedAsk.agent)}`) : undefined;
   usePausedTab(!onboarding && !!pausedAsk);
   /** Answer: open the chat wherever this page keeps it, at the question. */
@@ -1048,6 +1084,88 @@ export function Journey() {
     else setSheet(false);
     focusTray();
   };
+  // The spine (§23.9 e): where the journey is, from its state, and one click to where that is.
+  const workingNow = (Object.entries(tm.live.status) as [AgentId, { state: string; step?: string } | undefined][]).find(([, s]) => s?.state === "working");
+  const spineIn: SpineIn = {
+    crowds: !!j.crowds,
+    goals: planned(team),
+    goalsOpen: tm.live.asks.some((a) => a.id === "goals" && !(a.id in tm.live.answers)),
+    workflow: team.workflow,
+    working: workingNow ? { id: workingNow[0], step: workingNow[1]?.step ?? "" } : undefined,
+    waiting: blockingAsk ? { id: blockingAsk.agent, question: blockingAsk.question } : undefined,
+    plan: !!team.plan,
+    exec: { started: !!team.exec?.started, running: !!tm.live.exec },
+  };
+  const stages = spineOf(spineIn);
+  const spineGo = (to: SpineGo) => {
+    if (to === "chat") return answerPaused();
+    if (to === "knowledge") {
+      go("dashboard");
+      window.history.pushState(null, "", "/plan?tab=knowledge");
+      window.dispatchEvent(new PopStateEvent("popstate"));
+      return;
+    }
+    if (to === "athena") tm.pickTab("athena");
+    go(to);
+  };
+  const next = subPage ? nextLine(spineIn, subPage) : undefined;
+  // Answering on the finish card is the founder acting there: the run may take them on to the next subagent.
+  const actedHere = useRef(false);
+  useEffect(() => {
+    actedHere.current = false;
+  }, [page]);
+  const finishEl = subPage && finishHere && next && (
+    <FinishCard
+      id={subPage}
+      work={waitingHere ? undefined : team.works[subPage]}
+      next={next}
+      onGo={spineGo}
+      resultsId="sub-results"
+      question={
+        inlineAsk && (
+          <Question
+            q={inlineAsk.q}
+            onAnswer={(a) => {
+              actedHere.current = true;
+              inlineAsk.onAnswer(a);
+            }}
+          />
+        )
+      }
+    />
+  );
+  // A new question the run waits on opens the chat at it, wherever the chat is closed (§23.9 b); on a finish card that
+  // already holds it, the card is where it's answered.
+  const askedNow = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    const id = pausedAsk?.id;
+    if (!id || onboarding || askedNow.current === id) return;
+    askedNow.current = id;
+    if (inlineAsk?.q.id === id) return;
+    answerPaused();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pausedAsk?.id, onboarding, !!inlineAsk]);
+  // The run's page follows the work (§23.9 f): a subagent that starts takes the founder to its page, unless they moved
+  // themselves, or they're on a finish card they haven't acted on yet (its Next line is the one click on). Watching the
+  // working subagent, or asking the panel to follow, picks the run back up.
+  const workingIds = (Object.entries(tm.live.status) as [AgentId, { state: string } | undefined][]).filter(([id, s]) => s?.state === "working" && isSpecialist(id)).map(([id]) => id as SpecialistId);
+  const workingKey = workingIds.join("|");
+  const seenWorking = useRef<Set<SpecialistId>>(new Set());
+  useEffect(() => {
+    if (subPage && workingIds.includes(subPage)) moved.current = false;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, workingKey]);
+  useEffect(() => {
+    if (tm.follow) moved.current = false;
+  }, [tm.follow]);
+  useEffect(() => {
+    const fresh = workingIds.filter((id) => !seenWorking.current.has(id));
+    seenWorking.current = new Set(workingIds);
+    if (!fresh.length || onboarding || moved.current || !tm.follow || page === "executive") return;
+    if (finishHere && !actedHere.current) return;
+    go(fresh[0], false, true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workingKey]);
   /** "Build your growth plan with Athena" (§23.2 step 8.5c): the chat opens on her opening question. */
   const startPlan = () => {
     setDrawer(true);
@@ -1073,13 +1191,16 @@ export function Journey() {
 
   return (
     <RefsProvider refs={refs} onOpen={(id) => go(id)}>
-    <div className={`journey ${drag ? "dragging" : ""} ${onboarding ? "ob-on" : ""}`} {...dropZone}>
+    <div className={`journey ${drag ? "dragging" : ""} ${onboarding ? "ob-on" : ""}${handover ? " handover" : ""}`} {...dropZone}>
       {/* Above the top bar, so every sheet and drawer opens just beneath it (§23.5 a3). */}
-      {!onboarding && pausedAsk && pausedWho && <PausedBanner who={pausedWho} question={pausedAsk.question} more={openAsks.length - 1} onAnswer={answerPaused} />}
+      {!onboarding && pausedAsk && pausedWho && !inlineAsk && <PausedBanner who={pausedWho} question={pausedAsk.question} more={openAsks.length - 1} onAnswer={answerPaused} />}
       <header className="topbar journey-top">
         <Link href="/" className="wordmark-link"><strong>Athena</strong></Link>
+        {!onboarding && <Spine stages={stages} onGo={spineGo} compact />}
         {/* Hidden through onboarding (§23.2 step 7.2a); the goals take the progress rail's place (step 8a). */}
         <div className="top-actions">
+          {/* On a phone the sidebar is a menu, so the light/dark switch sits here (§23.9 a). */}
+          <ThemeToggle className="linkish theme-top" />
           <button
             type="button"
             className="linkish"
@@ -1100,7 +1221,7 @@ export function Journey() {
       </header>
       {onboarding ? (
         <main className="journey-main ob-main">
-          <Onboard brief={brief} files={chat.files} addFiles={chat.addFiles} refused={chat.refused} dismiss={chat.dismiss} setFiles={chat.setFiles} onBrief={onBrief} onFacts={onRaw} graph={graphEl} dock={dockEl} grouping={working?.by === "graph" ? working.text : undefined} onRecord={(r) => (record.current = r)} />
+          <Onboard brief={brief} files={chat.files} addFiles={chat.addFiles} refused={chat.refused} dismiss={chat.dismiss} setFiles={chat.setFiles} onBrief={onBrief} onFacts={onRaw} graph={graphEl} dock={dockEl} grouping={working?.by === "graph" ? working.text : undefined} onRecord={(r) => (record.current = r)} growth={j.stop === "growth" ? { q: gq, answer: j.told?.answer, onAnswer: answerGrowthHere } : undefined} onReviewed={() => move("growth")} leaving={leaving} />
         </main>
       ) : page === "dashboard" ? (
         <DashboardPage nav={navEl} chat={chatEl} paused={pausedFor} open={drawer} setOpen={setDrawer}>
@@ -1118,6 +1239,8 @@ export function Journey() {
             onEditAnswer={tm.editAnswer}
             onExec={() => void tm.startExec()}
             executive={execEl}
+            spine={<Spine stages={stages} onGo={spineGo} />}
+            start={showStart({ ...spineIn, running: tm.live.running > 0 })}
           />
         </DashboardPage>
       ) : page === "executive" ? (
@@ -1126,8 +1249,8 @@ export function Journey() {
         </SubagentPage>
       ) : subPage ? (
         <SubagentPage id={subPage} nav={navEl} chat={chatEl} bodyRef={panelBody} sheet={subSheet} setSheet={setSubSheet}>
-          <SpecialistWorkspace id={subPage} live={tm.live} team={team} />
-          {outputOf(subPage, true)}
+          <SpecialistWorkspace id={subPage} live={tm.live} team={team} finish={finishEl} />
+          <div id="sub-results">{outputOf(subPage, true)}</div>
         </SubagentPage>
       ) : (
         <AthenaRoom
@@ -1154,8 +1277,8 @@ export function Journey() {
   );
 }
 
-/** The choices above the composer while the brief is written: the chat's quick replies, then on to the growth question. */
-function Dock(props: { j: JourneyState; turn: Turn; busy: boolean; researching: boolean; onReply: (r: string) => void; onNext: () => void }) {
+/** The chat's quick replies above the composer while the brief is written. Moving on is the review's button (§23.9 d). */
+function Dock(props: { j: JourneyState; turn: Turn; busy: boolean; researching: boolean; onReply: (r: string) => void }) {
   const { j, turn, busy } = props;
   if (j.stop !== "product" || (busy && !props.researching)) return null;
   return (
@@ -1163,7 +1286,6 @@ function Dock(props: { j: JourneyState; turn: Turn; busy: boolean; researching: 
       {turn.replies.filter((r) => r !== GUESS || !turn.ready).map((r) => (
         <button key={r} type="button" onClick={() => props.onReply(r)}>{r}</button>
       ))}
-      {turn.ready && <button type="button" className="primary" onClick={props.onNext}>Next: how you sell →</button>}
     </div>
   );
 }

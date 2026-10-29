@@ -65,8 +65,10 @@ export default function LandingNav() {
             <a key={sec.id} href={`#${sec.id}`} className={active === sec.id ? s.on : undefined} onClick={(e) => glide(e, sec.id)}>{sec.label}</a>
           ))}
         </nav>
-        <ThemeToggle className={s.themeBtn} />
-        <Link href="/plan?new=1" className={s.small}>Get started <span aria-hidden>→</span></Link>
+        <div className={s.end}>
+          <ThemeToggle className={s.themeBtn} />
+          <Link href="/plan?new=1" className={s.small}>Get started <span aria-hidden>→</span></Link>
+        </div>
         <span className={s.progress} aria-hidden />
       </div>
     </header>

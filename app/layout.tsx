@@ -4,7 +4,7 @@ import "./globals.css";
 import { ScrollFade } from "@/components/ScrollFade";
 import { ChatField } from "@/components/ChatField";
 import { GlassFilter } from "@/components/GlassFilter";
-import { DevTape } from "@/components/DevTape";
+import { DevPause } from "@/components/DevPause";
 
 // whitevision type: a light serif for display and numerals, Nunito Sans for small caps labels and controls.
 const serif = Instrument_Serif({ subsets: ["latin"], weight: "400", style: ["normal", "italic"], variable: "--font-serif", display: "swap" });
@@ -29,7 +29,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ScrollFade />
         <ChatField />
         <GlassFilter />
-        {process.env.NODE_ENV !== "production" && <DevTape />}
+        {process.env.NODE_ENV !== "production" && <DevPause />}
       </body>
     </html>
   );

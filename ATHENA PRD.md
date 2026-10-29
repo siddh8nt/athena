@@ -2103,12 +2103,12 @@ S1–S16 ran on 8 Oct against the hackathon endpoint, using only the tuning bran
 ### 20.1 Checklist
 
 - [ ] Live URL, no login; the app is live on arrival, and the sample-pack path works on desktop and on a phone
-- [ ] Deep links from the Devpost page to the Without Qloo comparison and to each demo brand
+- [ ] Deep links from the Devpost page to Get started and to the finished Fishwife sample plan
 - [ ] Public repo; MIT license visible in About; setup from a clean machine; `.env.example` only; tests run with one command
 - [ ] Devpost text (§20.2) with the real computed numbers, including the failed blind test
 - [ ] Redacted request → result examples: one bridge, one mutual fit, one positioning card and one moment, each traced to its calls
-- [ ] Screenshots with no keys or personal data: Places with Without Qloo flipped, a venue drawer, the Message block, the Moments block, the trace, the re-rank, a draft, the app plan, the hardware plan
-- [ ] GIFs of the Without Qloo flip, the re-rank and the brand switch (the panel reordering itself)
+- [ ] Screenshots with no keys or personal data: the crowd ranking, How we know with its tool calls and Qloo call count, a venue drawer, the Message block, the Moments block, the trace, the re-rank, a draft, Execute Plan
+- [ ] GIFs of the team working a goal, the re-rank (the panel reordering itself) and Execute Plan
 - [ ] The "How Athena uses Qloo" diagram (`docs/QLOO.md`), showing which gaps each other source fills
 - [ ] The Sources page with every attribution (§15)
 - [ ] The demo disclaimer for real brands
@@ -2140,7 +2140,7 @@ The headings mirror the judging criteria, so both people and automated screeners
 | Mike Diolosa (Qloo CTO) | The Method page, the trace and the per-block Qloo call counts, the 15 Qloo capabilities, the honest key-day findings, shared-pool positioning |
 | Nicole Seligman | Aggregate taste, never individuals: crowds are clusters of brands and places, not people; sensitive audience types never shown or stored; skew labelled and offered only as something to test; creators approached in their professional role through human-sent drafts; human approval; alcohol out of scope |
 | Michael Abrams (Live Nation) | Moments: the crowd's Qloo-ranked artists joined to their dated Ticketmaster shows, and the partnership demo |
-| Todd Boehly, Cedric the Entertainer | The Without Qloo flip, Message's cultural references, the two-minute story |
+| Todd Boehly, Cedric the Entertainer | The team working a goal live on the judge's own brand, Message's cultural references, the two-minute story |
 
 ### 20.4 Pitch lines
 

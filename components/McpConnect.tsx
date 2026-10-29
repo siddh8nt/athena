@@ -334,14 +334,15 @@ function ConnectBody({ demo, planned }: { demo?: string; planned: boolean }) {
         )}
       </section>
 
-      <section className="mcp-section" id="mcp-file">
+      {/* The file waits for the plan: before it, the server URL above already reads what Athena knows. */}
+      <section className={`mcp-section${!demo && !planned ? " mcp-later" : ""}`} id="mcp-file">
         <h3>As a file</h3>
         <p className="small muted">
-          For an AI tool that can&apos;t connect: {demo ? "the Fishwife tinned fish sample" : "your brand"}, its crowds{planned ? ", Athena's plan in order and the open tasks," : " and what Athena knows so far,"} in one Markdown file any LLM can read. Drop it into a chat or a project. It&apos;s a copy as of the day you download it{demo ? "." : "; the link above stays current."}
+          For an AI tool that can&apos;t connect: {demo ? "the Fishwife tinned fish sample" : "your brand"}, its crowds, Athena&apos;s plan in order and the open tasks, in one Markdown file any LLM can read. Drop it into a chat or a project. It&apos;s a copy as of the day you download it{demo ? "." : "; the link above stays current."}
         </p>
         <div className="mcp-link-foot">
-          <SaveButton file={BRAND_FILE} save={() => saveBrandFile(!!demo)} onSaved={() => setSaved(true)} />
-          {saved && <span className="small muted">Saved to your downloads.</span>}
+          <SaveButton file={BRAND_FILE} save={() => saveBrandFile(!!demo)} onSaved={() => setSaved(true)} disabled={!demo && !planned} />
+          {!demo && !planned ? <span className="small muted">Ready once Athena has built your plan.</span> : saved && <span className="small muted">Saved to your downloads.</span>}
         </div>
       </section>
     </>
@@ -418,8 +419,9 @@ export async function savePlanSheet(demo = false) {
   hand(new Blob([(bytes ?? planWorkbook({})) as BlobPart], { type: XLSX_TYPE }), PLAN_FILE);
 }
 
-/** A Download button for one of the files, held while it's built; `onSaved` once the browser has it. */
-export function SaveButton({ file, save, onSaved }: { file: string; save: () => Promise<void>; onSaved?: () => void }) {
+/** A Download button for one of the files, held while it's built; `onSaved` once the browser has it. `disabled`: the
+ *  file isn't ready yet (the brand file before the plan). */
+export function SaveButton({ file, save, onSaved, disabled }: { file: string; save: () => Promise<void>; onSaved?: () => void; disabled?: boolean }) {
   const [busy, setBusy] = useState(false);
   const click = async () => {
     setBusy(true);
@@ -428,7 +430,7 @@ export function SaveButton({ file, save, onSaved }: { file: string; save: () => 
     onSaved?.();
   };
   return (
-    <button type="button" className="mcp-new" onClick={click} disabled={busy}>
+    <button type="button" className="mcp-new" onClick={click} disabled={busy || disabled}>
       Download {file}
     </button>
   );

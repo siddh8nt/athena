@@ -2164,6 +2164,8 @@ button.nav-item:hover:not(:disabled) { background: rgba(var(--nav-tint), 0.045);
 .mcp-link-foot { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .mcp-new { padding: 6px 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--fg); cursor: pointer; }
 .mcp-new:disabled { opacity: 0.5; cursor: default; }
+/* A section whose file waits for the plan: greyed, its button off. */
+.mcp-later h3, .mcp-later > p { opacity: 0.55; }
 .mcp-note { margin: 2px 0 0; line-height: 1.45; }
 /* A link this browser no longer holds (§23.6 d): a calm line in place of the field, with New link below it. */
 .mcp-lost { margin: 0; padding: 9px 11px; border: 1px dashed var(--line); border-radius: 8px; line-height: 1.45; color: var(--fg); }

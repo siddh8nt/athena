@@ -834,7 +834,7 @@ export async function runWorkflow(r: WorkflowInput): Promise<{ works: Partial<Re
       emit();
       // The model's task may end in its own full stop; the line ends in one.
       const task = step.task.trim().replace(/[.!;:,\s]+$/, "");
-      if (!ran.has(id)) say(`${id === "analyst" ? "Starting with" : "Handing to"} the ${nameOf(id)}: ${task.charAt(0).toLowerCase()}${task.slice(1)}.`, id);
+      if (!ran.has(id)) say(`${id === "analyst" ? "Starting with" : "Handing to"} the ${nameOf(id)}: ${task.charAt(0).toLowerCase()}${task.slice(1).replace(/[.\s]+$/, "")}.`, id);
       ran.add(id);
       running.set(id, runStep(step as WorkflowStep & { id: SpecialistId }).finally(() => running.delete(id)));
     }

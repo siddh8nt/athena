@@ -5,7 +5,7 @@ import type { Map as MlMap, GeoJSONSource, MapLayerMouseEvent } from "maplibre-g
 import { geohashBounds } from "@/lib/geo/geohash";
 import type { Geography } from "@/lib/geo/types";
 import { STYLE, css, loadMapLibre } from "./maplibre";
-import { ordinal } from "./Blocks";
+import { ordinal } from "@/lib/ordinal";
 
 // Crowd weather (§9.26): every US cell coloured by the crowd whose taste leads there, stronger where its percentile is
 // higher; hotspots solid. Linked to the Taste Galaxy: `lit` dims every other crowd, and hovering a cell lights its

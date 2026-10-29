@@ -5,7 +5,7 @@ import Link from "next/link";
 import { ACCEPT, readable, refusal, RecordView, TrailView, useBriefChat, type FileChip, type Msg } from "./chat";
 import type { WorkRecord } from "@/lib/agent/record";
 import { BrandGraph, StaleFlag } from "./BrandGraph";
-import { ordinal } from "./Blocks";
+import { ordinal } from "@/lib/ordinal";
 import { Question, QuestionTray, type TrayItem } from "./Question";
 import { Galaxy } from "./Galaxy";
 import { CrowdGeography } from "./CrowdGeography";

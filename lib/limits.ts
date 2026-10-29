@@ -32,25 +32,20 @@ export const LIMITS = {
   /** 5 own-brand plans per IP per hour, 60 a day in total. */
   ownBrand(ip: string) {
     const perIp = take(`own:${ip}`, 5, HOUR);
-    if (!perIp.ok) return { ok: false as const, message: `You've planned 5 brands in the last hour. Try again in about ${perIp.retryInMin} minutes, or explore the demo brands meanwhile.` };
+    if (!perIp.ok) return { ok: false as const, message: `You've planned 5 brands in the last hour. Try again in about ${perIp.retryInMin} minutes.` };
     const total = take("own:all", 60, DAY);
-    if (!total.ok) return { ok: false as const, message: "Athena has planned its 60 live brands for today. The demo brands are ready to explore, and live plans reopen tomorrow." };
+    if (!total.ok) return { ok: false as const, message: "Athena has planned its 60 live brands for today. Live plans reopen tomorrow." };
     return { ok: true as const };
   },
   /** Brief canvas turns (§14.5): 30 per IP per hour, so one founder can finish several briefs. */
   brief(ip: string) {
     const t = take(`brief:${ip}`, 30, HOUR);
-    return t.ok ? { ok: true as const } : { ok: false as const, message: `That's a lot of messages in an hour. Try again in about ${t.retryInMin} minutes, or explore the demo brands meanwhile.` };
+    return t.ok ? { ok: true as const } : { ok: false as const, message: `That's a lot of messages in an hour. Try again in about ${t.retryInMin} minutes.` };
   },
   /** Files kept for the knowledge base (§23.2 step 4): 40 per IP per hour; each is counted and read once. */
   upload(ip: string) {
     const t = take(`upload:${ip}`, 40, HOUR);
     return t.ok ? { ok: true as const } : { ok: false as const, message: `That's 40 files in an hour. More can be added in about ${t.retryInMin} minutes; the ones you've added are kept.` };
-  },
-  /** Re-runs after an inline answer (§6.2.2): 20 per IP per hour, separate from new plans. */
-  rerun(ip: string) {
-    const t = take(`rerun:${ip}`, 20, HOUR);
-    return t.ok ? { ok: true as const } : { ok: false as const, message: "I'll keep your answer and use it on your next plan." };
   },
   /**
    * Chat edits to the Brand Graph (§23.2 step 7d): about 40 per IP per hour, never shown. Past it, the reply points
@@ -94,10 +89,5 @@ export const LIMITS = {
   geography(ip: string) {
     const t = take(`geo:${ip}`, 10, HOUR);
     return t.ok ? { ok: true as const } : { ok: false as const, message: `The map of where your crowds live opens again in about ${t.retryInMin} minutes.` };
-  },
-  /** 10 new Without Qloo runs a day in total (cached comparisons don't count). */
-  comparison() {
-    const t = take("compare:all", 10, DAY);
-    return t.ok ? { ok: true as const } : { ok: false as const, message: "Today's live comparisons are used up; the demo brands' comparisons are ready to view." };
   },
 };

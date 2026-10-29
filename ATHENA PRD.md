@@ -1,6 +1,6 @@
-# Athena: the taste-led growth agent for consumer startups
+# Athena: the taste-led growth agent for consumer brands
 
-*Plans a consumer startup's growth from 1 to n: where to grow, which venues to be in, who to partner with, what to say and when to show up, from what its customers already love.*
+*Plans a consumer brand's growth from 1 to n: where to grow, which venues to be in, who to partner with, what to say and when to show up, from what its customers already love.*
 
 **Product Requirements Document**
 
@@ -2120,17 +2120,17 @@ S1–S16 ran on 8 Oct against the hackathon endpoint, using only the tuning bran
 
 The headings mirror the judging criteria, so both people and automated screeners find each answer.
 
-1. **The line and the comparison:** "Same question, two answers", with the hero's computed numbers.
+1. **The line:** "Most AI knows only what's been written about your brand. Athena reads what millions of people love." Then the descriptor: the taste-led growth agent for consumer brands.
 2. **The problem:** Maya, Dev and Lena.
-3. **What it does:** the six blocks, the key moments, the two versatility demos, and *Try your own brand*.
+3. **What it does:** the Brand Graph built from the founder's own site and files; the Analyst ranking who to win first; Athena handing each goal to the subagents it needs, each calling tools in a loop; Execute Plan with drafts to send; Connect with Athena MCP and the plan as a file; and *Get started* with your own brand.
 4. **Technological implementation:** the Qloo capabilities table (§11.1), the methods, one bridge, one mutual fit and one positioning card traced to their calls, the gap-filling sources (§11.2), the tests.
-5. **Evidence:** With Qloo vs Without Qloo for every demo brand; the failed blind test and what we changed; the ranking check's registered result; what isn't measured.
+5. **Evidence:** the Taste Bench (§10.6); the failed blind test and what we changed; the ranking check's registered result; every answer's tool calls and Qloo call count; what isn't measured.
 6. **Design:** a product-first conversation, a step-by-step journey where every stop is a decision, crowd cards from a real taste graph, the dashboard, phones, accessibility.
 7. **Potential impact:** three users, quotes from real brands, a market across goods, tech and apps, the business model and its data terms.
 8. **Quality of the idea:** places and partners as a taste fingerprint; lookalike places, partners and moments; mutual fit; outcomes as signal.
 9. **Responsible use**, including the audience-skew and audience-interest rules.
 10. **What we don't know.**
-11. **Built with, setup and testing:** "No login. The app is live when you arrive: pick a sample brand, or try your own."
+11. **Built with, setup and testing:** "No login. The app is live when you arrive: start with your own brand, or open a finished plan."
 
 ### 20.3 Emphasis by judge
 
@@ -2144,11 +2144,10 @@ The headings mirror the judging criteria, so both people and automated screeners
 
 ### 20.4 Pitch lines
 
-- "Athena: the taste-led growth agent for consumer startups."
+- "Athena: the taste-led growth agent for consumer brands."
 - "Meta gave brands lookalike audiences. Athena gives them lookalike places, partners and moments."
 - "Grow where your crowd's taste already is."
 - "From your first stockist to your nth market."
-- "Same question, two answers: one guesses, one shows its evidence."
 
 ---
 
@@ -2171,7 +2170,7 @@ The headings mirror the judging criteria, so both people and automated screeners
 
 ## 22. Open decisions (defaults in bold)
 
-1. **Name and title:** Athena: the taste-led growth agent for consumer startups (decided).
+1. **Name and title:** Athena: the taste-led growth agent for consumer brands (decided; "startups" became "brands" on 29 Oct).
 2. **Demos:** **three context packs, all real brands from public material only** (decided 10 Oct, §7.7): **Brightland** (hero, offline), **Starface** (online-first) and **Fishwife** (not in Qloo; shows the retail step-up). Nothing fictional. Messy-file reading is shown whenever someone uploads their own files. The v2 demo brands stay in tests.
 3. **Ranking-check test brands (decided 13 Oct):** **McClure's Pickles (G1), Rishi Tea (G2), Paddywax (G4)**, registered in `prereg-v2` by 16 Oct. MUD\WTR, the G2 alternative, isn't used (§10.3). Fishwife was swapped out on 10 Oct because it became a sample pack (§10.3).
 4. **Fifth tuned category:** **G4 home** (Paddywax has 13 qualifying metros), replacing the earlier G3 default. Beauty stays Beta: only Juniper Ridge qualified, in 2 metros.

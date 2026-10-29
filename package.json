@@ -16,7 +16,6 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "live": "vitest run -c vitest.live.config.ts",
-    "warm": "vitest run -c vitest.live.config.ts tests/live/warm.live.ts",
     "seed:demo": "vitest run -c vitest.live.config.ts tests/live/seed-demo.live.ts"
   },
   "dependencies": {

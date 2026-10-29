@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { forceCollide, forceLink, forceManyBody, forceSimulation, forceX, forceY, type Simulation, type SimulationLinkDatum, type SimulationNodeDatum } from "d3-force";
 import { domainWord, shortName, whyOf, type Domain, type Galaxy as GalaxyData } from "@/lib/taste/galaxy";
-import { ordinal } from "./Blocks";
+import { ordinal } from "@/lib/ordinal";
 import { shapePath, type ShapeName } from "@/lib/graph/shapes";
 
 // The Taste Galaxy (PRD §13, v4.0): every entity the crowd loves, placed by how the probed landmarks rank it. It forms

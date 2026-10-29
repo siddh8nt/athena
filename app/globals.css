@@ -272,10 +272,6 @@ button.linkish:hover:not(:disabled) { text-decoration: underline; }
 .flip { display: inline-flex; border: 1px solid var(--line); border-radius: 99px; padding: 2px; margin-bottom: 12px; }
 .flip button { border: none; border-radius: 99px; padding: 4px 14px; background: none; color: var(--muted); }
 .flip button.active { background: var(--accent); color: #fff; }
-.compare .metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
-.compare .metrics div { border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; background: var(--bg); }
-.compare .metrics strong { display: block; font-size: 20px; font-variant-numeric: tabular-nums; }
-.compare .metrics span { font-size: 12px; color: var(--muted); }
 .chip-found { border-color: var(--account); }
 .chip-closed, .chip-unverified { border-color: var(--llm); border-style: dashed; }
 
@@ -1318,7 +1314,6 @@ h5.crowd-tag { font-size: 10px; font-weight: 800; margin: 8px 0 4px; }
 /* Numerals in serif: ranks stay in Nunito, scores and stats go serif. */
 .rank, .fit-head .rank, .rank-list .rank { font-family: var(--font-caps); font-weight: 700; font-size: 13px; color: var(--faint); }
 .fit-score { font-family: var(--font-display); font-size: 24px; line-height: 1; color: var(--emph-ink); font-variant-numeric: tabular-nums; }
-.compare .metrics strong { font-family: var(--font-display); font-weight: 400; font-size: 30px; line-height: 1.05; }
 .when-date { font-family: var(--font-caps); font-weight: 800; font-size: 12px; color: var(--emph-ink); }
 .bg-count { font-family: var(--font-caps); font-weight: 800; color: var(--emph-ink); letter-spacing: 0.4px; }
 

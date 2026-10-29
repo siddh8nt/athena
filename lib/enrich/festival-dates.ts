@@ -15,7 +15,6 @@ import { byOpened, readPages } from "./pages";
 // grounding sources, and the quoted text must parse to a full date in the next 12 months. Never guessed.
 // Streaming thought summaries ("Searching event dates…") narrate the wait. A lookup never throws and
 // never runs past its time limit; an unconfirmed festival is simply left out of Moments.
-// Demo brands are looked up ahead of time by the warm-cache job, so judges never wait (§14.9).
 // Google's terms require showing the Search Suggestions chip with grounded results: kept as searchEntryPoint.
 
 const DAY = 24 * 60 * 60 * 1000;

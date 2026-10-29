@@ -420,6 +420,10 @@ export function Dashboard(p: {
   /** The subagent that has just started: shown starting here for `startingMs` before its page opens. */
   starting?: SpecialistId;
   startingMs?: number;
+  /** A question waiting on the founder that doesn't pause the run ("Did these go out?"), shown above every tab. */
+  asking?: { who: string; question: string };
+  /** Opens the chat at that question. */
+  onAnswer?: () => void;
 }) {
   const { team, live } = p;
   const [tab, setTab] = useState<DashTab>(tabFromUrl);
@@ -553,6 +557,17 @@ export function Dashboard(p: {
           </button>
         ))}
       </div>
+      {p.asking && (
+        <section className="dash-ask" role="status">
+          <span className="act-dot" aria-hidden />
+          <p className="small">
+            <strong>{p.asking.who} asks:</strong> {p.asking.question}
+          </p>
+          <button type="button" className="primary small" onClick={p.onAnswer}>
+            Answer
+          </button>
+        </section>
+      )}
       <div className="dash-tab-body" key={tab} role="tabpanel">
         {tab === "overview" && overview}
         {tab === "knowledge" && <KnowledgeBase parts={p.kb} />}

@@ -184,15 +184,20 @@ async function renamed(hit: CrowdsResult, key: string): Promise<CrowdsResult> {
 
 type Latest = { seed: SeedInput; probes: string[] };
 
-/** Marks a brand's newest crowds, so a request carrying an older seed or probes still finds them. */
-export async function rememberCrowds(brand: string, seed: SeedInput, probes: string[]): Promise<void> {
-  if (brand) await getStore().set<Latest>("crowds-latest", brand.toLowerCase(), { seed, probes }, TTL).catch(() => undefined);
+/** One workspace's brand: two founders can type the same brand name, and each keeps the crowds measured for them. */
+const latestKey = (ws: string, brand: string) => (ws && brand ? `${ws}:${brand.toLowerCase()}` : "");
+
+/** Marks a workspace's newest crowds for its brand, so a request carrying an older seed or probes still finds them. */
+export async function rememberCrowds(ws: string, brand: string, seed: SeedInput, probes: string[]): Promise<void> {
+  const key = latestKey(ws, brand);
+  if (key) await getStore().set<Latest>("crowds-latest", key, { seed, probes }, TTL).catch(() => undefined);
 }
 
-/** A brand's newest crowds, with the seed and probes they were measured from. */
-export async function latestCrowds(brand: string): Promise<(Latest & { crowds: CrowdsResult }) | undefined> {
-  if (!brand) return undefined;
-  const at = (await getStore().get<Latest>("crowds-latest", brand.toLowerCase()).catch(() => undefined))?.value;
+/** A workspace's newest crowds for its brand, with the seed and probes they were measured from. */
+export async function latestCrowds(ws: string, brand: string): Promise<(Latest & { crowds: CrowdsResult }) | undefined> {
+  const key = latestKey(ws, brand);
+  if (!key) return undefined;
+  const at = (await getStore().get<Latest>("crowds-latest", key).catch(() => undefined))?.value;
   const crowds = at && (await cachedCrowds(at.seed, at.probes));
   return at && crowds ? { ...at, crowds } : undefined;
 }

@@ -14,6 +14,7 @@ import { isSpecialist, type AgentId } from "@/lib/agent/specialists";
 import { goalQuestion } from "@/lib/agent/goals";
 import { isMetroId, metroById } from "@/lib/playbook/metros";
 import { readBrief } from "@/lib/brief/form";
+import { validWorkspace } from "@/lib/knowledge/uploads";
 import { cachedCrowds, latestCrowds, rememberCrowds } from "@/lib/taste/engine";
 import { MAX_EXTRA } from "@/lib/taste/graph";
 import { readFit, readGoals, readTeam } from "@/lib/team/read";
@@ -49,6 +50,7 @@ export const POST = dated(async function post(req: Request) {
   const probes = strs(raw.probes, MAX_EXTRA).filter((p) => /^[\w:-]{1,80}$/.test(p));
   const brief = raw.brief ? readBrief(JSON.stringify(raw.brief)) : undefined;
   const fits = readFits(raw.fits);
+  const ws = validWorkspace(raw.ws) ? raw.ws : "";
   const team = readTeam(raw.team);
   const graphRev = typeof raw.graphRev === "number" && Number.isFinite(raw.graphRev) ? raw.graphRev : 0;
   const text = str(raw.text, 600);
@@ -135,11 +137,11 @@ export const POST = dated(async function post(req: Request) {
     // (a measure that moved the seed), the newest are used and sent back, so a finished Analyst never measures again.
     const brand = brief?.name?.value ?? seed.brand?.name ?? "";
     const exact = await cachedCrowds(seed, probes);
-    const latest = exact ? undefined : await latestCrowds(brand);
+    const latest = exact ? undefined : await latestCrowds(ws, brand);
     const crowds = exact ?? latest?.crowds;
     const t = await buildCtx({ brief, seed: latest?.seed ?? seed, crowds: crowds ?? undefined, fits, probes: latest?.probes ?? probes, team, enrich: teamEnrich(), llm, qloo, answers, notes });
     if (latest) send({ type: "memory", crowds: latest.crowds, seed: latest.seed, probes: latest.probes });
-    const keep = () => (t.crowds?.crowds.length && t.seed ? rememberCrowds(brand, t.seed, t.probes) : undefined);
+    const keep = () => (t.crowds?.crowds.length && t.seed ? rememberCrowds(ws, brand, t.seed, t.probes) : undefined);
     // Every subagent reads the whole Brand Graph before it asks the founder anything (founder, 21 Oct).
     t.facts = [...briefFacts(brief, []), ...notes.map((n) => n.text), ...(team.answered ?? []).map((a) => `${a.question} ${a.answer}`)];
     // A handoff (§23.2 step 8.3b) carries what it was started from: the crowd to aim at, the crowd to win next, the city.

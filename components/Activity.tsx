@@ -24,8 +24,8 @@ export function Activity(p: {
   live: TeamLive;
   team: TeamState;
   page: Page;
-  /** The question the run waits on, if any, and who asks it. */
-  asking?: { who: string; question: string };
+  /** The question waiting on the founder, if any, who asks it, and whether the run pauses for it. */
+  asking?: { who: string; question: string; pauses: boolean };
   onAnswer: () => void;
   onOpen: (page: Page) => void;
 }) {
@@ -145,7 +145,7 @@ export function Activity(p: {
                 ))}
               </ul>
             ) : (
-              <p className="small muted">{p.asking ? "The team carries on once you answer." : "Nobody is working right now."}</p>
+              <p className="small muted">{p.asking?.pauses ? "The team carries on once you answer." : "Nobody is working right now."}</p>
             )}
           </section>
           {earlier.length > 0 && (

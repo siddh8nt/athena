@@ -2541,6 +2541,16 @@ button.nav-item:hover:not(:disabled) { background: rgba(var(--nav-tint), 0.045);
 .dash-tab-paused { width: 7px; height: 7px; border-radius: 50%; background: var(--emph); animation: paused-pulse 1.6s ease-in-out infinite; }
 .dash-tab-n { min-width: 18px; padding: 1px 6px; border-radius: 999px; background: var(--sunken, var(--line)); color: var(--muted); font-size: 11px; text-align: center; }
 .dash-tab-body { display: flex; flex-direction: column; gap: 18px; min-width: 0; animation: rise 0.25s ease-out both; }
+/* Your turn on the dashboard: a question that waits on the founder without pausing the run, answered in the chat. */
+.dash-ask {
+  display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 14px; border: 1px solid color-mix(in srgb, var(--emph) 40%, var(--line));
+  background: color-mix(in srgb, var(--emph) 10%, var(--surface)); animation: rise 0.25s ease-out both;
+}
+.dash-ask p { margin: 0; flex: 1; min-width: 0; }
+.dash-ask strong { color: var(--emph-ink); font-weight: 700; }
+.dash-ask .act-dot { background: var(--emph); animation: paused-pulse 1.6s ease-in-out infinite; }
+.dash-ask button.primary { flex: none; }
+@media (prefers-reduced-motion: reduce) { .dash-ask, .dash-ask .act-dot { animation: none; } }
 
 /* The Brand Knowledge Base: each part folds to its title and a one-line summary. */
 .dash-kb { gap: 10px; }

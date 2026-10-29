@@ -13,7 +13,7 @@ import { WithWithout, type AloneRequest } from "./WithWithout";
 import { Onboard } from "./Onboard";
 import { Fits, When, tiersFor } from "./Fits";
 import { fromCity, fromCrowd, type Handoff } from "@/lib/agent/handoffs";
-import { FinishCard, GoalsBar, Handoffs, PausedForYou, RunTrail, SpecialistWorkspace, TeamPanel, WhatsWorking, WorkView, statusOf, useTeam, type TeamLive } from "./Team";
+import { FinishCard, GoalsBar, Handoffs, PausedForYou, RunTrail, SpecialistWorkspace, TeamPanel, WhatsWorking, WorkView, statusOf, useTeam, type TeamAsk, type TeamLive } from "./Team";
 import { Dashboard, WorkflowDiagram, type KbPart } from "./Dashboard";
 import { Activity } from "./Activity";
 import { INPUTS } from "@/lib/team/inputs";
@@ -366,6 +366,8 @@ export function Journey() {
   bodyNow.current = () => {
     const x = jNow.current;
     return {
+      // The workspace, so the brand's newest crowds are this founder's own, never another's with the same brand name.
+      ws: workspace(),
       seed: x.crowdsSeed ?? (JSON.parse(x.crowdsFor ?? seedKey) as unknown),
       probes: x.crowds?.probes ?? [],
       brief: teamBrief(x.channel),
@@ -1084,7 +1086,12 @@ export function Journey() {
   // Who the run waits on, for the dashboard's chat button.
   const pausedAgent = Object.entries(tm.live.blocking).find(([id]) => !(id in tm.live.answers))?.[1].agent;
   const pausedFor = pausedAgent ? (pausedAgent === "athena" ? "Athena" : `the ${nameOf(pausedAgent)}`) : tm.live.asks.some((a) => a.id === "goals" && !(a.id in tm.live.answers)) ? "your goals" : undefined;
-  const pausedWho = pausedAsk ? (pausedAsk.agent === "athena" ? "Athena" : `The ${nameOf(pausedAsk.agent)}`) : undefined;
+  const whoAsks = (a: TeamAsk) => (a.agent === "athena" ? "Athena" : `The ${nameOf(a.agent)}`);
+  const pausedWho = pausedAsk ? whoAsks(pausedAsk) : undefined;
+  // A question that doesn't pause the run, such as the Executive's "Did these go out?", still waits on the founder: the
+  // pill says so, and the dashboard, whose chat is closed, carries it as a Your turn card.
+  const execAsk = pausedAsk ? undefined : tm.live.asks.find((a) => (a.id === "exec" || a.id.startsWith("exec-")) && !(a.id in tm.live.answers));
+  const yourTurn = pausedAsk ?? execAsk;
   usePausedTab(!onboarding && !!pausedAsk);
   /** Answer: open the chat wherever this page keeps it, at the question. */
   const answerPaused = () => {
@@ -1245,7 +1252,7 @@ export function Journey() {
               live={tm.live}
               team={team}
               page={page}
-              asking={pausedAsk && pausedWho ? { who: pausedWho, question: pausedAsk.question } : undefined}
+              asking={yourTurn ? { who: whoAsks(yourTurn), question: yourTurn.question, pauses: !!pausedAsk } : undefined}
               onAnswer={answerPaused}
               onOpen={(id) => go(id)}
             />
@@ -1294,6 +1301,8 @@ export function Journey() {
             start={showStart({ ...spineIn, running: tm.live.running > 0 })}
             starting={starting}
             startingMs={STARTING_MS}
+            asking={execAsk ? { who: whoAsks(execAsk), question: execAsk.question } : undefined}
+            onAnswer={answerPaused}
           />
         </DashboardPage>
       ) : page === "executive" ? (

@@ -407,7 +407,10 @@ export function draftFor(read: RepRead, s: Shop, pitch?: { subject: string; body
   const email = emailOf(s);
   const to = email ? { to: email.value, toSrc: email.src } : {};
   if (pitch) return { subject: pitch.subject, body: pitch.body, ...to };
-  const loves = (s.why ?? []).map((c) => read.crowds.flatMap((x) => x.brands).find((b) => b.id === c.id)?.name).filter((x): x is string => !!x);
+  // The names the row's "Loved by fans of" line shows, so the email and the row agree; a shop stored before the line
+  // kept its names falls back to the crowd brands behind it.
+  const shown = s.reasons.find((r) => r.kind === "contribution")?.names;
+  const loves = shown ?? (s.why ?? []).map((c) => read.crowds.flatMap((x) => x.brands).find((b) => b.id === c.id)?.name).filter((x): x is string => !!x);
   const fit = loves.length ? `The people who shop with you also love ${and([...new Set(loves)].slice(0, 2))}, and so do ours.` : "Your shop looks like a natural home for it.";
   const offer = read.budget === "high" ? "We can send samples, share trade terms and run a demo day in the shop." : read.budget === "mid" ? "We can send samples and start with a small opening order, with a sampling day in the shop." : "We'd be glad to start on consignment or with a small opening order, whichever suits you.";
   const ask = email ? "Could I send you samples?" : s.site?.form ? "Could I send you samples?" : "I'd love to drop by with samples; when is a good time?";

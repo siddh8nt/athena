@@ -11,6 +11,8 @@ export type Evidence = {
   label: string;
   value?: number;
   callId: string;
+  /** For a contribution: the names its label was built from, so a draft can say the same thing. */
+  names?: string[];
 };
 
 export type Enriched<T> = { value: T; source: Source; url?: string; fetchedAt?: string; callId?: string };

@@ -724,7 +724,7 @@ export function stripOf(plan: ExecPlan, state: (id: string) => ItemState, exec: 
 export type ResultLine = { agent: SpecialistId; by: string; value: string; yes: number; no: number; waiting: number; went: number; of: number };
 
 const DIMS: Partial<Record<SpecialistId, (it: ExecItem) => [string, string[]][]>> = {
-  rep: (it) => [["Shop type", [it.group ?? it.kind]], ["Neighbourhood", it.facets.Neighbourhood ?? []], ["Entry route", it.facets.Wholesale ?? []]],
+  rep: (it) => [["Shop type", [it.group ?? it.kind]], ["Neighbourhood", it.facets.Neighbourhood ?? []], ["Wholesale", it.facets.Wholesale ?? []]],
   matchmaker: (it) => [["Group", [it.group ?? it.kind]], ["Band", it.facets.Band ?? []]],
   promoter: (it) => [["Kind", [it.group ?? it.kind]]],
   navigator: (it) => [["City", it.cities]],

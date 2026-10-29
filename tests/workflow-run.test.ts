@@ -92,6 +92,12 @@ describe("the workflow run (§23.2 step 8.5f)", () => {
     await runWorkflow({ goals: g, team: { ...t, crowds: undefined }, state: { ...state, works: second.works as never }, graphRev: 0, qloo, env: {} as never, send: (e) => lost.push(e), llm: false, workflow: paused, answered });
     const rerun = lost.flatMap((e) => (e.type === "status" && e.status.state === "working" && e.status.step === "Starting" ? [e.agent] : []));
     expect([...new Set(rerun)].sort()).toEqual(["analyst", "rep"]);
+
+    // A mark days later, once the server's crowds have expired: the plan is still only written again, nothing measures.
+    const later: TeamEvent[] = [];
+    await runWorkflow({ goals: g, team: { ...t, crowds: undefined }, state: marked, graphRev: 0, qloo, env: {} as never, send: (e) => later.push(e), llm: false, workflow: second.workflow, answered, resynth: true });
+    expect(later.filter((e) => e.type === "status" && e.status.state === "working" && e.status.step === "Starting")).toEqual([]);
+    expect(later.some((e) => e.type === "plan")).toBe(true);
   }, 60_000);
 });
 

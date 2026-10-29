@@ -279,6 +279,9 @@ describe("The brand-fit check (§23.6 n)", () => {
     const calls = vi.mocked(gen).mock.calls.length;
     expect(await brandFit(brand, [], paged, fit, true, gen)).toEqual(fit);
     expect(vi.mocked(gen).mock.calls.length).toBe(calls);
+    // A re-plan after a mark gets the works without their pages: what was left out stays out.
+    expect(await brandFit(brand, [], works, fit, true, gen)).toEqual(fit);
+    expect(vi.mocked(gen).mock.calls.length).toBe(calls);
 
     const broken = (async () => {
       throw new Error("down");

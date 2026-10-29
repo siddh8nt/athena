@@ -35,7 +35,9 @@ function lineOf(it: ExecItem, i: number): string {
 
 /**
  * The verdicts for the items not checked before (`seen`), merged over the earlier ones. A call that fails keeps its
- * items with no verdict, so they're checked again next time; nothing is ever left out by a failure.
+ * items with no verdict, so they're checked again next time; nothing is ever left out by a failure. Every earlier
+ * verdict stands, listed now or not: a re-plan after a mark gets the works without their pages, so it lists no items,
+ * and dropping the verdicts then would bring every left-out item back.
  */
 export async function brandFit(
   brand: FitBrand,
@@ -45,10 +47,8 @@ export async function brandFit(
   llm = true,
   gen: typeof generate = generate,
 ): Promise<Record<string, FitVerdict>> {
-  const out: Record<string, FitVerdict> = {};
-  const all = fitCandidates(works);
-  for (const it of all) if (seen[it.id]) out[it.id] = seen[it.id];
-  const fresh = all.filter((it) => !seen[it.id]);
+  const out: Record<string, FitVerdict> = { ...seen };
+  const fresh = fitCandidates(works).filter((it) => !seen[it.id]);
   if (!llm || !fresh.length) return out;
 
   const about = [

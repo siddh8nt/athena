@@ -230,8 +230,10 @@ export function Journey() {
 
   // Fold in changes made from outside Athena (§23.6 b): on load and whenever the tab comes back into focus. Item by
   // item, the newer change winning (§23.6 a), so nothing a founder's AI tool did is lost and nothing overwrites the
-  // whole journey. Marks and answers apply here; facts added from outside are folded in with add_fact (§23.6 b).
+  // whole journey. Marks and answers apply here; a fact added from outside goes onto the Brand Graph as one edit, the
+  // way a typed fact does, with its Undo (an edit skips a fact already there, so a second pull adds nothing).
   const cursor = useRef(0);
+  const addOutside = useRef<(texts: string[]) => void>(() => {});
   useEffect(() => {
     let live = true;
     const CKEY = "athena:ws-cursor";
@@ -248,6 +250,7 @@ export function Journey() {
         return; // Offline or blocked: nothing to fold in this time.
       }
       if (!live) return;
+      const from = cursor.current;
       setJ((x) => {
         const res = applyExternal(x, external, cursor.current);
         cursor.current = res.cursor;
@@ -258,6 +261,8 @@ export function Journey() {
         }
         return res.changed ? res.journey : x;
       });
+      const facts = (external?.facts ?? []).filter((f) => f.at > from).map((f) => f.text);
+      if (facts.length) addOutside.current(facts);
     };
     void pull();
     const onFocus = () => {
@@ -598,6 +603,7 @@ export function Journey() {
     if (a) commit(a.brief, a.facts, a.state);
     return a;
   };
+  addOutside.current = (texts) => void apply(texts.map((value) => ({ op: "add", type: "note", value })), "chat");
   type Reply = { ops: Op[]; questions: EditQuestion[]; reply: string; team?: boolean };
   /** One call to the graph's edit route, with a hard time limit; past it, the reply points at the graph. */
   const post = async (body: Record<string, unknown>): Promise<Reply> => {

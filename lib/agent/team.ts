@@ -721,7 +721,9 @@ export async function runWorkflow(r: WorkflowInput): Promise<{ works: Partial<Re
 
   // A step cut off mid-run, or one paused for an answer that's now in, starts again. With no crowds at all the Analyst
   // measures again, alone: the finished work that read its crowds stands, so a resume never starts the team over.
-  const lost = !t.crowds?.crowds.length;
+  // A re-plan after a mark never measures: the plan is written from the fits the page sent, and the crowds kept on
+  // the server expire after a week, while a pitch is marked sent days after the run.
+  const lost = !r.resynth && !t.crowds?.crowds.length;
   w = { ...w, steps: w.steps.map((s) => (s.state === "running" || s.state === "paused" || (r.resynth && s.id === "athena") || (lost && s.id === "analyst") ? { ...s, state: "todo" } : s)) };
   // A re-plan after a mark only writes the plan again: what the marks make stale re-runs when the founder asks.
   const stale = r.resynth ? [] : staleRuns(r.state, r.graphRev).filter((s) => w.steps.some((x) => x.id === s.agent && x.state === "done"));

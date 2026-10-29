@@ -107,7 +107,7 @@ export function buildServer(meta: LinkMeta): McpServer {
     return { contents: [{ uri: "athena://tasks", mimeType: "application/json", text: JSON.stringify({ headline: v.plan?.headline ?? "", found: v.plan?.found ?? 0, items }, null, 2) }] };
   });
 
-  server.registerResource("questions", "athena://questions", { title: "Open questions", description: "What Athena is still waiting to hear from the founder.", mimeType: "application/json" }, async () => {
+  server.registerResource("questions", "athena://questions", { title: "Open questions", description: "What Athena's plan still has open: what she assumed and wants the founder to confirm, what a subagent still needs, and the limits of what was found.", mimeType: "application/json" }, async () => {
     const v = await readView(ws);
     return { contents: [{ uri: "athena://questions", mimeType: "application/json", text: JSON.stringify(v.team.plan?.open ?? [], null, 2) }] };
   });

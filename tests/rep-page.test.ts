@@ -92,6 +92,15 @@ describe("the Rep's page", () => {
     expect(contactOf(shop("Open", { a: 0.9 }, { site }))).toBe("buyer@shop.com (from shop.com/contact)");
   });
 
+  it("names in the draft the same loves its row shows", () => {
+    const r = read([], { crowds: [{ id: "a", name: "Pantry cooks", tier: "win_first", brands: [{ id: "b1", name: "Tartine" }, { id: "b2", name: "Oddfellows" }], cities: ["nyc"] }] });
+    const why = [{ id: "b2", score: 0.4 }, { id: "b1", score: 0.3 }];
+    const row = draftFor(r, shop("Row", { a: 0.9 }, { why, reasons: [{ kind: "contribution", label: "Loved by fans of The Mind of a Chef and Oddfellows", names: ["The Mind of a Chef", "Oddfellows"], callId: "c1" }] }));
+    expect(row.body).toContain("also love The Mind of a Chef and Oddfellows");
+    // A shop stored before its row kept the names still reads the crowd brands behind it.
+    expect(draftFor(r, shop("Old", { a: 0.9 }, { why })).body).toContain("also love Oddfellows and Tartine");
+  });
+
   it("names how each shop buys", () => {
     expect(wholesaleOf(shop("A", {}, { site: { brands: [], sameNiche: [], emails: [], wholesale: "x.com/wholesale", src: "x.com" } }))).toBe("Sell-with-us page");
     expect(wholesaleOf(shop("B", {}, { faire: true }))).toBe("On Faire (found by search)");

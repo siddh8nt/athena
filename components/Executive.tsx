@@ -26,6 +26,7 @@ import {
   tabItems,
   rowTarget,
   waitingSteps,
+  holds,
   wayIn,
   type ContactView,
   type ExecItem,
@@ -626,6 +627,9 @@ function NowSteps({ plan, state, exec, list, filtering, disagreements, row, onSt
         if (filtering && !rows.length) return null;
         const also = s.items.map((id) => plan.byId.get(id)).filter((i): i is ExecItem => !!i && i.now?.step !== s.n);
         const on = waits.get(s.n);
+        // The plan's "Once step 1 holds" is true only until it holds or the founder starts the step anyway; the line under
+        // a waiting step already says what it waits on.
+        const needs = on ? undefined : exec?.early?.includes(s.n) && s.depends.some((d) => !holds(plan, state, d)) ? "Started early" : "Ready now";
         const head = s.phase !== phase ? (s.phase === "shared" ? "Shared moves" : TIER_LABEL[s.phase]) : undefined;
         phase = s.phase;
         return (
@@ -633,11 +637,11 @@ function NowSteps({ plan, state, exec, list, filtering, disagreements, row, onSt
             {head && <p className="eyebrow xp-phase">{head}</p>}
             <header className="xp-step-head">
               <h3><Linked text={s.what} /></h3>
-              {(s.crowds.length > 0 || s.needs) && (
+              {(s.crowds.length > 0 || needs) && (
                 <p className="small muted">
                   {s.crowds.length > 0 && <Linked text={`For ${and(s.crowds)}`} />}
-                  {s.crowds.length > 0 && s.needs && " · "}
-                  {s.needs}
+                  {s.crowds.length > 0 && needs && " · "}
+                  {needs}
                 </p>
               )}
               {on && (

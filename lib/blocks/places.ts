@@ -36,8 +36,9 @@ export function reasonsFor(e: QlooEntity, callId: string, names: Map<string, str
     .filter((c) => c.score >= 0.1 || out.length === 0)
     .filter((c) => names.has(c.entity_id))
     .slice(0, 2);
-  const who = contributors.map((c) => names.get(c.entity_id)).join(" and ");
-  if (contributors.length) out.push({ kind: "contribution", label: fromCrowd ? `Loved by fans of ${who}` : `Like your ${who}`, callId });
+  const loved = contributors.map((c) => names.get(c.entity_id)!);
+  const who = loved.join(" and ");
+  if (contributors.length) out.push({ kind: "contribution", label: fromCrowd ? `Loved by fans of ${who}` : `Like your ${who}`, callId, names: loved });
   const fp = new Set(fingerprint.map((t) => t.id));
   const shared = (e.tags ?? []).filter((t) => fp.has(t.id ?? t.tag_id ?? "")).slice(0, 2);
   if (shared.length) out.push({ kind: "tag", label: `Shared: ${shared.map((t) => t.name).join(", ")}`, callId });

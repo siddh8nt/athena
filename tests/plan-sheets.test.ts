@@ -95,7 +95,7 @@ describe("the plan spreadsheet", () => {
     expect(about[0]).toEqual(["Brightland: Athena's growth plan", "Written 2026-10-28"]);
     expect(about).toContainEqual(["Sells", "olive oil"]);
     expect(about).toContainEqual(["Who buys it?", "Home cooks who love good pantry staples."]);
-    expect(about).toContainEqual(["Still to hear from you", "What's your wholesale price?"]);
+    expect(about).toContainEqual(["Still open", "What's your wholesale price?"]);
     const index = about.findIndex((r) => r[0] === "Tabs in this file");
     expect(about.slice(index + 1).map((r) => r[0])).toEqual(sheets.slice(1).map((s) => s.name));
   });

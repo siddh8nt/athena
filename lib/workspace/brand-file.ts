@@ -3,6 +3,7 @@ import type { Journey } from "@/lib/journey/types";
 import { briefFacts } from "@/lib/brief/facts";
 import { execPlan, planView, type Stage } from "@/lib/exec/plan";
 import { emptyTeam, type PlanStep } from "@/lib/team/types";
+import { nameOf, type SpecialistId } from "@/lib/agent/specialists";
 import { salesLine } from "@/lib/sales/orders";
 import { hostOf } from "@/lib/sources";
 import { whereFor } from "./where";
@@ -50,12 +51,15 @@ export function brandFile(saved: { brief?: BrandBrief; journey?: Journey }, now 
   const out: string[] = [];
   const day = new Date(now).toISOString().slice(0, 10);
   const where = whereFor(saved);
-  // The file's sources, numbered as first cited: "[1]" after a line, "1. Qloo's taste graph, 101 calls" at the end.
-  const sources: { from: string; url?: string }[] = [];
-  const cite = (s?: { from: string; url?: string }) => {
+  // The file's sources, numbered as first cited: "[1]" after a line, "1. The crowds: Qloo's taste graph, 101 calls" at
+  // the end. Each says whose read it is, so two reads of the same source don't look like one listed twice.
+  const sources: { from: string; url?: string; by?: string }[] = [];
+  const cite = (s?: { from: string; url?: string }, by?: string) => {
     if (!s) return "";
-    let n = sources.findIndex((x) => x.from === s.from && x.url === s.url);
-    if (n < 0) n = sources.push(s) - 1;
+    // The founder's own words are theirs, not a subagent's read.
+    if (/^(you|your)/i.test(s.from)) by = undefined;
+    let n = sources.findIndex((x) => x.from === s.from && x.url === s.url && x.by === by);
+    if (n < 0) n = sources.push({ ...s, by }) - 1;
     return ` [${n + 1}]`;
   };
 
@@ -91,7 +95,7 @@ export function brandFile(saved: { brief?: BrandBrief; journey?: Journey }, now 
     );
     for (const c of crowds.slice(0, 6)) {
       const src = where.crowd(c);
-      const from = src ? cite({ from: src }) : "";
+      const from = src ? cite({ from: src }, "The crowds") : "";
       out.push(`### ${c.name}${c.main ? " (the main crowd)" : ""}`, "");
       if (c.handle) out.push(`- Called ${c.handle} for short`);
       if (c.shared) out.push(`- What they share (Athena's read): ${c.shared}`);
@@ -111,15 +115,17 @@ export function brandFile(saved: { brief?: BrandBrief; journey?: Journey }, now 
     out.push("## Athena's plan, in order", "");
     if (plan.headline) out.push(plan.headline, "");
     for (const s of plan.steps ?? []) {
-      const who = s.crowds.length ? ` (${PHASE[s.phase]}: ${s.crowds.join(", ")})` : s.phase === "shared" ? ` (${PHASE.shared})` : "";
+      // A shared step that reaches every crowd says so, rather than listing them all.
+      const every = s.phase === "shared" && (!s.crowds.length || s.crowds.length >= crowds.length);
+      const who = every ? ` (${PHASE.shared})` : s.crowds.length ? ` (${PHASE[s.phase]}: ${s.crowds.join(", ")})` : "";
       out.push(`${s.n}. ${s.what}${who}`);
       for (const l of s.lines.slice(0, 6)) {
         const by = l.agent && where.agent(l.agent);
-        out.push(`   - ${l.text}${cite(l.url ? webOf(l.url) : by ? { from: by } : undefined)}`);
+        out.push(`   - ${l.text}${cite(l.url ? webOf(l.url) : by ? { from: by } : undefined, l.agent && !l.url ? `The ${nameOf(l.agent as SpecialistId)}` : undefined)}`);
       }
     }
     if (plan.open.length) {
-      out.push("", "Still to hear from the founder:", "");
+      out.push("", "Still open:", "");
       for (const q of plan.open.slice(0, 10)) out.push(`- ${q}`);
     }
     out.push("");
@@ -134,7 +140,7 @@ export function brandFile(saved: { brief?: BrandBrief; journey?: Journey }, now 
       const it = byId.get(r.id);
       const place = [...(it?.crowds ?? []).slice(0, 2), ...(it?.cities ?? []).slice(0, 1)].join(", ");
       const src = it && where.item({ id: it.id, name: it.name, agent: it.agent });
-      out.push(`- ${it?.action ?? r.name}: ${STAGE_NOTE[r.stage]}${place ? ` (${place})` : ""}${cite(src)}`);
+      out.push(`- ${it?.action ?? r.name}: ${STAGE_NOTE[r.stage]}${place ? ` (${place})` : ""}${cite(src, it?.agent && !src?.url ? `The ${nameOf(it.agent)}` : undefined)}`);
     }
     if (open.length > TASKS) out.push(`- …and ${open.length - TASKS} more in Athena's Execute Plan.`);
     out.push("");
@@ -144,7 +150,7 @@ export function brandFile(saved: { brief?: BrandBrief; journey?: Journey }, now 
 
   if (sources.length) {
     out.push("## Where this came from", "", "The sources behind the lines marked [n] above. The founder's own answers and Athena's reads aren't marked.", "");
-    sources.forEach((s, i) => out.push(`${i + 1}. ${cap(s.from)}${s.url ? ` (${s.url})` : ""}`));
+    sources.forEach((s, i) => out.push(`${i + 1}. ${s.by ? `${s.by}: ${s.from}` : cap(s.from)}${s.url ? ` (${s.url})` : ""}`));
     out.push("");
   }
 

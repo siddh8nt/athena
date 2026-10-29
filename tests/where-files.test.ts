@@ -69,7 +69,8 @@ describe("the brand file says where each line came from (§23.8 e)", () => {
 
   it("closes with the numbered sources in plain words, never a tool or an id", () => {
     expect(md).toContain("## Where this came from");
-    expect(md).toContain("1. Qloo's taste graph, 101 calls");
+    expect(md).toContain("1. The crowds: Qloo's taste graph, 101 calls");
+    expect(md).not.toContain("Still to hear from the founder");
     expect(md).not.toMatch(/web_search|qloo_insights|\bS1\b/);
   });
 });

@@ -331,7 +331,7 @@ export function planSheets(saved: { brief?: BrandBrief; journey?: Journey }, now
   for (const f of briefFacts(brief, (journey?.facts ?? []).map((f) => f.text))) add("About the brand", f);
   for (const a of team.answered ?? []) add(a.question, a.answer);
   add("Athena's plan", team.plan?.headline);
-  for (const q of team.plan?.open ?? []) add("Still to hear from you", q);
+  for (const q of team.plan?.open ?? []) add("Still open", q);
   add("What already sells", salesLine(team.sales));
   about.push([], ["Tabs in this file"]);
   for (const t of sheets) about.push([t.sheet.name, t.about]);

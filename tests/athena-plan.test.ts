@@ -148,7 +148,7 @@ describe("Athena's plan (§23.5 m)", () => {
     expect(first.length).toBeGreaterThan(0);
     for (const s of next) expect(s.depends).toEqual(first);
     expect(next[0].lines).toContainEqual({ kind: "when", agent: "scout", text: "Move on when Coastal cooks shows repeat buyers" });
-    expect(next[0].lines.find((l) => l.kind === "when")?.text).toMatch(/^Once step/);
+    expect(next[0].lines.find((l) => l.kind === "when")?.text).toMatch(/^Once (step \d+ holds|steps .+ hold)$/);
     expect(steps.filter((s) => s.phase === "win_first").every((s) => s.depends.join() === "1")).toBe(true);
   });
 

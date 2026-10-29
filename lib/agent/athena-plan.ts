@@ -48,6 +48,8 @@ const BUDGET_WORD: Record<Budget, string> = { low: "a small budget", mid: "a mid
 const MARK_NOTE: Partial<Record<Mark, string>> = { pitched: "pitched, waiting to hear", yes: "said yes", went: "went", no_reply: "no reply yet" };
 const fitting = (x: { crowds: Record<string, number> }) => Object.entries(x.crowds).filter(([, v]) => v >= FITS).map(([k]) => k);
 const range = (ns: number[]) => (ns.length === 1 ? `step ${ns[0]}` : ns.length === 2 ? `steps ${ns[0]} and ${ns[1]}` : `steps ${ns[0]}–${ns.at(-1)}`);
+/** "Once step 3 holds", "once steps 3 and 4 hold". */
+const holds = (ns: number[]) => `${range(ns)} ${ns.length === 1 ? "holds" : "hold"}`;
 
 /** The Navigator's saved read with each crowd as the verdict reads it (its id and tier). */
 const navOf = (s: SavedNav): NavRead => ({ ...s, crowds: s.crowds.map(({ id, ...c }) => ({ ...c, crowd: { id } as NavRead["crowds"][number]["crowd"] })) });
@@ -118,7 +120,7 @@ export function athenaPlan(p: AthenaPlanInput): GrowthPlan {
   const eventWhen = (e: PromoEvent, after?: number[]): PlanLine => ({
     kind: "when",
     agent: "promoter",
-    text: `${dayOf(e.date)}, per ${e.site}${e.applyBy ? `; apply by ${dayOf(e.applyBy)}` : ""}${after?.length ? `, if ${range(after)} hold by then` : ""}`,
+    text: `${dayOf(e.date)}, per ${e.site}${e.applyBy ? `; apply by ${dayOf(e.applyBy)}` : ""}${after?.length ? `, if ${holds(after)} by then` : ""}`,
     url: e.url,
   });
 
@@ -226,7 +228,7 @@ export function athenaPlan(p: AthenaPlanInput): GrowthPlan {
     const wait = c.tier === "win_first" ? [...after] : before.length ? before : [...after];
     const signal = c.tier === "win_first" ? undefined : scoutSignal(scout, c.id);
     const when: PlanLine[] =
-      c.tier === "win_first" || !before.length ? [{ kind: "when", text: "Start now" }] : [{ kind: "when", text: `Once ${range(before)} hold` }, ...(signal ? [{ kind: "when", agent: "scout", text: signal } as PlanLine] : [])];
+      c.tier === "win_first" || !before.length ? [{ kind: "when", text: "Start now" }] : [{ kind: "when", text: `Once ${holds(before)}` }, ...(signal ? [{ kind: "when", agent: "scout", text: signal } as PlanLine] : [])];
     // Who they are (the Analyst's reason), on the crowd's first step only.
     const who: PlanLine[] = c.why ? [{ kind: "who", agent: "analyst", text: c.why }] : [];
     const head = () => (mine.length ? [] : who);
@@ -311,9 +313,9 @@ export function athenaPlan(p: AthenaPlanInput): GrowthPlan {
         }),
       );
     } else if (where && mine.length) {
-      // The crowd's city goes on its first step.
+      // The crowd's city goes on its first step, unless the step already names that city (its shops' neighbourhoods).
       const s = steps[mine[0] - 1];
-      if (!s.lines.some((l) => l.kind === "where" && l.agent === "navigator")) s.lines.splice(s.lines.findIndex((l) => l.kind !== "who"), 0, where);
+      if (!s.lines.some((l) => l.kind === "where" && (l.agent === "navigator" || l.text.startsWith(`${city?.name}:`) || l.text === city?.name))) s.lines.splice(s.lines.findIndex((l) => l.kind !== "who"), 0, where);
     }
     // The Win first crowds start together, so the crowd after them waits for all of them.
     if (mine.length) before = c.tier === "win_first" && crowds[crowds.indexOf(c) - 1]?.tier === "win_first" ? [...before, ...mine] : mine;

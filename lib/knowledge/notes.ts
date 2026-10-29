@@ -8,6 +8,8 @@ import type { LiveFact } from "./types";
 export const THEMES = { min: 5, max: 10 } as const;
 /** The founder's own answers: not read from a source, so never regrouped. */
 const OWN = "the founder";
+/** A note no longer than `n`, cut at a word with "…" when over, never mid-word. */
+const clip = (s: string, n: number) => (s.length <= n ? s : `${s.slice(0, n).replace(/\s+\S*$/, "")}…`);
 
 /** A stable id from the raw facts a note traces to, so a deletion or an edit still applies after a re-run. */
 export function noteId(from: string[], salt = ""): string {
@@ -99,7 +101,7 @@ export function readSynth(j: unknown, raw: LiveFact[], entities: string[] = []):
     if (!theme || !Array.isArray(th.notes)) continue;
     for (const n of th.notes as unknown[]) {
       const nn = (n && typeof n === "object" ? n : {}) as { text?: unknown; facts?: unknown; about?: unknown };
-      const text = typeof nn.text === "string" ? nn.text.replace(/\s+/g, " ").trim().slice(0, 300) : "";
+      const text = typeof nn.text === "string" ? clip(nn.text.replace(/\s+/g, " ").trim(), 400) : "";
       const from = (Array.isArray(nn.facts) ? nn.facts : []).filter((id): id is string => typeof id === "string" && byId.has(id));
       if (!text || !from.length) continue;
       const src = from.map((id) => byId.get(id)!);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { GoalsBar, statusOf, type TeamLive, type View } from "./Team";
 import { inputById } from "@/lib/team/inputs";
 import { EXECUTIVE, SPECIALIST_IDS, nameOf, specialist, type AgentId, type SpecialistId } from "@/lib/agent/specialists";
@@ -52,13 +52,13 @@ function columns(w: Workflow): WorkflowStep[][] {
  * The workflow as a diagram (§23.2 step 8.5c): opening questions, the Analyst, the lanes, Athena's synthesis.
  * `compact` is the copy in the Athena tab's panel (§23.5 a4): the same live states, stacked to fit the narrow column.
  */
-export function WorkflowDiagram({ team, live, onOpen, onChat, compact }: { team: TeamState; live: TeamLive; onOpen: (id: View) => void; onChat: () => void; compact?: boolean }) {
+export function WorkflowDiagram({ team, live, onOpen, onChat, compact, starting }: { team: TeamState; live: TeamLive; onOpen: (id: View) => void; onChat: () => void; compact?: boolean; starting?: SpecialistId }) {
   const w = team.workflow;
   if (!w) return null;
   const opening: StepState = live.asks.some((a) => a.id === "goals" && !(a.id in live.answers)) ? "paused" : "done";
   const cols = columns(w);
   const node = (id: AgentId, state: StepState, title: string, sub: string, onClick: () => void, label = STATE_LABEL[state]) => (
-    <button key={id} type="button" className={`wf-node wf-${state}${label === "Ready" ? " wf-ready" : ""}`} onClick={onClick} aria-label={`${title}: ${label}`}>
+    <button key={id} type="button" className={`wf-node wf-${state}${label === "Ready" ? " wf-ready" : ""}${id === starting ? " wf-starting" : ""}`} onClick={onClick} aria-label={`${title}: ${label}`}>
       <span className="wf-state">
         {state === "running" ? <span className="spin" aria-hidden /> : <span className="wf-dot" aria-hidden />}
         {label}
@@ -368,6 +368,33 @@ function KnowledgeBase({ parts }: { parts: KbPart[] }) {
   );
 }
 
+/**
+ * A subagent has just started: before its page opens, the dashboard says so for a few seconds, what it is doing now and
+ * what it will give the brand, with a bar that fills until the page opens. Keyed by the subagent at its call, so a
+ * second start begins the bar again.
+ */
+function Starting({ id, live, ms, onOpen }: { id: SpecialistId; live: TeamLive; ms: number; onOpen: () => void }) {
+  const st = live.status[id];
+  const now = st?.state === "working" ? st.step : undefined;
+  return (
+    <section className="dash-start dash-starting-card" style={{ "--hold": `${ms}ms` } as CSSProperties} aria-live="polite">
+      <span className="eyebrow">Starting now</span>
+      <h2>The {nameOf(id)} is starting</h2>
+      <p className="muted">{specialist(id).gives}</p>
+      {now && <p className="small shimmer-text">{now}</p>}
+      <div className="dash-hold" aria-hidden>
+        <span />
+      </div>
+      <div className="dash-hold-row">
+        <small className="muted">Opening the {nameOf(id)}&apos;s page</small>
+        <button type="button" className="linkish small" onClick={onOpen}>
+          Open now
+        </button>
+      </div>
+    </section>
+  );
+}
+
 export function Dashboard(p: {
   live: TeamLive;
   team: TeamState;
@@ -390,6 +417,9 @@ export function Dashboard(p: {
   spine?: ReactNode;
   /** Nothing has started: the Start card shows, and only then. */
   start: boolean;
+  /** The subagent that has just started: shown starting here for `startingMs` before its page opens. */
+  starting?: SpecialistId;
+  startingMs?: number;
 }) {
   const { team, live } = p;
   const [tab, setTab] = useState<DashTab>(tabFromUrl);
@@ -424,6 +454,7 @@ export function Dashboard(p: {
   const overview = (
     <>
       {p.spine}
+      {p.starting && <Starting key={p.starting} id={p.starting} live={live} ms={p.startingMs ?? 6000} onOpen={() => p.onOpen(p.starting!)} />}
       {plan && <ThisWeek team={team} onRow={openRow} />}
       {p.start ? (
         <section className="dash-start">
@@ -444,7 +475,7 @@ export function Dashboard(p: {
             {w && <small className="muted">{w.by === "agent" ? "Planned by Athena" : "Athena's standard order"} · {w.steps.filter((s) => s.state === "done").length} of {w.steps.length} steps done</small>}
           </div>
           <GoalsBar goals={team.goals} />
-          {w ? <WorkflowDiagram team={team} live={live} onOpen={(id) => (id === "executive" ? pick("executive") : p.onOpen(id))} onChat={p.onChat} /> : <p className="small muted shimmer-text">Athena is planning the work for these goals</p>}
+          {w ? <WorkflowDiagram team={team} live={live} onOpen={(id) => (id === "executive" ? pick("executive") : p.onOpen(id))} onChat={p.onChat} starting={p.starting} /> : <p className="small muted shimmer-text">Athena is planning the work for these goals</p>}
           {w && <ExecLine team={team} live={live} onExec={p.onExec} onOpen={() => pick("executive")} />}
         </section>
       )}
@@ -468,7 +499,7 @@ export function Dashboard(p: {
             const st = step ? nodeState(step, live) : undefined;
             const line = tileLine(id, team, live, step);
             return (
-              <li key={id} className={`dash-agent${st ? ` dash-${st}` : ""}${out ? " dash-out" : ""}`}>
+              <li key={id} className={`dash-agent${st ? ` dash-${st}` : ""}${out ? " dash-out" : ""}${id === p.starting ? " dash-starting" : ""}`}>
                 <span className="team-badge" aria-hidden>{nameOf(id).slice(0, 1)}</span>
                 <div>
                   <strong>The {nameOf(id)}</strong>

@@ -2405,6 +2405,19 @@ button.nav-item:hover:not(:disabled) { background: rgba(var(--nav-tint), 0.045);
 .dash-agent.dash-out .team-badge { background: var(--sunken); color: var(--faint); }
 .dash-wait { color: var(--accent); font-weight: 600; }
 
+/* A subagent has just started: the dashboard says so for a few seconds, its bar filling until the page opens. */
+.dash-starting-card h2 { font-size: 30px; }
+.dash-hold { width: 100%; max-width: 420px; height: 3px; margin-top: 6px; border-radius: 3px; background: color-mix(in srgb, var(--emph) 16%, var(--line)); overflow: hidden; }
+.dash-hold > span { display: block; height: 100%; background: var(--emph); transform-origin: left; animation: hold-fill var(--hold, 6s) linear both; }
+.dash-hold-row { display: flex; align-items: baseline; gap: 14px; }
+@keyframes hold-fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.wf-starting, .dash-agent.dash-starting { animation: starting-glow 1.8s ease-in-out infinite; }
+@keyframes starting-glow {
+  0%, 100% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--emph) 14%, transparent); }
+  50% { box-shadow: 0 0 0 7px color-mix(in srgb, var(--emph) 26%, transparent); }
+}
+@media (prefers-reduced-motion: reduce) { .wf-starting, .dash-agent.dash-starting { animation: none; box-shadow: 0 0 0 4px color-mix(in srgb, var(--emph) 22%, transparent); } }
+
 /* The founder's answers, each editable in place. */
 .ans-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 8px; }
 .ans { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); }
@@ -3118,7 +3131,8 @@ a.mcp-new { text-decoration: none; display: inline-flex; align-items: center; }
 /* The hand-over to the dashboard: onboarding fades out, the dashboard fades in. Opacity only. */
 .ob-work.ob-leave { opacity: 0; transition: opacity 0.26s ease; pointer-events: none; }
 .journey.handover > .journey-main { animation: fade-in 0.42s ease both; }
-@media (prefers-reduced-motion: reduce) { .ob-work.ob-leave { transition: none; } .journey.handover > .journey-main { animation: none; } }
+.journey.page-leave > .journey-main { opacity: 0; transition: opacity 0.28s ease; pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { .ob-work.ob-leave, .journey.page-leave > .journey-main { transition: none; } .journey.handover > .journey-main { animation: none; } }
 
 /* Step 8.10 (e): one spine. Six stages, each done, now or to come; the current one says what's happening or needed.
    In full at the top of the dashboard; compact in the dark top bar, where only the current stage keeps its words. */

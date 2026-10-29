@@ -59,6 +59,8 @@ import { applyExternal, type External } from "@/lib/workspace/merge";
 
 /** What the chat shows while Athena decides what to do with a message. */
 const THINKING = "Thinking it through…";
+const STARTING_MS = 6000; // how long the dashboard shows a subagent starting before its page opens
+const FADE_MS = 280; // the dashboard's fade out, before that page fades in
 const STORE = "athena:journey:v1";
 type Saved = { brief: BrandBrief; msgs: Msg[]; turn: Turn; journey: JourneyState };
 
@@ -1158,14 +1160,45 @@ export function Journey() {
   useEffect(() => {
     if (tm.follow) moved.current = false;
   }, [tm.follow]);
+  // On the dashboard, the subagent that starts is shown starting there first, for a few seconds, before its page fades
+  // in: the founder sees the run move on rather than the page jump. A click of their own in that time keeps them put.
+  const [starting, setStarting] = useState<SpecialistId | undefined>();
+  const [fading, setFading] = useState(false);
+  const pageNow = useRef(page);
+  pageNow.current = page;
+  const followNow = useRef(tm.follow);
+  followNow.current = tm.follow;
   useEffect(() => {
     const fresh = workingIds.filter((id) => !seenWorking.current.has(id));
     seenWorking.current = new Set(workingIds);
     if (!fresh.length || onboarding || moved.current || !tm.follow || page === "executive") return;
     if (finishHere && !actedHere.current) return;
-    go(fresh[0], false, true);
+    if (page === "dashboard") setStarting(fresh[0]);
+    else go(fresh[0], false, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workingKey]);
+  useEffect(() => {
+    if (page !== "dashboard") setStarting(undefined);
+  }, [page]);
+  useEffect(() => {
+    if (!starting) return;
+    // The bar fills, the dashboard fades out, the subagent's page fades in.
+    let next: ReturnType<typeof setTimeout> | undefined;
+    const t = setTimeout(() => {
+      if (moved.current || !followNow.current || pageNow.current !== "dashboard") return setStarting(undefined);
+      setFading(true);
+      next = setTimeout(() => {
+        setFading(false);
+        setStarting(undefined);
+        if (moved.current || pageNow.current !== "dashboard") return;
+        setHandover(true);
+        go(starting, false, true);
+        setTimeout(() => setHandover(false), 600);
+      }, FADE_MS);
+    }, STARTING_MS);
+    return () => (clearTimeout(t), clearTimeout(next), setFading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [starting]);
   /** "Build your growth plan with Athena" (§23.2 step 8.5c): the chat opens on her opening question. */
   const startPlan = () => {
     setDrawer(true);
@@ -1191,7 +1224,7 @@ export function Journey() {
 
   return (
     <RefsProvider refs={refs} onOpen={(id) => go(id)}>
-    <div className={`journey ${drag ? "dragging" : ""} ${onboarding ? "ob-on" : ""}${handover ? " handover" : ""}`} {...dropZone}>
+    <div className={`journey ${drag ? "dragging" : ""} ${onboarding ? "ob-on" : ""}${handover ? " handover" : ""}${fading ? " page-leave" : ""}`} {...dropZone}>
       {/* Above the top bar, so every sheet and drawer opens just beneath it (§23.5 a3). */}
       {!onboarding && pausedAsk && pausedWho && !inlineAsk && <PausedBanner who={pausedWho} question={pausedAsk.question} more={openAsks.length - 1} onAnswer={answerPaused} />}
       <header className="topbar journey-top">
@@ -1241,6 +1274,8 @@ export function Journey() {
             executive={execEl}
             spine={<Spine stages={stages} onGo={spineGo} />}
             start={showStart({ ...spineIn, running: tm.live.running > 0 })}
+            starting={starting}
+            startingMs={STARTING_MS}
           />
         </DashboardPage>
       ) : page === "executive" ? (

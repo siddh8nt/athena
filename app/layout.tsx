@@ -10,9 +10,17 @@ import { DevPause } from "@/components/DevPause";
 const serif = Instrument_Serif({ subsets: ["latin"], weight: "400", style: ["normal", "italic"], variable: "--font-serif", display: "swap" });
 const label = Nunito_Sans({ subsets: ["latin"], weight: ["600", "700", "800"], variable: "--font-label", display: "swap" });
 
+const TITLE = "Athena: the taste-led growth agent for consumer brands";
+const DESCRIPTION =
+  "Athena reads what millions of people love to find the crowds already wired to love your brand, then puts you in their path: the right cities, shelves, partners and moments.";
+
+// Link previews (app/opengraph-image.tsx) need absolute URLs; PUBLIC_URL is unset at build, so the live service is the default.
 export const metadata: Metadata = {
-  title: "Athena",
-  description: "A growth agent for consumer brands. Athena finds the crowds most likely to love your brand and plans how to win them: where, with whom, and when.",
+  metadataBase: new URL(process.env.PUBLIC_URL || "https://athena-610996920841.us-central1.run.app"),
+  title: "Athena · the taste-led growth agent",
+  description: DESCRIPTION,
+  openGraph: { type: "website", siteName: "Athena", title: TITLE, description: DESCRIPTION },
+  twitter: { card: "summary_large_image", title: TITLE, description: DESCRIPTION },
 };
 
 // Dark unless the founder switched to light (§23.9 a), set before first paint so a page never flashes the other theme.

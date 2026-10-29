@@ -2,7 +2,7 @@
   "name": "athena",
   "version": "0.1.0",
   "private": true,
-  "description": "Athena: the taste-led growth agent for consumer startups",
+  "description": "Athena: the taste-led growth agent for consumer brands",
   "license": "MIT",
   "packageManager": "pnpm@12.10.1",
   "engines": {

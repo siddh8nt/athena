@@ -25,7 +25,9 @@ export default async function Share({ params }: { params: Promise<{ secret: stri
         {s.kind !== "replaced" && <h1>{s.brand}</h1>}
         <p className="small muted">
           {s.kind === "plan"
-            ? `A view-only copy of ${s.brand}'s plan from Athena. It follows the plan as it changes.`
+            ? s.sample
+              ? `A sample: the plan Athena built for ${s.brand} from public information, view only.`
+              : `A view-only copy of ${s.brand}'s plan from Athena. It follows the plan as it changes.`
             : s.kind === "waiting"
               ? "Athena is still writing this plan. This page fills in when it's ready."
               : "This link has been replaced. Ask whoever shared it for the new one."}

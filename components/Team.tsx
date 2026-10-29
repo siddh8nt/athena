@@ -2,11 +2,8 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { Asked } from "./Question";
-import { WithWithout, type AloneRequest } from "./WithWithout";
 import type { AgentEvent } from "@/lib/blocks/types";
 import type { Galaxy } from "@/lib/taste/galaxy";
-import type { BenchTask } from "@/lib/bench/lines";
-import type { AloneStop } from "@/lib/proof/alone";
 import { addEvent, lineDetail, lineText, settleRun, type Line } from "@/lib/agent/transcript";
 import { ATHENA, EXECUTIVE, isSpecialist, nameOf, panelIds, specialist, type AgentId, type SpecialistId } from "@/lib/agent/specialists";
 import { GOALS, pickGoals, teamFor, teamLine } from "@/lib/agent/goals";
@@ -1214,7 +1211,7 @@ function Transcript({ lines }: { lines: Line[] }) {
 const secs = (ms: number) => (ms < 1000 ? "under a second" : `${Math.round(ms / 1000)} s`);
 
 /** A finished run (§23.2 step 8c): its headline, time, Qloo calls and nodes added; then each result with its marks. */
-export function WorkView({ work, team, updating, alone, onMark, onHandoff, crowdId, onHooks, headed = true }: { work: Work; team: TeamState; updating: boolean; alone: AloneRequest; onMark: (item: WorkItem, m: Mark) => void; onHandoff?: (h: Handoff) => void; crowdId?: (name: string) => string | undefined; onHooks?: (crowdId: string, lines: PageLine[]) => void; headed?: boolean }) {
+export function WorkView({ work, team, updating, onMark, onHandoff, crowdId, onHooks, headed = true }: { work: Work; team: TeamState; updating: boolean; onMark: (item: WorkItem, m: Mark) => void; onHandoff?: (h: Handoff) => void; crowdId?: (name: string) => string | undefined; onHooks?: (crowdId: string, lines: PageLine[]) => void; headed?: boolean }) {
   const next = onHandoff && work.agent !== "navigator" ? fromWork(work, crowdId ?? (() => undefined)) : [];
   const nodes = nodesAdded(work);
   const marks = new Map(latest(team.outcomes).filter((o) => o.agent === work.agent).map((o) => [o.item, o.mark]));
@@ -1240,7 +1237,7 @@ export function WorkView({ work, team, updating, alone, onMark, onHandoff, crowd
       ) : work.results.length > 0 && (
         <ol className="spec-results">
           {work.results.map((r) => (
-            <Result key={r.id} work={work} item={r} mark={marks.get(r.id)} team={team} alone={alone} onMark={(m) => onMark(r, m)} onHandoff={onHandoff} />
+            <Result key={r.id} work={work} item={r} mark={marks.get(r.id)} onMark={(m) => onMark(r, m)} onHandoff={onHandoff} />
           ))}
         </ol>
       )}
@@ -1286,7 +1283,7 @@ function DraftText({ detail }: { detail: string }) {
   );
 }
 
-function Result({ work, item, mark, team, alone, onMark, onHandoff }: { work: Work; item: WorkItem; mark?: Mark; team: TeamState; alone: AloneRequest; onMark: (m: Mark) => void; onHandoff?: (h: Handoff) => void }) {
+function Result({ work, item, mark, onMark, onHandoff }: { work: Work; item: WorkItem; mark?: Mark; onMark: (m: Mark) => void; onHandoff?: (h: Handoff) => void }) {
   const [know, setKnow] = useState(false);
   const cited = item.sources.map((id) => work.sources.find((s) => s.id === id)).filter((s): s is Work["sources"][number] => !!s);
   const calls = new Set([...item.callIds, ...cited.flatMap((s) => s.callIds)]).size;
@@ -1313,31 +1310,13 @@ function Result({ work, item, mark, team, alone, onMark, onHandoff }: { work: Wo
         </button>
       </div>
       {onHandoff && item.kind === "city" && item.ref && <Handoffs list={fromCity({ id: item.ref, name: item.name })} onHandoff={onHandoff} />}
-      {know && <HowWeKnow work={work} item={item} cited={cited} calls={calls} team={team} alone={alone} />}
+      {know && <HowWeKnow work={work} cited={cited} calls={calls} />}
     </li>
   );
 }
 
-/** With / Without per result kind: the question Gemini alone answers, and the Bench task where one measured it. */
-const ALONE: Record<string, { stop: AloneStop; question: string; bench?: BenchTask }> = {
-  crowd: { stop: "crowd", question: "Who are this product's customers, and what do they love?" },
-  city: { stop: "where", question: "In which of the 25 largest US metros will this product find the most independent shops to sell it, per resident?", bench: "t1" },
-  retailer: { stop: "retailers", question: "Which of these retailers are most likely to carry this product?", bench: "t2" },
-  partner: { stop: "partners", question: "Which brands and podcasts should this brand partner with?" },
-  podcast: { stop: "partners", question: "Which brands and podcasts should this brand partner with?" },
-  message: { stop: "message", question: "How should this brand talk to its customers: which themes, and which shows, films, artists or books to reference?" },
-  mood: { stop: "message", question: "How should this brand talk to its customers: which themes, and which shows, films, artists or books to reference?" },
-  event: { stop: "moments", question: "Which dated events in this city in the next six months should this brand show up at?" },
-  creator: { stop: "online", question: "Online, which creators and podcasts do this product's customers follow, and what should it target in ads?" },
-  audience: { stop: "online", question: "Online, which creators and podcasts do this product's customers follow, and what should it target in ads?" },
-};
-
-/** "How we know" (§23.2 step 8d): the tool calls behind the result, then the same question to Gemini alone, with the Bench line. */
-function HowWeKnow({ work, item, cited, calls, team, alone }: { work: Work; item: WorkItem; cited: Work["sources"]; calls: number; team: TeamState; alone: AloneRequest }) {
-  const a = ALONE[item.kind];
-  const peers = work.results.filter((r) => ALONE[r.kind]?.stop === a?.stop);
-  const metroId = team.works.navigator?.shared?.city?.id;
-  const ok = a && (a.stop !== "moments" || metroId) && peers.length > 1;
+/** "How we know" (§23.2 step 8d): the tool calls behind the result, and how many Qloo calls they took. */
+function HowWeKnow({ work, cited, calls }: { work: Work; cited: Work["sources"]; calls: number }) {
   return (
     <div className="spec-know-body small">
       {cited.length ? (
@@ -1352,16 +1331,6 @@ function HowWeKnow({ work, item, cited, calls, team, alone }: { work: Work; item
         <p className="muted">From the {nameOf(work.agent)}&apos;s run as a whole, read from Qloo.</p>
       )}
       {calls > 0 && <p className="muted">{calls} Qloo call{calls === 1 ? "" : "s"} behind it.</p>}
-      {ok && (
-        <WithWithout
-          stop={a.stop}
-          question={a.question}
-          athena={peers.map((r) => ({ name: r.name, why: r.why, ...(r.ref ? { id: r.ref } : {}) }))}
-          request={{ ...alone, ...(a.stop === "retailers" ? { candidates: peers.map((r) => ({ id: r.ref ?? r.id, label: r.name })) } : {}), ...(a.stop === "moments" ? { metroId } : {}) }}
-          bench={a.bench}
-          ranked={!!a.bench}
-        />
-      )}
     </div>
   );
 }

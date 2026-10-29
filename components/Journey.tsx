@@ -9,7 +9,6 @@ import { ordinal } from "./Blocks";
 import { Question, QuestionTray, type TrayItem } from "./Question";
 import { Galaxy } from "./Galaxy";
 import { CrowdGeography } from "./CrowdGeography";
-import { WithWithout, type AloneRequest } from "./WithWithout";
 import { Onboard } from "./Onboard";
 import { Fits, When, tiersFor } from "./Fits";
 import { fromCity, fromCrowd, type Handoff } from "@/lib/agent/handoffs";
@@ -23,7 +22,6 @@ import type { Asked } from "./Question";
 import type { AgentEvent } from "@/lib/blocks/types";
 import type { LiveFact } from "@/lib/knowledge/types";
 import { GUESS, OPENING, type Turn } from "@/lib/brief/conversation";
-import { briefToInput } from "@/lib/brief/to-input";
 import { missingRequired, type BrandBrief } from "@/lib/brief/types";
 import { allNodes } from "@/lib/graph/build";
 import { POINTER, PREVIEW_AT, applyEdit, applyFiles, fillOther, graphState, previewLine, previewOf, rerun, undo, type EditQuestion, type GraphState, type Op } from "@/lib/graph/edit";
@@ -334,8 +332,7 @@ export function Journey() {
   const [asks] = useState<Asked[]>([]);
   const [answers, setAnswers] = useState<Record<string, string>>({});
 
-  // With / Without (§13.2): the crowds' question also goes to Gemini alone, from the same product description.
-  const alone: AloneRequest = { brand: brief.name?.value || "The brand", product: String(briefToInput(brief).description ?? "").slice(0, 400) };
+  const brandName = brief.name?.value || "The brand";
 
   // Athena and her six specialists (§23.2 step 8): the Analyst first, then goals from the Brand Graph, worked by the team.
   // The growth question is asked in onboarding's transcript too (§23.9 d), so onboarding lasts until it's answered.
@@ -878,7 +875,7 @@ export function Journey() {
     <ExecutivePlan
       team={team}
       live={tm.live}
-      brand={alone.brand}
+      brand={brandName}
       budget={j.inputs?.input_budget || undefined}
       running={tm.live.running > 0}
       onStart={() => void tm.startExec()}
@@ -1057,11 +1054,10 @@ export function Journey() {
           onHandoff={tm.handoff}
           onAsk={askAbout}
           probing={j.crowds ? analystStep : undefined}
-          alone={alone}
         />
       </div>
     ) : (
-      <SpecialistPanel id={id} j={j} team={team} live={tm.live} alone={alone} onMark={tm.mark} onHandoff={tm.handoff} onHooks={tm.hooks} crowdId={crowdIdOf} onPage={onPage} />
+      <SpecialistPanel id={id} j={j} team={team} live={tm.live} onMark={tm.mark} onHandoff={tm.handoff} onHooks={tm.hooks} crowdId={crowdIdOf} onPage={onPage} />
     );
 
   // The Brand Knowledge Base on the dashboard (§23.2 step 8.5b): the Brand Graph with its stale flags, sources and
@@ -1360,7 +1356,7 @@ function Dock(props: { j: JourneyState; turn: Turn; busy: boolean; researching: 
  * One specialist's panel (§23.2 step 8.4f): only what it owns (the Navigator the crowds' cities, the Promoter the
  * calendar), its results with their handoffs, or the one-click start when it hasn't run.
  */
-function SpecialistPanel({ id, j, team, live, alone, onMark, onHandoff, onHooks, crowdId, onPage }: { id: SpecialistId; j: JourneyState; team: TeamState; live: TeamLive; alone: AloneRequest; onMark: (agent: SpecialistId, item: WorkItem, m: Mark) => void; onHandoff: (h: Handoff) => void; onHooks: (crowdId: string, lines: PageLine[]) => void; crowdId: (name: string) => string | undefined; onPage: boolean }) {
+function SpecialistPanel({ id, j, team, live, onMark, onHandoff, onHooks, crowdId, onPage }: { id: SpecialistId; j: JourneyState; team: TeamState; live: TeamLive; onMark: (agent: SpecialistId, item: WorkItem, m: Mark) => void; onHandoff: (h: Handoff) => void; onHooks: (crowdId: string, lines: PageLine[]) => void; crowdId: (name: string) => string | undefined; onPage: boolean }) {
   const [lit, setLit] = useState<number | null>(null);
   const crowds = j.crowds?.crowds ?? [];
   const calendar = j.fits?.calendar;
@@ -1382,7 +1378,7 @@ function SpecialistPanel({ id, j, team, live, alone, onMark, onHandoff, onHooks,
       {step && (
         <RunProgress who={`The ${nameOf(id)}`} current={step} steps={[]} />
       )}
-      {w && <WorkView work={w} team={team} updating={!!step} alone={alone} onMark={(item, m) => onMark(id, item, m)} onHandoff={onHandoff} crowdId={crowdId} onHooks={onHooks} headed={!onPage} />}
+      {w && <WorkView work={w} team={team} updating={!!step} onMark={(item, m) => onMark(id, item, m)} onHandoff={onHandoff} crowdId={crowdId} onHooks={onHooks} headed={!onPage} />}
       {!w && !step && start && <Handoffs list={[start]} onHandoff={onHandoff} />}
     </>
   );
@@ -1418,7 +1414,7 @@ type FitsView = { steps: AgentEvent[]; running: boolean; asks: Asked[]; answers:
  * as the brand's most valuable fits (Win first, Win next, Watch, as the Analyst set them), each top fit with its
  * strategy, the linked map and the crowd cards. "Ask Athena about this" stays on every Galaxy node.
  */
-function AnalystResults({ j, step, measured, forming, fits, onAsk, probing, alone, onHandoff }: { j: JourneyState; step?: string; measured: boolean; forming?: GalaxyData; fits: FitsView; onAsk: (id: string, name: string) => void; probing?: string; alone: AloneRequest; onHandoff: (h: Handoff) => void }) {
+function AnalystResults({ j, step, measured, forming, fits, onAsk, probing, onHandoff }: { j: JourneyState; step?: string; measured: boolean; forming?: GalaxyData; fits: FitsView; onAsk: (id: string, name: string) => void; probing?: string; onHandoff: (h: Handoff) => void }) {
   const r = j.crowds;
   // Linked views (§9.26): the crowd under the pointer in the Galaxy, the map or the cards lights up in all three.
   const [lit, setLit] = useState<number | null>(null);
@@ -1479,7 +1475,6 @@ function AnalystResults({ j, step, measured, forming, fits, onAsk, probing, alon
           ))}
         </div>
       )}
-      <WithWithout stop="crowd" question="Who are this product's customers, and what do they love?" athena={r.crowds.map((c) => ({ name: c.name, why: c.loves.slice(0, 6).map((l) => l.name).join(", ") }))} request={alone} />
       <p className="small muted">{SKEW_LABEL}</p>
     </section>
   );

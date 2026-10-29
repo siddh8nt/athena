@@ -54,7 +54,7 @@ export function buildServer(meta: LinkMeta): McpServer {
     { name: "Athena", version: "1.0.0" },
     {
       instructions:
-        "Athena is a growth strategist for a consumer brand. These resources are the founder's live workspace — their brand, the crowds Athena found, Athena's growth plan, and the outreach plan with where each contact stands. Read them to answer the founder about what to do next and what changed. Use mark_task, answer_question and add_fact to record what the founder tells you; use ask_athena for anything that needs Athena's own reasoning.",
+        "Athena is the taste-led growth agent for consumer brands. These resources are one founder's live workspace — their brand, the crowds Athena found, Athena's growth plan, and the outreach plan with where each contact stands. Read them to answer the founder about what to do next and what changed. Use mark_task, answer_question and add_fact to record what the founder tells you; use ask_athena for anything that needs Athena's own reasoning.",
     },
   );
 

@@ -691,18 +691,6 @@ a.button.big { padding: 11px 20px; font-size: 15px; font-weight: 600; }
 .crowd h4 { display: flex; align-items: center; gap: 8px; }
 @media (prefers-reduced-motion: reduce) { .gnode, .hulls path { transition: none; } }
 
-/* With / Without on every stop (§13.2): the stop's answer beside Gemini alone; the Bench line under measured stops. */
-.ww { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 12px; }
-.ww-flip { margin-bottom: 8px; }
-.ww-split { margin-bottom: 8px; }
-.ww-q { margin: 0 0 8px; }
-.ww-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-.ww-cols h4 { margin: 0 0 4px; font-size: 14px; }
-.ww-list li { padding: 5px 0; font-size: 13px; }
-.ww-both { color: var(--pick); }
-.bench-line { margin: 6px 0 0; }
-@media (max-width: 760px) { .ww-cols { grid-template-columns: 1fr; } }
-
 /* Taste axes and sliders (§9.27) */
 .taste-axes { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; margin: 12px 0; background: var(--surface); }
 .taste-axes header h4 { margin: 0 0 4px; }
@@ -1458,7 +1446,7 @@ input[type="checkbox"] { accent-color: var(--accent); }
 .galaxy-card { padding: 12px 14px; }
 
 /* Inner dividers are the softer line. */
-.list > li, .rank-list li, .spec-result, .bg-group li, .kb-files > li, .kb-facts > li, .galaxy-list li, .steps li, .card-lines div, .position, .doc th, .doc td, .unknowns div, .ww, .strategy, .team-dash, .ob-kept-files { border-color: var(--line-soft); }
+.list > li, .rank-list li, .spec-result, .bg-group li, .kb-files > li, .kb-facts > li, .galaxy-list li, .steps li, .card-lines div, .position, .doc th, .doc td, .unknowns div, .strategy, .team-dash, .ob-kept-files { border-color: var(--line-soft); }
 
 /* Chat: Athena on raised paper, you on the sunken tone. Reading surfaces never take the accent tint. */
 .msg { border-radius: 16px; padding: 10px 14px; line-height: 1.55; }

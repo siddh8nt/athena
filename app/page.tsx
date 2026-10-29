@@ -3,21 +3,29 @@ import Link from "next/link";
 import s from "./landing.module.css";
 import HeroGlow from "./HeroGlow";
 import LandingNav from "./LandingNav";
+import FinishedPlanLink from "./FinishedPlanLink";
+import { DEMO_SECRET } from "@/lib/workspace/demo";
 
 // The landing page: a headline, one line, one way in (/plan), and a quiet picture of Athena at work.
 // The run shown is a fictional example brand, written by hand: no Qloo data.
 
-// The team panel as the product shows it: Athena and the Analyst first, then the specialists the chosen goal needs.
+// The team panel as the product shows it: Athena and the Analyst first, then the subagents the chosen goals need.
+// These two goals need all six.
+const GOALS = ["Launch in Portland", "Borrow a crowd through partners"];
 const TEAM = [
   { name: "Athena", role: "Leads the team", state: "done" },
-  { name: "Analyst", role: "Fingerprint, crowds and rivals", state: "done" },
+  { name: "Analyst", role: "Crowds and rivals", state: "done" },
+  { name: "Scout", role: "Each crowd's words and look", state: "done" },
   { name: "Navigator", role: "Cities and neighbourhoods", state: "working" },
   { name: "Rep", role: "Needs a city first", state: "waiting" },
+  { name: "Matchmaker", role: "Creators, brands, podcasts", state: "working" },
+  { name: "Promoter", role: "Needs a city first", state: "waiting" },
 ] as const;
 
 const RUN = [
   { what: "Read the website", found: "14 pages, 3 product lines, sold in 6 shops" },
   { what: "Looked it up in the taste graph", found: "4 crowds share what its customers love" },
+  { what: "Home cooks looked soft, so it tested them", found: "Measured 3 more brands; the crowd held" },
   { what: "Ranked the crowds", found: "Win first: design-minded home cooks" },
   { what: "Checked reach city by city", found: "Portland and Austin lead on fit and reach" },
   { what: "Picking the neighbourhoods", found: "" },
@@ -47,7 +55,7 @@ export default function Landing() {
 
       <main className={s.main}>
         <HeroGlow className={s.hero}>
-          <p className={s.pill}>A growth agent for consumer brands</p>
+          <p className={s.pill}>The taste-led growth agent for consumer brands</p>
           <h1 className={s.title} aria-label="Stop selling to everyone.">
             {/* Each word rises out of its own line mask on entry; the last two never part. */}
             <span aria-hidden>
@@ -60,11 +68,14 @@ export default function Landing() {
             </span>
           </h1>
           <p className={s.sub}>
-            Your best customers already exist. You just haven&apos;t met them yet. Athena reads the taste of millions of people to spot the crowds
-            already wired to love your brand. Then it puts you in their path: the right cities, the right shelves, the right collabs, at the right
-            moment.
+            Most AI knows only what&apos;s been written about your brand. Athena reads what millions of people love, from food and music to
+            places and brands, to find the crowds already wired to love yours. Then it puts you in their path: the right cities, shelves,
+            collabs and moments.
           </p>
-          <Link href="/plan?new=1" className={s.cta}>Get started <span aria-hidden>→</span></Link>
+          <div className={s.ctaRow}>
+            <Link href="/plan?new=1" className={s.cta}>Get started <span aria-hidden>→</span></Link>
+            <FinishedPlanLink href={`/share/${DEMO_SECRET}`} />
+          </div>
         </HeroGlow>
 
         {/* On the first screen only the top of the product picture shows under the hero; its title opens above it as
@@ -84,7 +95,7 @@ export default function Landing() {
           <figure className={s.shot} aria-label="Athena at work on an example brand">
             <div className={s.panes}>
               <div className={s.plan}>
-              <p className={s.goal}><span>Goal</span>Launch in Portland</p>
+              <p className={s.goal}><span>Goals</span>{GOALS.map((g) => <i key={g}>{g}</i>)}</p>
               <ul>
                 {TEAM.map((a) => (
                   <li key={a.name} className={s[a.state]}>
@@ -130,7 +141,8 @@ export default function Landing() {
           <ol className={s.points}>
             <li><em>i.</em><strong>It reads your brand</strong><span>Your site, decks and spreadsheets become one Brand Graph. Every fact keeps its source, and any of it is yours to edit.</span></li>
             <li><em>ii.</em><strong>It ranks who to win</strong><span>The Analyst measures the crowds who share your customers&apos; taste and ranks them: win first, win next, watch.</span></li>
-            <li><em>iii.</em><strong>A team works your goals</strong><span>Pick a goal and Athena hands it to her specialists: the cities, shops, partners and events to go after, with lead times.</span></li>
+            <li><em>iii.</em><strong>A team works your goals</strong><span>Pick a goal and Athena hands it to her subagents: the cities, shops, partners and events to go after, with lead times.</span></li>
+            <li><em>iv.</em><strong>It does the work, and travels</strong><span>Execute Plan lines up every step, finds published contacts for what&apos;s due now and drafts the emails, for you to send. Connect your own AI tools and they know your crowd too.</span></li>
           </ol>
         </section>
 
@@ -143,7 +155,7 @@ export default function Landing() {
           <div className={s.footGrid}>
             <div className={s.footBrand}>
               <Link href="/" className={s.mark} aria-label="Athena"><span className={s.dots} aria-hidden><i /><i /></span>Athena</Link>
-              <p>A growth agent for consumer brands. It finds the crowds already wired to love you, and puts you in their path.</p>
+              <p>The taste-led growth agent for consumer brands. Meta gave brands lookalike audiences; Athena gives them lookalike places, partners and moments.</p>
             </div>
             <nav aria-label="Footer">
               <h3>On this page</h3>

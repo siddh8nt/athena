@@ -12,7 +12,7 @@ import { DEMO_WS } from "./demo";
 // one. The Fishwife demo's fixed link opens the seeded sample here too, so a judge can see the team's view.
 
 export type Shared =
-  | { kind: "plan"; brand: string; budget?: string; team: TeamState }
+  | { kind: "plan"; brand: string; budget?: string; team: TeamState; sample?: boolean }
   | { kind: "waiting"; brand: string }
   | { kind: "replaced" };
 
@@ -28,5 +28,5 @@ export async function sharedPlan(secret: string): Promise<Shared> {
   // The undo copy is the founder's own: nothing on the team's page reads it.
   const { previous: _undo, ...rest } = team;
   const budget = saved?.journey?.inputs?.input_budget || undefined;
-  return { kind: "plan", brand, ...(budget ? { budget } : {}), team: rest };
+  return { kind: "plan", brand, ...(budget ? { budget } : {}), team: rest, ...(meta.ws === DEMO_WS ? { sample: true } : {}) };
 }

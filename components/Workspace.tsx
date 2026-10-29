@@ -219,7 +219,7 @@ export function Workspace({ slug, brands, custom: fromJourney, onBack }: { slug:
       <header className="topbar">
         <div className="brandmark">
           <Link href="/" className="wordmark-link"><strong>Athena</strong></Link>
-          <span className="muted">the taste-led growth agent for consumer startups</span>
+          <span className="muted">the taste-led growth agent for consumer brands</span>
         </div>
         <nav className={`switcher ${tryActive === "switch" ? "pulse-target" : ""}`} aria-label="Demo brands">
           {brands.map((b) => (

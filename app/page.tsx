@@ -68,7 +68,7 @@ export default function Landing() {
             </span>
           </h1>
           <p className={s.sub}>
-            Most AI knows only what&apos;s been written about your brand. Athena reads what millions of people love, from food and music to
+            Most AI agents know only what&apos;s been written about your brand. Athena reads what millions of people love, from food and music to
             places and brands, to find the crowds already wired to love yours. Then it puts you in their path: the right cities, shelves,
             collabs and moments.
           </p>

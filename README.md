@@ -2,7 +2,7 @@
 
 **The taste-led growth agent for consumer brands.**
 
-Most AI knows only what's been written about a brand. Athena reads what millions of people love, across food, music, places, shows and brands, through Qloo's taste graph. From that it finds the crowds already wired to love a brand, then puts the brand in their path: the cities, shelves, partners and moments to go after, in order, with the outreach drafted.
+Most AI agents know only what's been written about a brand. Athena reads what millions of people love, across food, music, places, shows and brands, through Qloo's taste graph. From that it finds the crowds already wired to love a brand, then puts the brand in their path: the cities, shelves, partners and moments to go after, in order, with the outreach drafted.
 
 Meta gave brands lookalike audiences. Athena gives them lookalike places, partners and moments.
 

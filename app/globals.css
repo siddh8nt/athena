@@ -1002,6 +1002,17 @@ a.button.big { padding: 11px 20px; font-size: 15px; font-weight: 600; }
 .ob-file-note .linkish { margin-left: 6px; font-size: 11px; }
 ::view-transition-group(ob-box) { animation-duration: 0.5s; animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1); }
 
+/* Page to page (app/template.tsx, components/PageTransition.tsx): the page you leave fades at once, the next rises in a
+   beat later, so the two never compete. Clicks pass through while it plays; reduced motion swaps pages instantly. */
+::view-transition { pointer-events: none; }
+::view-transition-old(.page-out) { animation: 140ms ease-in both page-out; }
+::view-transition-new(.page-in) { animation: 300ms cubic-bezier(0.2, 0.8, 0.2, 1) 80ms both page-in; }
+@keyframes page-out { to { opacity: 0; } }
+@keyframes page-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(.page-out), ::view-transition-new(.page-in) { animation-duration: 0s !important; animation-delay: 0s !important; }
+}
+
 /* The workspace: the team on the left (Athena now, the specialists in step 8f), the transcript, the panel. */
 .ob-work { display: grid; grid-template-columns: 220px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; grid-template-areas: "team centre" "team dock"; }
 .ob-work.ob-has-panel { grid-template-columns: 220px minmax(0, 1fr) var(--panel-col, minmax(400px, 46%)); grid-template-areas: "team centre panel" "team dock panel"; }
@@ -2912,6 +2923,9 @@ a.mcp-new { text-decoration: none; display: inline-flex; align-items: center; }
 .share-main { max-width: 1180px; margin: 0 auto; padding: 40px 16px 80px; display: flex; flex-direction: column; gap: 24px; }
 .share-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: -8px; }
 .share-head { display: flex; flex-direction: column; gap: 8px; }
+.share-body { display: flex; flex-direction: column; gap: 24px; min-width: 0; }
+.share-head .shape-bar.shape-title { height: 40px; }
+.shape-bar.shape-line { width: min(520px, 90%); height: 14px; border-radius: 6px; }
 .share-head h1 { font-family: var(--font-display); font-weight: 400; font-size: 40px; letter-spacing: -0.01em; line-height: 1.1; margin: 0; }
 
 /* Phones (§23.7 d): every tap target at least 44 px tall. A link inside a sentence keeps its line. */

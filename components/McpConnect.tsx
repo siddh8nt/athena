@@ -430,8 +430,8 @@ export function SaveButton({ file, save, onSaved, disabled }: { file: string; sa
     onSaved?.();
   };
   return (
-    <button type="button" className="mcp-new" onClick={click} disabled={busy || disabled}>
-      Download {file}
+    <button type="button" className="mcp-new" onClick={click} disabled={busy || disabled} aria-busy={busy}>
+      {busy ? `Preparing ${file}…` : `Download ${file}`}
     </button>
   );
 }

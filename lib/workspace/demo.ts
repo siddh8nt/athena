@@ -1,6 +1,6 @@
 import "server-only";
 import type { LinkMeta } from "./links";
-import { readSnapshot } from "./server";
+import { readSnapshot, type Snapshot } from "./server";
 
 // The judges' demo link (PRD §23.6 e): one precomputed Fishwife workspace on the server, opened by one fixed,
 // read-only connect link that's the same on every deploy, so the write-up and video can print it. The link is public
@@ -20,9 +20,26 @@ export const DEMO_LINK: LinkMeta = { ws: DEMO_WS, scope: "read", at: 0, label: "
 /** A workspace id no browser may save over or mint a link for: the demo's (and any later "demo-" one). */
 export const reserved = (ws: string) => ws.startsWith("demo-");
 
+// Nothing a browser or an MCP client does writes to the demo, so one read serves every visitor for a while: the landing
+// link, the share page and the sample's files open without a store round trip. A reseed shows within the TTL; a miss
+// isn't kept, so the line appears as soon as the seed lands.
+const DEMO_TTL_MS = 10 * 60_000;
+let demo: { at: number; snap: Promise<Snapshot | undefined> } | undefined;
+
+/** The demo workspace's snapshot, read once per DEMO_TTL_MS. */
+export function readDemo(): Promise<Snapshot | undefined> {
+  if (!demo || Date.now() - demo.at > DEMO_TTL_MS) {
+    const snap = readSnapshot(DEMO_WS);
+    const held = (demo = { at: Date.now(), snap });
+    const drop = () => demo === held && (demo = undefined);
+    snap.then((v) => v || drop(), drop);
+  }
+  return demo.snap;
+}
+
 /** Whether the demo workspace has been seeded, so /plan shows its line only when the link would answer. */
 export async function demoReady(): Promise<boolean> {
-  const snap = await readSnapshot(DEMO_WS);
+  const snap = await readDemo();
   const saved = snap?.saved as { journey?: { team?: { plan?: unknown } } } | undefined;
   return !!saved?.journey?.team?.plan;
 }

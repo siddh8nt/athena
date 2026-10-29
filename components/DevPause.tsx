@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react";
 import { installPause, type Pause } from "@/lib/pause";
 
-// The developer's play/pause (dev server only; the layout leaves it out of production builds). One button, bottom
-// right on every page (Next's own dev badge holds bottom left): pause holds the whole run in place, play carries on from there (lib/pause.ts).
+// The developer's play/pause (dev server only; the layout leaves it out of production builds). One button on every
+// page, bottom left just above Next's own dev badge, clear of the chat's Send at bottom right: pause holds the whole
+// run in place, play carries on from there (lib/pause.ts).
 
 const w = () => window as Window & { __athenaPause?: Pause };
 
@@ -15,7 +16,7 @@ function pauseControl(): Pause {
 // While paused, CSS animations stop too, all but the button's own.
 const CSS = `
 html[data-dev-paused] *:not(.dev-pause), html[data-dev-paused] *::before, html[data-dev-paused] *::after { animation-play-state: paused !important; }
-.dev-pause { position: fixed; right: 14px; bottom: 14px; z-index: 2147483000; display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 12px 0 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); font-family: var(--font-caps, var(--font-label)), sans-serif; font-weight: 700; font-size: 11.5px; letter-spacing: 0.06em; text-transform: uppercase; box-shadow: var(--overlay, 0 8px 24px rgba(0, 0, 0, 0.2)); cursor: pointer; opacity: 0.55; transition: opacity 120ms ease; }
+.dev-pause { position: fixed; left: 20px; bottom: 64px; z-index: 2147483000; display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 12px 0 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); font-family: var(--font-caps, var(--font-label)), sans-serif; font-weight: 700; font-size: 11.5px; letter-spacing: 0.06em; text-transform: uppercase; box-shadow: var(--overlay, 0 8px 24px rgba(0, 0, 0, 0.2)); cursor: pointer; opacity: 0.55; transition: opacity 120ms ease; }
 .dev-pause:hover, .dev-pause:focus-visible, .dev-pause[aria-pressed="true"] { opacity: 1; }
 .dev-pause[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
 .dev-pause svg { width: 12px; height: 12px; fill: currentColor; }

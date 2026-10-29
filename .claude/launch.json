@@ -4,8 +4,19 @@
     {
       "name": "athena-dev",
       "runtimeExecutable": "corepack",
-      "runtimeArgs": ["pnpm", "dev"],
+      "runtimeArgs": [
+        "pnpm",
+        "dev"
+      ],
       "port": 3000
+    },
+    {
+      "name": "athena-free",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "scripts/dev-free.mjs"
+      ],
+      "port": 3001
     }
   ]
 }

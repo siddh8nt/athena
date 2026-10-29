@@ -125,6 +125,6 @@ export function getStore(): Store {
   const project = process.env.GOOGLE_CLOUD_PROJECT;
   // ATHENA_STORE=firestore points a local job (the demo seed, §23.6 e) at the production store.
   const fire = process.env.ATHENA_STORE === "firestore" || (process.env.NODE_ENV === "production" && process.env.ATHENA_STORE !== "file");
-  shared = fire && project ? new FirestoreStore(project) : new FileStore();
+  shared = fire && project ? new FirestoreStore(project) : new FileStore(process.env.ATHENA_STORE_DIR || undefined);
   return shared;
 }

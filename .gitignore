@@ -6,6 +6,7 @@
 # deps and build
 node_modules/
 .next/
+/.next-free/
 out/
 build/
 coverage/

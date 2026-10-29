@@ -2927,6 +2927,9 @@ a.mcp-new { text-decoration: none; display: inline-flex; align-items: center; }
 .share-head .shape-bar.shape-title { height: 40px; }
 .shape-bar.shape-line { width: min(520px, 90%); height: 14px; border-radius: 6px; }
 .share-head h1 { font-family: var(--font-display); font-weight: 400; font-size: 40px; letter-spacing: -0.01em; line-height: 1.1; margin: 0; }
+/* Nothing runs on a shared plan, so later steps and empty counts read at full strength, not as stale or loading. */
+.share-body .xp-waiting .xp-step-head h3, .share-body .xp-waiting .xp-list { opacity: 1; }
+.share-body .xp-pipe button:disabled { color: var(--fg); border-color: var(--line); }
 
 /* Phones (§23.7 d): every tap target at least 44 px tall. A link inside a sentence keeps its line. */
 @media (max-width: 640px) {

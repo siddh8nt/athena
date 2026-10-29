@@ -5,7 +5,7 @@ This is a **guide** for a new Claude Code session on the founder's machine, in t
 - **The spec is `ATHENA PRD.md` §23.** Where this file and the PRD disagree, the PRD wins.
 - **Branch:** `complete-rework`, **pushed** to `origin/complete-rework` up to `4dfc1c3` (28 Oct). One commit after it (Take your plan with you, see section 2) is committed locally, **not pushed**. Work only on this branch, and don't open a PR or merge to `main`.
 - **Live:** Cloud Run revision `athena-00006-hkb`: the `4dfc1c3` build (pushed) with `GEMINI_FLASH_MODEL=gemini-3.5-flash` (28 Oct). It lacks the mirror fix in section 2 until the founder says to redeploy. Service URL https://athena-610996920841.us-central1.run.app (the older https://athena-zgaqinafna-uc.a.run.app also works).
-- **The session runs locally** with the founder's real keys in `.env`, so live checks run here. **The API budget is low:** make no paid calls (live runs, Record, run buttons) without the founder's yes. Use dev mode's Replay.
+- **The session runs locally** with the founder's real keys in `.env`, so live checks run here. **The API budget is low:** make no paid calls (live runs, run buttons) without the founder's yes. Dev mode is gone (29 Oct, founder's ask): every local run is live, with real Qloo and Gemini calls.
 
 ---
 
@@ -55,10 +55,7 @@ Athena is a Qloo hackathon entry. Submission is **28 Oct**, the only real date.
 - **Mirror fix:** the journey mirror (`components/Journey.tsx`) sent `keepalive` requests, which browsers refuse over 64 KB, so no finished plan ever reached the server. The share page, MCP server, calendar feed and Monday email read an onboarding-era copy. keepalive is now used only when the body fits.
 - **Seen in the spreadsheet, not fixed:** the plan's open list holds filler such as "The Scout needs none"; the Rep's Every matching shop shows a raw "venue" type; some crowds' Also loves lists hold odd entities.
 
-**Known dev-mode behaviour:**
-- With no exact recording, Replay near-matches only tapes from the journey's brand's run (`4dfc1c3`); anything else runs offline.
-- `/api/uploads` always goes to the real server in Replay, which is free: offline mode blocks paid calls.
-- The Magic Spoon run lacks several states (Scout and Matchmaker pages, Execute Plan running, drafts, What's working, This week). Those cards fall back to older runs and are labelled.
+**Dev mode removed (29 Oct, founder's ask: "all i want is live testing now"):** `/dev`, `/api/dev`, the DevTape fetch shim, the server-wide offline switch (`lib/dev/`) and their test are deleted. Nothing can turn a local server offline; old recordings stay in `.cache/dev`, unused.
 
 **Open decisions for the founder (don't act on them unasked):**
 - A Next.js security-upgrade nudge appeared in a build log: not run. It belongs on its own branch, with the founder's yes.
@@ -71,7 +68,6 @@ Athena is a Qloo hackathon entry. Submission is **28 Oct**, the only real date.
 **Known limit (links):** there are no accounts, so a link is tied to the browser that made it. Start over, `?new=1` and `?pack=` revoke the MCP, calendar and share links; once the founder clears the browser, nothing can revoke them. A browser that lost a link it still has on the server shows a calm line and New link, never a silent new link.
 
 **Where things live:**
-- **Dev mode:** `/dev` is `app/dev/page.tsx` (404 in production), the step map is `app/dev/DevMap.tsx`, tapes are in `lib/dev/`, and the fetch shim is `components/DevTape.tsx`. Recordings and snapshots are in `.cache/dev` (never committed).
 - **Onboarding:** `components/Onboard.tsx`. **Journey shell, composer and drop zone:** `components/Journey.tsx`. **Chat hook and file rules:** `components/chat.tsx`.
 - **Dashboard:** `components/Dashboard.tsx`. **Execute Plan:** `components/Executive.tsx` and `lib/exec/`.
 - **Sidebar rows "Connect with Athena MCP" and "Share your plan" (PRD §23.6 d), their panels and links:** `components/McpConnect.tsx`; on a phone both are in the Workspace menu. **Links:** `lib/workspace/links.ts`. **MCP server:** `app/mcp/[secret]` and `lib/workspace/mcp.ts`. **Calendar:** `lib/workspace/calendar.ts`. **This week:** `lib/workspace/week.ts` and `digest.ts`.
@@ -152,12 +148,7 @@ corepack pnpm live <file>
 
 **The dev server:** in the Claude desktop app, use the preview tool with the `athena-dev` config (`.claude/launch.json`, port 3000), never Bash.
 
-**Dev mode** (dev server only) is at `localhost:3000/dev`:
-- **Live** makes real calls;
-- **Record** saves tapes;
-- **Replay** serves saved tapes with no calls.
-
-The step map has a card for every page and state, and saved snapshots open past pages without spending Qloo calls.
+**Every local run is live:** the dev server makes real Qloo and Gemini calls, so each run spends the budget. Dev mode was removed on 29 Oct.
 
 **Production check:** `corepack pnpm build`, then `corepack pnpm start`.
 

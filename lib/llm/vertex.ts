@@ -1,7 +1,6 @@
 import "server-only";
 import { GoogleAuth } from "google-auth-library";
 import { timePrompt } from "@/lib/time/now";
-import { isOffline } from "@/lib/dev/offline";
 
 // Gemini on Vertex AI (Â§12.8). Global endpoint only: both models returned 404 in us-central1 (8 Oct).
 // Auth: Application Default Credentials (gcloud locally, the service account on Cloud Run). No key stored.
@@ -26,8 +25,7 @@ const auth = new GoogleAuth({ scopes: ["https://www.googleapis.com/auth/cloud-pl
 
 export function llmConfig() {
   return {
-    // Developer mode's offline switch reads as "not configured", so no Gemini call is made.
-    project: isOffline() ? "" : (process.env.GOOGLE_CLOUD_PROJECT ?? ""),
+    project: process.env.GOOGLE_CLOUD_PROJECT ?? "",
     location: process.env.GOOGLE_CLOUD_LOCATION ?? "global",
     flash: process.env.GEMINI_FLASH_MODEL ?? "gemini-3.8-flash",
     pro: process.env.GEMINI_PRO_MODEL ?? "gemini-3.1-pro-preview",

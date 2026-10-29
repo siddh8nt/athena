@@ -2867,7 +2867,7 @@ The 2 keys allow 20k calls a month, about 28–35 full new-brand runs before war
 - **Dev server only:** `/dev` returns 404 in production, and the dev pill never renders there.
 - **Way in, for now (23 Oct, 4125dbd):** an "Open dev mode" link under the subtitle on the "Tell me about your brand" page, dev server only, because the pill hides in Live mode. It's temporary.
 
-#### (p) No duplicates on any page (founder, 25 Oct; not built)
+#### (p) No duplicates on any page (founder, 25 Oct; built ef2e8f7)
 
 - **Why:** the same things are listed two or three times on one page. The Promoter shows its online places twice: once as a full table under Online, and again as a cramped list under "Any time, online" in the Calendar, where they don't belong because they have no date. Audited on the recorded Diaspora Co. run in `/dev`; every subagent page and Athena's panel has the same problem.
 - **The rule:** each thing (a crowd, city, shop, partner, event, online place, hook) is listed in full in one place: the place where the founder acts on it. Anywhere else it is at most a one-line mention that opens that place. A shortlist with a reason ("One pitch, several crowds", "Doors you can afford") may name items listed elsewhere, as links, never as a second table.
@@ -2970,7 +2970,7 @@ The 2 keys allow 20k calls a month, about 28–35 full new-brand runs before war
 - **Checks pass (contacts):** a test that a place shared by two subagents is looked up once, and that a re-run looks up only new items.
 - **Seen live in Edge:** from the `/dev` snapshots in Replay, on desktop and at 375 px: the workflow ending on Execute Plan node with Athena's Start / Later question, and the Start button under the workflow after Later; the tabs, top strip and next-action buttons; Now items with contact cards (address, website, phone, email where published) and three copyable drafts; Find contact on an item below Now; a chat request filling items in small groups; the follow-up wait question on the first Pitched mark. Then one Record run on a brand to confirm a fresh run ends on Execute Plan.
 
-#### (r) The Executive runs itself: a live task orchestrator (founder, 26 Oct; the penultimate rework; not built)
+#### (r) The Executive runs itself: a live task orchestrator (founder, 26 Oct; the penultimate rework; built 2c1602c)
 
 **The problem (founder, verbatim intent):**
 - The Executive feels like filling a government form or operating a bank portal: Start, Find contact, Mark pitched, a $ box, checkboxes.
@@ -3116,7 +3116,7 @@ The 2 keys allow 20k calls a month, about 28–35 full new-brand runs before war
 - **Qloo calls:** each subagent's count is recorded and its budget fixed from it.
 
 
-### 23.6 Step 8.7 in detail: Athena in the founder's own tools (founder, 27 Oct; not built)
+### 23.6 Step 8.7 in detail: Athena in the founder's own tools (founder, 27 Oct; built 8c4df46 to b6f474e)
 
 **Why:** Athena's plan, tasks and brand context live only inside Athena, in one browser. A founder works in Claude, Cursor, ChatGPT, their calendar and Gmail. This step takes the plan to those tools and brings what the founder does there back to Athena.
 
@@ -3296,7 +3296,7 @@ The one panel built first ("Athena MCP") named only its most technical part. It'
 - **Qloo's terms checked,** and what the demo and share links carry is set from the answer.
 
 
-### 23.7 Step 8.8 in detail: dev mode out of the founder's UI, and a polish pass (founder, 27 Oct; not built)
+### 23.7 Step 8.8 in detail: dev mode out of the founder's UI, and a polish pass (founder, 27 Oct; built da9ecb6 to 87a3620)
 
 **Why:** the founder asked to "remove dev mode button from user facing ui and polish ui for the founders that will be using it". The app is shown to judges and used by founders, so a builder's control or a line written for the builder costs trust. §23.5 (r) already named the complaint that text "speaks to the builder, not the founder". This step clears what is left of it across every page.
 
@@ -3414,7 +3414,7 @@ Every state this step changes still has its card in `/dev`'s step map, so the po
 - **Every page in (d)** is checked on desktop and at 375 px, light and dark: no clipped text, no sideways scroll, no blank first paint on the production build.
 - **Every changed state** has its dev-mode card.
 
-### 23.8 Step 8.9 in detail: crowds named after what they love, and where every name comes from (founder, 28 Oct; not built)
+### 23.8 Step 8.9 in detail: crowds named after what they love, and where every name comes from (founder, 28 Oct; built 0d8ba46 to 1fc27f8)
 
 **Why:** the founder said that wherever the project mentions the crowds Athena finds, their "eccentric" names "sound straight like AI slop". They asked for better, more intuitive ways to name and talk about crowds and similar things. They also asked for a way to highlight each reference and explain where it came from, across every subagent's output, Execute Plan and the files and share link Athena makes, and for a polish of slop like this across the project. This replaces the "how crowds are named" topic that §23.7 left for later.
 
@@ -3541,7 +3541,7 @@ The new crowd card, a reference card of each kind, and the named source chips ea
 - **A saved journey** from before this step opens with its old names and no blank or broken view.
 - **Every new state** has its dev-mode card.
 
-### 23.9 Step 8.10 in detail: one clear path, dark by default, smooth motion, a graph that reads as a graph (founder, 29 Oct; not built)
+### 23.9 Step 8.10 in detail: one clear path, dark by default, smooth motion, a graph that reads as a graph (founder, 29 Oct; built 9814719, a live about-link hover still unseen)
 
 **Why (founder, 29 Oct, from a live run):**
 - the question card doesn't stand out in dark mode;

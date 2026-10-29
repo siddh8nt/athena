@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import { ThemeToggle } from "./SideNav";
 
 // The journey reads this browser's saved progress on first render, so it renders on the client only. Until it arrives
 // the page shows its own shape at once (PRD §23.7 e): the top bar, then one frosted sheet with a title, tabs and quiet
@@ -13,6 +14,9 @@ export function JourneyShape() {
         <Link href="/" className="wordmark-link">
           <strong>Athena</strong>
         </Link>
+        <div className="top-actions">
+          <ThemeToggle className="linkish theme-top" />
+        </div>
       </header>
       <main className="journey-shape-main">
         <div className="dash-page journey-shape">

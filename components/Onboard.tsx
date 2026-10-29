@@ -20,7 +20,7 @@ import { reviewGate } from "@/lib/journey/flow";
 import { pacer } from "@/lib/stream/pace";
 import { RunProgress, StepTimer, type ProgressStep } from "./Progress";
 import { PanelGrip } from "./Resize";
-import { NavIcon, RailToggle, ThemeToggle, useRail } from "./SideNav";
+import { NavIcon, RailToggle, useRail } from "./SideNav";
 import { McpPanel } from "./McpConnect";
 
 // Onboarding as a workspace (PRD §23.2 step 7.2). First, one box: the founder types, pastes or drops anything, and
@@ -906,7 +906,6 @@ export function Onboard({
         <div className="nav-head">
           <span className="nav-title">Workspace</span>
           <span className="nav-head-acts">
-            <ThemeToggle />
             <RailToggle rail={rail} onFlip={flipRail} />
           </span>
         </div>

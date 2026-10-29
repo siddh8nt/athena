@@ -24,7 +24,7 @@ import { CrowdTabs } from "./CrowdTabs";
 import { Cites } from "./Cites";
 import { Linked } from "./Refs";
 import { RunProgress, StepTimer, type ProgressStep } from "./Progress";
-import { NavIcon, RailToggle, ThemeToggle, useRail } from "./SideNav";
+import { NavIcon, RailToggle, useRail } from "./SideNav";
 import { MCP_EVENT, McpConnect } from "./McpConnect";
 import type { CrowdCard } from "@/lib/journey/types";
 import { DOING, finishLines, type Next } from "@/lib/journey/next";
@@ -965,7 +965,6 @@ export function TeamPanel({ live, team, active, onOpen, athena }: { live: TeamLi
       <div className="nav-head">
         <span className="nav-title">Workspace</span>
         <span className="nav-head-acts">
-          <ThemeToggle />
           <RailToggle rail={rail} onFlip={flip} />
         </span>
       </div>

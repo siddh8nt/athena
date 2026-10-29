@@ -1199,7 +1199,7 @@ export function Journey() {
         {!onboarding && <Spine stages={stages} onGo={spineGo} compact />}
         {/* Hidden through onboarding (§23.2 step 7.2a); the goals take the progress rail's place (step 8a). */}
         <div className="top-actions">
-          {/* On a phone the sidebar is a menu, so the light/dark switch sits here (§23.9 a). */}
+          {/* The light/dark switch sits in the top bar on every page (§23.9 a). */}
           <ThemeToggle className="linkish theme-top" />
           <button
             type="button"

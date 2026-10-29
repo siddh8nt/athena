@@ -2645,6 +2645,7 @@ button.nav-item:hover:not(:disabled) { background: rgba(var(--nav-tint), 0.045);
 .nav-pipe-col { border: 1px solid var(--line); border-radius: 12px; padding: 8px; background: var(--sunken); min-width: 150px; }
 .nav-pipe-col ul { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 .nav-pipe-card { display: flex; flex-direction: column; gap: 4px; padding: 6px 8px; border-radius: 8px; background: var(--bg); font-size: 13px; }
+.nav-pipe-card .spec-marks { flex-wrap: wrap; }
 .nav-pipe-card .spec-marks button { font-size: 11px; padding: 1px 6px; }
 .nav-working ul { list-style: none; margin: 4px 0 10px; padding: 0; }
 .nav-draft { margin-top: 12px; border-top: 1px solid var(--line-soft); padding-top: 10px; }
@@ -2901,6 +2902,7 @@ a.mcp-new { text-decoration: none; display: inline-flex; align-items: center; }
 
 /* Share with your team (§23.6 k): the view-only Execute Plan, on its own page. */
 .share-main { max-width: 1180px; margin: 0 auto; padding: 40px 16px 80px; display: flex; flex-direction: column; gap: 24px; }
+.share-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: -8px; }
 .share-head { display: flex; flex-direction: column; gap: 8px; }
 .share-head h1 { font-family: var(--font-display); font-weight: 400; font-size: 40px; letter-spacing: -0.01em; line-height: 1.1; margin: 0; }
 
@@ -2986,11 +2988,10 @@ a.mcp-new { text-decoration: none; display: inline-flex; align-items: center; }
 :root:not([data-theme="light"]) .nav-section { color: color-mix(in srgb, var(--label) 70%, #6f6a62); }
 :root:not([data-theme="light"]) .journey-top { background: #0e0c0a; box-shadow: inset 0 -1px 0 var(--line); }
 .nav-head-acts { display: flex; align-items: center; gap: 2px; }
-.nav.team-rail .nav-head-acts .theme-toggle { display: none; }
-.journey-top .theme-top { display: none; }
-/* Where there's no sidebar (the first screen) or the sidebar is a phone menu, the switch sits in the top bar. */
-.journey:not(:has(.nav)) .journey-top .theme-top { display: inline-grid; place-items: center; width: 36px; padding: 0; }
-@media (max-width: 900px) { .journey-top .theme-top { display: inline-grid; place-items: center; width: 36px; padding: 0; } }
+/* The light/dark switch: in the top bar on every page (§23.9 a). */
+.theme-top { display: inline-grid; place-items: center; width: 36px; height: 36px; padding: 0; border: 0; border-radius: 999px; background: none; color: var(--muted); min-height: 0; flex: none; }
+.theme-top:hover:not(:disabled) { background: var(--surface); color: var(--fg); }
+.journey-top .top-actions .theme-top { display: inline-grid; place-items: center; width: 36px; padding: 0; }
 
 /* The frosted sheet and the panels: a warm rim that reads against the page. */
 :root:not([data-theme="light"]) :is(.dash-page, .sub-page, .agent-panel, .chat-drawer, .mcp-panel, .crowd-sheet) { border-color: var(--sheet-rim); }

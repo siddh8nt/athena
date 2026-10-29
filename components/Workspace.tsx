@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
+import { ThemeToggle } from "./SideNav";
 import { usePlan, type PlanSource } from "./usePlan";
 import { InlineQuestions, BuiltFrom, type Answers } from "./InlineQuestions";
 import type { BrandBrief } from "@/lib/brief/types";
@@ -235,6 +236,7 @@ export function Workspace({ slug, brands, custom: fromJourney, onBack }: { slug:
           )}
         </nav>
         <div className="top-actions">
+          <ThemeToggle className="theme-top" />
           {onBack ? <button onClick={onBack}>← Back to the journey</button> : <Link className="button primary" href="/plan">Try your own brand</Link>}
           <button onClick={() => setTrace({ title: "All blocks", calls: [...(plan.cardMeta?.calls ?? []), ...Object.values(plan.blocks).flatMap((x) => x?.meta.calls ?? [])] })}>Trace</button>
         </div>

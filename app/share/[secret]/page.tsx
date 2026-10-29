@@ -1,4 +1,6 @@
+import Link from "next/link";
 import { ShareView } from "@/components/ShareView";
+import { ThemeToggle } from "@/components/SideNav";
 import { sharedPlan } from "@/lib/workspace/share";
 
 export const dynamic = "force-dynamic";
@@ -12,6 +14,12 @@ export default async function Share({ params }: { params: Promise<{ secret: stri
   const s = await sharedPlan(secret);
   return (
     <main className="share-main">
+      <div className="share-top">
+        <Link href="/" className="wordmark-link">
+          <strong>Athena</strong>
+        </Link>
+        <ThemeToggle className="theme-top" />
+      </div>
       <header className="share-head">
         <span className="page-kicker">Shared plan · view only</span>
         {s.kind !== "replaced" && <h1>{s.brand}</h1>}

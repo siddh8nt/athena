@@ -3249,3 +3249,50 @@ a.mcp-new { text-decoration: none; display: inline-flex; align-items: center; }
 .bg-tip-why { color: var(--muted); font-size: 11.5px; }
 .bg-tip-why::before { content: "— "; }
 @media (prefers-reduced-motion: reduce) { .bg-link { transition: none; } }
+
+/* ── What the team is doing, at a glance (§23.10): the status pill in the top bar, its panel, and the few popups ── */
+.act { position: relative; display: flex; align-items: center; }
+.journey-top .top-actions button.act-pill { display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 12px 0 10px; border: 1px solid #3a332b; color: #e6dfd2; letter-spacing: 0.04em; }
+.journey-top .top-actions button.act-pill:hover:not(:disabled) { border-color: #5a5045; }
+.journey-top .top-actions button.act-pill[aria-expanded="true"] { background: #241f1a; color: #f3efe6; }
+.journey-top .top-actions button.act-pill.act-ask { border-color: color-mix(in srgb, var(--emph) 60%, #3a332b); color: #f3efe6; }
+.act-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.act-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: #6f6a62; }
+.act-ask .act-dot { background: var(--emph); animation: paused-pulse 1.6s ease-in-out infinite; }
+.act-dot.act-done { background: var(--emph); margin-top: 6px; }
+.act .spin { flex: none; }
+.act-panel, .act-toasts { position: absolute; top: calc(100% + 10px); right: 0; width: min(360px, calc(100vw - 32px)); z-index: 60; }
+.act-panel {
+  max-height: min(70vh, 560px); overflow-y: auto; padding: 4px 0; border-radius: 14px; border: 1px solid var(--line); background: var(--surface); color: var(--fg);
+  box-shadow: var(--overlay); animation: rise 0.18s var(--ease-slow) both;
+}
+.act-sec { display: grid; gap: 8px; padding: 12px 16px; }
+.act-sec + .act-sec { border-top: 1px solid var(--line); }
+.act-sec p { margin: 0; }
+.act-ask { background: color-mix(in srgb, var(--emph) 10%, var(--surface)); }
+.act-ask button.primary { justify-self: start; }
+.act-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.act-list li { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: start; }
+.act-list li > .spin { margin-top: 3px; }
+.act-list strong { font-size: 13.5px; font-weight: 600; }
+.act-list p { margin-top: 2px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.act-toasts { display: grid; gap: 8px; pointer-events: none; }
+.act-toast {
+  pointer-events: auto; display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: start; padding: 12px 12px 12px 16px; border-radius: 14px;
+  border: 1px solid var(--line); border-left: 3px solid var(--emph); background: var(--surface); color: var(--fg); box-shadow: var(--overlay); animation: rise 0.22s var(--ease-slow) both;
+}
+.act-toast strong { font-size: 13.5px; font-weight: 600; }
+.act-toast p { margin: 2px 0 0; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.act-toast-acts { display: flex; align-items: center; gap: 4px; }
+.journey-top .act :is(.act-panel, .act-toast) button.linkish { font-family: inherit; font-size: 12.5px; font-weight: 600; color: var(--accent); padding: 2px 4px; }
+.journey-top .act :is(.act-panel, .act-toast) button.linkish:hover:not(:disabled) { background: none; color: var(--accent-hover); text-decoration: underline; }
+.journey-top .act .act-toast button.act-x { font-family: inherit; font-size: 16px; line-height: 1; color: var(--muted); padding: 2px 6px; }
+.journey-top .act .act-toast button.act-x:hover:not(:disabled) { background: var(--line); color: var(--fg); }
+@media (max-width: 640px) {
+  .act-text { max-width: 110px; }
+  .act-panel, .act-toasts { right: -60px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .act-panel, .act-toast { animation: none; }
+  .act-ask .act-dot { animation: none; }
+}

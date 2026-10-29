@@ -15,6 +15,7 @@ import { Fits, When, tiersFor } from "./Fits";
 import { fromCity, fromCrowd, type Handoff } from "@/lib/agent/handoffs";
 import { FinishCard, GoalsBar, Handoffs, PausedForYou, RunTrail, SpecialistWorkspace, TeamPanel, WhatsWorking, WorkView, statusOf, useTeam, type TeamLive } from "./Team";
 import { Dashboard, WorkflowDiagram, type KbPart } from "./Dashboard";
+import { Activity } from "./Activity";
 import { INPUTS } from "@/lib/team/inputs";
 import type { Line as PageLine } from "@/lib/team/page";
 import type { StrategyView } from "./Strategy";
@@ -1232,6 +1233,17 @@ export function Journey() {
         {!onboarding && <Spine stages={stages} onGo={spineGo} compact />}
         {/* Hidden through onboarding (§23.2 step 7.2a); the goals take the progress rail's place (step 8a). */}
         <div className="top-actions">
+          {/* Who is working now, and the few popups when a subagent starts or finishes out of view (§23.10). */}
+          {!onboarding && (
+            <Activity
+              live={tm.live}
+              team={team}
+              page={page}
+              asking={pausedAsk && pausedWho ? { who: pausedWho, question: pausedAsk.question } : undefined}
+              onAnswer={answerPaused}
+              onOpen={(id) => go(id)}
+            />
+          )}
           {/* The light/dark switch sits in the top bar on every page (§23.9 a). */}
           <ThemeToggle className="linkish theme-top" />
           <button

@@ -3627,6 +3627,40 @@ The new crowd card, a reference card of each kind, and the named source chips ea
   - dark by default with sections, tabs and the sidebar clearly apart; light mode still works through the switch;
   - the Brand Graph's links explain themselves on hover.
 
+### 23.10 Step 8.11 in detail: what the team is doing, at a glance (founder, 29 Oct)
+
+**Why (founder, 29 Oct, from a live run):** the spine is good, but it says where the journey is, not which subagents are starting or running, and a page that changes under the founder is confusing. The founder asked for popup notifications or a notification button at the top right.
+
+**Decided (29 Oct):** no bell and no popup for every step.
+- A bell reads as "something is waiting for you", but most of the time the team is simply working.
+- Subagents run in parallel, so a popup per start or step would come every few seconds, and a popup that vanishes leaves anyone who looked away as lost as before.
+
+Already built from the same run (3fc88db): on the dashboard, a subagent that starts shows a "Starting now" card for 6 seconds before its page fades in.
+
+#### (a) A status pill at the top right
+- Beside the light/dark switch, on every page after onboarding. It always says who is working:
+  - "Athena needs you" while a question waits;
+  - otherwise the one who is working ("The Analyst is working"), or how many ("3 working");
+  - "Team idle" when nothing runs.
+- A click opens a small panel:
+  - **Your turn**, while a question waits: the question and one button to it;
+  - **Now:** each one working, with its live step and Open;
+  - **Earlier:** each subagent that has finished, with what it found and when it finished (this visit only; after a reload, without the time), and Open.
+- One question per element: the spine says where the journey is, the pill says who is working, and the sidebar's lines stay as they are.
+
+#### (b) Popups for three moments only
+- Each slides in under the top bar at the right, stays about 5 seconds, and then folds into the pill. At most two show at once.
+- **A subagent starts** while the founder is neither on the dashboard (its Starting card covers that) nor on that subagent's page: "The Strategist is starting", what it gives the brand, and Open.
+- **A subagent finishes** while the founder is not on its page: "The Analyst finished", what it found, and Open.
+- **A question waits:** the existing paused banner; no second alert. The pill reads "Athena needs you".
+
+#### Out of this step
+- Browser or system notifications, sound, email, and unread counts.
+
+#### Done when
+- **Checks pass:** tsc and tests, with new tests for the pill's line from the team's live state and for which changes pop up (a start, a finish, nothing on a resume after waiting, nothing on the page it concerns).
+- **One live run:** the pill follows the run from the Analyst through the lanes; popups appear only at the three moments; at 1440 px and 375 px, nothing covers the top bar's controls or the chat box.
+
 ---
 
 ## Appendix A. Example requests (redacted)
